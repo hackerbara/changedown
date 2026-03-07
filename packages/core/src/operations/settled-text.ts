@@ -1,0 +1,480 @@
+import { ChangeNode, ChangeType, ChangeStatus, TextEdit } from '../model/types.js';
+import { CriticMarkupParser } from '../parser/parser.js';
+import { computeAccept, computeReject, computeAcceptParts, computeRejectParts, AcceptRejectParts } from './accept-reject.js';
+import { computeLineHash } from '../hashline.js';
+import { FOOTNOTE_DEF_START, footnoteRefGlobal } from '../footnote-patterns.js';
+import { findCodeZones, CodeZone } from '../parser/code-zones.js';
+
+/**
+ * Computes a TextEdit that "settles" a single CriticMarkup change node using
+ * **accept-all** semantics — every change is applied regardless of footnote status:
+ *
+ * - Insertion (any status): keep inserted text, remove markup
+ * - Deletion (any status): remove everything (text is deleted)
+ * - Substitution (any status): keep modified (new) text, remove markup
+ * - Highlight (any status): keep highlighted text, remove markup
+ * - Comment (any status): remove entirely
+ *
+ * This produces "the document as it would be if all proposals were approved".
+ * Per V1 view model design doc §5.
+ */
+export function computeSettledReplace(change: ChangeNode): TextEdit {
+  const rangeLength = change.range.end - change.range.start;
+
+  // Comments are always removed entirely
+  if (change.type === ChangeType.Comment) {
+    return { offset: change.range.start, length: rangeLength, newText: '' };
+  }
+
+  // Highlights always reduce to their plain text content
+  if (change.type === ChangeType.Highlight) {
+    return { offset: change.range.start, length: rangeLength, newText: change.originalText ?? '' };
+  }
+
+  // Accept-all: every change is treated as accepted regardless of footnote status.
+  switch (change.type) {
+    case ChangeType.Insertion:
+      return { offset: change.range.start, length: rangeLength, newText: change.modifiedText ?? '' };
+    case ChangeType.Deletion:
+      return { offset: change.range.start, length: rangeLength, newText: '' };
+    case ChangeType.Substitution:
+      return { offset: change.range.start, length: rangeLength, newText: change.modifiedText ?? '' };
+  }
+
+  // Exhaustiveness guard: fail-fast if a new ChangeType is added without updating this switch
+  throw new Error(`Unknown ChangeType: ${change.type}`);
+}
+
+// FOOTNOTE_DEF_START imported from footnote-patterns.ts
+
+/**
+ * Strips all footnote definition blocks from the text.
+ * A footnote definition starts with `[^ct-N]:` at column 0 and continues
+ * on subsequent indented lines (or blank lines within the body).
+ * Trailing blank lines left behind are also cleaned up.
+ */
+function stripFootnoteDefinitions(text: string): string {
+  const lines = text.split('\n');
+  const kept: string[] = [];
+  let inFootnote = false;
+  let foundFootnote = false;
+
+  for (const line of lines) {
+    if (FOOTNOTE_DEF_START.test(line)) {
+      inFootnote = true;
+      foundFootnote = true;
+      // Remove trailing blank lines that were separators before this footnote block
+      while (kept.length > 0 && kept[kept.length - 1].trim() === '') {
+        kept.pop();
+      }
+      continue;
+    }
+    if (inFootnote) {
+      // Continuation lines are indented or blank
+      if (line.trim() === '' || /^[\t ]/.test(line)) {
+        continue;
+      }
+      // Non-indented, non-blank line ends the footnote body
+      inFootnote = false;
+    }
+    kept.push(line);
+  }
+
+  // Only strip trailing blank lines if we actually removed footnote definitions
+  if (foundFootnote) {
+    while (kept.length > 0 && kept[kept.length - 1].trim() === '') {
+      kept.pop();
+    }
+  }
+
+  return kept.join('\n');
+}
+
+/**
+ * Strips orphaned inline footnote references `[^ct-N]` or `[^ct-N.M]` that
+ * remain in the text after CriticMarkup processing (these are not part of any
+ * change node's range and appear as bare refs in the settled text).
+ */
+function stripInlineFootnoteRefs(text: string): string {
+  return text.replace(footnoteRefGlobal(), '');
+}
+
+/**
+ * Computes the "settled state" of a CriticMarkup document using accept-all semantics.
+ *
+ * The settled text represents what the document would look like if every proposed
+ * change were approved:
+ * - All insertions are kept (text absorbed, markup removed) regardless of status
+ * - All deletions are applied (text removed) regardless of status
+ * - All substitutions use new text regardless of status
+ * - Highlights reduce to plain text
+ * - Comments are removed entirely
+ * - Footnote definitions are stripped
+ * - Orphaned inline footnote references are stripped
+ *
+ * Per V1 view model design doc §5: settled = "document as it would be if all
+ * proposals were approved". The committed view (separate function) handles
+ * status-aware rendering.
+ *
+ * This is a pure function: it does not modify the input string.
+ */
+export function computeSettledText(text: string): string {
+  const parser = new CriticMarkupParser();
+  const doc = parser.parse(text, { skipCodeBlocks: false });
+  const changes = doc.getChanges();
+
+  if (changes.length === 0) {
+    return stripInlineFootnoteRefs(stripFootnoteDefinitions(text));
+  }
+
+  // Sort changes by descending offset so we can apply edits from end to start
+  // without invalidating earlier offsets
+  const edits = [...changes]
+    .sort((a, b) => b.range.start - a.range.start)
+    .map(computeSettledReplace);
+
+  let result = text;
+  for (const edit of edits) {
+    result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
+  }
+
+  result = stripFootnoteDefinitions(result);
+  result = stripInlineFootnoteRefs(result);
+
+  return result;
+}
+// ─── Zone-aware ref placement ────────────────────────────────────────────────
+
+/**
+ * Check whether a given offset falls inside any code zone.
+ * Returns the zone if found, undefined otherwise.
+ */
+function findContainingCodeZone(offset: number, zones: CodeZone[]): CodeZone | undefined {
+  for (const zone of zones) {
+    if (offset >= zone.start && offset < zone.end) return zone;
+  }
+  return undefined;
+}
+
+interface DeferredRef {
+  ref: string;
+  /** Line number in the original text (0-indexed) */
+  origLineIndex: number;
+}
+
+/**
+ * Build settled text with zone-aware ref placement.
+ * Refs for edits inside code zones are deferred to end-of-line.
+ */
+function buildSegmentsWithZoneAwareness(
+  text: string,
+  parts: AcceptRejectParts[],
+  zones: CodeZone[],
+): string {
+  const segments: string[] = [];
+  const deferredRefs: DeferredRef[] = [];
+  let cursor = 0;
+
+  // Pre-compute line boundaries in original text for offset→line mapping
+  const lineBreaks: number[] = []; // offsets of each '\n'
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '\n') lineBreaks.push(i);
+  }
+
+  function offsetToLine(offset: number): number {
+    // Binary search for the line containing offset (0-indexed)
+    let lo = 0;
+    let hi = lineBreaks.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (lineBreaks[mid] < offset) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  }
+
+  for (const part of parts) {
+    // Original text before this edit
+    if (part.offset > cursor) {
+      segments.push(text.slice(cursor, part.offset));
+    } else if (part.offset < cursor) {
+      continue; // overlapping edit, skip
+    }
+
+    const ref = part.refId ? `[^${part.refId}]` : '';
+
+    if (ref && findContainingCodeZone(part.offset, zones)) {
+      // Edit is inside a code zone — emit text without ref, defer ref to end of line
+      segments.push(part.text);
+      deferredRefs.push({ ref, origLineIndex: offsetToLine(part.offset) });
+    } else {
+      // Normal placement — ref inline
+      segments.push(part.text + ref);
+    }
+
+    cursor = part.offset + part.length;
+  }
+
+  // Remaining original text
+  if (cursor < text.length) {
+    segments.push(text.slice(cursor));
+  }
+
+  if (deferredRefs.length === 0) {
+    return segments.join('');
+  }
+
+  // Apply deferred refs: split result into lines, append refs at their target lines
+  const result = segments.join('');
+  const lines = result.split('\n');
+
+  // Group deferred refs by their original line index.
+  // INVARIANT: Settlement does not add or remove newlines — each AcceptRejectParts
+  // replacement is inline (same line). The line index in the result corresponds to
+  // the same line index in the original text. If multi-line range settlement is
+  // added in the future, this mapping must be recalculated.
+  const refsByLine = new Map<number, string[]>();
+  for (const dr of deferredRefs) {
+    const existing = refsByLine.get(dr.origLineIndex) ?? [];
+    existing.push(dr.ref);
+    refsByLine.set(dr.origLineIndex, existing);
+  }
+
+  for (const [lineIdx, refs] of refsByLine) {
+    if (lineIdx < lines.length) {
+      lines[lineIdx] = lines[lineIdx] + refs.join('');
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Settles only accepted changes: resolves their markup to clean text while
+ * preserving footnote references and definitions. Proposed and rejected changes
+ * are left untouched. Uses parser range information (no regex replacement) so
+ * substitution text that looks like CriticMarkup is handled correctly.
+ *
+ * This implements Layer 1 settlement: removes inline CriticMarkup delimiters
+ * but keeps footnote references [^ct-N] and footnote definition blocks with
+ * their 'accepted' status. This preserves the audit trail for accepted changes.
+ */
+export function settleAcceptedChangesOnly(text: string): { settledContent: string; settledIds: string[] } {
+  const parser = new CriticMarkupParser();
+  const doc = parser.parse(text, { skipCodeBlocks: false });
+  const accepted = doc.getChanges().filter((c) => c.status === ChangeStatus.Accepted);
+  const settledIds = accepted.map((c) => c.id);
+
+  if (accepted.length === 0) {
+    return { settledContent: text, settledIds: [] };
+  }
+
+  // Get parts (text + ref separated) for each accepted change
+  const parts = [...accepted]
+    .sort((a, b) => a.range.start - b.range.start)
+    .map(computeAcceptParts);
+
+  const zones = findCodeZones(text);
+  const settledContent = buildSegmentsWithZoneAwareness(text, parts, zones);
+
+  return { settledContent, settledIds };
+}
+
+/**
+ * Settles only rejected changes: resolves their markup to clean text while
+ * preserving footnote references and definitions. Proposed and accepted changes
+ * are left untouched. Uses parser range information (no regex replacement) so
+ * substitution text that looks like CriticMarkup is handled correctly.
+ *
+ * This implements Layer 1 settlement for rejections:
+ * - Rejected insertion: remove {++text++} (footnote ref stays)
+ * - Rejected deletion: restore original text (footnote ref stays)
+ * - Rejected substitution: restore original text (footnote ref stays)
+ * - Proposed and accepted changes are not touched.
+ */
+export function settleRejectedChangesOnly(text: string): { settledContent: string; settledIds: string[] } {
+  const parser = new CriticMarkupParser();
+  const doc = parser.parse(text, { skipCodeBlocks: false });
+  const rejected = doc.getChanges().filter((c) => c.status === ChangeStatus.Rejected);
+  const settledIds = rejected.map((c) => c.id);
+
+  if (rejected.length === 0) {
+    return { settledContent: text, settledIds: [] };
+  }
+
+  const parts = [...rejected]
+    .sort((a, b) => a.range.start - b.range.start)
+    .map(computeRejectParts);
+
+  const zones = findCodeZones(text);
+  const settledContent = buildSegmentsWithZoneAwareness(text, parts, zones);
+
+  return { settledContent, settledIds };
+}
+
+// ─── Settled view types ──────────────────────────────────────────────────────
+
+export interface SettledLine {
+  settledLineNum: number;  // 1-indexed, sequential (no gaps)
+  rawLineNum: number;      // 1-indexed, raw file line number
+  text: string;            // settled text (no CriticMarkup, no footnotes)
+  hash: string;            // hash of settled text (2 hex chars)
+}
+
+export interface SettledViewResult {
+  lines: SettledLine[];
+  settledToRaw: Map<number, number>;  // settled line num → raw line num
+  rawToSettled: Map<number, number>;  // raw line num → settled line num
+}
+
+// ─── Settled view computation ────────────────────────────────────────────────
+
+/**
+ * Compute the settled view for an entire file using accept-all semantics.
+ *
+ * Uses the parser-based `computeSettledText()` for correct handling of multi-line
+ * CriticMarkup, then builds line mappings by tracking offset deltas through the
+ * edits applied. This provides:
+ *
+ * 1. Correct settled text (multi-line markup handled via parser)
+ * 2. settled-line-num → raw-line-num mapping for coordinate resolution
+ * 3. Per-line hashes for settled-space write targeting
+ *
+ * Returns structured data enabling settled-space → raw-space coordinate mapping
+ * (the settled-space analog of committed-space write targeting from ADR-049).
+ *
+ * **Mapping strategy:** Applies CriticMarkup edits forward, tracking cumulative
+ * offset deltas. For each line in the settled text, maps its starting offset
+ * back through the deltas to find the corresponding raw line. Footnote and
+ * inline-ref stripping are line-level operations that preserve the character-to-line
+ * correspondence established by the CriticMarkup edits.
+ */
+export function computeSettledView(rawText: string): SettledViewResult {
+  // 1. Get parser edits for CriticMarkup settlement
+  const parser = new CriticMarkupParser();
+  const doc = parser.parse(rawText, { skipCodeBlocks: false });
+  const changes = doc.getChanges();
+
+  // 2. Apply CriticMarkup edits and build offset delta table
+  // Each entry: { rawOffset, delta } where delta = cumulative shift
+  // (positive = settled text is longer at this point, negative = shorter)
+  const edits = [...changes]
+    .sort((a, b) => a.range.start - b.range.start)
+    .map(computeSettledReplace);
+
+  // Build delta table: sorted by raw offset
+  // delta = how much the settled text has shifted relative to raw at this point
+  const deltaTable: Array<{ rawOffset: number; delta: number }> = [];
+  let cumulativeDelta = 0;
+
+  for (const edit of edits) {
+    deltaTable.push({ rawOffset: edit.offset, delta: cumulativeDelta });
+    const oldLen = edit.length;
+    const newLen = edit.newText.length;
+    cumulativeDelta += (newLen - oldLen);
+  }
+
+  // Build offset → edit lookup for O(1) access in settledOffsetToRawOffset.
+  // Replaces linear edits.find() scan that was O(n) per delta table entry.
+  const editsByOffset = new Map(edits.map(e => [e.offset, e]));
+
+  // Function: map a settled offset back to the approximate raw offset
+  // For a given offset in the settled text, find which raw offset it corresponds to.
+  // We invert the forward mapping: settledOffset = rawOffset + delta
+  // => rawOffset = settledOffset - delta (using the delta that was active at that raw position)
+  function settledOffsetToRawOffset(settledOffset: number): number {
+    // Walk through delta table to find the right delta
+    // The settled offset = raw offset + cumulative delta at that point
+    // We need to find which raw range this settled offset falls in
+    let delta = 0;
+    let rawConsumed = 0;
+    let settledConsumed = 0;
+
+    for (const entry of deltaTable) {
+      // Gap between previous edit end and this edit start (in raw space)
+      const rawGap = entry.rawOffset - rawConsumed;
+      // This gap maps 1:1 in settled space
+      if (settledOffset <= settledConsumed + rawGap) {
+        // The target settled offset is in the gap before this edit
+        return rawConsumed + (settledOffset - settledConsumed);
+      }
+      settledConsumed += rawGap;
+      rawConsumed = entry.rawOffset;
+      delta = entry.delta;
+
+      // Find the corresponding edit to get old/new lengths
+      const edit = editsByOffset.get(entry.rawOffset);
+      if (edit) {
+        const oldLen = edit.length;
+        const newLen = edit.newText.length;
+        if (settledOffset < settledConsumed + newLen) {
+          // The target is inside this edit's new text
+          // Map to the start of the edit in raw space
+          return rawConsumed;
+        }
+        settledConsumed += newLen;
+        rawConsumed += oldLen;
+      }
+    }
+
+    // Past all edits: 1:1 mapping with final cumulative delta
+    return rawConsumed + (settledOffset - settledConsumed);
+  }
+
+  // 3. Compute settled text via the standard function (handles multi-line correctly)
+  const settledText = computeSettledText(rawText);
+
+  // 4. Build line start offsets for raw text
+  const rawLines = rawText.split('\n');
+  const rawLineStarts: number[] = [0]; // 0-indexed offsets
+  for (let i = 0; i < rawLines.length - 1; i++) {
+    rawLineStarts.push(rawLineStarts[i] + rawLines[i].length + 1);
+  }
+
+  // Function: offset to raw line number (1-indexed)
+  function rawOffsetToLineNum(offset: number): number {
+    // Binary search for the line containing this offset
+    let lo = 0;
+    let hi = rawLineStarts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (rawLineStarts[mid] <= offset) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo + 1; // 1-indexed
+  }
+
+  // 5. Split settled text into lines and build mappings
+  const settledTextLines = settledText.split('\n');
+  const settledLines: SettledLine[] = [];
+  const settledToRaw = new Map<number, number>();
+  const rawToSettled = new Map<number, number>();
+
+  let settledCharOffset = 0;
+  for (let i = 0; i < settledTextLines.length; i++) {
+    const settledLineText = settledTextLines[i];
+    const settledLineNum = i + 1;
+
+    // Map the start of this settled line back to raw offset, then to raw line
+    const rawOffset = settledOffsetToRawOffset(settledCharOffset);
+    const rawLineNum = rawOffsetToLineNum(rawOffset);
+
+    const hash = computeLineHash(settledLineNum - 1, settledLineText, settledTextLines);
+
+    settledLines.push({
+      settledLineNum,
+      rawLineNum,
+      text: settledLineText,
+      hash,
+    });
+
+    settledToRaw.set(settledLineNum, rawLineNum);
+    if (!rawToSettled.has(rawLineNum)) {
+      rawToSettled.set(rawLineNum, settledLineNum);
+    }
+
+    settledCharOffset += settledLineText.length + 1; // +1 for newline
+  }
+
+  return { lines: settledLines, settledToRaw, rawToSettled };
+}

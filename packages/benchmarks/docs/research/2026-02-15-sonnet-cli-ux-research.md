@@ -1,0 +1,1 @@
+../../../../docs/research/2026-02-15-sonnet-cli-ux-research.md

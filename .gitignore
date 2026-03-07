@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+out/
+dist/
+dist-esm/
+*.vsix
+*.tsbuildinfo
+
+# Exception: Claude Code plugin needs pre-built esbuild bundles
+!changetracks-plugin/*/dist/
+
+# VS Code test artifacts
+.vscode-test/
+
+# Visual test artifacts
+packages/tests/vscode/visual/actual/
+packages/tests/vscode/visual/diff/
+packages/tests/vscode/visual/golden/
+packages/tests/vscode/journeys/evidence/
+
+# Worktrees
+.worktrees/
+
+# Benchmark artifacts
+.bench-workspace/
+benchmark-logs/
+
+# Coverage
+coverage/
+
+# Test artifacts
+.test-*
+packages/tests/features/reports/
+packages/tests/features/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Cursor backup files
+.cursor/hooks.json.backup.*

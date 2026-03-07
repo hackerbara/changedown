@@ -1,0 +1,1 @@
+../../../../docs/research/2026-02-16-skeptical-hand-check-a-vs-c.md

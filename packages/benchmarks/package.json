@@ -1,0 +1,25 @@
+{
+  "name": "@changetracks/benchmarks",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/harness/index.js",
+  "scripts": {
+    "build": "tsc",
+    "trial": "node dist/harness/run-trial-cli.js",
+    "benchmark": "node dist/harness/run-full-benchmark.js",
+    "analyze-tokens": "tsx harness/analyze-tokens.ts",
+    "verify": "tsx harness/verify.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@opencode-ai/sdk": "^1.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tiktoken": "^1.0.22",
+    "typescript": "^5.0.0",
+    "vitest": "^1.6.1"
+  }
+}

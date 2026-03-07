@@ -1,0 +1,26 @@
+{
+  "task": "task4",
+  "type": "decision",
+  "scoring": {
+    "corrections": [],
+    "decisions": [
+      {
+        "id": "sc-1",
+        "expected": "accept",
+        "description": "Edge cache insertion — good addition, should be accepted"
+      },
+      {
+        "id": "sc-2",
+        "expected": "amend",
+        "amended_contains": "gRPC",
+        "description": "Change GraphQL back to gRPC — amend the substitution"
+      },
+      {
+        "id": "sc-3",
+        "expected": "reject",
+        "description": "Keep Redis cache layer — reject the deletion"
+      }
+    ],
+    "golden_file": "golden.md"
+  }
+}

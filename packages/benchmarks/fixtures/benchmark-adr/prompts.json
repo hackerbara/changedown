@@ -1,0 +1,7 @@
+{
+  "taskDescription": "Restructure this ADR: (1) Remove the Conclusion section. (2) Insert a new '## Premise' section after Context, with the conclusion content rewritten as a premise. (3) In Decision, change 'See the rationale in our conclusion below' to 'See the foundational premise above'. (4) In Migration, change 'The legacy approach' to 'The pre-event-sourcing approach'. (5) Add a short historical comment on the updated reference line in Decision explaining that the conclusion was promoted to a premise.",
+  "workflowA": "Use only read_file and edit/write (or StrReplace). No ChangeTracks, no tracking, no git.",
+  "workflowB": "Use read_tracked_file and exactly five propose_change calls (one per operation), then git add and commit.",
+  "workflowC": "Use read_tracked_file and one propose_batch with all five operations, then git add and commit.",
+  "workflowD": "Use read_file and edit/write (or StrReplace), then git add and commit."
+}

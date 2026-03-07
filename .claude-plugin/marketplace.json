@@ -1,0 +1,11 @@
+{
+  "name": "changetracks",
+  "owner": { "name": "ChangeTracks" },
+  "plugins": [
+    {
+      "name": "changetracks",
+      "source": "./changetracks-plugin",
+      "description": "Durable change tracking with reasoning for AI agents"
+    }
+  ]
+}

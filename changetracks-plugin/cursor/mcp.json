@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "changetracks": {
+      "command": "node",
+      "args": ["${workspaceFolder}/changetracks-plugin/mcp-server/dist/index.js"]
+    }
+  }
+}

@@ -1,0 +1,335 @@
+/**
+ * LSP Client
+ *
+ * Creates and manages the Language Server Protocol client for ChangeTracks.
+ * Spawns the LSP server as a child process and handles custom notifications.
+ */
+
+import * as path from 'path';
+import * as vscode from 'vscode';
+import {
+    LanguageClient,
+    LanguageClientOptions,
+    ServerOptions,
+    State,
+    TransportKind
+} from 'vscode-languageclient/node';
+import { ChangeNode } from '@changetracks/core';
+import type { ViewName } from '@changetracks/core';
+import { decorationCache } from './range-transform';
+
+/**
+ * Resolve reviewer identity from VS Code config.
+ * Mirrors ExtensionController.getReviewerIdentity():
+ * changetracks.reviewerIdentity → changetracks.author → undefined.
+ */
+function resolveReviewerIdentity(): string | undefined {
+    const config = vscode.workspace.getConfiguration('changetracks');
+    const identity = (config.get<string>('reviewerIdentity', '') || config.get<string>('author', '')).trim();
+    return identity || undefined;
+}
+
+/**
+ * Send current reviewer identity to the LSP server.
+ */
+function sendReviewerIdentity(client: LanguageClient): void {
+    client.sendNotification('changetracks/updateSettings', {
+        reviewerIdentity: resolveReviewerIdentity() ?? '',
+    });
+}
+
+/**
+ * Decoration data notification parameters
+ */
+interface DecorationDataParams {
+    uri: string;
+    changes: ChangeNode[];
+}
+
+/**
+ * Change count notification parameters
+ */
+interface ChangeCountParams {
+    uri: string;
+    counts: {
+        insertions: number;
+        deletions: number;
+        substitutions: number;
+        highlights: number;
+        comments: number;
+        total: number;
+    };
+}
+
+/**
+ * All changes resolved notification parameters
+ */
+interface AllChangesResolvedParams {
+    uri: string;
+}
+
+/**
+ * Document state notification parameters
+ */
+interface DocumentStateParams {
+    textDocument: { uri: string };
+    tracking: {
+        enabled: boolean;
+        source: 'file' | 'project' | 'default';
+    };
+    viewMode: string;
+}
+
+/**
+ * Status bar manager for displaying change counts
+ */
+class StatusBarManager {
+    private statusBarItem: vscode.StatusBarItem;
+    private changeCounts: Map<string, ChangeCountParams['counts']> = new Map();
+
+    constructor() {
+        this.statusBarItem = vscode.window.createStatusBarItem(
+            vscode.StatusBarAlignment.Right,
+            100
+        );
+        this.statusBarItem.text = '$(check) No changes';
+        this.statusBarItem.show();
+    }
+
+    /**
+     * Update status bar with change count for a document
+     */
+    updateChangeCount(uri: string, counts: ChangeCountParams['counts']): void {
+        this.changeCounts.set(uri, counts);
+        this.refresh();
+    }
+
+    /**
+     * Get stored change counts for a document.
+     */
+    getChangeCount(uri: string): ChangeCountParams['counts'] | undefined {
+        return this.changeCounts.get(uri);
+    }
+
+    /**
+     * Clear change count for a document
+     */
+    clearChangeCount(uri: string): void {
+        this.changeCounts.delete(uri);
+        this.refresh();
+    }
+
+    /**
+     * Refresh status bar display based on active editor
+     */
+    private refresh(): void {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor) {
+            this.statusBarItem.text = '$(check) No changes';
+            return;
+        }
+
+        const counts = this.changeCounts.get(activeEditor.document.uri.toString());
+        if (!counts || counts.total === 0) {
+            this.statusBarItem.text = '$(check) No changes';
+        } else {
+            this.statusBarItem.text = `$(check) ${counts.total} change${counts.total === 1 ? '' : 's'}`;
+        }
+    }
+
+    /**
+     * Dispose of the status bar item
+     */
+    dispose(): void {
+        this.statusBarItem.dispose();
+    }
+}
+
+/**
+ * Status bar manager instance
+ */
+let statusBarManager: StatusBarManager | undefined;
+
+/**
+ * Callback invoked when LSP sends decoration data.
+ * Extension wires this to trigger controller refresh (decorations + notify).
+ */
+export type DecorationDataHandler = (uri: string, changes: ChangeNode[]) => void;
+let decorationDataHandler: DecorationDataHandler | null = null;
+
+/**
+ * Set the handler invoked when changetracks/decorationData arrives.
+ * Pass null to clear. Call from extension.ts after controller is created.
+ */
+export function setDecorationDataHandler(handler: DecorationDataHandler | null): void {
+    decorationDataHandler = handler;
+}
+
+/**
+ * Callback invoked when LSP confirms a view mode change.
+ */
+export type ViewModeChangedHandler = (uri: string, viewMode: ViewName) => void;
+let viewModeChangedHandler: ViewModeChangedHandler | null = null;
+
+/**
+ * Set the handler invoked when changetracks/viewModeChanged arrives.
+ * Pass null to clear.
+ */
+export function setViewModeChangedHandler(handler: ViewModeChangedHandler | null): void {
+    viewModeChangedHandler = handler;
+}
+
+export type DocumentStateHandler = (uri: string, params: DocumentStateParams) => void;
+let documentStateHandler: DocumentStateHandler | null = null;
+
+export function setDocumentStateHandler(handler: DocumentStateHandler | null): void {
+    documentStateHandler = handler;
+}
+
+// Re-export cache helpers and optimistic range transform from range-transform.ts.
+// The implementations live there (no vscode-languageclient dependency) so @fast
+// tier tests can import them directly via the internals barrel.
+export {
+    getCachedDecorationData,
+    invalidateDecorationCache,
+    setCachedDecorationData,
+    transformRange,
+    transformCachedDecorations,
+} from './range-transform';
+
+/**
+ * Create and configure the Language Server Protocol client
+ *
+ * @param context Extension context
+ * @returns Configured LanguageClient instance
+ */
+export function createLanguageClient(context: vscode.ExtensionContext): LanguageClient {
+    // Resolve path to LSP server module (single bundled file so no node_modules needed at runtime)
+    const serverModule = context.asAbsolutePath(path.join('out', 'server', 'server.js'));
+
+    // Configure server options - spawn server as Node.js process
+    const serverOptions: ServerOptions = {
+        run: {
+            module: serverModule,
+            transport: TransportKind.stdio
+        },
+        debug: {
+            module: serverModule,
+            transport: TransportKind.stdio,
+            options: {
+                execArgv: ['--nolazy', '--inspect=6009']
+            }
+        }
+    };
+
+    // Configure client options
+    const clientOptions: LanguageClientOptions = {
+        // Target all file types (markdown + sidecar-annotated code files)
+        documentSelector: [
+            { scheme: 'file' }
+        ],
+        // Synchronize file change events for markdown and config files
+        synchronize: {
+            fileEvents: vscode.workspace.createFileSystemWatcher('**/*.{md,toml}')
+        }
+    };
+
+    // Create the language client
+    const client = new LanguageClient(
+        'changetracks-lsp',
+        'ChangeTracks Language Server',
+        serverOptions,
+        clientOptions
+    );
+
+    // Initialize status bar manager
+    statusBarManager = new StatusBarManager();
+    context.subscriptions.push(statusBarManager);
+
+    // Listen for active editor changes to update status bar
+    context.subscriptions.push(
+        vscode.window.onDidChangeActiveTextEditor(() => {
+            if (statusBarManager) {
+                // Trigger refresh by getting current counts
+                const activeEditor = vscode.window.activeTextEditor;
+                if (activeEditor) {
+                    const uri = activeEditor.document.uri.toString();
+                    const counts = statusBarManager.getChangeCount(uri);
+                    if (counts) {
+                        statusBarManager.updateChangeCount(uri, counts);
+                    }
+                }
+            }
+        })
+    );
+
+    // Register custom notification handlers
+    // In v9, we register handlers before starting the client
+    // Handle decoration data notifications
+    client.onNotification(
+        'changetracks/decorationData',
+        (params: DecorationDataParams) => {
+            decorationCache.set(params.uri, params.changes);
+            decorationDataHandler?.(params.uri, params.changes);
+        }
+    );
+
+    // Handle change count notifications
+    client.onNotification(
+        'changetracks/changeCount',
+        (params: ChangeCountParams) => {
+            if (statusBarManager) {
+                statusBarManager.updateChangeCount(params.uri, params.counts);
+            }
+        }
+    );
+
+    // Handle all changes resolved notifications
+    client.onNotification(
+        'changetracks/allChangesResolved',
+        (params: AllChangesResolvedParams) => {
+            if (statusBarManager) {
+                statusBarManager.clearChangeCount(params.uri);
+            }
+        }
+    );
+
+    // Handle view mode changed confirmation from server
+    client.onNotification(
+        'changetracks/viewModeChanged',
+        (params: { textDocument: { uri: string }; viewMode: ViewName }) => {
+            viewModeChangedHandler?.(params.textDocument.uri, params.viewMode);
+        }
+    );
+
+    // Handle document state notifications (tracking + view mode)
+    client.onNotification('changetracks/documentState', (params: DocumentStateParams) => {
+        documentStateHandler?.(params.textDocument.uri, params);
+    });
+
+    // Push reviewer identity to the LSP server once it transitions to Running,
+    // and again on every configuration change that affects the reviewer identity settings.
+    context.subscriptions.push(
+        client.onDidChangeState(event => {
+            if (event.newState === State.Running) {
+                sendReviewerIdentity(client);
+            }
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(event => {
+            if (
+                event.affectsConfiguration('changetracks.reviewerIdentity') ||
+                event.affectsConfiguration('changetracks.author')
+            ) {
+                // Only send if the client is already running
+                if (client.isRunning()) {
+                    sendReviewerIdentity(client);
+                }
+            }
+        })
+    );
+
+    return client;
+}

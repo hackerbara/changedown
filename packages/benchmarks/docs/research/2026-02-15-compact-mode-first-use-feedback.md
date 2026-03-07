@@ -1,0 +1,1 @@
+../../../../docs/research/2026-02-15-compact-mode-first-use-feedback.md

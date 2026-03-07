@@ -1,0 +1,1 @@
+../../../super-critic-plugin/skills/super-critic/SKILL.md

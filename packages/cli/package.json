@@ -1,0 +1,55 @@
+{
+  "name": "changetracks",
+  "version": "0.1.0",
+  "description": "Durable change tracking for editors and AI agents",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./config": "./dist/config/index.js",
+    "./engine": "./dist/engine/index.js",
+    "./cli-parse": "./dist/cli-parse.js",
+    "./cli-output": "./dist/cli-output.js",
+    "./cli-helpers": "./dist/cli-helpers.js",
+    "./schema-executor": "./dist/schema-executor.js",
+    "./agent-command-registry": "./dist/agent-command-registry.js",
+    "./cli-batch-handler": "./dist/cli-batch-handler.js",
+    "./cli-runner": "./dist/cli-runner.js",
+    "./init": "./dist/init/index.js",
+    "./init/config": "./dist/init/config.js",
+    "./init/identity": "./dist/init/identity.js",
+    "./init/agents": "./dist/init/agents.js",
+    "./init/examples": "./dist/init/examples.js",
+    "./init/gitignore": "./dist/init/gitignore.js",
+    "./init/environment": "./dist/init/environment.js",
+    "./init/runner": "./dist/init/runner.js",
+    "./internals": "./dist/internals.js"
+  },
+  "bin": {
+    "ctrk": "./dist/index.js",
+    "changetracks": "./dist/cli-init.js"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "files": ["dist/", "!dist/test/", "README.md", "LICENSE"],
+  "keywords": ["markdown", "change-tracking", "criticmarkup", "ai-agents", "track-changes"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hackerbara/changetracks.git"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.0",
+    "@changetracks/core": "file:../core",
+    "@changetracks/docx": "file:../docx",
+    "commander": "^13.1.0",
+    "picomatch": "^4.0.0",
+    "smol-toml": "^1.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/picomatch": "^3.0.0",
+    "typescript": "^5.7.0"
+  }
+}

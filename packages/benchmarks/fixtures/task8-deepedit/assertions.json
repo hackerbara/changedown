@@ -1,0 +1,234 @@
+{
+  "task": "task8",
+  "type": "error-fix",
+  "scoring": {
+    "corrections": [
+      {
+        "id": "spell-observability",
+        "category": "spelling",
+        "wrong": "Observibility",
+        "correct": "Observability",
+        "context": "Title, line 2"
+      },
+      {
+        "id": "spell-deployed",
+        "category": "spelling",
+        "wrong": "depolyed",
+        "correct": "deployed",
+        "context": "Line 4, intro"
+      },
+      {
+        "id": "spell-infrastructure",
+        "category": "spelling",
+        "wrong": "infrastucture",
+        "correct": "infrastructure",
+        "context": "Line 4, intro"
+      },
+      {
+        "id": "spell-latency",
+        "category": "spelling",
+        "wrong": "latenecy",
+        "correct": "latency",
+        "context": "Line 33, PromQL section"
+      },
+      {
+        "id": "spell-persistent",
+        "category": "spelling",
+        "wrong": "persistant",
+        "correct": "persistent",
+        "context": "Line 39, storage section"
+      },
+      {
+        "id": "spell-occasionally",
+        "category": "spelling",
+        "wrong": "Occassionally",
+        "correct": "Occasionally",
+        "context": "Line 70, logging section"
+      },
+      {
+        "id": "spell-separate",
+        "category": "spelling",
+        "wrong": "seperate",
+        "correct": "separate",
+        "context": "Line 78, tracing section"
+      },
+      {
+        "id": "spell-throughput",
+        "category": "spelling",
+        "wrong": "throughoput",
+        "correct": "throughput",
+        "context": "Line 86, trace correlation"
+      },
+      {
+        "id": "grammar-semicolon",
+        "category": "grammar",
+        "wrong": "instrumentation; teams",
+        "correct": "instrumentation, teams",
+        "context": "Line 4, intro"
+      },
+      {
+        "id": "grammar-colons",
+        "category": "grammar",
+        "wrong": "approach: which is rooted in SRE practices:",
+        "correct": "approach, which is rooted in SRE practices,",
+        "context": "Line 100, alerting section"
+      },
+      {
+        "id": "grammar-data-agreement",
+        "category": "grammar",
+        "wrong": "The data are collected",
+        "correct": "The data is collected",
+        "context": "Line 130, alerting section"
+      },
+      {
+        "id": "redundancy-currently",
+        "category": "redundancy",
+        "wrong": "Currently at the present time",
+        "correct": "Currently",
+        "context": "Line 6, intro"
+      },
+      {
+        "id": "redundancy-slo",
+        "category": "redundancy",
+        "wrong": "SLO objective",
+        "correct": "SLO",
+        "context": "Line 6, intro"
+      },
+      {
+        "id": "redundancy-preplan",
+        "category": "redundancy",
+        "wrong": "pre-plan ahead",
+        "correct": "plan",
+        "context": "Line 80, tracing section"
+      },
+      {
+        "id": "version-promql",
+        "category": "version",
+        "wrong": "PromQL\\s+2\\.0",
+        "correct": "PromQL queries",
+        "context": "Line 33, metrics section"
+      },
+      {
+        "id": "version-grpc",
+        "category": "version",
+        "wrong": "gRPC\\s+2\\.0",
+        "correct": "gRPC",
+        "context": "Line 76, tracing section"
+      },
+      {
+        "id": "version-jaeger",
+        "category": "version",
+        "wrong": "Jaeger\\s+2\\.x",
+        "correct": "Jaeger",
+        "context": "Line 76, tracing section"
+      },
+      {
+        "id": "version-otel",
+        "category": "version",
+        "wrong": "OpenTelemetry\\s+v1\\.0",
+        "correct": "OpenTelemetry",
+        "context": "Line 161, timeline"
+      },
+      {
+        "id": "cap-kubernetes",
+        "category": "capitalization",
+        "wrong": "pillars of kubernetes",
+        "correct": "pillars of Kubernetes",
+        "context": "Line 4, intro"
+      },
+      {
+        "id": "cap-prometheus",
+        "category": "capitalization",
+        "wrong": "A minimal prometheus",
+        "correct": "A minimal Prometheus",
+        "context": "Line 12, config section"
+      },
+      {
+        "id": "cap-json-logging",
+        "category": "capitalization",
+        "wrong": "logging in json format",
+        "correct": "logging in JSON format",
+        "context": "Line 61, logging section"
+      },
+      {
+        "id": "cap-yaml",
+        "category": "capitalization",
+        "wrong": "rule in yaml that",
+        "correct": "rule in YAML that",
+        "context": "Line 102, alerting section"
+      },
+      {
+        "id": "cap-rest-api",
+        "category": "capitalization",
+        "wrong": "Rest API",
+        "correct": "REST API",
+        "context": "Line 151, dashboarding"
+      },
+      {
+        "id": "cap-json-dashboard",
+        "category": "capitalization",
+        "wrong": "definitions as json files",
+        "correct": "definitions as JSON files",
+        "context": "Line 151, dashboarding"
+      },
+      {
+        "id": "cap-heading-logging",
+        "category": "capitalization",
+        "wrong": "## Centralized logging",
+        "correct": "## Centralized Logging",
+        "context": "Line 55, heading"
+      },
+      {
+        "id": "cap-heading-dashboard",
+        "category": "capitalization",
+        "wrong": "## Dashboarding best practices",
+        "correct": "## Dashboarding Best Practices",
+        "context": "Line 132, heading"
+      },
+      {
+        "id": "cap-heading-conclusion",
+        "category": "capitalization",
+        "wrong": "## Putting it all together",
+        "correct": "## Putting It All Together",
+        "context": "Line 155, heading"
+      },
+      {
+        "id": "abbrev-k8s",
+        "category": "capitalization",
+        "wrong": "Logging in k8s environments",
+        "correct": "Logging in Kubernetes environments",
+        "context": "Line 57, logging section"
+      },
+      {
+        "id": "format-15min",
+        "category": "formatting",
+        "wrong": "every 15min",
+        "correct": "every 15s",
+        "context": "Line 10, metrics section. Fixture says 15min but YAML config shows 15s"
+      },
+      {
+        "id": "format-30days",
+        "category": "formatting",
+        "wrong": "30days",
+        "correct": "30 days",
+        "context": "Line 39, storage section"
+      },
+      {
+        "id": "format-table-bold",
+        "category": "formatting",
+        "wrong": "\\*\\*Prometheus\\*\\*",
+        "correct": "Prometheus",
+        "context": "Line 48, metrics table — bold should be plain"
+      },
+      {
+        "id": "format-table-backtick",
+        "category": "formatting",
+        "wrong": "`Prometheus`\\s*\\|",
+        "correct": "Prometheus",
+        "context": "Line 49, metrics table — backtick should be plain"
+      }
+    ],
+    "decisions": [],
+    "golden_file": "golden.md"
+  }
+}

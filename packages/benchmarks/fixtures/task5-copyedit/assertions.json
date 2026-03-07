@@ -1,0 +1,80 @@
+{
+  "task": "task5",
+  "type": "error-fix",
+  "scoring": {
+    "corrections": [
+      {
+        "id": "redundancy-between",
+        "category": "redundancy",
+        "wrong": "from between 10-20 milliseconds",
+        "correct": "from 10-20 milliseconds",
+        "context": "Line 27, section 1.1 Transport Layer — redundant 'between' before numeric range"
+      },
+      {
+        "id": "format-300ms-table",
+        "category": "formatting",
+        "wrong": "300ms RTT",
+        "correct": "300 ms RTT",
+        "context": "Line 43, performance table — missing space between number and unit"
+      },
+      {
+        "id": "format-50ms-table",
+        "category": "formatting",
+        "wrong": "50ms RTT",
+        "correct": "50 ms RTT",
+        "context": "Line 44, performance table — missing space between number and unit"
+      },
+      {
+        "id": "acronym-tls-reexpand",
+        "category": "capitalization",
+        "wrong": "Transport Layer Security 1\\.3",
+        "correct": "TLS 1\\.3",
+        "context": "Line 103, section 3.2 — re-expands TLS after first definition in section 1.1"
+      },
+      {
+        "id": "cap-wifi",
+        "category": "capitalization",
+        "wrong": "WiFi",
+        "correct": "Wi-Fi",
+        "context": "Line 114, section 3.3 — incorrect capitalization of Wi-Fi trademark"
+      },
+      {
+        "id": "acronym-rtt-reexpand",
+        "category": "capitalization",
+        "wrong": "Round Trip Time \\(RTT\\)",
+        "correct": "RTT variations",
+        "context": "Line 149, section 4.3 — re-expands RTT after first definition in section 1.3"
+      },
+      {
+        "id": "format-20ms",
+        "category": "formatting",
+        "wrong": "20ms intra-region",
+        "correct": "20 ms intra-region",
+        "context": "Line 149, section 4.3 — missing space between number and unit"
+      },
+      {
+        "id": "format-200ms",
+        "category": "formatting",
+        "wrong": "200ms cross-region",
+        "correct": "200 ms cross-region",
+        "context": "Line 149, section 4.3 — missing space between number and unit"
+      },
+      {
+        "id": "cap-section-ref",
+        "category": "capitalization",
+        "wrong": "See Section 3\\.2",
+        "correct": "See section 3\\.2",
+        "context": "Line 218, section 6.1 — inconsistent capitalization of 'Section' in cross-reference"
+      },
+      {
+        "id": "format-100ms-monitoring",
+        "category": "formatting",
+        "wrong": "P99 > 100ms",
+        "correct": "P99 > 100 ms",
+        "context": "Line 196, monitoring table — missing space between number and unit"
+      }
+    ],
+    "decisions": [],
+    "golden_file": "golden.md"
+  }
+}

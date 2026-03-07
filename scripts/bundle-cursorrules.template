@@ -1,0 +1,3 @@
+# ChangeTracks — Change Tracking for AI Agents
+
+For tracked markdown files use the ChangeTracks MCP tools (propose_change, read_tracked_file, propose_batch, review_changes), not raw Edit/Write. Which files are tracked: see .changetracks/config.toml. Full instructions: .cursor/skills/changetracks/SKILL.md

@@ -1,0 +1,146 @@
+{
+  "tasks": {
+    "task1": {
+      "fixtureDir": "task1-rename",
+      "description": "Rename 'Event Sourcing' to 'Event-Driven Architecture' across all documents in this directory. Update all references including heading anchors, cross-links, and inline mentions. Preserve all existing formatting. Do not change anything else.",
+      "surfaceA": "Use the built-in file editing tools (read, edit, write, glob). Do not use any ChangeTracks or propose_change tools. Make all edits directly. After completing all edits, create a git commit with a descriptive message explaining what was changed and why.",
+      "surfaceB": "Use read_tracked_file to read each file. Use propose_change with old_text/new_text parameters to make edits. Include reasoning explaining why each rename is needed. Group related changes.",
+      "surfaceC": "Use read_tracked_file to read each file. The output shows LINE:HASH|content for each line. Use propose_change with a changes array to make all edits per file. The call format is: file='path', reasoning='batch reason', changes=[{at:'LINE:HASH', op:'old text~>new text>>reason'}, ...]. The at field is the LINE:HASH coordinate from read_tracked_file. The op field uses ~> for substitution. Batch all renames for each file into one propose_change call.",
+      "surfaceD": "Run `sc read <file>` via Bash to read each file with hashline coordinates (LINE:HASH|content). Run `sc batch <file> --reasoning 'batch reason' --changes '[{\"at\":\"LINE:HASH\",\"op\":\"old text~>new text>>reason\"},...]'` to batch all renames per file into one command. The at/op syntax is the same as compact mode. All commands run via Bash — no MCP tools.",
+      "surfaceF": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceG": "Use the available tools to make tracked, reasoned edits."
+    },
+    "task1_outcome": {
+      "fixtureDir": "task1-rename",
+      "description": "Rename 'Event Sourcing' to 'Event-Driven Architecture' across all documents in this directory. Update all references including heading anchors, cross-links, and inline mentions. Preserve all existing formatting. Do not change anything else.",
+      "surfaceA": "Use git to record your reasoning for the changes you make.",
+      "surfaceB": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceC": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceD": "Run sc commands via Bash to make tracked, reasoned edits.",
+      "surfaceF": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceG": "Use the available tools to make tracked, reasoned edits."
+    },
+    "task2": {
+      "fixtureDir": "task2-audit",
+      "description": "Review this design document thoroughly. Identify and fix all issues you find: broken cross-references, inconsistent terminology, stale dates, duplicated content, or missing required fields. Fix every issue you discover.",
+      "surfaceA": "Use the built-in file editing tools (read, edit, write). Do not use any ChangeTracks or propose_change tools. Make all edits directly. After completing all edits, create a git commit with a descriptive message listing each issue found and how it was fixed.",
+      "surfaceB": "Use read_tracked_file to read the file. Use propose_change with old_text/new_text parameters to fix each issue. Include reasoning explaining what the problem is and why this fix is correct.",
+      "surfaceC": "Use read_tracked_file to read the file. The output shows LINE:HASH|content for each line. Use propose_change with a changes array to fix all issues. The call format is: file='path', reasoning='batch reason', changes=[{at:'LINE:HASH', op:'old~>new>>reason'}, ...]. Operators: old~>new for substitution, +text for insertion, -text for deletion. Batch all fixes into one propose_change call.",
+      "surfaceD": "Run `sc read <file>` via Bash to read the file with hashline coordinates. Run `sc batch <file> --reasoning 'batch reason' --changes '[{\"at\":\"LINE:HASH\",\"op\":\"old~>new>>reason\"},...]'` to fix all issues. Operators: old~>new for substitution, +text for insertion, -text for deletion. Batch all fixes into one command. All commands run via Bash — no MCP tools.",
+      "surfaceE": "Use read_tracked_file with view='committed' to read the file. Output shows LINE:HASH FLAG|content — content is clean text. Use propose_change with a changes array to batch all fixes in one call. Each change uses at='LINE:HASH' coordinates and op='old~>new>>reason'. Operators: old~>new for substitution, +text for insertion, -text for deletion.",
+      "surfaceF": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceG": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceH": "The file is `design-doc.md`. You MUST use ONLY the OpenCode built-in tool named **patch** (the file-editing tool that applies patches). Do NOT use the bash command `patch`, and do NOT use edit, write, multiedit, or propose_change. Steps: (1) Read the file with the read tool and identify all issues (cross-references, terminology, dates, duplication, missing fields). (2) Build a single unified-diff (@@ hunks, lines with + - or space). (3) Invoke the tool named **patch** with the file path and the patch/diff content as the tool's argument. Deliver all fixes in that one patch tool call."
+    },
+    "task3": {
+      "fixtureDir": "task3-restructure",
+      "description": "Restructure this ADR document: (1) Move the 'Alternatives Considered' section to appear BEFORE the 'Decision' section. (2) Merge 'Short-term Migration' and 'Long-term Migration' into a single 'Migration Plan' section with all content preserved. (3) Add a new 'Risks' section immediately after 'Decision' containing 3 specific risks identified from the alternatives analysis. (4) Update all internal cross-references so they remain accurate after the restructure (fix any 'above'/'below' references that changed direction).",
+      "surfaceA": "Use the built-in file editing tools (read, edit, write). Do not use any ChangeTracks or propose_change tools. Make all edits directly. After completing all edits, create a git commit with a descriptive message explaining the restructure rationale.",
+      "surfaceB": "Use read_tracked_file to read the file. Use propose_change with old_text/new_text parameters for each structural change. Include reasoning for each operation.",
+      "surfaceC": "Use read_tracked_file to read the file. The output shows LINE:HASH|content for each line. Use propose_change with a changes array for structural changes. The call format is: file='path', reasoning='batch reason', changes=[{at:'LINE:HASH', op:'operator'}, ...]. Use -text to delete sections from old locations, +text to insert at new locations, old~>new to update cross-references. Append >>reason to any op for inline reasoning.",
+      "surfaceD": "Run `sc read <file>` via Bash to read the file with hashline coordinates. Run `sc batch <file> --reasoning 'batch reason' --changes '[{\"at\":\"LINE:HASH\",\"op\":\"operator\"},...]'` for structural changes. Use -text to delete sections, +text to insert at new locations, old~>new to update cross-references. Append >>reason to any op for inline reasoning. All commands run via Bash — no MCP tools.",
+      "surfaceE": "Use read_tracked_file with view='committed' to read the file. Output shows LINE:HASH FLAG|content — content is clean text without CriticMarkup. Use propose_change with a changes array for structural changes. Each change uses at='LINE:HASH' coordinates from the committed view. Operators: -text to delete sections from old locations, +text to insert at new locations, old~>new to update cross-references. Append >>reason to any op for inline reasoning. Batch all related operations into one propose_change call.",
+      "surfaceF": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceG": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceH": "The file is `adr-large.md`. You MUST use ONLY the OpenCode built-in tool named **patch** (the file-editing tool that applies patches). Do NOT use the bash command `patch`, and do NOT use edit, write, multiedit, or propose_change. Steps: (1) Read the file with the read tool. (2) Build a single unified-diff that implements: move 'Alternatives Considered' before 'Decision'; merge 'Short-term Migration' and 'Long-term Migration' into one 'Migration Plan' section; add a 'Risks' section after 'Decision' with 3 risks from the alternatives; fix any 'above'/'below' cross-references. (3) Invoke the tool named **patch** with the file path and the patch/diff content as the tool's argument. Deliver the entire restructure in that one patch tool call (unified format: @@ hunks, lines with + - or space)."
+    },
+    "task4": {
+      "fixtureDir": "task4-review",
+      "description": "Review the tracked changes in this document and take the following actions: (1) Accept the insertion at sc-1 — it is a good addition. (2) Amend the substitution at sc-2 — instead of changing to 'GraphQL', change to 'gRPC'. Update the reasoning to explain why gRPC is better than GraphQL for this use case. (3) Reject the deletion at sc-3 — the Redis cache layer is needed for cross-instance cache sharing. Provide reasoning for the rejection. (4) Respond to the open discussion thread on sc-1 — answer the reviewer's question about how public API responses are identified (suggest using a Cache-Control header convention).",
+      "surfaceA": "Use the built-in file editing tools (read, edit, write). Do not use any ChangeTracks or propose_change tools. Read the file, then directly edit the CriticMarkup and footnotes to accept sc-1 (remove insertion delimiters, keep content, update footnote status), amend sc-2 (change GraphQL to gRPC in the substitution markup, update reasoning in footnote), reject sc-3 (remove the deletion markup restoring original text, update footnote status), and add your response to the sc-1 discussion thread in its footnote. After completing all edits, create a git commit explaining the review actions taken.",
+      "surfaceB": "Use read_tracked_file to read the file. Use review_changes to accept sc-1 and reject sc-3 (with reasoning). Use amend_change to modify sc-2. Use review_changes with a responses array to answer the reviewer's question on sc-1.",
+      "surfaceC": "Use read_tracked_file to read the file. Use review_changes to accept sc-1 and reject sc-3 (with reasoning). Use amend_change to modify sc-2. Use review_changes with a responses array to answer the reviewer's question on sc-1.",
+      "surfaceD": "Run `sc read <file>` via Bash to read the file. Run `sc review <file> --reviews '[{\"change_id\":\"sc-1\",\"decision\":\"approve\",\"reasoning\":\"...\"}]'` to accept/reject changes. Run `sc amend <file> --change-id sc-2 --new-text 'gRPC'` to amend sc-2. Run `sc respond <file> --change-id sc-1 --response '...'` to answer the reviewer's question. All commands run via Bash — no MCP tools.",
+      "surfaceE": "Use read_tracked_file with view='committed' to read the file. The committed view shows clean text with change flags (P=proposed, A=accepted). Use review_changes to accept sc-1 and reject sc-3 (with reasoning). Use amend_change to modify sc-2. Use review_changes with responses to answer the reviewer's question on sc-1.",
+      "surfaceF": "Use read_tracked_file to read the file. Use review_changes to accept sc-1 and reject sc-3 (with reasoning). Use amend_change to modify sc-2. Use review_changes with a responses array to answer the reviewer's question on sc-1.",
+      "surfaceG": "Use read_tracked_file to read the file. Use review_changes to accept sc-1 and reject sc-3 (with reasoning). Use amend_change to modify sc-2. Use review_changes with a responses array to answer the reviewer's question on sc-1."
+    },
+    "task5": {
+      "fixtureDir": "task5-copyedit",
+      "description": "Perform a thorough copy-editing pass on this HTTP/3 implementation guide. Fix all issues: spelling typos, incorrect protocol version formats (e.g. HTTP/2.0 should be HTTP/2), missing spaces between numbers and units, outdated security protocol versions, inconsistent acronym usage (use acronyms after first definition, don't re-expand), incorrect capitalization of protocol names and acronyms, redundant approximation markers, and number formatting inconsistencies. Each fix changes only a few characters. Make ONLY copy-editing corrections — do not rewrite or restructure content.",
+      "surfaceA": "The file is `http3-implementation-guide.md`. Use the built-in file editing tools (read, edit, write). Do not use any ChangeTracks or propose_change tools. Make all edits directly. After completing all edits, create a git commit listing each correction made.",
+      "surfaceB": "The file is `http3-implementation-guide.md`. Use read_tracked_file to read the file. Use propose_change with old_text/new_text parameters to fix all issues. Include reasoning for each fix explaining what the error was. Batch all fixes into a single propose_change call.",
+      "surfaceC": "The file is `http3-implementation-guide.md`. Use read_tracked_file to read the file. The output shows LINE:HASH|content for each line. Use propose_change with a changes array to fix all issues. The call format is: file='path', reasoning='batch reason', changes=[{at:'LINE:HASH', op:'old~>new>>reason'}, ...]. The op field uses ~> for substitution — only include the specific text that changes on each line, not the entire line. Batch all fixes into a single propose_change call.",
+      "surfaceD": "The file is `http3-implementation-guide.md`. Run `sc read http3-implementation-guide.md` via Bash to read the file with hashline coordinates. Run `sc batch http3-implementation-guide.md --reasoning 'batch reason' --changes '[{\"at\":\"LINE:HASH\",\"op\":\"old~>new>>reason\"},...]'` to fix all issues. The op field uses ~> for substitution — only include the specific text that changes on each line, not the entire line. Batch all fixes into a single command. All commands run via Bash — no MCP tools.",
+      "surfaceE": "The file is `http3-implementation-guide.md`. Use read_tracked_file with view='committed' to read the file. Output shows LINE:HASH FLAG|content — content is clean text without CriticMarkup. Use propose_change with a changes array to batch all fixes in one call. Each change uses at='LINE:HASH' coordinates from the committed view and op='old~>new>>reason'. Only include the specific text that changes on each line, not the entire line.",
+      "surfaceF": "The file is `http3-implementation-guide.md`. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceG": "The file is `http3-implementation-guide.md`. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceH": "The file is `http3-implementation-guide.md`. Use the OpenCode built-in tool named **patch** (not bash or edit) to apply corrections as a unified-diff. Invoke the **patch** tool with the file path and patch content."
+    },
+    "task5_outcome": {
+      "fixtureDir": "task5-copyedit",
+      "description": "Perform a thorough copy-editing pass on this HTTP/3 implementation guide. Fix all issues: spelling typos, incorrect protocol version formats (e.g. HTTP/2.0 should be HTTP/2), missing spaces between numbers and units, outdated security protocol versions, inconsistent acronym usage (use acronyms after first definition, don't re-expand), incorrect capitalization of protocol names and acronyms, redundant approximation markers, and number formatting inconsistencies. Each fix changes only a few characters. Make ONLY copy-editing corrections — do not rewrite or restructure content.",
+      "surfaceA": "Use git to record your reasoning for the changes you make.",
+      "surfaceB": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceC": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceD": "Run sc commands via Bash to make tracked, reasoned edits.",
+      "surfaceF": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceG": "Use the available tools to make tracked, reasoned edits.",
+      "surfaceH": "Use the OpenCode built-in tool named **patch** to apply edits as a unified-diff. Do not use the bash command patch or the edit tool; invoke the **patch** tool with file path and patch content."
+    },
+    "task5_v2": {
+      "fixtureDir": "task5-copyedit",
+      "description": "Perform a thorough copy-editing pass on this HTTP/3 implementation guide. Fix all issues: spelling typos, incorrect protocol version formats (e.g. HTTP/2.0 should be HTTP/2), missing spaces between numbers and units, outdated security protocol versions, inconsistent acronym usage (use acronyms after first definition, don't re-expand), incorrect capitalization of protocol names and acronyms, redundant approximation markers, and number formatting inconsistencies. Each fix changes only a few characters. Make ONLY copy-editing corrections — do not rewrite or restructure content.",
+      "surfaceA": "The file is `http3-implementation-guide.md`. Make all corrections directly. Record your reasoning in a git commit message.",
+      "surfaceB": "The file is `http3-implementation-guide.md`. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceC": "The file is `http3-implementation-guide.md`. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceD": "The file is `http3-implementation-guide.md`. Use the sc CLI via Bash to make tracked corrections with reasoning.",
+      "surfaceE": "The file is `http3-implementation-guide.md`. Use read_tracked_file with view='committed' to read the file. Output shows LINE:HASH FLAG|content — content is clean text without CriticMarkup. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceF": "The file is `http3-implementation-guide.md`. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceG": "The file is `http3-implementation-guide.md`. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceH": "The file is `http3-implementation-guide.md`. Use the OpenCode built-in tool named **patch** (not bash or edit) to apply corrections as a unified-diff. Invoke the **patch** tool with the file path and patch content."
+    },
+    "task5_mixed": {
+      "fixtureDir": "task5-mixed",
+      "description": "Perform a thorough copy-editing pass on this HTTP/3 implementation guide. This document has existing tracked proposals from other contributors — do not modify or address those proposals. Focus only on copy-editing: fix spelling typos, incorrect protocol version formats (e.g. HTTP/2.0 should be HTTP/2), missing spaces between numbers and units, outdated security protocol versions, inconsistent acronym usage (use acronyms after first definition, don't re-expand), incorrect capitalization of protocol names and acronyms, redundant approximation markers, and number formatting inconsistencies. Each fix changes only a few characters. Make ONLY copy-editing corrections — do not rewrite or restructure content.",
+      "surfaceA": "The file is `http3-implementation-guide.md`. Use the built-in file editing tools (read, edit, write). Do not use any ChangeTracks or propose_change tools. Make all edits directly. After completing all edits, create a git commit listing each correction made.",
+      "surfaceC": "The file is `http3-implementation-guide.md`. Use read_tracked_file to read the file. The output shows LINE:HASH|content for each line. Use propose_change with a changes array to fix all issues. The call format is: file='path', reasoning='batch reason', changes=[{at:'LINE:HASH', op:'old~>new>>reason'}, ...]. The op field uses ~> for substitution — only include the specific text that changes on each line, not the entire line. Batch all fixes into a single propose_change call.",
+      "surfaceE": "The file is `http3-implementation-guide.md`. Use read_tracked_file with view='committed' to read the file. Output shows LINE:HASH FLAG|content — content is clean text without CriticMarkup markup. Lines marked with P flag have existing proposals from other contributors (ignore these for copy-editing). Use propose_change with a changes array and at='LINE:HASH' coordinates from the committed view to fix all copy-editing issues. Batch all fixes into a single propose_change call.",
+      "surfaceF": "The file is `http3-implementation-guide.md`. Use the available tools to make tracked corrections with reasoning. This document has existing tracked proposals from other contributors — do not modify or address those proposals.",
+      "surfaceG": "The file is `http3-implementation-guide.md`. Use the available tools to make tracked corrections with reasoning. This document has existing tracked proposals from other contributors — do not modify or address those proposals."
+    },
+    "task6": {
+      "fixtureDir": "task6-triage",
+      "description": "Review the tracked changes in this Payment Gateway API design document. There are 9 proposals (sc-1 through sc-9) from multiple reviewers. For each proposal: read the change and its discussion thread, then accept, reject, or request changes. Base your decisions on technical merit, the discussion context, and any blocking concerns raised by reviewers. Where reviewers have raised valid objections (especially blocking issues), reject the proposal or request changes. Where the proposal is sound and uncontested, accept it. Provide clear reasoning for every decision.",
+      "surfaceF": "The file is `api-design-review.md`. Use the available tools to review all proposals with reasoned decisions.",
+      "surfaceG": "The file is `api-design-review.md`. Use the available tools to review all proposals with reasoned decisions."
+    },
+    "task7": {
+      "fixtureDir": "task7-amend-cycle",
+      "description": "Review the tracked changes in this Observability Platform Design document. There are 5 proposals (sc-1 through sc-5), each with request-changes feedback from the document author. For each proposal: read the change, read the reviewer's feedback, then amend the proposal to address the feedback. The author's feedback contains specific instructions about what to fix — follow those instructions precisely. After amending each proposal, it should be ready for approval.",
+      "surfaceF": "The file is `observability-platform-design.md`. Use the available tools to amend all proposals based on reviewer feedback.",
+      "surfaceG": "The file is `observability-platform-design.md`. Use the available tools to amend all proposals based on reviewer feedback."
+    },
+    "task8": {
+      "fixtureDir": "task8-deepedit",
+      "description": "Perform a thorough copy-editing pass on this Kubernetes Observability Guide. The document contains numerous errors: spelling mistakes (e.g. 'depolyed', 'infrastucture', 'Observibility'), grammar issues (semicolons used as commas), redundant phrases ('currently at the present time', 'SLO objective', 'pre-plan ahead'), incorrect version numbers (PromQL 2.0, gRPC 2.0, Jaeger 2.x, OpenTelemetry v1.0 — none of these version numbers exist), inconsistent formatting (tool names sometimes in backticks, sometimes bold, sometimes plain), unit formatting issues ('15min' vs '15s', '30days'), and capitalization inconsistencies ('kubernetes' vs 'Kubernetes', 'yaml' vs 'YAML', 'json' vs 'JSON', 'Rest API' vs 'REST API'). Fix every error. Make ONLY copy-editing corrections — do not rewrite or restructure content.",
+      "surfaceF": "The file is `kubernetes-observability-guide.md`. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceG": "The file is `kubernetes-observability-guide.md`. Use the available tools to make tracked corrections with reasoning."
+    },
+    "task9": {
+      "fixtureDir": "task9-disambiguate",
+      "description": "Fix the inconsistencies and contradictions in this REST API v2-to-v3 Migration Plan. Key issues: (1) The timeline table shows Phase 3 targeting '2025-Q3' but this contradicts the revised deadline of '2026-Q1' described in the surrounding text — fix the table entry. (2) The last sentence of section 1 references '2025-Q3 cutover target' but should reference the revised '2026-Q1' deadline. (3) Section 6.1 paragraph 2 says the gateway 'translates them to REST calls' for gRPC-migrated services — this is backwards, it should translate REST to gRPC. (4) Section 6.1 paragraph 3 says the gateway 'forwards requests to their REST interface' for gRPC-completed services — this is also backwards. Fix each targeted instance precisely without changing surrounding text.",
+      "surfaceF": "The file is `api-migration-plan.md`. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceG": "The file is `api-migration-plan.md`. Use the available tools to make tracked corrections with reasoning."
+    },
+    "task10": {
+      "fixtureDir": "task10-multifile",
+      "description": "Perform a copy-editing pass across all documents in this directory. Fix all issues: spelling errors (e.g. 'microservces', 'PostgresQL', 'synchronuous'), inconsistent capitalization of technology names (e.g. 'GRPC' should be 'gRPC', 'kafka' should be 'Kafka', 'Postgres' vs 'PostgreSQL'), and inconsistent formatting across files. Ensure technology names are spelled and capitalized consistently across all four documents. Make ONLY copy-editing corrections — do not rewrite or restructure content.",
+      "surfaceF": "Use the available tools to make tracked corrections with reasoning across all files.",
+      "surfaceG": "Use the available tools to make tracked corrections with reasoning across all files."
+    },
+    "task6_patch": {
+      "fixtureDir": "task5-copyedit",
+      "description": "Perform a thorough copy-editing pass on this HTTP/3 implementation guide. Fix all issues: spelling typos, incorrect protocol version formats (e.g. HTTP/2.0 should be HTTP/2), missing spaces between numbers and units, outdated security protocol versions, inconsistent acronym usage (use acronyms after first definition, don't re-expand), incorrect capitalization of protocol names and acronyms, redundant approximation markers, and number formatting inconsistencies. Each fix changes only a few characters. Make ONLY copy-editing corrections — do not rewrite or restructure content.",
+      "surfaceA": "The file is `http3-implementation-guide.md`. Use the built-in file editing tools (read, edit, write). Do not use any ChangeTracks or propose_change tools. Make all edits directly. After completing all edits, create a git commit listing each correction made.",
+      "surfaceB": "The file is `http3-implementation-guide.md`. Use read_tracked_file to read the file. Use propose_change with old_text/new_text parameters to fix all issues. Include reasoning for each fix. Batch all fixes into a single propose_change call.",
+      "surfaceC": "The file is `http3-implementation-guide.md`. Use read_tracked_file to read the file. Use propose_change with a changes array to fix all issues. Format: file='path', reasoning='batch reason', changes=[{at:'LINE:HASH', op:'old~>new>>reason'}, ...]. Batch all fixes into a single propose_change call.",
+      "surfaceD": "The file is `http3-implementation-guide.md`. Run `sc read http3-implementation-guide.md` via Bash, then `sc batch http3-implementation-guide.md --reasoning '...' --changes '[...]'` to fix all issues. All commands run via Bash — no MCP tools.",
+      "surfaceE": "The file is `http3-implementation-guide.md`. Use read_tracked_file with view='committed' to read the file. Use propose_change with a changes array and at='LINE:HASH' coordinates from the committed view. Batch all fixes into a single propose_change call.",
+      "surfaceF": "The file is `http3-implementation-guide.md`. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceG": "The file is `http3-implementation-guide.md`. Use the available tools to make tracked corrections with reasoning.",
+      "surfaceH": "The file is `http3-implementation-guide.md`. You MUST use ONLY the OpenCode built-in tool named **patch** (the file-editing tool that applies patches). Do NOT use the bash command `patch`, and do NOT use edit, write, multiedit, or propose_change. Steps: (1) Read the file with the read tool to get current content. (2) Build a single unified-diff (@@ hunk headers, lines prefixed with + - or space). (3) Invoke the tool named **patch** with the file path and the patch/diff content as the tool's argument. Deliver all corrections in that one patch tool call."
+    }
+  },
+  "constraint": "Complete all edits in a single session. Do not ask clarifying questions. Do not create new files unless the task requires it."
+}

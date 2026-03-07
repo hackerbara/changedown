@@ -1,0 +1,849 @@
+{
+    "name": "changetracks-vscode",
+    "displayName": "ChangeTracks",
+    "description": "The Human UI for the Agentic Markdown Era",
+    "version": "0.1.0",
+    "publisher": "hackerbara",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/hackerbara/changetracks.git"
+    },
+    "homepage": "https://ctrcks.com",
+    "engines": {
+        "vscode": "^1.80.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onLanguage:markdown",
+        "onCommand:changetracks.annotateFromGit",
+        "onCommand:changetracks.setupProject",
+        "onCommand:changetracks.revealSettingsPanel",
+        "onCommand:changetracks.openDemo",
+        "onCommand:changetracks.openExample",
+        "onCommand:changetracks.setupAgents",
+        "onView:changetracksSettings",
+        "onView:changetracksReview",
+        "onCustomEditor:changetracks.docxEditor"
+    ],
+    "extensionDependencies": [
+        "vscode.git"
+    ],
+    "main": "./out/extension.js",
+    "exports": {
+        ".": "./out/extension.js",
+        "./internals": {
+            "types": "./out/internals.d.ts",
+            "require": "./out/internals.js"
+        }
+    },
+    "contributes": {
+        "commands": [
+            {
+                "command": "changetracks.ping",
+                "title": "ChangeTracks: Ping (Diagnostic)"
+            },
+            {
+                "command": "changetracks.toggleTracking",
+                "title": "ChangeTracks: Toggle Tracking Mode",
+                "icon": "$(circle-filled)"
+            },
+            {
+                "command": "changetracks.acceptChange",
+                "title": "ChangeTracks: Accept Change at Cursor"
+            },
+            {
+                "command": "changetracks.rejectChange",
+                "title": "ChangeTracks: Reject Change at Cursor"
+            },
+            {
+                "command": "changetracks.acceptAll",
+                "title": "ChangeTracks: Accept All Changes"
+            },
+            {
+                "command": "changetracks.rejectAll",
+                "title": "ChangeTracks: Reject All Changes"
+            },
+            {
+                "command": "changetracks.nextChange",
+                "title": "ChangeTracks: Go to Next Change"
+            },
+            {
+                "command": "changetracks.previousChange",
+                "title": "ChangeTracks: Go to Previous Change"
+            },
+            {
+                "command": "changetracks.addComment",
+                "title": "ChangeTracks: Insert Comment",
+                "icon": "$(comment)"
+            },
+            {
+                "command": "changetracks.toggleView",
+                "title": "ChangeTracks: Toggle Smart View",
+                "icon": "$(eye)"
+            },
+            {
+                "command": "changetracks.setViewMode",
+                "title": "ChangeTracks: Set View Mode"
+            },
+            {
+                "command": "changetracks.annotateFromGit",
+                "title": "ChangeTracks: Annotate Recent Changes",
+                "icon": "$(git-compare)"
+            },
+            {
+                "command": "changetracks.goToLinkedChange",
+                "title": "ChangeTracks: Go to Linked Change"
+            },
+            {
+                "command": "changetracks.revealChange",
+                "title": "ChangeTracks: Go to Change"
+            },
+            {
+                "command": "changetracks.showDiff",
+                "title": "ChangeTracks: Show Diff",
+                "icon": "$(diff)"
+            },
+            {
+                "command": "changetracks.openDiffForResource",
+                "title": "Open diff (Settled ↔ Current)"
+            },
+            {
+                "command": "changetracks.acceptAllInFile",
+                "title": "Accept All Changes in File"
+            },
+            {
+                "command": "changetracks.rejectAllInFile",
+                "title": "Reject All Changes in File"
+            },
+            {
+                "command": "changetracks.showScmIndexStatus",
+                "title": "ChangeTracks: Show SCM Index Status"
+            },
+            {
+                "command": "changetracks.acceptChangeFromThread",
+                "title": "Accept",
+                "icon": "$(check)"
+            },
+            {
+                "command": "changetracks.rejectChangeFromThread",
+                "title": "Reject",
+                "icon": "$(close)"
+            },
+            {
+                "command": "changetracks.replyToThread",
+                "title": "Reply"
+            },
+            {
+                "command": "changetracks.createComment",
+                "title": "Add Comment",
+                "enablement": "!commentIsEmpty"
+            },
+            {
+                "command": "changetracks.compactChange",
+                "title": "ChangeTracks: Compact Change",
+                "icon": "$(fold)"
+            },
+            {
+                "command": "changetracks.compactChangeFully",
+                "title": "ChangeTracks: Compact Change Fully",
+                "icon": "$(fold-down)"
+            },
+            {
+                "command": "changetracks.revealPanel",
+                "title": "ChangeTracks: Open Panel"
+            },
+            {
+                "command": "changetracks.exportToDocx",
+                "title": "Export to DOCX",
+                "category": "ChangeTracks",
+                "icon": "$(export)"
+            },
+            {
+                "command": "changetracks.setupProject",
+                "title": "Set Up Project",
+                "category": "ChangeTracks"
+            },
+            {
+                "command": "changetracks.openDemo",
+                "title": "Open Demo File",
+                "category": "ChangeTracks"
+            },
+            {
+                "command": "changetracks.revealSettingsPanel",
+                "title": "Open Settings Panel",
+                "category": "ChangeTracks"
+            },
+            {
+                "command": "changetracks.openExample",
+                "title": "Open Example",
+                "category": "ChangeTracks"
+            },
+            {
+                "command": "changetracks.setupAgents",
+                "title": "Configure Agent Plugins",
+                "category": "ChangeTracks"
+            },
+            {
+                "command": "changetracks._testQueryPanelState",
+                "title": "ChangeTracks: Test Query Panel State"
+            },
+            {
+                "command": "changetracks._testReadConfig",
+                "title": "ChangeTracks: Test Read Config"
+            },
+            {
+                "command": "changetracks._testExtensionState",
+                "title": "ChangeTracks: Test Extension State"
+            },
+            {
+                "command": "changetracks._testLspClient",
+                "title": "ChangeTracks: Test LSP Client"
+            },
+            {
+                "command": "changetracks._testGetDocumentText",
+                "title": "ChangeTracks: Test Get Document Text"
+            },
+            {
+                "command": "changetracks._testWaitForChanges",
+                "title": "ChangeTracks: Test Wait For Changes"
+            },
+            {
+                "command": "changetracks._testGetCursorPosition",
+                "title": "ChangeTracks: Test Get Cursor Position"
+            },
+            {
+                "command": "changetracks._testUpdateSetting",
+                "title": "ChangeTracks: Test Update Setting"
+            },
+            {
+                "command": "changetracks._testPasteClipboard",
+                "title": "ChangeTracks: Test Paste Clipboard"
+            },
+            {
+                "command": "changetracks._testResetDocument",
+                "title": "ChangeTracks: Test Reset Document"
+            },
+            {
+                "command": "changetracks._testExecuteCommand",
+                "title": "ChangeTracks: Test Execute Command"
+            }
+        ],
+        "customEditors": [
+            {
+                "viewType": "changetracks.docxEditor",
+                "displayName": "ChangeTracks DOCX Editor",
+                "selector": [
+                    { "filenamePattern": "*.docx" }
+                ],
+                "priority": "default"
+            }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "changetracks",
+                    "title": "ChangeTracks",
+                    "icon": "media/activity-bar-icon.svg"
+                }
+            ]
+        },
+        "views": {
+            "changetracks": [
+                {
+                    "id": "changetracksReview",
+                    "name": "Review",
+                    "type": "webview"
+                },
+                {
+                    "id": "changetracksSettings",
+                    "name": "Project Settings",
+                    "type": "webview",
+                    "visibility": "collapsed"
+                }
+            ]
+        },
+        "menus": {
+            "commandPalette": [
+                {
+                    "command": "changetracks.createComment",
+                    "when": "false"
+                },
+                {
+                    "command": "changetracks._testQueryPanelState",
+                    "when": "isExtensionDevelopmentHost"
+                },
+                {
+                    "command": "changetracks._testReadConfig",
+                    "when": "isExtensionDevelopmentHost"
+                },
+                {
+                    "command": "changetracks._testExtensionState",
+                    "when": "isExtensionDevelopmentHost"
+                },
+                {
+                    "command": "changetracks._testLspClient",
+                    "when": "isExtensionDevelopmentHost"
+                },
+                {
+                    "command": "changetracks._testGetDocumentText",
+                    "when": "isExtensionDevelopmentHost"
+                },
+                {
+                    "command": "changetracks._testWaitForChanges",
+                    "when": "isExtensionDevelopmentHost"
+                },
+                {
+                    "command": "changetracks._testGetCursorPosition",
+                    "when": "isExtensionDevelopmentHost"
+                },
+                {
+                    "command": "changetracks._testUpdateSetting",
+                    "when": "isExtensionDevelopmentHost"
+                },
+                {
+                    "command": "changetracks._testPasteClipboard",
+                    "when": "isExtensionDevelopmentHost"
+                },
+                {
+                    "command": "changetracks._testResetDocument",
+                    "when": "isExtensionDevelopmentHost"
+                },
+                {
+                    "command": "changetracks._testExecuteCommand",
+                    "when": "isExtensionDevelopmentHost"
+                }
+            ],
+            "editor/context": [
+                {
+                    "command": "changetracks.addComment",
+                    "when": "resourceLangId == markdown && editorTextFocus",
+                    "group": "1_changetracks"
+                }
+            ],
+            "editor/title": [
+                {
+                    "command": "changetracks.toggleTracking",
+                    "when": "resourceLangId == markdown && changetracks:trackingEnabled",
+                    "group": "navigation",
+                    "alt": "changetracks.toggleTracking"
+                },
+                {
+                    "command": "changetracks.toggleTracking",
+                    "when": "resourceLangId == markdown && !changetracks:trackingEnabled",
+                    "group": "navigation",
+                    "alt": "changetracks.toggleTracking"
+                },
+                {
+                    "command": "changetracks.toggleView",
+                    "when": "resourceLangId == markdown",
+                    "group": "navigation",
+                    "alt": "changetracks.toggleView"
+                },
+                {
+                    "command": "changetracks.addComment",
+                    "when": "resourceLangId == markdown",
+                    "group": "navigation"
+                },
+                {
+                    "command": "changetracks.exportToDocx",
+                    "when": "resourceLangId == markdown",
+                    "group": "navigation"
+                }
+            ],
+            "view/title": [],
+            "view/item/context": [],
+            "comments/commentThread/title": [
+                {
+                    "command": "changetracks.acceptChangeFromThread",
+                    "when": "commentController == changetracks",
+                    "group": "inline"
+                },
+                {
+                    "command": "changetracks.rejectChangeFromThread",
+                    "when": "commentController == changetracks",
+                    "group": "inline"
+                }
+            ],
+            "comments/commentThread/context": [
+                {
+                    "command": "changetracks.createComment",
+                    "when": "commentController == changetracks && commentThreadIsEmpty",
+                    "group": "inline"
+                },
+                {
+                    "command": "changetracks.replyToThread",
+                    "when": "commentController == changetracks && !commentThreadIsEmpty",
+                    "group": "inline"
+                }
+            ],
+            "scm/resourceState/context": [
+                {
+                    "command": "changetracks.openDiffForResource",
+                    "when": "scmProvider == changetracks",
+                    "group": "inline"
+                },
+                {
+                    "command": "changetracks.acceptAllInFile",
+                    "when": "scmProvider == changetracks",
+                    "group": "inline"
+                },
+                {
+                    "command": "changetracks.rejectAllInFile",
+                    "when": "scmProvider == changetracks",
+                    "group": "inline"
+                }
+            ]
+        },
+        "keybindings": [
+            {
+                "command": "changetracks.toggleTracking",
+                "key": "alt+cmd+t",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.toggleTracking",
+                "key": "ctrl+alt+t",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.acceptChange",
+                "key": "alt+cmd+y",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.acceptChange",
+                "key": "ctrl+alt+y",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.rejectChange",
+                "key": "alt+cmd+n",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.rejectChange",
+                "key": "ctrl+alt+n",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.nextChange",
+                "key": "alt+cmd+]",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.nextChange",
+                "key": "ctrl+alt+]",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.previousChange",
+                "key": "alt+cmd+[",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.previousChange",
+                "key": "ctrl+alt+[",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.addComment",
+                "key": "alt+cmd+/",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.addComment",
+                "key": "ctrl+alt+/",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.annotateFromGit",
+                "key": "alt+cmd+g",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.annotateFromGit",
+                "key": "ctrl+alt+g",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.goToLinkedChange",
+                "key": "alt+cmd+m",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.goToLinkedChange",
+                "key": "ctrl+alt+m",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.showDiff",
+                "key": "alt+cmd+d",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.showDiff",
+                "key": "ctrl+alt+d",
+                "when": "editorTextFocus && resourceLangId == markdown"
+            },
+            {
+                "command": "changetracks.clipboardCutAction",
+                "key": "cmd+x",
+                "when": "editorTextFocus && resourceLangId == markdown && changetracks:trackingEnabled"
+            },
+            {
+                "command": "changetracks.clipboardCutAction",
+                "key": "ctrl+x",
+                "when": "editorTextFocus && resourceLangId == markdown && changetracks:trackingEnabled"
+            },
+            {
+                "command": "changetracks.clipboardPasteAction",
+                "key": "cmd+v",
+                "when": "editorTextFocus && resourceLangId == markdown && changetracks:trackingEnabled"
+            },
+            {
+                "command": "changetracks.clipboardPasteAction",
+                "key": "ctrl+v",
+                "when": "editorTextFocus && resourceLangId == markdown && changetracks:trackingEnabled"
+            },
+            {
+                "command": "changetracks._testExecuteCommand",
+                "key": "ctrl+shift+f12",
+                "when": "editorTextFocus"
+            }
+        ],
+        "configuration": {
+            "title": "ChangeTracks",
+            "properties": {
+                "changetracks.trackingMode": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable tracking changes by default"
+                },
+                "changetracks.defaultViewMode": {
+                    "type": "string",
+                    "default": "all-markup",
+                    "enum": [
+                        "all-markup",
+                        "simple",
+                        "final",
+                        "original"
+                    ],
+                    "enumDescriptions": [
+                        "Show all CriticMarkup (insertions, deletions, substitutions visible)",
+                        "Show simplified markup (clean text with change indicators)",
+                        "Show final text (all changes accepted)",
+                        "Show original text (all changes rejected)"
+                    ],
+                    "description": "Default view mode when opening markdown files."
+                },
+                "changetracks.showCriticMarkup": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Show CriticMarkup syntax (delimiters and footnote references). When off: semantic styling only. In Review mode with this on: full markup visible, static display. In Simple mode with this on: markup hidden but revealed when cursor enters change content."
+                },
+                "changetracks.persistAnnotations": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Save annotations to disk after generating them"
+                },
+                "changetracks.annotateOnOpen": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Automatically annotate files with git changes when opened"
+                },
+                "changetracks.editBoundary.pauseThresholdMs": {
+                    "type": "number",
+                    "default": 30000,
+                    "minimum": 0,
+                    "description": "How long you pause before the edit commits. 0 = only commit on cursor move/save.",
+                    "order": 1
+                },
+                "changetracks.editBoundary.breakOnNewline": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether newlines in pasted text split into separate changes",
+                    "order": 2
+                },
+                "changetracks.decorationStyle": {
+                    "type": "string",
+                    "enum": [
+                        "foreground",
+                        "background"
+                    ],
+                    "default": "foreground",
+                    "description": "Visual style for tracked changes. 'foreground' uses colored text (popular editor style). 'background' uses background tinting."
+                },
+                "changetracks.authorColors": {
+                    "type": "string",
+                    "enum": [
+                        "auto",
+                        "always",
+                        "never"
+                    ],
+                    "default": "auto",
+                    "description": "When to use per-author coloring. 'auto' enables it only when 2+ authors are present, 'always' forces per-author colors, 'never' uses semantic colors only."
+                },
+                "changetracks.author": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Author name for tracked changes (used in footnote metadata)"
+                },
+                "changetracks.reviewerIdentity": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Reviewer identity for accept/reject attribution (who approved/rejected). Recorded in footnote approved:/rejected: lines. Falls back to changetracks.author if not set."
+                },
+                "changetracks.archiveOnAccept": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When enabled, accepting a change records the original/reference text in the footnote as an archive line (geological record) so you keep a history of what was there."
+                },
+                "changetracks.preferGutter": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When true, prompts to disable Git SCM for the workspace so ChangeTracks's gutter diff indicators are used instead."
+                },
+                "changetracks.commentsExpandedByDefault": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "When true, comment threads for tracked changes start expanded (comment peek visible) when you open a file. When false, they start collapsed."
+                },
+                "changetracks.commentInsertFormat": {
+                    "type": "string",
+                    "enum": [
+                        "inline",
+                        "footnote"
+                    ],
+                    "default": "footnote",
+                    "description": "How to insert new comments: 'inline' inserts only {>> comment <<} in the text; 'footnote' also adds a footnote reference and definition with author/date (recommended for review workflows)."
+                },
+                "changetracks.commentInsertAuthor": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When true, include author (and date in footnote mode) when inserting comments. Uses changetracks.author; inline mode prefixes the comment body with '@Author: '."
+                },
+                "changetracks.changeExplorer.groupBy": {
+                    "type": "string",
+                    "enum": [
+                        "flat",
+                        "author",
+                        "type"
+                    ],
+                    "default": "flat",
+                    "description": "How to group changes in the Change Explorer"
+                },
+                "changetracks.scmIntegrationMode": {
+                    "type": "string",
+                    "enum": [
+                        "scm-first",
+                        "hybrid",
+                        "legacy"
+                    ],
+                    "default": "scm-first",
+                    "description": "SCM integration mode. 'scm-first' uses the new Source Control flow as primary (ChangeTracks appears as a second Source Control provider for pending review changes; Git remains for version control). 'hybrid' enables both new and legacy surfaces. 'legacy' uses current behavior only."
+                },
+                "changetracks.confirmBulkThreshold": {
+                    "type": "number",
+                    "default": 5,
+                    "description": "Show confirmation dialog when accepting/rejecting more than this many changes at once. Set to 0 to disable."
+                },
+                "changetracks.preview.enabled": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable CriticMarkup rendering in the markdown preview"
+                },
+                "changetracks.preview.showFootnotes": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show footnote definition panel in the preview"
+                },
+                "changetracks.preview.showComments": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show inline comment icons in the preview"
+                },
+                "changetracks.preview.renderInCodeFences": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Render CriticMarkup inside code fences (except changetracks/criticmarkup language)"
+                },
+                "changetracks.preview.metadataDetail": {
+                    "type": "string",
+                    "enum": [
+                        "badge",
+                        "summary",
+                        "projected"
+                    ],
+                    "default": "badge",
+                    "enumDescriptions": [
+                        "Minimal: styled change + ID badge. Full metadata in footnote panel.",
+                        "Summary: change + badge + author + status at anchor. Discussion in footnotes.",
+                        "Projected: all metadata inline at anchor. Only threads in footnotes."
+                    ],
+                    "description": "How much metadata to show at the change anchor point in the preview"
+                },
+                "changetracks.showWalkthroughOnStartup": {
+                    "type": "string",
+                    "enum": [
+                        "firstInstall",
+                        "always",
+                        "never"
+                    ],
+                    "default": "firstInstall",
+                    "markdownDescription": "When to show the ChangeTracks walkthrough. `firstInstall` = only on first install (default). `always` = every activation (useful for development). `never` = never auto-show."
+                },
+                "changetracks.preview.authorColors": {
+                    "type": "string",
+                    "enum": [
+                        "auto",
+                        "always",
+                        "never"
+                    ],
+                    "default": "auto",
+                    "enumDescriptions": [
+                        "Auto: per-author colors when 2+ distinct authors are present",
+                        "Always: per-author colors even for single-author documents",
+                        "Never: use change-type colors only"
+                    ],
+                    "description": "When to apply per-author color coding in the preview"
+                },
+                "changetracks.localParseHotPath": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable local parse for instant decorations (experimental). When enabled, decorations update immediately from local parse instead of waiting for LSP. LSP remains authoritative for enrichment features.",
+                    "scope": "window"
+                }
+            }
+        },
+        "markdown.markdownItPlugins": true,
+        "markdown.previewStyles": [
+            "./media/preview.css"
+        ],
+        "semanticTokenScopes": [
+            {
+                "language": "markdown",
+                "scopes": {
+                    "changetracks-insertion": ["markup.inserted.changetracks"],
+                    "changetracks-deletion": ["markup.deleted.changetracks"],
+                    "changetracks-highlight": ["markup.highlight.changetracks"],
+                    "changetracks-comment": ["comment.block.changetracks"],
+                    "changetracks-subOriginal": ["markup.deleted.substitution.changetracks"],
+                    "changetracks-subModified": ["markup.inserted.substitution.changetracks"],
+                    "changetracks-moveFrom": ["markup.deleted.move.changetracks"],
+                    "changetracks-moveTo": ["markup.inserted.move.changetracks"]
+                }
+            }
+        ],
+        "walkthroughs": [
+            {
+                "id": "changetracks.getStarted",
+                "title": "Get Started with ChangeTracks",
+                "description": "Track changes in Markdown — for humans and AI agents.",
+                "featuredFor": [
+                    "*.md",
+                    "**/*.md"
+                ],
+                "steps": [
+                    {
+                        "id": "welcome",
+                        "title": "Welcome to ChangeTracks",
+                        "description": "Learn what ChangeTracks does and set up your project.\n\n[Set Up This Project](command:changetracks.setupProject)",
+                        "media": {
+                            "markdown": "media/walkthrough/welcome.md"
+                        },
+                        "completionEvents": [
+                            "onCommand:changetracks.setupProject"
+                        ]
+                    },
+                    {
+                        "id": "openDemo",
+                        "title": "Open the Demo",
+                        "description": "Open the demo file and the Review panel to see tracked changes in action.\n\n[Open Demo File](command:changetracks.openDemo)",
+                        "media": {
+                            "markdown": "media/walkthrough/welcome.md"
+                        },
+                        "completionEvents": [
+                            "onCommand:changetracks.openDemo"
+                        ]
+                    },
+                    {
+                        "id": "configureProject",
+                        "title": "Configure Your Project",
+                        "description": "Open the Project Settings panel to customize tracking rules, author identity, and more.\n\n[Open Project Settings](command:changetracks.revealSettingsPanel)",
+                        "media": {
+                            "markdown": "media/walkthrough/project-settings.md"
+                        },
+                        "completionEvents": [
+                            "onCommand:changetracks.revealSettingsPanel"
+                        ]
+                    },
+                    {
+                        "id": "tryIt",
+                        "title": "Try It",
+                        "description": "Use the demo file to practice. Accept a change, reject a change, and try turning on tracking mode.\n\n[Re-open Demo File](command:changetracks.openDemo)",
+                        "media": {
+                            "markdown": "media/walkthrough/cheat-sheet.md"
+                        },
+                        "completionEvents": [
+                            "onCommand:changetracks.acceptChange",
+                            "onCommand:changetracks.rejectChange"
+                        ]
+                    },
+                    {
+                        "id": "goDeeper",
+                        "title": "Go Deeper",
+                        "description": "Learn about AI agent integration, advanced features, and CLI commands.\n\n[Open Example](command:changetracks.openExample)\n\n[Configure Agents](command:changetracks.setupAgents)",
+                        "media": {
+                            "markdown": "media/walkthrough/go-deeper.md"
+                        },
+                        "completionEvents": [
+                            "stepSelected:goDeeper"
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run esbuild -- --production",
+        "compile": "tsc -p ./",
+        "esbuild": "node esbuild.mjs",
+        "watch": "tsc -watch -p ./",
+        "package": "npx @vscode/vsce package --no-dependencies --allow-missing-repository",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts",
+        "test": "npm run test:features",
+        "test:fast": "npm run test:features:fast",
+        "test:slow": "npm run test -w @changetracks/tests-vscode -- --tags '@slow and not @visual and not @wip'",
+        "test:visual": "npm run test:visual -w @changetracks/tests-vscode",
+        "test:visual:update": "npm run test:visual:update -w @changetracks/tests-vscode",
+        "test:gaps": "npm run test:gaps -w @changetracks/tests-vscode",
+        "test:features": "npm run compile && npm run test -w @changetracks/tests-vscode",
+        "test:features:fast": "npm run compile && npm run test:fast -w @changetracks/tests-vscode",
+        "test:features:slow": "npm run compile && npm run test:slow -w @changetracks/tests-vscode"
+    },
+    "dependencies": {
+        "changetracks": "file:../cli",
+        "@changetracks/core": "file:../core",
+        "@changetracks/docx": "file:../docx",
+        "@changetracks/lsp-server": "file:../lsp-server",
+        "diff": "^8.0.3",
+        "smol-toml": "^1.3.0",
+        "vscode-languageclient": "^9.0.1"
+    },
+    "devDependencies": {
+        "@types/glob": "^8.1.0",
+        "@types/node": "20.2.5",
+        "@types/vscode": "^1.80.0",
+        "@typescript-eslint/eslint-plugin": "^5.59.8",
+        "@typescript-eslint/parser": "^5.59.8",
+        "esbuild": "^0.27.3",
+        "eslint": "^8.41.0",
+        "glob": "^8.1.0",
+        "markdown-it": "^14.1.1",
+        "typescript": "^5.1.3"
+    }
+}
