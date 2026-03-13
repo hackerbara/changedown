@@ -50,6 +50,16 @@ export class EditorDecorator {
     private settledRefObj: vscode.TextEditorDecorationType;
     private settledDimObj: vscode.TextEditorDecorationType;
 
+    // Overview ruler mark decoration types — one per change type, using ThemeColor
+    // references so the user can override colors in their VS Code theme.
+    // These are separate from the inline decoration types so ruler marks can be
+    // shown/cleared independently of view mode without touching the inline styles.
+    private rulerInsertionObj!: vscode.TextEditorDecorationType;
+    private rulerDeletionObj!: vscode.TextEditorDecorationType;
+    private rulerSubstitutionObj!: vscode.TextEditorDecorationType;
+    private rulerHighlightObj!: vscode.TextEditorDecorationType;
+    private rulerCommentObj!: vscode.TextEditorDecorationType;
+
     private style: 'foreground' | 'background';
     private authorColors: 'auto' | 'always' | 'never';
     private authorColorMap: AuthorColorMap = new AuthorColorMap();
@@ -185,6 +195,30 @@ export class EditorDecorator {
         this.settledRefObj = vscode.window.createTextEditorDecorationType({
             light: { textDecoration: 'none; color: rgba(128, 128, 128, 0.6); font-style: italic' },
             dark: { textDecoration: 'none; color: rgba(160, 160, 160, 0.5); font-style: italic' }
+        });
+
+        // Overview ruler-only decoration types — no inline styling, pure ruler marks.
+        // Colors reference ThemeColor tokens declared in package.json contributes.colors
+        // so users can override them per-theme.
+        this.rulerInsertionObj = vscode.window.createTextEditorDecorationType({
+            overviewRulerColor: new vscode.ThemeColor('changetracks.insertionRulerColor'),
+            overviewRulerLane: vscode.OverviewRulerLane.Right
+        });
+        this.rulerDeletionObj = vscode.window.createTextEditorDecorationType({
+            overviewRulerColor: new vscode.ThemeColor('changetracks.deletionRulerColor'),
+            overviewRulerLane: vscode.OverviewRulerLane.Right
+        });
+        this.rulerSubstitutionObj = vscode.window.createTextEditorDecorationType({
+            overviewRulerColor: new vscode.ThemeColor('changetracks.substitutionRulerColor'),
+            overviewRulerLane: vscode.OverviewRulerLane.Right
+        });
+        this.rulerHighlightObj = vscode.window.createTextEditorDecorationType({
+            overviewRulerColor: new vscode.ThemeColor('changetracks.highlightRulerColor'),
+            overviewRulerLane: vscode.OverviewRulerLane.Right
+        });
+        this.rulerCommentObj = vscode.window.createTextEditorDecorationType({
+            overviewRulerColor: new vscode.ThemeColor('changetracks.commentRulerColor'),
+            overviewRulerLane: vscode.OverviewRulerLane.Right
         });
     }
 
@@ -571,8 +605,9 @@ export class EditorDecorator {
                     const modifiedRange = toRange(change.modifiedRange);
 
                     if (showMarkup) {
-                        pushSubOriginal({ range: originalRange, hoverMessage: reasonHover });
-                        pushSubModified({ range: modifiedRange, hoverMessage: reasonHover });
+                        // Include delimiters in decoration: {~~original~> in red, modified~~} in green
+                        pushSubOriginal({ range: new vscode.Range(fullRange.start, modifiedRange.start), hoverMessage: reasonHover });
+                        pushSubModified({ range: new vscode.Range(modifiedRange.start, fullRange.end), hoverMessage: reasonHover });
                     } else {
                         // Calculate delimiter positions from offsets
                         const openDelimiterEnd = offsetToPosition(text || '', change.range.start + 3);
@@ -749,6 +784,57 @@ export class EditorDecorator {
             }
         });
 
+        // ─── Overview ruler marks (right lane, ThemeColor) ───────────────────────
+        // Collect ruler ranges grouped by change type. Rulers are shown in review
+        // and changes modes where proposed changes are visible. In settled (final)
+        // and raw (original) modes there are no pending changes, so clear all rulers.
+        if (!isFinalMode && !isOriginalMode) {
+            const rulerInsertions: vscode.DecorationOptions[] = [];
+            const rulerDeletions: vscode.DecorationOptions[] = [];
+            const rulerSubstitutions: vscode.DecorationOptions[] = [];
+            const rulerHighlights: vscode.DecorationOptions[] = [];
+            const rulerComments: vscode.DecorationOptions[] = [];
+
+            for (const change of changes) {
+                // Skip settled inline refs — they are dimmed and not pending review
+                if (change.settled) { continue; }
+                const range = toRange(change.range);
+                const effectiveType = change.moveRole === 'from' ? ChangeType.Deletion
+                    : change.moveRole === 'to' ? ChangeType.Insertion
+                    : change.type;
+                switch (effectiveType) {
+                    case ChangeType.Insertion:
+                        rulerInsertions.push({ range });
+                        break;
+                    case ChangeType.Deletion:
+                        rulerDeletions.push({ range });
+                        break;
+                    case ChangeType.Substitution:
+                        rulerSubstitutions.push({ range });
+                        break;
+                    case ChangeType.Highlight:
+                        rulerHighlights.push({ range });
+                        break;
+                    case ChangeType.Comment:
+                        rulerComments.push({ range });
+                        break;
+                }
+            }
+
+            editor.setDecorations(this.rulerInsertionObj, rulerInsertions);
+            editor.setDecorations(this.rulerDeletionObj, rulerDeletions);
+            editor.setDecorations(this.rulerSubstitutionObj, rulerSubstitutions);
+            editor.setDecorations(this.rulerHighlightObj, rulerHighlights);
+            editor.setDecorations(this.rulerCommentObj, rulerComments);
+        } else {
+            // Clear all ruler marks in final/original modes
+            editor.setDecorations(this.rulerInsertionObj, []);
+            editor.setDecorations(this.rulerDeletionObj, []);
+            editor.setDecorations(this.rulerSubstitutionObj, []);
+            editor.setDecorations(this.rulerHighlightObj, []);
+            editor.setDecorations(this.rulerCommentObj, []);
+        }
+
         // Apply all base decorations (10 fixed types)
         editor.setDecorations(this.insertionObj, insertions);
         editor.setDecorations(this.deletionObj, deletions);
@@ -907,6 +993,11 @@ export class EditorDecorator {
         this.moveToObj.dispose();
         this.settledRefObj.dispose();
         this.settledDimObj.dispose();
+        this.rulerInsertionObj.dispose();
+        this.rulerDeletionObj.dispose();
+        this.rulerSubstitutionObj.dispose();
+        this.rulerHighlightObj.dispose();
+        this.rulerCommentObj.dispose();
 
         // Dispose all dynamic per-author decoration types
         this.authorDecorationTypes.forEach(type => type.dispose());

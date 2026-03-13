@@ -1077,7 +1077,16 @@ export async function handleProposeChange(
       }
       // Bounded window: markup line ±2 before, +5 after (includes footnote area)
       const affStart = Math.max(1, matchLine - 2);
-      const affEnd = Math.min(modLines.length, matchLine + 5);
+      let affEnd = Math.min(modLines.length, matchLine + 5);
+
+      // Extend window to include footnote region if present
+      // Footnotes are at the end of the file, marked by [^ct-N]: pattern
+      for (let i = modLines.length - 1; i >= affEnd; i--) {
+        if (/^\[\^ct-\d+(?:\.\d+)?\]:/.test(modLines[i])) {
+          affEnd = modLines.length; // Include entire footnote block
+          break;
+        }
+      }
       affectedLines = computeAffectedLines(modifiedText, affStart, affEnd, {
         hashlineEnabled: config.hashline.enabled,
       });

@@ -4,11 +4,17 @@ import { toResolvedUri } from '../resolved-content-provider';
 import { annotateFromGit } from '../annotate-command';
 import type { ExtensionController } from '../controller';
 import { ProjectStatusModel } from '../project-status';
+import { positionToOffset } from '../converters';
+
+export interface ChangeCommandsContext {
+    expandThreadForChangeId(changeId: string): void;
+}
 
 export function registerChangeCommands(
     context: vscode.ExtensionContext,
     controller: ExtensionController,
-    statusModel: ProjectStatusModel
+    statusModel: ProjectStatusModel,
+    changeComments: ChangeCommandsContext
 ): void {
     context.subscriptions.push(
         vscode.commands.registerCommand('changetracks.toggleTracking', () => {
@@ -25,6 +31,12 @@ export function registerChangeCommands(
         }),
         vscode.commands.registerCommand('changetracks.rejectAll', async () => {
             await controller.rejectAllChanges();
+        }),
+        vscode.commands.registerCommand('changetracks.acceptAllOnLine', async () => {
+            await controller.acceptAllOnLine();
+        }),
+        vscode.commands.registerCommand('changetracks.rejectAllOnLine', async () => {
+            await controller.rejectAllOnLine();
         }),
         vscode.commands.registerCommand('changetracks.nextChange', async () => {
             await controller.nextChange();
@@ -76,6 +88,7 @@ export function registerChangeCommands(
         }),
         vscode.commands.registerCommand('changetracks.revealChange', (changeId: string) => {
             controller.revealChangeById(changeId);
+            changeComments.expandThreadForChangeId(changeId);
         }),
         vscode.commands.registerCommand('changetracks.goToPosition', async (targetUri: string, line: number, character?: number) => {
             const doc = await vscode.workspace.openTextDocument(vscode.Uri.parse(targetUri));
@@ -83,6 +96,15 @@ export function registerChangeCommands(
             const pos = new vscode.Position(line, character ?? 0);
             editor.selection = new vscode.Selection(pos, pos);
             editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+        }),
+        vscode.commands.registerCommand('changetracks.requestChanges', async (changeId?: string) => {
+            await controller.requestChangesAtCursor(changeId);
+        }),
+        vscode.commands.registerCommand('changetracks.amendChange', async (changeId?: string) => {
+            await controller.amendChangeAtCursor(changeId);
+        }),
+        vscode.commands.registerCommand('changetracks.supersedeChange', async (changeId?: string) => {
+            await controller.supersedeChangeAtCursor(changeId);
         }),
         vscode.commands.registerCommand('changetracks.compactChange', async (changeId?: string) => {
             await controller.compactChange(changeId);
@@ -97,6 +119,32 @@ export function registerChangeCommands(
             const resolvedUri = toResolvedUri(docUri);
             const title = `${editor.document.fileName.split('/').pop()}: Settled ↔ Current`;
             await vscode.commands.executeCommand('vscode.diff', resolvedUri, docUri, title);
-        })
+        }),
+        // Lifecycle commands that take a changeId string (called from review panel webview)
+        vscode.commands.registerCommand('changetracks.resolveByChangeId', async (changeId?: string) => {
+            if (!changeId) return;
+            await controller.sendLifecycleRequest('changetracks/resolveThread', { changeId });
+        }),
+        vscode.commands.registerCommand('changetracks.unresolveByChangeId', async (changeId?: string) => {
+            if (!changeId) return;
+            await controller.sendLifecycleRequest('changetracks/unresolveThread', { changeId });
+        }),
+        vscode.commands.registerCommand('changetracks.viewDeliberation', () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) return;
+            const text = editor.document.getText();
+            const cursorOffset = positionToOffset(text, editor.selection.active);
+            const changes = controller.getChangesForDocument(editor.document);
+            const change = changes.find(c => c.range.start <= cursorOffset && cursorOffset <= c.range.end);
+            if (!change?.id) {
+                vscode.window.showInformationMessage('No tracked change at cursor');
+                return;
+            }
+            controller.revealChangeById(change.id);
+            changeComments.expandThreadForChangeId(change.id);
+        }),
+        vscode.commands.registerCommand('changetracks.compactAllResolved', async () => {
+            await controller.compactAllResolved();
+        }),
     );
 }

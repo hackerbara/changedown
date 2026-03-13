@@ -40,8 +40,10 @@ import {
 } from '@changetracks/core';
 import type { ViewName, Decision } from '@changetracks/core';
 import { getWorkspaceRoot, getPreviousVersion, PreviousVersionResult } from './git';
+import { parseConfigToml, DEFAULT_CONFIG } from 'changetracks/config';
+import type { ChangeTracksConfig } from 'changetracks/config';
 import { createHover } from './capabilities/hover';
-import { createCodeLenses } from './capabilities/code-lens';
+import { createCodeLenses, CodeLensMode, CursorState } from './capabilities/code-lens';
 import { sendDecorationData, sendChangeCount } from './notifications/decoration-data';
 import { sendPendingEditFlushed } from './notifications/pending-edit';
 import { sendViewModeChanged, SetViewModeParams } from './notifications/view-mode';
@@ -126,8 +128,12 @@ export class ChangetracksServer {
   public reviewerIdentity: string | undefined;
   /** Project config tracking default (from .changetracks/config.toml). Set by Task 11. */
   private projectTrackingDefault: string | undefined;
+  /** Full parsed project config (from .changetracks/config.toml). */
+  private projectConfig: ChangeTracksConfig | undefined;
   /** Workspace root path for config file resolution. */
   private workspaceRoot: string | undefined;
+  private cursorStateStorage: Map<string, CursorState> = new Map();
+  private codeLensMode: CodeLensMode = 'cursor';
 
   /**
    * Git integration functions. These are public properties so tests can
@@ -182,6 +188,7 @@ export class ChangetracksServer {
       this.languageIdCache.delete(uri);
       this.overlayStorage.delete(uri);
       this.viewModeStorage.delete(uri);
+      this.cursorStateStorage.delete(uri);
       const timeout = this.decorationNotifyTimeouts.get(uri);
       if (timeout) {
         clearTimeout(timeout);
@@ -334,6 +341,44 @@ export class ChangetracksServer {
       }
     });
 
+    // Cursor position notification: client tells server where cursor is
+    this.connection.onNotification('changetracks/cursorPosition', (params: {
+        textDocument: { uri: string };
+        line: number;
+        changeId?: string;
+    }) => {
+      try {
+        const uri = params.textDocument.uri;
+        this.cursorStateStorage.set(uri, {
+          line: params.line,
+          changeId: params.changeId
+        });
+        // Trigger CodeLens refresh
+        this.connection.sendRequest(CodeLensRefreshRequest.type).catch(() => {
+          // Client does not support workspace/codeLens/refresh — safe to ignore
+        });
+      } catch (err) {
+        this.connection.console.error(`changetracks/cursorPosition handler error: ${err}`);
+      }
+    });
+
+    // CodeLens mode notification: client tells server which mode is active
+    this.connection.onNotification('changetracks/setCodeLensMode', (params: {
+        mode: string;
+    }) => {
+      try {
+        const mode = params.mode;
+        if (mode === 'cursor' || mode === 'always' || mode === 'off') {
+          this.codeLensMode = mode;
+          this.connection.sendRequest(CodeLensRefreshRequest.type).catch(() => {});
+        } else {
+          this.connection.console.warn(`changetracks/setCodeLensMode: ignoring unknown mode "${mode}"`);
+        }
+      } catch (err) {
+        this.connection.console.error(`changetracks/setCodeLensMode handler error: ${err}`);
+      }
+    });
+
     // Connect documents to connection
     this.documents.listen(this.connection);
   }
@@ -473,7 +518,7 @@ export class ChangetracksServer {
    * Broadcast resolved document state (tracking + view mode) for a URI.
    */
   private broadcastDocumentState(uri: string): void {
-    const text = this.textCache.get(uri);
+    const text = this.getDocumentText(uri);
     if (!text) return;
     const tracking = resolveTracking(text, this.projectTrackingDefault);
     // Use existing viewModeStorage (defaults to 'review' when not set)
@@ -482,22 +527,19 @@ export class ChangetracksServer {
   }
 
   /**
-   * Load project tracking default from .changetracks/config.toml.
-   * Performs minimal TOML parsing for the tracking.default key.
-   * Sets projectTrackingDefault to undefined when the config file is absent.
+   * Load project config from .changetracks/config.toml via canonical parser.
+   * Stores full parsed config and extracts tracking default.
+   * Sets both to undefined when the config file is absent.
    */
   private loadProjectConfig(): void {
     if (!this.workspaceRoot) return;
     try {
       const configPath = path.join(this.workspaceRoot, '.changetracks', 'config.toml');
       const content = fs.readFileSync(configPath, 'utf-8');
-      // Minimal TOML parsing for tracking.default
-      const trackingMatch = content.match(/\[tracking\][\s\S]*?default\s*=\s*"(tracked|untracked)"/);
-      if (trackingMatch) {
-        this.projectTrackingDefault = trackingMatch[1];
-      }
+      this.projectConfig = parseConfigToml(content);
+      this.projectTrackingDefault = this.projectConfig.tracking.default;
     } catch {
-      // Config file doesn't exist — use defaults
+      this.projectConfig = undefined;
       this.projectTrackingDefault = undefined;
     }
   }
@@ -586,7 +628,7 @@ export class ChangetracksServer {
    * @param edit The crystallized edit with offset coordinates
    */
   private handleCrystallizedEdit(edit: CrystallizedEdit): void {
-    const text = this.textCache.get(edit.uri);
+    const text = this.getDocumentText(edit.uri);
     if (!text) {
       return;
     }
@@ -628,7 +670,7 @@ export class ChangetracksServer {
         return { data: [] };
       }
 
-      const text = this.textCache.get(uri);
+      const text = this.getDocumentText(uri);
       if (!text) {
         return { data: [] };
       }
@@ -650,13 +692,14 @@ export class ChangetracksServer {
   public handleCodeLens(params: CodeLensParams): CodeLens[] {
     try {
       const uri = params.textDocument.uri;
-      const text = this.textCache.get(uri);
+      const text = this.getDocumentText(uri);
       if (!text) {
         return [];
       }
       const changes = this.getMergedChanges(uri);
       const viewMode = this.getViewMode(uri);
-      return createCodeLenses(changes, text, viewMode);
+      const cursorState = this.cursorStateStorage.get(uri);
+      return createCodeLenses(changes, text, viewMode, this.codeLensMode, cursorState);
     } catch (err) {
       this.connection.console.error(`handleCodeLens error: ${err}`);
       return [];
@@ -707,7 +750,7 @@ export class ChangetracksServer {
   public handleDocumentLinks(params: DocumentLinkParams): DocumentLink[] {
     try {
       const uri = params.textDocument.uri;
-      const text = this.textCache.get(uri);
+      const text = this.getDocumentText(uri);
       if (!text) {
         return [];
       }
@@ -863,10 +906,13 @@ export class ChangetracksServer {
   // ─── Phase 2: Lifecycle operation helpers ───────────────────────────────────
 
   /**
-   * Get document text from cache or TextDocuments manager.
+   * Get document text, preferring the LSP SDK's synchronized TextDocuments
+   * manager (always up-to-date when a request handler runs) over the
+   * asynchronously-updated textCache. The textCache serves as fallback for
+   * documents not yet opened by the client.
    */
   private getDocumentText(uri: string): string | undefined {
-    return this.textCache.get(uri) ?? this.documents.get(uri)?.getText();
+    return this.documents.get(uri)?.getText() ?? this.textCache.get(uri);
   }
 
   /**
@@ -901,8 +947,9 @@ export class ChangetracksServer {
     reasonRequired: { human: boolean; agent: boolean };
     reviewerIdentity: string | undefined;
   } {
+    const review = this.projectConfig?.review ?? DEFAULT_CONFIG.review;
     return {
-      reasonRequired: { human: false, agent: true },
+      reasonRequired: review.reasonRequired,
       reviewerIdentity: this.reviewerIdentity,
     };
   }
@@ -1098,17 +1145,35 @@ export class ChangetracksServer {
 
       // If fully requested, also L1 → L0
       // After L2→L1 the footnote ref is gone, so we locate the change by
-      // finding the L1 change whose range contains the original markup offset.
+      // matching on inlineMetadata fields extracted BEFORE L1 compaction.
       if (params.fully) {
-        const refPattern = `[^${params.changeId}]`;
-        const refPos = docText.indexOf(refPattern);
+        // Extract footnote header fields BEFORE L1 compaction (change ID is lost after L1)
+        const preLines = docText.split('\n');
+        const preBlock = findFootnoteBlock(preLines, params.changeId);
+        const preHeader = preBlock ? parseFootnoteHeader(preLines[preBlock.headerLine]) : null;
 
         const parser = new CriticMarkupParser();
         const doc = parser.parse(result);
         const changes = doc.getChanges();
-        const idx = changes.findIndex((c) =>
-          c.level === 1 && refPos >= c.range.start && refPos <= c.range.end
-        );
+
+        // Find the target L1 change by matching on inlineMetadata fields
+        let idx = -1;
+        if (preHeader) {
+          idx = changes.findIndex((c) =>
+            c.level === 1 &&
+            c.inlineMetadata?.author === preHeader.author &&
+            c.inlineMetadata?.date === preHeader.date &&
+            c.inlineMetadata?.type === preHeader.type
+          );
+        }
+        // Fallback: if only one L1 change exists, use it
+        if (idx < 0) {
+          const l1Changes = changes.filter((c) => c.level === 1);
+          if (l1Changes.length === 1) {
+            idx = changes.indexOf(l1Changes[0]);
+          }
+        }
+
         if (idx >= 0) {
           const l0Result = compactToLevel0(result, idx);
           if (l0Result !== result) {

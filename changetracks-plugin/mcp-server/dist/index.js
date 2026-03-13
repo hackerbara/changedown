@@ -3225,8 +3225,8 @@ var require_utils = __commonJS({
       }
       return ind;
     }
-    function removeDotSegments(path11) {
-      let input = path11;
+    function removeDotSegments(path12) {
+      let input = path12;
       const output = [];
       let nextSlash = -1;
       let len = 0;
@@ -3425,8 +3425,8 @@ var require_schemes = __commonJS({
         wsComponent.secure = void 0;
       }
       if (wsComponent.resourceName) {
-        const [path11, query] = wsComponent.resourceName.split("?");
-        wsComponent.path = path11 && path11 !== "/" ? path11 : void 0;
+        const [path12, query] = wsComponent.resourceName.split("?");
+        wsComponent.path = path12 && path12 !== "/" ? path12 : void 0;
         wsComponent.query = query;
         wsComponent.resourceName = void 0;
       }
@@ -12483,12 +12483,12 @@ var require_dist = __commonJS({
         throw new Error(`Unknown format "${name}"`);
       return f;
     };
-    function addFormats(ajv, list, fs18, exportName) {
+    function addFormats(ajv, list, fs19, exportName) {
       var _a;
       var _b;
       (_a = (_b = ajv.opts.code).formats) !== null && _a !== void 0 ? _a : _b.formats = (0, codegen_1._)`require("ajv-formats/dist/formats").${exportName}`;
       for (const f of list)
-        ajv.addFormat(f, fs18[f]);
+        ajv.addFormat(f, fs19[f]);
     }
     module.exports = exports = formatsPlugin;
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -16440,6 +16440,13 @@ var init_ansi = __esm({
   }
 });
 
+// ../../packages/core/dist-esm/renderers/formatters/html.js
+var init_html = __esm({
+  "../../packages/core/dist-esm/renderers/formatters/html.js"() {
+    "use strict";
+  }
+});
+
 // ../../packages/core/dist-esm/renderers/formatters/index.js
 var init_formatters = __esm({
   "../../packages/core/dist-esm/renderers/formatters/index.js"() {
@@ -16448,6 +16455,7 @@ var init_formatters = __esm({
     init_ansi();
     init_plain_text();
     init_ansi();
+    init_html();
   }
 });
 
@@ -16866,9 +16874,9 @@ var init_dist_esm = __esm({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/lib/constants.js
+// ../../node_modules/picomatch/lib/constants.js
 var require_constants = __commonJS({
-  "../../packages/cli/node_modules/picomatch/lib/constants.js"(exports, module) {
+  "../../node_modules/picomatch/lib/constants.js"(exports, module) {
     "use strict";
     var WIN_SLASH = "\\\\/";
     var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
@@ -17065,9 +17073,9 @@ var require_constants = __commonJS({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/lib/utils.js
+// ../../node_modules/picomatch/lib/utils.js
 var require_utils2 = __commonJS({
-  "../../packages/cli/node_modules/picomatch/lib/utils.js"(exports) {
+  "../../node_modules/picomatch/lib/utils.js"(exports) {
     "use strict";
     var {
       REGEX_BACKSLASH,
@@ -17118,8 +17126,8 @@ var require_utils2 = __commonJS({
       }
       return output;
     };
-    exports.basename = (path11, { windows } = {}) => {
-      const segs = path11.split(windows ? /[\\/]/ : "/");
+    exports.basename = (path12, { windows } = {}) => {
+      const segs = path12.split(windows ? /[\\/]/ : "/");
       const last = segs[segs.length - 1];
       if (last === "") {
         return segs[segs.length - 2];
@@ -17129,9 +17137,9 @@ var require_utils2 = __commonJS({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/lib/scan.js
+// ../../node_modules/picomatch/lib/scan.js
 var require_scan = __commonJS({
-  "../../packages/cli/node_modules/picomatch/lib/scan.js"(exports, module) {
+  "../../node_modules/picomatch/lib/scan.js"(exports, module) {
     "use strict";
     var utils = require_utils2();
     var {
@@ -17459,9 +17467,9 @@ var require_scan = __commonJS({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/lib/parse.js
+// ../../node_modules/picomatch/lib/parse.js
 var require_parse = __commonJS({
-  "../../packages/cli/node_modules/picomatch/lib/parse.js"(exports, module) {
+  "../../node_modules/picomatch/lib/parse.js"(exports, module) {
     "use strict";
     var constants = require_constants();
     var utils = require_utils2();
@@ -18227,9 +18235,9 @@ var require_parse = __commonJS({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/lib/picomatch.js
+// ../../node_modules/picomatch/lib/picomatch.js
 var require_picomatch = __commonJS({
-  "../../packages/cli/node_modules/picomatch/lib/picomatch.js"(exports, module) {
+  "../../node_modules/picomatch/lib/picomatch.js"(exports, module) {
     "use strict";
     var scan = require_scan();
     var parse6 = require_parse();
@@ -18367,9 +18375,9 @@ var require_picomatch = __commonJS({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/index.js
+// ../../node_modules/picomatch/index.js
 var require_picomatch2 = __commonJS({
-  "../../packages/cli/node_modules/picomatch/index.js"(exports, module) {
+  "../../node_modules/picomatch/index.js"(exports, module) {
     "use strict";
     var pico = require_picomatch();
     var utils = require_utils2();
@@ -18770,8 +18778,8 @@ function getErrorMap() {
 
 // ../../node_modules/zod/v3/helpers/parseUtil.js
 var makeIssue = (params) => {
-  const { data, path: path11, errorMaps, issueData } = params;
-  const fullPath = [...path11, ...issueData.path || []];
+  const { data, path: path12, errorMaps, issueData } = params;
+  const fullPath = [...path12, ...issueData.path || []];
   const fullIssue = {
     ...issueData,
     path: fullPath
@@ -18886,11 +18894,11 @@ var errorUtil;
 
 // ../../node_modules/zod/v3/types.js
 var ParseInputLazyPath = class {
-  constructor(parent, value, path11, key) {
+  constructor(parent, value, path12, key) {
     this._cachedPath = [];
     this.parent = parent;
     this.data = value;
-    this._path = path11;
+    this._path = path12;
     this._key = key;
   }
   get path() {
@@ -22523,10 +22531,10 @@ function mergeDefs(...defs) {
 function cloneDef(schema) {
   return mergeDefs(schema._zod.def);
 }
-function getElementAtPath(obj, path11) {
-  if (!path11)
+function getElementAtPath(obj, path12) {
+  if (!path12)
     return obj;
-  return path11.reduce((acc, key) => acc?.[key], obj);
+  return path12.reduce((acc, key) => acc?.[key], obj);
 }
 function promiseAllObject(promisesObj) {
   const keys = Object.keys(promisesObj);
@@ -22887,11 +22895,11 @@ function aborted(x, startIndex = 0) {
   }
   return false;
 }
-function prefixIssues(path11, issues) {
+function prefixIssues(path12, issues) {
   return issues.map((iss) => {
     var _a;
     (_a = iss).path ?? (_a.path = []);
-    iss.path.unshift(path11);
+    iss.path.unshift(path12);
     return iss;
   });
 }
@@ -28908,6 +28916,147 @@ var ExperimentalServerTasks = class {
     return this._server.requestStream(request, resultSchema, options);
   }
   /**
+   * Sends a sampling request and returns an AsyncGenerator that yields response messages.
+   * The generator is guaranteed to end with either a 'result' or 'error' message.
+   *
+   * For task-augmented requests, yields 'taskCreated' and 'taskStatus' messages
+   * before the final result.
+   *
+   * @example
+   * ```typescript
+   * const stream = server.experimental.tasks.createMessageStream({
+   *     messages: [{ role: 'user', content: { type: 'text', text: 'Hello' } }],
+   *     maxTokens: 100
+   * }, {
+   *     onprogress: (progress) => {
+   *         // Handle streaming tokens via progress notifications
+   *         console.log('Progress:', progress.message);
+   *     }
+   * });
+   *
+   * for await (const message of stream) {
+   *     switch (message.type) {
+   *         case 'taskCreated':
+   *             console.log('Task created:', message.task.taskId);
+   *             break;
+   *         case 'taskStatus':
+   *             console.log('Task status:', message.task.status);
+   *             break;
+   *         case 'result':
+   *             console.log('Final result:', message.result);
+   *             break;
+   *         case 'error':
+   *             console.error('Error:', message.error);
+   *             break;
+   *     }
+   * }
+   * ```
+   *
+   * @param params - The sampling request parameters
+   * @param options - Optional request options (timeout, signal, task creation params, onprogress, etc.)
+   * @returns AsyncGenerator that yields ResponseMessage objects
+   *
+   * @experimental
+   */
+  createMessageStream(params, options) {
+    const clientCapabilities = this._server.getClientCapabilities();
+    if ((params.tools || params.toolChoice) && !clientCapabilities?.sampling?.tools) {
+      throw new Error("Client does not support sampling tools capability.");
+    }
+    if (params.messages.length > 0) {
+      const lastMessage = params.messages[params.messages.length - 1];
+      const lastContent = Array.isArray(lastMessage.content) ? lastMessage.content : [lastMessage.content];
+      const hasToolResults = lastContent.some((c) => c.type === "tool_result");
+      const previousMessage = params.messages.length > 1 ? params.messages[params.messages.length - 2] : void 0;
+      const previousContent = previousMessage ? Array.isArray(previousMessage.content) ? previousMessage.content : [previousMessage.content] : [];
+      const hasPreviousToolUse = previousContent.some((c) => c.type === "tool_use");
+      if (hasToolResults) {
+        if (lastContent.some((c) => c.type !== "tool_result")) {
+          throw new Error("The last message must contain only tool_result content if any is present");
+        }
+        if (!hasPreviousToolUse) {
+          throw new Error("tool_result blocks are not matching any tool_use from the previous message");
+        }
+      }
+      if (hasPreviousToolUse) {
+        const toolUseIds = new Set(previousContent.filter((c) => c.type === "tool_use").map((c) => c.id));
+        const toolResultIds = new Set(lastContent.filter((c) => c.type === "tool_result").map((c) => c.toolUseId));
+        if (toolUseIds.size !== toolResultIds.size || ![...toolUseIds].every((id) => toolResultIds.has(id))) {
+          throw new Error("ids of tool_result blocks and tool_use blocks from previous message do not match");
+        }
+      }
+    }
+    return this.requestStream({
+      method: "sampling/createMessage",
+      params
+    }, CreateMessageResultSchema, options);
+  }
+  /**
+   * Sends an elicitation request and returns an AsyncGenerator that yields response messages.
+   * The generator is guaranteed to end with either a 'result' or 'error' message.
+   *
+   * For task-augmented requests (especially URL-based elicitation), yields 'taskCreated'
+   * and 'taskStatus' messages before the final result.
+   *
+   * @example
+   * ```typescript
+   * const stream = server.experimental.tasks.elicitInputStream({
+   *     mode: 'url',
+   *     message: 'Please authenticate',
+   *     elicitationId: 'auth-123',
+   *     url: 'https://example.com/auth'
+   * }, {
+   *     task: { ttl: 300000 } // Task-augmented for long-running auth flow
+   * });
+   *
+   * for await (const message of stream) {
+   *     switch (message.type) {
+   *         case 'taskCreated':
+   *             console.log('Task created:', message.task.taskId);
+   *             break;
+   *         case 'taskStatus':
+   *             console.log('Task status:', message.task.status);
+   *             break;
+   *         case 'result':
+   *             console.log('User action:', message.result.action);
+   *             break;
+   *         case 'error':
+   *             console.error('Error:', message.error);
+   *             break;
+   *     }
+   * }
+   * ```
+   *
+   * @param params - The elicitation request parameters
+   * @param options - Optional request options (timeout, signal, task creation params, etc.)
+   * @returns AsyncGenerator that yields ResponseMessage objects
+   *
+   * @experimental
+   */
+  elicitInputStream(params, options) {
+    const clientCapabilities = this._server.getClientCapabilities();
+    const mode = params.mode ?? "form";
+    switch (mode) {
+      case "url": {
+        if (!clientCapabilities?.elicitation?.url) {
+          throw new Error("Client does not support url elicitation.");
+        }
+        break;
+      }
+      case "form": {
+        if (!clientCapabilities?.elicitation?.form) {
+          throw new Error("Client does not support form elicitation.");
+        }
+        break;
+      }
+    }
+    const normalizedParams = mode === "form" && params.mode === void 0 ? { ...params, mode: "form" } : params;
+    return this.requestStream({
+      method: "elicitation/create",
+      params: normalizedParams
+    }, ElicitResultSchema, options);
+  }
+  /**
    * Gets the current status of a task.
    *
    * @param taskId - The task identifier
@@ -30181,6 +30330,8 @@ function parseConfigToml(raw) {
   const policy = parsed["policy"];
   const protocol = parsed["protocol"];
   const meta = parsed["meta"];
+  const review = parsed["review"];
+  const reasonRequired = review?.["reason_required"];
   return {
     tracking: {
       include: asStringArray(tracking?.["include"]) ?? DEFAULT_CONFIG.tracking.include,
@@ -30207,6 +30358,12 @@ function parseConfigToml(raw) {
     settlement: {
       auto_on_approve: typeof settlement?.["auto_on_approve"] === "boolean" ? settlement["auto_on_approve"] : DEFAULT_CONFIG.settlement.auto_on_approve,
       auto_on_reject: typeof settlement?.["auto_on_reject"] === "boolean" ? settlement["auto_on_reject"] : DEFAULT_CONFIG.settlement.auto_on_reject
+    },
+    review: {
+      reasonRequired: {
+        human: typeof reasonRequired?.["human"] === "boolean" ? reasonRequired["human"] : DEFAULT_CONFIG.review.reasonRequired.human,
+        agent: typeof reasonRequired?.["agent"] === "boolean" ? reasonRequired["agent"] : DEFAULT_CONFIG.review.reasonRequired.agent
+      }
     },
     policy: {
       mode: policy?.["mode"] === "strict" || policy?.["mode"] === "safety-net" || policy?.["mode"] === "permissive" ? policy["mode"] : derivePolicyMode(hooks?.["enforcement"]),
@@ -30308,6 +30465,9 @@ var DEFAULT_CONFIG = {
   settlement: {
     auto_on_approve: true,
     auto_on_reject: true
+  },
+  review: {
+    reasonRequired: { human: false, agent: true }
   },
   policy: {
     mode: "safety-net",
@@ -33529,7 +33689,13 @@ async function handleProposeChange(args, resolver, state) {
         }
       }
       const affStart = Math.max(1, matchLine - 2);
-      const affEnd = Math.min(modLines.length, matchLine + 5);
+      let affEnd = Math.min(modLines.length, matchLine + 5);
+      for (let i = modLines.length - 1; i >= affEnd; i--) {
+        if (/^\[\^ct-\d+(?:\.\d+)?\]:/.test(modLines[i])) {
+          affEnd = modLines.length;
+          break;
+        }
+      }
       affectedLines = computeAffectedLines(modifiedText, affStart, affEnd, {
         hashlineEnabled: config2.hashline.enabled
       });
@@ -33952,6 +34118,29 @@ function errorResult3(message, code, details) {
 
 // ../../packages/cli/dist/engine/handlers/begin-change-group.js
 init_dist_esm();
+import * as fs11 from "node:fs/promises";
+import * as path7 from "node:path";
+async function scanProjectForMaxId(projectDir, config2) {
+  let max = 0;
+  try {
+    const entries = await fs11.readdir(projectDir, { recursive: true });
+    for (const rawEntry of entries) {
+      const entry = typeof rawEntry === "string" ? rawEntry : String(rawEntry);
+      const fullPath = path7.join(projectDir, entry);
+      if (!isFileInScope(fullPath, config2, projectDir))
+        continue;
+      try {
+        const content = await fs11.readFile(fullPath, "utf-8");
+        const fileMax = scanMaxCtId(content);
+        if (fileMax > max)
+          max = fileMax;
+      } catch {
+      }
+    }
+  } catch {
+  }
+  return max;
+}
 async function handleBeginChangeGroup(args, resolver, state) {
   try {
     const description = optionalStrArg(args, "description", "description");
@@ -33959,7 +34148,10 @@ async function handleBeginChangeGroup(args, resolver, state) {
     if (!description) {
       return errorResult('Missing required argument: "description"');
     }
-    const groupId = state.beginGroup(description, reasoning);
+    const projectDir = resolver.resolveDir();
+    const config2 = await resolver.lastConfig();
+    const maxId = await scanProjectForMaxId(projectDir, config2);
+    const groupId = state.beginGroup(description, reasoning, maxId);
     return {
       content: [
         {
@@ -33976,8 +34168,8 @@ async function handleBeginChangeGroup(args, resolver, state) {
 
 // ../../packages/cli/dist/engine/handlers/end-change-group.js
 init_dist_esm();
-import * as fs11 from "node:fs/promises";
-import * as path7 from "node:path";
+import * as fs12 from "node:fs/promises";
+import * as path8 from "node:path";
 init_file_ops2();
 async function handleEndChangeGroup(args, resolver, state) {
   try {
@@ -33998,12 +34190,12 @@ async function handleEndChangeGroup(args, resolver, state) {
       const summaryLine = summary ? `
     summary: ${summary}` : "";
       const footnoteBlock = footnoteHeader + reasonLine + summaryLine;
-      const fileContent = await fs11.readFile(targetFile, "utf-8");
+      const fileContent = await fs12.readFile(targetFile, "utf-8");
       const modifiedText = appendFootnote(fileContent, footnoteBlock);
-      await fs11.writeFile(targetFile, modifiedText, "utf-8");
+      await fs12.writeFile(targetFile, modifiedText, "utf-8");
     }
     const filesList = groupInfo.files.length > 0 ? `Modified files:
-${groupInfo.files.map((f) => path7.relative(projectDir, f)).join("\n")}
+${groupInfo.files.map((f) => path8.relative(projectDir, f)).join("\n")}
 
 Share this list with the user so they know which file(s) to open or read.` : "";
     return {
@@ -34026,7 +34218,7 @@ Share this list with the user so they know which file(s) to open or read.` : "";
 }
 
 // ../../packages/cli/dist/engine/handlers/review-change.js
-import * as fs12 from "node:fs/promises";
+import * as fs13 from "node:fs/promises";
 init_dist_esm();
 init_dist_esm();
 async function handleReviewChange(args, resolver, state) {
@@ -34058,7 +34250,7 @@ async function handleReviewChange(args, resolver, state) {
     }
     let fileContent;
     try {
-      fileContent = await fs12.readFile(filePath, "utf-8");
+      fileContent = await fs13.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult(`File not found or unreadable: ${msg}`);
@@ -34073,7 +34265,7 @@ async function handleReviewChange(args, resolver, state) {
     }
     if (applied.updatedContent !== fileContent) {
       fileContent = applied.updatedContent;
-      await fs12.writeFile(filePath, fileContent, "utf-8");
+      await fs13.writeFile(filePath, fileContent, "utf-8");
     } else {
       fileContent = applied.updatedContent;
     }
@@ -34081,7 +34273,7 @@ async function handleReviewChange(args, resolver, state) {
     if (config2.settlement.auto_on_approve && typedDecision === "approve") {
       const { settledContent, settledIds } = settleAcceptedChanges(fileContent);
       if (settledIds.length > 0) {
-        await fs12.writeFile(filePath, settledContent, "utf-8");
+        await fs13.writeFile(filePath, settledContent, "utf-8");
         fileContent = settledContent;
         settlementInfo = { settledIds };
       }
@@ -34089,7 +34281,7 @@ async function handleReviewChange(args, resolver, state) {
     if (config2.settlement.auto_on_reject && typedDecision === "reject") {
       const { settledContent, settledIds } = settleRejectedChanges(fileContent);
       if (settledIds.length > 0) {
-        await fs12.writeFile(filePath, settledContent, "utf-8");
+        await fs13.writeFile(filePath, settledContent, "utf-8");
         fileContent = settledContent;
         settlementInfo = { settledIds };
       }
@@ -34119,7 +34311,7 @@ async function handleReviewChange(args, resolver, state) {
 init_dist_esm();
 
 // ../../packages/cli/dist/engine/handlers/respond-to-thread.js
-import * as fs13 from "node:fs/promises";
+import * as fs14 from "node:fs/promises";
 init_dist_esm();
 async function handleRespondToThread(args, resolver, _state) {
   try {
@@ -34147,7 +34339,7 @@ async function handleRespondToThread(args, resolver, _state) {
     }
     let fileContent;
     try {
-      fileContent = await fs13.readFile(filePath, "utf-8");
+      fileContent = await fs14.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult(`File not found or unreadable: ${msg}`);
@@ -34164,7 +34356,7 @@ async function handleRespondToThread(args, resolver, _state) {
     if (result.isError) {
       return errorResult(result.error);
     }
-    await fs13.writeFile(filePath, result.text, "utf-8");
+    await fs14.writeFile(filePath, result.text, "utf-8");
     return {
       content: [
         {
@@ -34184,13 +34376,13 @@ async function handleRespondToThread(args, resolver, _state) {
 
 // ../../packages/cli/dist/engine/handlers/list-open-threads.js
 init_dist_esm();
-import * as fs14 from "node:fs/promises";
-import * as path8 from "node:path";
+import * as fs15 from "node:fs/promises";
+import * as path9 from "node:path";
 var TRACKING_HEADER_TRACKED = "<!-- ctrcks.com/v1: tracked -->";
 var VALID_STATUSES = ["proposed", "accepted", "rejected"];
 async function hasTrackingHeader(filePath) {
   try {
-    const fd = await fs14.open(filePath, "r");
+    const fd = await fs15.open(filePath, "r");
     const buf = Buffer.alloc(400);
     const { bytesRead } = await fd.read(buf, 0, 400, 0);
     await fd.close();
@@ -34203,14 +34395,14 @@ async function hasTrackingHeader(filePath) {
 async function collectTrackedMdFiles(dirPath, config2, projectDir) {
   const out = [];
   try {
-    const entries = await fs14.readdir(dirPath, { recursive: true });
+    const entries = await fs15.readdir(dirPath, { recursive: true });
     for (const raw of entries) {
       const entry = typeof raw === "string" ? raw : String(raw);
-      const full = path8.join(dirPath, entry);
+      const full = path9.join(dirPath, entry);
       if (!entry.endsWith(".md"))
         continue;
       try {
-        const stat4 = await fs14.stat(full);
+        const stat4 = await fs15.stat(full);
         if (!stat4.isFile())
           continue;
       } catch {
@@ -34238,7 +34430,7 @@ async function handleListOpenThreads(args, resolver, _state) {
     const { config: config2, projectDir } = await resolver.forFile(resolvedPath);
     let filesToScan = [];
     try {
-      const stat4 = await fs14.stat(resolvedPath);
+      const stat4 = await fs15.stat(resolvedPath);
       if (stat4.isFile()) {
         if (!isFileInScope(resolvedPath, config2, projectDir)) {
           return errorResult(`File is not in scope for tracking: "${resolvedPath}". Check .changetracks/config.toml include/exclude patterns.`);
@@ -34261,7 +34453,7 @@ async function handleListOpenThreads(args, resolver, _state) {
     for (const fp of filesToScan) {
       let content;
       try {
-        content = await fs14.readFile(fp, "utf-8");
+        content = await fs15.readFile(fp, "utf-8");
       } catch {
         continue;
       }
@@ -34337,8 +34529,8 @@ async function handleListOpenThreads(args, resolver, _state) {
 }
 
 // ../../packages/cli/dist/engine/handlers/raw-edit.js
-import * as fs15 from "node:fs/promises";
-import * as path9 from "node:path";
+import * as fs16 from "node:fs/promises";
+import * as path10 from "node:path";
 init_file_ops2();
 var MARKUP_OPENERS = [/\{\+\+/g, /\{\-\-/g, /\{\~\~/g];
 var FOOTNOTE_REF = /\[\^ct-\d+(?:\.\d+)?\]/g;
@@ -34384,18 +34576,18 @@ async function handleRawEdit(args, resolver) {
     }
     let fileContent;
     try {
-      fileContent = await fs15.readFile(filePath, "utf-8");
+      fileContent = await fs16.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult(`File not found or unreadable: ${msg}`);
     }
     const modifiedText = replaceUnique(fileContent, oldText, newText);
-    await fs15.writeFile(filePath, modifiedText, "utf-8");
+    await fs16.writeFile(filePath, modifiedText, "utf-8");
     console.error(`[changetracks] raw_edit bypassed tracking: ${reason}`);
     const { annotations, footnotes } = countMarkupInText(oldText);
     const baseWarning = "This edit is untracked.";
     const removalWarning = annotations > 0 || footnotes > 0 ? ` WARNING: This edit removes ${annotations} CriticMarkup annotation(s) and ${footnotes} footnote(s). These represent the file's deliberation history.` : "";
-    const displayPath = path9.relative(projectDir, filePath);
+    const displayPath = path10.relative(projectDir, filePath);
     return {
       content: [
         {
@@ -34416,8 +34608,8 @@ async function handleRawEdit(args, resolver) {
 }
 
 // ../../packages/cli/dist/engine/handlers/get-tracking-status.js
-import * as fs16 from "node:fs/promises";
-import * as path10 from "node:path";
+import * as fs17 from "node:fs/promises";
+import * as path11 from "node:path";
 init_dist_esm();
 var import_picomatch2 = __toESM(require_picomatch2(), 1);
 async function handleGetTrackingStatus(args, resolver, state) {
@@ -34428,8 +34620,8 @@ async function handleGetTrackingStatus(args, resolver, state) {
       const filePath = resolver.resolveFilePath(file);
       const { config: config3, projectDir } = await resolver.forFile(filePath);
       const status = await resolveTrackingStatus(filePath, config3, projectDir);
-      let relative8 = path10.relative(projectDir, filePath);
-      relative8 = relative8.split(path10.sep).join("/");
+      let relative8 = path11.relative(projectDir, filePath);
+      relative8 = relative8.split(path11.sep).join("/");
       const matchesHooksExclude = (0, import_picomatch2.default)(config3.hooks.exclude);
       const hookExcluded = matchesHooksExclude(relative8);
       const out = {
@@ -34441,7 +34633,7 @@ async function handleGetTrackingStatus(args, resolver, state) {
       if (isTracked) {
         let content;
         try {
-          content = await fs16.readFile(filePath, "utf-8");
+          content = await fs17.readFile(filePath, "utf-8");
         } catch {
           content = "";
         }
@@ -34450,7 +34642,7 @@ async function handleGetTrackingStatus(args, resolver, state) {
         if (settleAccepted && beforeSettle > 0) {
           const { settledContent, settledIds } = settleAcceptedChanges(content);
           if (settledIds.length > 0) {
-            await fs16.writeFile(filePath, settledContent, "utf-8");
+            await fs17.writeFile(filePath, settledContent, "utf-8");
             out.settled = true;
             out.settled_ids = settledIds;
             await rerecordState(state, filePath, settledContent, config3);
@@ -34493,7 +34685,7 @@ async function handleGetTrackingStatus(args, resolver, state) {
 
 // ../../packages/cli/dist/engine/handlers/get-change.js
 init_dist_esm();
-import * as fs17 from "node:fs/promises";
+import * as fs18 from "node:fs/promises";
 init_dist_esm();
 function buildGroupInfo(doc, lines, parentId) {
   const parentBlock = findFootnoteBlock(lines, parentId);
@@ -34531,7 +34723,7 @@ async function handleGetChange(args, resolver) {
     const filePath = resolver.resolveFilePath(fileArg);
     const { config: config2, projectDir } = await resolver.forFile(filePath);
     try {
-      const stat4 = await fs17.stat(filePath);
+      const stat4 = await fs18.stat(filePath);
       if (!stat4.isFile()) {
         return errorResult4(`Not a file: "${filePath}"`);
       }
@@ -34543,7 +34735,7 @@ async function handleGetChange(args, resolver) {
     }
     let fileContent;
     try {
-      fileContent = await fs17.readFile(filePath, "utf-8");
+      fileContent = await fs18.readFile(filePath, "utf-8");
     } catch {
       return errorResult4(`Could not read file: "${filePath}"`);
     }

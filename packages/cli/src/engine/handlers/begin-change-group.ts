@@ -89,8 +89,11 @@ export async function handleBeginChangeGroup(
       return errorResult('Missing required argument: "description"');
     }
 
-    // Don't scan project-wide - group ID will be allocated from the first file edited
-    const groupId = state.beginGroup(description, reasoning);
+    // Scan project-wide for max existing ID to prevent collisions
+    const projectDir = resolver.resolveDir();
+    const config = await resolver.lastConfig();
+    const maxId = await scanProjectForMaxId(projectDir, config);
+    const groupId = state.beginGroup(description, reasoning, maxId);
 
     return {
       content: [

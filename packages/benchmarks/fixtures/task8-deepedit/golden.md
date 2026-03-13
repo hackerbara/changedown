@@ -164,3 +164,5 @@ Building a production-grade observability stack on Kubernetes requires thoughtfu
 The total resource overhead for a monitoring stack on a medium cluster is typically around 100MB of memory per node for the Fluent Bit agent, 2-4 CPU cores for Prometheus, and variable storage depending on retention. Plan for the monitoring stack itself to consume 5-10% of your cluster's capacity.
 
 Remember that observability is not a destination but a practice. As your services evolve, your instrumentation must evolve with them. Invest in runbooks that link directly to dashboards and traces — when an alert fires at 3 AM, the on-call engineer should not need tribal knowledge to diagnose the issue. The goal is a system where data is always available, context is always clear, and resolution is always fast.
+
+

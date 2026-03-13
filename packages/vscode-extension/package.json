@@ -67,6 +67,16 @@
                 "title": "ChangeTracks: Reject All Changes"
             },
             {
+                "command": "changetracks.acceptAllOnLine",
+                "title": "Accept All Changes on Line",
+                "category": "ChangeTracks"
+            },
+            {
+                "command": "changetracks.rejectAllOnLine",
+                "title": "Reject All Changes on Line",
+                "category": "ChangeTracks"
+            },
+            {
                 "command": "changetracks.nextChange",
                 "title": "ChangeTracks: Go to Next Change"
             },
@@ -133,6 +143,18 @@
                 "icon": "$(close)"
             },
             {
+                "command": "changetracks.resolveThread",
+                "title": "Resolve Thread",
+                "category": "ChangeTracks",
+                "icon": "$(pass)"
+            },
+            {
+                "command": "changetracks.unresolveThread",
+                "title": "Unresolve Thread",
+                "category": "ChangeTracks",
+                "icon": "$(circle-slash)"
+            },
+            {
                 "command": "changetracks.replyToThread",
                 "title": "Reply"
             },
@@ -150,6 +172,16 @@
                 "command": "changetracks.compactChangeFully",
                 "title": "ChangeTracks: Compact Change Fully",
                 "icon": "$(fold-down)"
+            },
+            {
+                "command": "changetracks.viewDeliberation",
+                "title": "View Deliberation",
+                "category": "ChangeTracks"
+            },
+            {
+                "command": "changetracks.compactAllResolved",
+                "title": "Compact All Resolved",
+                "category": "ChangeTracks"
             },
             {
                 "command": "changetracks.revealPanel",
@@ -185,6 +217,26 @@
                 "command": "changetracks.setupAgents",
                 "title": "Configure Agent Plugins",
                 "category": "ChangeTracks"
+            },
+            {
+                "command": "changetracks.requestChanges",
+                "title": "ChangeTracks: Request Changes"
+            },
+            {
+                "command": "changetracks.amendChange",
+                "title": "ChangeTracks: Amend Change"
+            },
+            {
+                "command": "changetracks.supersedeChange",
+                "title": "ChangeTracks: Supersede Change"
+            },
+            {
+                "command": "changetracks.resolveByChangeId",
+                "title": "ChangeTracks: Resolve Thread"
+            },
+            {
+                "command": "changetracks.unresolveByChangeId",
+                "title": "ChangeTracks: Unresolve Thread"
             },
             {
                 "command": "changetracks._testQueryPanelState",
@@ -321,6 +373,21 @@
                     "command": "changetracks.addComment",
                     "when": "resourceLangId == markdown && editorTextFocus",
                     "group": "1_changetracks"
+                },
+                {
+                    "command": "changetracks.viewDeliberation",
+                    "when": "editorLangId == markdown",
+                    "group": "changetracks@1"
+                },
+                {
+                    "command": "changetracks.compactChange",
+                    "when": "editorLangId == markdown",
+                    "group": "changetracks@4"
+                },
+                {
+                    "command": "changetracks.compactChangeFully",
+                    "when": "editorLangId == markdown",
+                    "group": "changetracks@5"
                 }
             ],
             "editor/title": [
@@ -376,6 +443,26 @@
                 {
                     "command": "changetracks.replyToThread",
                     "when": "commentController == changetracks && !commentThreadIsEmpty",
+                    "group": "inline"
+                },
+                {
+                    "command": "changetracks.resolveThread",
+                    "when": "commentController == changetracks && !commentThreadIsEmpty",
+                    "group": "inline"
+                },
+                {
+                    "command": "changetracks.unresolveThread",
+                    "when": "commentController == changetracks && !commentThreadIsEmpty",
+                    "group": "inline"
+                },
+                {
+                    "command": "changetracks.amendChange",
+                    "when": "commentController == changetracks",
+                    "group": "inline"
+                },
+                {
+                    "command": "changetracks.supersedeChange",
+                    "when": "commentController == changetracks",
                     "group": "inline"
                 }
             ],
@@ -715,6 +802,18 @@
                     "default": false,
                     "description": "Enable local parse for instant decorations (experimental). When enabled, decorations update immediately from local parse instead of waiting for LSP. LSP remains authoritative for enrichment features.",
                     "scope": "window"
+                },
+                "changetracks.codeLensMode": {
+                    "type": "string",
+                    "default": "cursor",
+                    "enum": ["cursor", "always", "off"],
+                    "enumDescriptions": [
+                        "Show CodeLens only for the line under the cursor (recommended)",
+                        "Show CodeLens for all proposed changes",
+                        "Hide CodeLens entirely"
+                    ],
+                    "description": "Controls CodeLens visibility. 'cursor' shows actions only on the focused line. 'always' shows actions for all proposed changes. 'off' hides CodeLens.",
+                    "scope": "window"
                 }
             }
         },
@@ -734,6 +833,53 @@
                     "changetracks-subModified": ["markup.inserted.substitution.changetracks"],
                     "changetracks-moveFrom": ["markup.deleted.move.changetracks"],
                     "changetracks-moveTo": ["markup.inserted.move.changetracks"]
+                }
+            }
+        ],
+        "colors": [
+            {
+                "id": "changetracks.insertionRulerColor",
+                "description": "Overview ruler color for insertion changes",
+                "defaults": {
+                    "dark": "#4caf50",
+                    "light": "#2e7d32",
+                    "highContrast": "#4caf50"
+                }
+            },
+            {
+                "id": "changetracks.deletionRulerColor",
+                "description": "Overview ruler color for deletion changes",
+                "defaults": {
+                    "dark": "#f44336",
+                    "light": "#c62828",
+                    "highContrast": "#f44336"
+                }
+            },
+            {
+                "id": "changetracks.substitutionRulerColor",
+                "description": "Overview ruler color for substitution changes",
+                "defaults": {
+                    "dark": "#ff9800",
+                    "light": "#e65100",
+                    "highContrast": "#ff9800"
+                }
+            },
+            {
+                "id": "changetracks.highlightRulerColor",
+                "description": "Overview ruler color for highlight changes",
+                "defaults": {
+                    "dark": "#ffeb3b",
+                    "light": "#f9a825",
+                    "highContrast": "#ffeb3b"
+                }
+            },
+            {
+                "id": "changetracks.commentRulerColor",
+                "description": "Overview ruler color for comment changes",
+                "defaults": {
+                    "dark": "#2196f3",
+                    "light": "#1565c0",
+                    "highContrast": "#2196f3"
                 }
             }
         ],

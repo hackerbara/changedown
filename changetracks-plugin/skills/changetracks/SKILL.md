@@ -26,7 +26,7 @@ Declare your identity using the `author` parameter on every `propose_change` and
 
 Default view is project-configured. Omit the `view` parameter to use the project default.
 
-All views are writable projection surfaces. You can propose changes from any view using hash-addressed coordinates from that view's output.
+All views are writable projection surfaces. You can propose changes from any view using hash-addressed coordinates from that view's output.[^sc-18.1]
 
 ## The Six Tools
 
@@ -38,7 +38,7 @@ All views are writable projection surfaces. You can propose changes from any vie
 | 2 | `propose_change` | Make changes. Hash-addressed ops (compact) or old_text/new_text (classic). |
 | 3 | `review_changes` | Decide on changes. Accept/reject with `reviews`. Reply to threads with `responses`. |
 | 4 | `amend_change` | Fix YOUR OWN proposals. Same-author enforcement. |
-| 5 | `list_changes` | Change inventory with detail levels. `detail=summary` for overview, `detail=context` for surrounding lines, `detail=full` for threads and revision history. Use `change_id` or `change_ids` to fetch specific changes. Filter by status. **Prefer using `propose_change` response data** (contains change IDs, `affected_lines`, and per-change `preview`) over calling this — saves a round trip. |
+| 5 | `list_changes` | Change inventory with detail levels. `detail=summary` for overview, `detail=context` for surrounding lines, `detail=full` for threads and revision history. Use `change_id` or `change_ids` to fetch specific changes. Filter by status. **Prefer using `propose_change` response data** (contains change IDs, `affected_lines`, and per-change `preview`)[^sc-21.1] over calling this — saves a round trip. |
 | 6 | `supersede_change` | Replace someone else's proposal. Atomically rejects old + proposes new. |
 
 ## Reading the Three-Zone Format
@@ -51,17 +51,17 @@ MARGIN | CONTENT | METADATA
 
 - **Zone 1 (Margin)**: `LINE:HASH FLAG|` — coordinates for targeting. `P` = pending proposal, `A` = accepted change.
 - **Zone 2 (Content)**: Committed text with CriticMarkup inline. `[sc-N]` anchors link to Zone 3.
-- **Zone 3 (Metadata)**: `` at end of line. WHO proposed and WHY.
+- **Zone 3 (Metadata)**: `{>>sc-N @author: reason | K replies<<}` at end of line. WHO proposed and WHY.
 
 Example:
 ```
- 3:3f P| The service should use GraphQL[sc-4] for the external interface. 
+ 3:3f P| The service should use {~~REST~>GraphQL~~}[sc-4] for the external interface. {>>sc-4 @claude: paradigm shift | 2 replies<<}
  4:b2  | Rate limiting should be set to 1000 requests per minute.
 ```
 
 ## Deletion Semantics
 
-In review view, `` means *proposed for deletion* — the text is still present in the committed document. When targeting text with `old_text` (classic) or `op` (compact), the deleted text is part of the committed content until the deletion is accepted.
+In review view, `{--text--}` means *proposed for deletion* — the text is still present in the committed document. When targeting text with `old_text` (classic) or `op` (compact), the deleted text is part of the committed content until the deletion is accepted.
 
 ## Tool Routing
 
@@ -84,11 +84,11 @@ In review view, `` means *proposed for deletion* — the text is still present i
 
 Your first `read_tracked_file` call includes an edit guide tailored to this project's configuration — protocol syntax, identity rules, and view semantics.
 
-**Subagents:** When spawning subagents (e.g., via Claude Code's Task tool), include `include_guide: true` in the subagent's first `read_tracked_file` call. All subagents share one MCP session, so only the first agent gets the guide automatically — subsequent agents must request it explicitly.
+**Subagents:** When spawning subagents (e.g., via Claude Code's Task tool), include `include_guide: true` in the subagent's first `read_tracked_file` call. All subagents share one MCP session, so only the first agent gets the guide automatically — subsequent agents must request it explicitly.[^sc-19]
 
 **Check rejection history before proposing.** If you're modifying a section that others have reviewed, read it in `review` view first. Rejected proposals leave orphaned footnote refs (`[^sc-N]` with `rejected` status) visible in review mode. These tell you what was tried and why it was rejected, preventing wasted proposals.
 
-**No re-reads needed between edits.** Each `propose_change` response includes `affected_lines` (neighboring lines with content and coordinates) and per-change `preview` in the `applied` array. Use those for your next edit. Re-read only after review (accept/reject) or when relocation is ambiguous.
+**No re-reads needed between edits.** Each `propose_change` response includes `affected_lines` (neighboring lines with content and coordinates) and per-change `preview` in the `applied` array. Use those for your next edit.[^sc-21.2] Re-read only after review (accept/reject) or when relocation is ambiguous.
 
 **UX:** After applying changes, mention the modified file path in your reply so the user can click to open it.
 
@@ -125,7 +125,7 @@ review_changes(file, responses=[
 
 **Settlement:** Handled by the server. When you approve a change, the project's config controls whether accepted markup is compacted immediately (common default). No separate settle step — approve is done.
 
-**Group cascade:** Approving a group parent (e.g., `sc-1`) cascades to all children still at `proposed` status. Children with existing individual decisions (already accepted/rejected) are preserved.
+**Group cascade:** Approving a group parent (e.g., `sc-1`) cascades to all children still at `proposed` status. Children with existing individual decisions (already accepted/rejected) are preserved.[^sc-18.2]
 
 ---
 
@@ -178,7 +178,7 @@ read_tracked_file(file="path/to/file.md")
 - `A` = accepted change(s) settled on this line (recent activity)
 - *(blank)* = no change activity
 
-**Options:** `offset` / `limit` for pagination (default: 500 lines, max: 2000), `include_meta` for change levels in header, `include_guide: true` to re-deliver the editing guide (for subagents sharing an MCP session).
+**Options:** `offset` / `limit` for pagination (default: 500 lines, max: 2000), `include_meta` for change levels in header, `include_guide: true` to re-deliver the editing guide (for subagents sharing an MCP session).[^sc-20]
 
 **Hashline output:** When hashlines are enabled (in project config), output includes `LINE:HASH|content` per line. **Use the hash from your current view in `propose_change` calls** — the server resolves each view's hash space back to raw file positions.
 
@@ -217,25 +217,25 @@ You do not write CriticMarkup manually — the tools handle it. But you read and
 ### Inline Changes
 
 ```
-The API uses GraphQL for the public interface.
-We  and added this instead.
-Rate limiting is set to 100 req/min
+The API uses {~~REST~>GraphQL~~}[^sc-1] for the public interface.
+We {--removed this--}[^sc-2] and {++added this++}[^sc-3] instead.
+{==Rate limiting is set to 100 req/min==}{>>needs load testing<<}
 ```
 
 | Type | Syntax |
 |------|--------|
-| Substitution | `new[^sc-N]` |
-| Deletion | `[^sc-N]` |
-| Insertion | `text[^sc-N]` |
-| Highlight | `text` |
-| Comment | `` |
+| Substitution | `{~~old~>new~~}[^sc-N]` |
+| Deletion | `{--text--}[^sc-N]` |
+| Insertion | `{++text++}[^sc-N]` |
+| Highlight | `{==text==}` |
+| Comment | `{>>text<<}` |
 
-Grouped changes use dotted IDs: ``, ``.
+Grouped changes use dotted IDs: `[^sc-17.1]`, `[^sc-17.2]`.
 
 ### Footnote Definitions
 
 ```
-: @ai:claude-opus-4.6 | 2026-02-10 | sub | proposed
+[^sc-1]: @ai:claude-opus-4.6 | 2026-02-10 | sub | proposed
     context: "Authentication uses {API keys} for all endpoints"
     @ai:claude-opus-4.6 2026-02-10T14:32:05Z: GraphQL gives clients query flexibility
     approved: @carol 2026-02-11T09:15:22Z "Benchmarks look good"
@@ -280,32 +280,34 @@ When editing multiple tracked files, batch by phase — not by file:
 
 **Group-level review is the key efficiency lever.** When your batch creates `sc-1.1` through `sc-1.15`, approve just `sc-1` — it cascades to all children at `proposed` status.
 
-: @ai:claude-opus-4.6 | 2026-02-25 | sub | accepted
+
+[^sc-18.1]: @ai:claude-opus-4.6 | 2026-02-25 | sub | accepted
     @ai:claude-opus-4.6 2026-02-25: consolidate view descriptions, add raw, remove token count details
     approved: @ai:claude-opus-4.6 2026-02-25 "Cleaner view descriptions with raw view added"
 
-: @ai:claude-opus-4.6 | 2026-02-25 | ins | accepted
+[^sc-18.2]: @ai:claude-opus-4.6 | 2026-02-25 | ins | accepted
     @ai:claude-opus-4.6 2026-02-25: document new group cascade behavior
     approved: @ai:claude-opus-4.6 2026-02-25 "Documents new group cascade behavior"
 
-: @ai:claude-opus-4.6 | 2026-02-25 | group | accepted
+[^sc-18]: @ai:claude-opus-4.6 | 2026-02-25 | group | accepted
     @ai:claude-opus-4.6 2026-02-25: propose_batch
     approved: @ai:claude-opus-4.6 2026-02-25 "Concise view descriptions and group cascade documentation — addresses benchmark ergonomics findings"
 
-: @ai:claude-opus-4.6 | 2026-02-26 | sub | accepted
+[^sc-19]: @ai:claude-opus-4.6 | 2026-02-26 | sub | accepted
     @ai:claude-opus-4.6 2026-02-26: document include_guide parameter for multi-agent sessions
     approved: @ai:claude-opus-4.6 2026-02-26 "Documents include_guide for subagent guide re-delivery"
 
-: @ai:claude-opus-4.6 | 2026-02-26 | sub | accepted
+[^sc-20]: @ai:claude-opus-4.6 | 2026-02-26 | sub | accepted
     @ai:claude-opus-4.6 2026-02-26: add include_guide to options list
     approved: @ai:claude-opus-4.6 2026-02-26 "Adds include_guide to options list"
 
-: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
+[^sc-21.1]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "Update SKILL.md to reference affected_lines and per-change preview instead of deprecated updated_lines" (cascaded from sc-21)
 
-: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
+[^sc-21.2]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "Update SKILL.md to reference affected_lines and per-change preview instead of deprecated updated_lines" (cascaded from sc-21)
 
-: @ai:claude-opus-4.6 | 2026-02-27 | group | accepted
+[^sc-21]: @ai:claude-opus-4.6 | 2026-02-27 | group | accepted
     @ai:claude-opus-4.6 2026-02-27: propose_batch
     approved: @ai:claude-opus-4.6 2026-02-27 "Update SKILL.md to reference affected_lines and per-change preview instead of deprecated updated_lines"
+

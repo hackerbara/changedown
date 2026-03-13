@@ -30,6 +30,9 @@ export interface ChangeTracksConfig {
     auto_on_approve: boolean;
     auto_on_reject: boolean;
   };
+  review: {
+    reasonRequired: { human: boolean; agent: boolean };
+  };
   policy: {
     mode: PolicyMode;
     creation_tracking: CreationTracking;
@@ -73,6 +76,9 @@ export const DEFAULT_CONFIG: ChangeTracksConfig = {
   settlement: {
     auto_on_approve: true,
     auto_on_reject: true,
+  },
+  review: {
+    reasonRequired: { human: false, agent: true },
   },
   policy: {
     mode: 'safety-net',

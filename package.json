@@ -8,7 +8,11 @@
     "packages/cli",
     "packages/lsp-server",
     "packages/vscode-extension",
-    "packages/opencode-plugin"
+    "packages/opencode-plugin",
+    "packages/tests",
+    "packages/tests/vscode",
+    "packages/benchmarks",
+    "packages/cursor-preview"
   ],
   "scripts": {
     "build": "npm run build:core && npm run build:docx && npm run build:cli && npm run build:lsp && npm run build:ext && npm run build:plugin-opencode",
@@ -18,9 +22,17 @@
     "build:plugin": "cd changetracks-plugin/mcp-server && node esbuild.mjs && cd ../hooks-impl && node esbuild.mjs",
     "build:plugin-opencode": "cd packages/opencode-plugin && npm run build",
     "test": "npm test -w @changetracks/tests",
+    "test:all": "npm test -w @changetracks/tests && npm run test:cursor-preview",
+    "test:vitest": "npm run test:vitest -w @changetracks/tests",
+    "test:mocha": "npm run test:mocha -w @changetracks/tests",
+    "test:core": "npm run test:mocha -w @changetracks/tests",
+    "test:ext": "cd packages/vscode-extension && npm run test:features",
+    "test:cursor-preview": "cd packages/cursor-preview && npm test",
     "lint": "cd packages/core && npm run lint 2>/dev/null; cd ../../packages/vscode-extension && npm run lint",
     "build:cli": "cd packages/cli && npx tsc",
     "sc": "node packages/cli/dist/index.js",
+    "test:cucumber": "npm run test:features -w packages/tests",
+    "test:cucumber:dry": "cd packages/tests && npx cucumber-js --config features/cucumber.mjs --dry-run",
     "release:cli": "cd packages/cli && npm publish --access public",
     "release:vscode": "cd packages/vscode-extension && npx @vscode/vsce package --no-dependencies --allow-missing-repository",
     "release:all": "npm run release:cli && npm run release:vscode",
@@ -30,6 +42,12 @@
   },
   "dependencies": {
     "docx": "^9.5.1"
+  },
+  "overrides": {
+    "serialize-javascript": "7.0.4",
+    "mocha": {
+      "diff": "8.0.3"
+    }
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",

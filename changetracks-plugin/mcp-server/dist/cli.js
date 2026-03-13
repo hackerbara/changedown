@@ -3911,6 +3911,13 @@ var init_ansi = __esm({
   }
 });
 
+// ../../packages/core/dist-esm/renderers/formatters/html.js
+var init_html = __esm({
+  "../../packages/core/dist-esm/renderers/formatters/html.js"() {
+    "use strict";
+  }
+});
+
 // ../../packages/core/dist-esm/renderers/formatters/index.js
 var init_formatters = __esm({
   "../../packages/core/dist-esm/renderers/formatters/index.js"() {
@@ -3919,6 +3926,7 @@ var init_formatters = __esm({
     init_ansi();
     init_plain_text();
     init_ansi();
+    init_html();
   }
 });
 
@@ -4337,9 +4345,9 @@ var init_dist_esm = __esm({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/lib/constants.js
+// ../../node_modules/picomatch/lib/constants.js
 var require_constants = __commonJS({
-  "../../packages/cli/node_modules/picomatch/lib/constants.js"(exports, module) {
+  "../../node_modules/picomatch/lib/constants.js"(exports, module) {
     "use strict";
     var WIN_SLASH = "\\\\/";
     var WIN_NO_SLASH = `[^${WIN_SLASH}]`;
@@ -4536,9 +4544,9 @@ var require_constants = __commonJS({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/lib/utils.js
+// ../../node_modules/picomatch/lib/utils.js
 var require_utils = __commonJS({
-  "../../packages/cli/node_modules/picomatch/lib/utils.js"(exports) {
+  "../../node_modules/picomatch/lib/utils.js"(exports) {
     "use strict";
     var {
       REGEX_BACKSLASH,
@@ -4589,8 +4597,8 @@ var require_utils = __commonJS({
       }
       return output;
     };
-    exports.basename = (path12, { windows } = {}) => {
-      const segs = path12.split(windows ? /[\\/]/ : "/");
+    exports.basename = (path13, { windows } = {}) => {
+      const segs = path13.split(windows ? /[\\/]/ : "/");
       const last = segs[segs.length - 1];
       if (last === "") {
         return segs[segs.length - 2];
@@ -4600,9 +4608,9 @@ var require_utils = __commonJS({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/lib/scan.js
+// ../../node_modules/picomatch/lib/scan.js
 var require_scan = __commonJS({
-  "../../packages/cli/node_modules/picomatch/lib/scan.js"(exports, module) {
+  "../../node_modules/picomatch/lib/scan.js"(exports, module) {
     "use strict";
     var utils = require_utils();
     var {
@@ -4930,9 +4938,9 @@ var require_scan = __commonJS({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/lib/parse.js
+// ../../node_modules/picomatch/lib/parse.js
 var require_parse = __commonJS({
-  "../../packages/cli/node_modules/picomatch/lib/parse.js"(exports, module) {
+  "../../node_modules/picomatch/lib/parse.js"(exports, module) {
     "use strict";
     var constants = require_constants();
     var utils = require_utils();
@@ -5698,9 +5706,9 @@ var require_parse = __commonJS({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/lib/picomatch.js
+// ../../node_modules/picomatch/lib/picomatch.js
 var require_picomatch = __commonJS({
-  "../../packages/cli/node_modules/picomatch/lib/picomatch.js"(exports, module) {
+  "../../node_modules/picomatch/lib/picomatch.js"(exports, module) {
     "use strict";
     var scan = require_scan();
     var parse4 = require_parse();
@@ -5838,9 +5846,9 @@ var require_picomatch = __commonJS({
   }
 });
 
-// ../../packages/cli/node_modules/picomatch/index.js
+// ../../node_modules/picomatch/index.js
 var require_picomatch2 = __commonJS({
-  "../../packages/cli/node_modules/picomatch/index.js"(exports, module) {
+  "../../node_modules/picomatch/index.js"(exports, module) {
     "use strict";
     var pico = require_picomatch();
     var utils = require_utils();
@@ -5879,9 +5887,9 @@ var init_file_ops2 = __esm({
   }
 });
 
-// ../../node_modules/commander/lib/error.js
+// ../../packages/cli/node_modules/commander/lib/error.js
 var require_error = __commonJS({
-  "../../node_modules/commander/lib/error.js"(exports) {
+  "../../packages/cli/node_modules/commander/lib/error.js"(exports) {
     var CommanderError2 = class extends Error {
       /**
        * Constructs the CommanderError class
@@ -5914,9 +5922,9 @@ var require_error = __commonJS({
   }
 });
 
-// ../../node_modules/commander/lib/argument.js
+// ../../packages/cli/node_modules/commander/lib/argument.js
 var require_argument = __commonJS({
-  "../../node_modules/commander/lib/argument.js"(exports) {
+  "../../packages/cli/node_modules/commander/lib/argument.js"(exports) {
     var { InvalidArgumentError: InvalidArgumentError2 } = require_error();
     var Argument2 = class {
       /**
@@ -6041,9 +6049,9 @@ var require_argument = __commonJS({
   }
 });
 
-// ../../node_modules/commander/lib/help.js
+// ../../packages/cli/node_modules/commander/lib/help.js
 var require_help = __commonJS({
-  "../../node_modules/commander/lib/help.js"(exports) {
+  "../../packages/cli/node_modules/commander/lib/help.js"(exports) {
     var { humanReadableArgName } = require_argument();
     var Help2 = class {
       constructor() {
@@ -6610,9 +6618,9 @@ ${itemIndentStr}`);
   }
 });
 
-// ../../node_modules/commander/lib/option.js
+// ../../packages/cli/node_modules/commander/lib/option.js
 var require_option = __commonJS({
-  "../../node_modules/commander/lib/option.js"(exports) {
+  "../../packages/cli/node_modules/commander/lib/option.js"(exports) {
     var { InvalidArgumentError: InvalidArgumentError2 } = require_error();
     var Option2 = class {
       /**
@@ -6911,9 +6919,9 @@ var require_option = __commonJS({
   }
 });
 
-// ../../node_modules/commander/lib/suggestSimilar.js
+// ../../packages/cli/node_modules/commander/lib/suggestSimilar.js
 var require_suggestSimilar = __commonJS({
-  "../../node_modules/commander/lib/suggestSimilar.js"(exports) {
+  "../../packages/cli/node_modules/commander/lib/suggestSimilar.js"(exports) {
     var maxDistance = 3;
     function editDistance(a, b) {
       if (Math.abs(a.length - b.length) > maxDistance)
@@ -6991,13 +6999,13 @@ var require_suggestSimilar = __commonJS({
   }
 });
 
-// ../../node_modules/commander/lib/command.js
+// ../../packages/cli/node_modules/commander/lib/command.js
 var require_command = __commonJS({
-  "../../node_modules/commander/lib/command.js"(exports) {
+  "../../packages/cli/node_modules/commander/lib/command.js"(exports) {
     var EventEmitter = __require("node:events").EventEmitter;
     var childProcess = __require("node:child_process");
-    var path12 = __require("node:path");
-    var fs17 = __require("node:fs");
+    var path13 = __require("node:path");
+    var fs18 = __require("node:fs");
     var process2 = __require("node:process");
     var { Argument: Argument2, humanReadableArgName } = require_argument();
     var { CommanderError: CommanderError2 } = require_error();
@@ -7978,7 +7986,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} subcommandName
        */
       _checkForMissingExecutable(executableFile, executableDir, subcommandName) {
-        if (fs17.existsSync(executableFile)) return;
+        if (fs18.existsSync(executableFile)) return;
         const executableDirMessage = executableDir ? `searched for local subcommand relative to directory '${executableDir}'` : "no directory for search for local subcommand, use .executableDir() to supply a custom directory";
         const executableMissing = `'${executableFile}' does not exist
  - if '${subcommandName}' is not meant to be an executable command, remove description parameter from '.command()' and use '.description()' instead
@@ -7996,11 +8004,11 @@ Expecting one of '${allowedValues.join("', '")}'`);
         let launchWithNode = false;
         const sourceExt = [".js", ".ts", ".tsx", ".mjs", ".cjs"];
         function findFile(baseDir, baseName) {
-          const localBin = path12.resolve(baseDir, baseName);
-          if (fs17.existsSync(localBin)) return localBin;
-          if (sourceExt.includes(path12.extname(baseName))) return void 0;
+          const localBin = path13.resolve(baseDir, baseName);
+          if (fs18.existsSync(localBin)) return localBin;
+          if (sourceExt.includes(path13.extname(baseName))) return void 0;
           const foundExt = sourceExt.find(
-            (ext) => fs17.existsSync(`${localBin}${ext}`)
+            (ext) => fs18.existsSync(`${localBin}${ext}`)
           );
           if (foundExt) return `${localBin}${foundExt}`;
           return void 0;
@@ -8012,21 +8020,21 @@ Expecting one of '${allowedValues.join("', '")}'`);
         if (this._scriptPath) {
           let resolvedScriptPath;
           try {
-            resolvedScriptPath = fs17.realpathSync(this._scriptPath);
+            resolvedScriptPath = fs18.realpathSync(this._scriptPath);
           } catch {
             resolvedScriptPath = this._scriptPath;
           }
-          executableDir = path12.resolve(
-            path12.dirname(resolvedScriptPath),
+          executableDir = path13.resolve(
+            path13.dirname(resolvedScriptPath),
             executableDir
           );
         }
         if (executableDir) {
           let localFile = findFile(executableDir, executableFile);
           if (!localFile && !subcommand._executableFile && this._scriptPath) {
-            const legacyName = path12.basename(
+            const legacyName = path13.basename(
               this._scriptPath,
-              path12.extname(this._scriptPath)
+              path13.extname(this._scriptPath)
             );
             if (legacyName !== this._name) {
               localFile = findFile(
@@ -8037,7 +8045,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
           }
           executableFile = localFile || executableFile;
         }
-        launchWithNode = sourceExt.includes(path12.extname(executableFile));
+        launchWithNode = sourceExt.includes(path13.extname(executableFile));
         let proc;
         if (process2.platform !== "win32") {
           if (launchWithNode) {
@@ -8884,7 +8892,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @return {Command}
        */
       nameFromFilename(filename) {
-        this._name = path12.basename(filename, path12.extname(filename));
+        this._name = path13.basename(filename, path13.extname(filename));
         return this;
       }
       /**
@@ -8898,9 +8906,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
        * @param {string} [path]
        * @return {(string|null|Command)}
        */
-      executableDir(path13) {
-        if (path13 === void 0) return this._executableDir;
-        this._executableDir = path13;
+      executableDir(path14) {
+        if (path14 === void 0) return this._executableDir;
+        this._executableDir = path14;
         return this;
       }
       /**
@@ -9150,9 +9158,9 @@ Expecting one of '${allowedValues.join("', '")}'`);
   }
 });
 
-// ../../node_modules/commander/index.js
+// ../../packages/cli/node_modules/commander/index.js
 var require_commander = __commonJS({
-  "../../node_modules/commander/index.js"(exports) {
+  "../../packages/cli/node_modules/commander/index.js"(exports) {
     var { Argument: Argument2 } = require_argument();
     var { Command: Command2 } = require_command();
     var { CommanderError: CommanderError2, InvalidArgumentError: InvalidArgumentError2 } = require_error();
@@ -9937,6 +9945,8 @@ function parseConfigToml(raw) {
   const policy = parsed["policy"];
   const protocol = parsed["protocol"];
   const meta = parsed["meta"];
+  const review = parsed["review"];
+  const reasonRequired = review?.["reason_required"];
   return {
     tracking: {
       include: asStringArray(tracking?.["include"]) ?? DEFAULT_CONFIG.tracking.include,
@@ -9963,6 +9973,12 @@ function parseConfigToml(raw) {
     settlement: {
       auto_on_approve: typeof settlement?.["auto_on_approve"] === "boolean" ? settlement["auto_on_approve"] : DEFAULT_CONFIG.settlement.auto_on_approve,
       auto_on_reject: typeof settlement?.["auto_on_reject"] === "boolean" ? settlement["auto_on_reject"] : DEFAULT_CONFIG.settlement.auto_on_reject
+    },
+    review: {
+      reasonRequired: {
+        human: typeof reasonRequired?.["human"] === "boolean" ? reasonRequired["human"] : DEFAULT_CONFIG.review.reasonRequired.human,
+        agent: typeof reasonRequired?.["agent"] === "boolean" ? reasonRequired["agent"] : DEFAULT_CONFIG.review.reasonRequired.agent
+      }
     },
     policy: {
       mode: policy?.["mode"] === "strict" || policy?.["mode"] === "safety-net" || policy?.["mode"] === "permissive" ? policy["mode"] : derivePolicyMode(hooks?.["enforcement"]),
@@ -10064,6 +10080,9 @@ var DEFAULT_CONFIG = {
   settlement: {
     auto_on_approve: true,
     auto_on_reject: true
+  },
+  review: {
+    reasonRequired: { human: false, agent: true }
   },
   policy: {
     mode: "safety-net",
@@ -12675,7 +12694,13 @@ async function handleProposeChange(args, resolver, state) {
         }
       }
       const affStart = Math.max(1, matchLine - 2);
-      const affEnd = Math.min(modLines.length, matchLine + 5);
+      let affEnd = Math.min(modLines.length, matchLine + 5);
+      for (let i = modLines.length - 1; i >= affEnd; i--) {
+        if (/^\[\^ct-\d+(?:\.\d+)?\]:/.test(modLines[i])) {
+          affEnd = modLines.length;
+          break;
+        }
+      }
       affectedLines = computeAffectedLines(modifiedText, affStart, affEnd, {
         hashlineEnabled: config.hashline.enabled
       });
@@ -13098,6 +13123,29 @@ function errorResult3(message, code, details) {
 
 // ../../packages/cli/dist/engine/handlers/begin-change-group.js
 init_dist_esm();
+import * as fs9 from "node:fs/promises";
+import * as path7 from "node:path";
+async function scanProjectForMaxId(projectDir, config) {
+  let max = 0;
+  try {
+    const entries = await fs9.readdir(projectDir, { recursive: true });
+    for (const rawEntry of entries) {
+      const entry = typeof rawEntry === "string" ? rawEntry : String(rawEntry);
+      const fullPath = path7.join(projectDir, entry);
+      if (!isFileInScope(fullPath, config, projectDir))
+        continue;
+      try {
+        const content = await fs9.readFile(fullPath, "utf-8");
+        const fileMax = scanMaxCtId(content);
+        if (fileMax > max)
+          max = fileMax;
+      } catch {
+      }
+    }
+  } catch {
+  }
+  return max;
+}
 async function handleBeginChangeGroup(args, resolver, state) {
   try {
     const description = optionalStrArg(args, "description", "description");
@@ -13105,7 +13153,10 @@ async function handleBeginChangeGroup(args, resolver, state) {
     if (!description) {
       return errorResult('Missing required argument: "description"');
     }
-    const groupId = state.beginGroup(description, reasoning);
+    const projectDir = resolver.resolveDir();
+    const config = await resolver.lastConfig();
+    const maxId = await scanProjectForMaxId(projectDir, config);
+    const groupId = state.beginGroup(description, reasoning, maxId);
     return {
       content: [
         {
@@ -13122,8 +13173,8 @@ async function handleBeginChangeGroup(args, resolver, state) {
 
 // ../../packages/cli/dist/engine/handlers/end-change-group.js
 init_dist_esm();
-import * as fs9 from "node:fs/promises";
-import * as path7 from "node:path";
+import * as fs10 from "node:fs/promises";
+import * as path8 from "node:path";
 init_file_ops2();
 async function handleEndChangeGroup(args, resolver, state) {
   try {
@@ -13144,12 +13195,12 @@ async function handleEndChangeGroup(args, resolver, state) {
       const summaryLine = summary ? `
     summary: ${summary}` : "";
       const footnoteBlock = footnoteHeader + reasonLine + summaryLine;
-      const fileContent = await fs9.readFile(targetFile, "utf-8");
+      const fileContent = await fs10.readFile(targetFile, "utf-8");
       const modifiedText = appendFootnote(fileContent, footnoteBlock);
-      await fs9.writeFile(targetFile, modifiedText, "utf-8");
+      await fs10.writeFile(targetFile, modifiedText, "utf-8");
     }
     const filesList = groupInfo.files.length > 0 ? `Modified files:
-${groupInfo.files.map((f) => path7.relative(projectDir, f)).join("\n")}
+${groupInfo.files.map((f) => path8.relative(projectDir, f)).join("\n")}
 
 Share this list with the user so they know which file(s) to open or read.` : "";
     return {
@@ -13179,7 +13230,7 @@ init_dist_esm();
 init_dist_esm();
 
 // ../../packages/cli/dist/engine/handlers/respond-to-thread.js
-import * as fs10 from "node:fs/promises";
+import * as fs11 from "node:fs/promises";
 init_dist_esm();
 async function handleRespondToThread(args, resolver, _state) {
   try {
@@ -13207,7 +13258,7 @@ async function handleRespondToThread(args, resolver, _state) {
     }
     let fileContent;
     try {
-      fileContent = await fs10.readFile(filePath, "utf-8");
+      fileContent = await fs11.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult(`File not found or unreadable: ${msg}`);
@@ -13224,7 +13275,7 @@ async function handleRespondToThread(args, resolver, _state) {
     if (result.isError) {
       return errorResult(result.error);
     }
-    await fs10.writeFile(filePath, result.text, "utf-8");
+    await fs11.writeFile(filePath, result.text, "utf-8");
     return {
       content: [
         {
@@ -13244,13 +13295,13 @@ async function handleRespondToThread(args, resolver, _state) {
 
 // ../../packages/cli/dist/engine/handlers/list-open-threads.js
 init_dist_esm();
-import * as fs11 from "node:fs/promises";
-import * as path8 from "node:path";
+import * as fs12 from "node:fs/promises";
+import * as path9 from "node:path";
 var TRACKING_HEADER_TRACKED = "<!-- ctrcks.com/v1: tracked -->";
 var VALID_STATUSES = ["proposed", "accepted", "rejected"];
 async function hasTrackingHeader(filePath) {
   try {
-    const fd = await fs11.open(filePath, "r");
+    const fd = await fs12.open(filePath, "r");
     const buf = Buffer.alloc(400);
     const { bytesRead } = await fd.read(buf, 0, 400, 0);
     await fd.close();
@@ -13263,14 +13314,14 @@ async function hasTrackingHeader(filePath) {
 async function collectTrackedMdFiles(dirPath, config, projectDir) {
   const out = [];
   try {
-    const entries = await fs11.readdir(dirPath, { recursive: true });
+    const entries = await fs12.readdir(dirPath, { recursive: true });
     for (const raw of entries) {
       const entry = typeof raw === "string" ? raw : String(raw);
-      const full = path8.join(dirPath, entry);
+      const full = path9.join(dirPath, entry);
       if (!entry.endsWith(".md"))
         continue;
       try {
-        const stat3 = await fs11.stat(full);
+        const stat3 = await fs12.stat(full);
         if (!stat3.isFile())
           continue;
       } catch {
@@ -13298,7 +13349,7 @@ async function handleListOpenThreads(args, resolver, _state) {
     const { config, projectDir } = await resolver.forFile(resolvedPath);
     let filesToScan = [];
     try {
-      const stat3 = await fs11.stat(resolvedPath);
+      const stat3 = await fs12.stat(resolvedPath);
       if (stat3.isFile()) {
         if (!isFileInScope(resolvedPath, config, projectDir)) {
           return errorResult(`File is not in scope for tracking: "${resolvedPath}". Check .changetracks/config.toml include/exclude patterns.`);
@@ -13321,7 +13372,7 @@ async function handleListOpenThreads(args, resolver, _state) {
     for (const fp of filesToScan) {
       let content;
       try {
-        content = await fs11.readFile(fp, "utf-8");
+        content = await fs12.readFile(fp, "utf-8");
       } catch {
         continue;
       }
@@ -13397,8 +13448,8 @@ async function handleListOpenThreads(args, resolver, _state) {
 }
 
 // ../../packages/cli/dist/engine/handlers/raw-edit.js
-import * as fs12 from "node:fs/promises";
-import * as path9 from "node:path";
+import * as fs13 from "node:fs/promises";
+import * as path10 from "node:path";
 init_file_ops2();
 var MARKUP_OPENERS = [/\{\+\+/g, /\{\-\-/g, /\{\~\~/g];
 var FOOTNOTE_REF = /\[\^ct-\d+(?:\.\d+)?\]/g;
@@ -13444,18 +13495,18 @@ async function handleRawEdit(args, resolver) {
     }
     let fileContent;
     try {
-      fileContent = await fs12.readFile(filePath, "utf-8");
+      fileContent = await fs13.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult(`File not found or unreadable: ${msg}`);
     }
     const modifiedText = replaceUnique(fileContent, oldText, newText);
-    await fs12.writeFile(filePath, modifiedText, "utf-8");
+    await fs13.writeFile(filePath, modifiedText, "utf-8");
     console.error(`[changetracks] raw_edit bypassed tracking: ${reason}`);
     const { annotations, footnotes } = countMarkupInText(oldText);
     const baseWarning = "This edit is untracked.";
     const removalWarning = annotations > 0 || footnotes > 0 ? ` WARNING: This edit removes ${annotations} CriticMarkup annotation(s) and ${footnotes} footnote(s). These represent the file's deliberation history.` : "";
-    const displayPath = path9.relative(projectDir, filePath);
+    const displayPath = path10.relative(projectDir, filePath);
     return {
       content: [
         {
@@ -13476,8 +13527,8 @@ async function handleRawEdit(args, resolver) {
 }
 
 // ../../packages/cli/dist/engine/handlers/get-tracking-status.js
-import * as fs13 from "node:fs/promises";
-import * as path10 from "node:path";
+import * as fs14 from "node:fs/promises";
+import * as path11 from "node:path";
 init_dist_esm();
 var import_picomatch2 = __toESM(require_picomatch2(), 1);
 async function handleGetTrackingStatus(args, resolver, state) {
@@ -13488,8 +13539,8 @@ async function handleGetTrackingStatus(args, resolver, state) {
       const filePath = resolver.resolveFilePath(file);
       const { config: config2, projectDir } = await resolver.forFile(filePath);
       const status = await resolveTrackingStatus(filePath, config2, projectDir);
-      let relative9 = path10.relative(projectDir, filePath);
-      relative9 = relative9.split(path10.sep).join("/");
+      let relative9 = path11.relative(projectDir, filePath);
+      relative9 = relative9.split(path11.sep).join("/");
       const matchesHooksExclude = (0, import_picomatch2.default)(config2.hooks.exclude);
       const hookExcluded = matchesHooksExclude(relative9);
       const out = {
@@ -13501,7 +13552,7 @@ async function handleGetTrackingStatus(args, resolver, state) {
       if (isTracked) {
         let content;
         try {
-          content = await fs13.readFile(filePath, "utf-8");
+          content = await fs14.readFile(filePath, "utf-8");
         } catch {
           content = "";
         }
@@ -13510,7 +13561,7 @@ async function handleGetTrackingStatus(args, resolver, state) {
         if (settleAccepted && beforeSettle > 0) {
           const { settledContent, settledIds } = settleAcceptedChanges(content);
           if (settledIds.length > 0) {
-            await fs13.writeFile(filePath, settledContent, "utf-8");
+            await fs14.writeFile(filePath, settledContent, "utf-8");
             out.settled = true;
             out.settled_ids = settledIds;
             await rerecordState(state, filePath, settledContent, config2);
@@ -13553,7 +13604,7 @@ async function handleGetTrackingStatus(args, resolver, state) {
 
 // ../../packages/cli/dist/engine/handlers/get-change.js
 init_dist_esm();
-import * as fs14 from "node:fs/promises";
+import * as fs15 from "node:fs/promises";
 init_dist_esm();
 function buildGroupInfo(doc, lines, parentId) {
   const parentBlock = findFootnoteBlock(lines, parentId);
@@ -13591,7 +13642,7 @@ async function handleGetChange(args, resolver) {
     const filePath = resolver.resolveFilePath(fileArg);
     const { config, projectDir } = await resolver.forFile(filePath);
     try {
-      const stat3 = await fs14.stat(filePath);
+      const stat3 = await fs15.stat(filePath);
       if (!stat3.isFile()) {
         return errorResult4(`Not a file: "${filePath}"`);
       }
@@ -13603,7 +13654,7 @@ async function handleGetChange(args, resolver) {
     }
     let fileContent;
     try {
-      fileContent = await fs14.readFile(filePath, "utf-8");
+      fileContent = await fs15.readFile(filePath, "utf-8");
     } catch {
       return errorResult4(`Could not read file: "${filePath}"`);
     }
@@ -13724,12 +13775,12 @@ function errorResult4(message, code, details) {
 
 // ../../packages/cli/dist/engine/handlers/find-tracked-files.js
 var import_picomatch3 = __toESM(require_picomatch2(), 1);
-import * as fs15 from "node:fs/promises";
-import * as path11 from "node:path";
+import * as fs16 from "node:fs/promises";
+import * as path12 from "node:path";
 async function handleFindTrackedFiles(args, resolver, _state) {
   const dirArg = args.path;
-  const searchDir = dirArg ? path11.resolve(dirArg) : resolver.resolveDir();
-  const syntheticFile = path11.join(searchDir, "__probe__.md");
+  const searchDir = dirArg ? path12.resolve(dirArg) : resolver.resolveDir();
+  const syntheticFile = path12.join(searchDir, "__probe__.md");
   const { config, projectDir } = await resolver.forFile(syntheticFile);
   const matchesInclude = (0, import_picomatch3.default)(config.tracking.include);
   const matchesExclude = (0, import_picomatch3.default)(config.tracking.exclude);
@@ -13743,14 +13794,14 @@ async function handleFindTrackedFiles(args, resolver, _state) {
 async function walkDir(dir, projectDir, matchesInclude, matchesExclude, results) {
   let entries;
   try {
-    entries = await fs15.readdir(dir, { withFileTypes: true });
+    entries = await fs16.readdir(dir, { withFileTypes: true });
   } catch {
     return;
   }
   for (const entry of entries) {
-    const fullPath = path11.join(dir, entry.name);
-    let relative9 = path11.relative(projectDir, fullPath);
-    relative9 = relative9.split(path11.sep).join("/");
+    const fullPath = path12.join(dir, entry.name);
+    let relative9 = path12.relative(projectDir, fullPath);
+    relative9 = relative9.split(path12.sep).join("/");
     if (entry.isDirectory()) {
       if (matchesExclude(relative9) || matchesExclude(relative9 + "/")) {
         continue;
@@ -13767,7 +13818,7 @@ async function walkDir(dir, projectDir, matchesInclude, matchesExclude, results)
   }
 }
 
-// ../../node_modules/commander/esm.mjs
+// ../../packages/cli/node_modules/commander/esm.mjs
 var import_index2 = __toESM(require_commander(), 1);
 var {
   program,
@@ -14180,7 +14231,7 @@ async function executeCommand(def, subArgs, resolver, state) {
 }
 
 // ../../packages/cli/dist/cli-batch-handler.js
-import * as fs16 from "node:fs/promises";
+import * as fs17 from "node:fs/promises";
 async function handleCliBatch(args, resolver, state) {
   if (args.changes !== void 0) {
     return handleProposeBatch(args, resolver, state);
@@ -14189,7 +14240,7 @@ async function handleCliBatch(args, resolver, state) {
   if (fromPath) {
     let fileContent;
     try {
-      fileContent = await fs16.readFile(fromPath, "utf-8");
+      fileContent = await fs17.readFile(fromPath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return {

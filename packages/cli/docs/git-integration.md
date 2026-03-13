@@ -1,3 +1,4 @@
+<!-- ctrcks.com/v1: tracked -->
 # Git Integration
 
 ChangeTracks's `sc diff` command renders CriticMarkup with ANSI colors in the terminal. You can integrate it with git as a custom diff driver so `git diff` and tools like lazygit automatically show colored CriticMarkup.
@@ -32,7 +33,7 @@ This tells git to use the `changetracks` diff driver for all markdown files.
 
 ```bash
 # Make a change to a tracked markdown file with CriticMarkup
-echo 'Hello world.' > test.md
+echo 'Hello {++world++}.' > test.md
 git diff test.md
 # Should show colored output with "world" in green
 ```
@@ -77,3 +78,7 @@ Or add an alias:
 ```bash
 alias sc="node /path/to/changetracks/packages/cli/dist/index.js"
 ```
+
+
+[^ct-1]: ai:claude-opus-4.6 | 2026-02-26 | creation | proposed
+    ai:claude-opus-4.6 2026-02-26: File created

@@ -1,0 +1,544 @@
+<h2>Yjs Integration: Friction Point Analysis</h2>
+<p class="subtitle">Tracing CriticMarkup through Proof's actual code path, testing each junction</p>
+
+<style>
+  .test-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 20px 0;
+  }
+  .test-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 100px 1fr;
+    gap: 0;
+    background: #0d1117;
+    border-radius: 6px;
+    overflow: hidden;
+    min-height: 72px;
+  }
+  .test-row.header {
+    background: transparent;
+    min-height: auto;
+    font-size: 11px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 8px 0;
+  }
+  .test-row.header > div { padding: 4px 12px; }
+  .test-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #6b7280;
+    border-right: 1px solid #21262d;
+  }
+  .test-what {
+    padding: 14px 16px;
+    border-right: 1px solid #21262d;
+  }
+  .test-what h4 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    color: #e6edf3;
+    font-weight: 600;
+  }
+  .test-what p {
+    margin: 0;
+    font-size: 11px;
+    color: #8b949e;
+    line-height: 1.5;
+  }
+  .test-what code {
+    background: rgba(110,118,129,0.15);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 11px;
+  }
+  .test-verdict {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    border-right: 1px solid #21262d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .v-pass { background: rgba(34,197,94,0.06); color: #4ade80; }
+  .v-fail { background: rgba(239,68,68,0.06); color: #f87171; }
+  .v-work { background: rgba(251,191,36,0.06); color: #fbbf24; }
+  .v-na { background: rgba(107,114,128,0.06); color: #6b7280; }
+  .test-detail {
+    padding: 14px 16px;
+    font-size: 12px;
+    color: #c9d1d9;
+    line-height: 1.5;
+  }
+  .test-detail strong { color: #e6edf3; }
+
+  .pipeline {
+    background: #0d1117;
+    border-radius: 12px;
+    padding: 28px 24px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .pipe-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 16px;
+  }
+  .pipe-row:last-child { margin-bottom: 0; }
+  .pipe-label {
+    width: 90px;
+    min-width: 90px;
+    font-size: 10px;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: right;
+    padding-right: 12px;
+  }
+  .pipe-node {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .pipe-arrow {
+    padding: 0 6px;
+    color: #4b5563;
+    font-size: 14px;
+  }
+  .pipe-ok { background: rgba(34,197,94,0.08); border-color: rgba(34,197,94,0.25); color: #86efac; }
+  .pipe-break { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); color: #fca5a5; }
+  .pipe-new { background: rgba(251,191,36,0.08); border-color: rgba(251,191,36,0.25); color: #fde68a; }
+  .pipe-proof { background: rgba(139,92,246,0.08); border-color: rgba(139,92,246,0.25); color: #c4b5fd; }
+
+  .breakpoint {
+    background: #1a0a0a;
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+  .breakpoint h4 {
+    color: #f87171;
+    margin: 0 0 8px;
+    font-size: 14px;
+  }
+  .breakpoint p {
+    color: #fca5a5;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .breakpoint code {
+    background: rgba(239,68,68,0.15);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+
+  .solution-box {
+    background: #0a1a0a;
+    border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+  }
+  .solution-box h4 {
+    color: #4ade80;
+    margin: 0 0 8px;
+    font-size: 14px;
+  }
+  .solution-box p {
+    color: #86efac;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .solution-box code {
+    background: rgba(34,197,94,0.15);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+
+  .code-trace {
+    background: #161b22;
+    border-radius: 8px;
+    padding: 16px 20px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    color: #c9d1d9;
+    margin: 12px 0;
+    overflow-x: auto;
+  }
+  .code-trace .comment { color: #6b7280; }
+  .code-trace .fn { color: #d2a8ff; }
+  .code-trace .str { color: #a5d6ff; }
+  .code-trace .key { color: #ff7b72; }
+  .code-trace .ct { color: #4ade80; }
+  .code-trace .proof { color: #a78bfa; }
+  .code-trace .warn { color: #fbbf24; }
+  .code-trace .err { color: #f87171; }
+
+  .type-map {
+    display: grid;
+    grid-template-columns: 1fr 40px 1fr 40px 1fr;
+    gap: 4px 0;
+    margin: 16px 0;
+    align-items: center;
+  }
+  .type-map .tm-cell {
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'SF Mono', monospace;
+    text-align: center;
+  }
+  .type-map .tm-arrow {
+    text-align: center;
+    color: #4b5563;
+    font-size: 14px;
+  }
+  .type-map .tm-ct { background: rgba(34,197,94,0.1); color: #86efac; }
+  .type-map .tm-ast { background: rgba(59,130,246,0.1); color: #93c5fd; }
+  .type-map .tm-pm { background: rgba(139,92,246,0.1); color: #c4b5fd; }
+  .type-map .tm-head {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    padding: 4px;
+    text-align: center;
+  }
+</style>
+
+<!-- SECTION 1: The actual data path -->
+<div class="section">
+  <h3>Exact Data Path: CriticMarkup Through Proof's Yjs Pipeline</h3>
+
+  <div class="pipeline">
+    <div class="pipe-row">
+      <div class="pipe-label">Input</div>
+      <div class="pipe-node pipe-ok"><code>{~~REST~>GraphQL~~}[^ct-4]</code></div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-new">@changetracks/remark</div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-ok">MDAST: <code>criticChange</code> node</div>
+    </div>
+    <div class="pipe-row">
+      <div class="pipe-label">Remark</div>
+      <div class="pipe-node pipe-ok">MDAST <code>criticChange</code></div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-break">remarkProofMarks()</div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-proof">MDAST <code>proofMark</code></div>
+    </div>
+    <div class="pipe-row">
+      <div class="pipe-label">ProseMirror</div>
+      <div class="pipe-node pipe-proof">MDAST <code>proofMark</code></div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-proof">parseMarkdown runner</div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-proof">PM mark: <code>proofSuggestion</code></div>
+    </div>
+    <div class="pipe-row">
+      <div class="pipe-label">Yjs Write</div>
+      <div class="pipe-node pipe-proof">PM doc</div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-proof">ydoc.transact()</div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-proof" style="font-size:11px;">Y.XmlFragment + Y.Text + Y.Map</div>
+    </div>
+    <div class="pipe-row">
+      <div class="pipe-label">Yjs Read</div>
+      <div class="pipe-node pipe-proof" style="font-size:11px;">Y.XmlFragment + Y.Text + Y.Map</div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-proof">serializer</div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-break">proofMarkHandler()</div>
+    </div>
+    <div class="pipe-row">
+      <div class="pipe-label">Output</div>
+      <div class="pipe-node pipe-break"><code>&lt;span data-proof="suggestion"&gt;</code></div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-new">@changetracks/remark (reverse)</div>
+      <div class="pipe-arrow">&rarr;</div>
+      <div class="pipe-node pipe-ok"><code>{~~REST~>GraphQL~~}[^ct-4]</code></div>
+    </div>
+  </div>
+
+  <div class="breakpoint">
+    <h4>Breakpoint #1: remarkProofMarks() doesn't recognize CriticMarkup</h4>
+    <p>Proof's remark plugin only matches <code>&lt;span data-proof="..."&gt;</code> HTML. CriticMarkup delimiters like <code>{++text++}</code> pass through as literal text nodes. Without a bridge plugin, CriticMarkup becomes dead characters in the ProseMirror tree.</p>
+  </div>
+
+  <div class="breakpoint">
+    <h4>Breakpoint #2: proofMarkHandler() serializes to HTML spans, not CriticMarkup</h4>
+    <p>Even if we get CriticMarkup INTO Proof as <code>proofSuggestion</code> marks, when Proof serializes back to markdown it outputs <code>&lt;span data-proof="suggestion"&gt;</code> &mdash; not CriticMarkup syntax. The roundtrip destroys our format.</p>
+  </div>
+
+  <div class="solution-box">
+    <h4>Solution: Two-way remark transform (@changetracks/remark)</h4>
+    <p><strong>On parse:</strong> Runs BEFORE <code>remarkProofMarks()</code>. Finds CriticMarkup patterns in text nodes, converts to <code>proofMark</code> MDAST nodes that Proof's pipeline already understands.<br>
+    <strong>On serialize:</strong> Runs AFTER <code>proofMarkHandler()</code>. Intercepts <code>proofMark</code> nodes and emits CriticMarkup syntax instead of HTML spans.<br>
+    <strong>Net effect:</strong> CriticMarkup flows through Proof's existing mark infrastructure without Proof needing any code changes.</p>
+  </div>
+</div>
+
+<!-- SECTION 2: Type mapping precision -->
+<div class="section">
+  <h3>Type Mapping: Does Every CriticMarkup Type Have a Clean Proof Equivalent?</h3>
+
+  <div class="type-map">
+    <div class="tm-head">CriticMarkup</div>
+    <div></div>
+    <div class="tm-head">MDAST Bridge</div>
+    <div></div>
+    <div class="tm-head">ProseMirror Mark</div>
+
+    <div class="tm-cell tm-ct">{++text++}</div>
+    <div class="tm-arrow">&rarr;</div>
+    <div class="tm-cell tm-ast">proofMark(proof:'suggestion', kind:'insert')</div>
+    <div class="tm-arrow">&rarr;</div>
+    <div class="tm-cell tm-pm">proofSuggestion(kind:'insert')</div>
+
+    <div class="tm-cell tm-ct">{--text--}</div>
+    <div class="tm-arrow">&rarr;</div>
+    <div class="tm-cell tm-ast">proofMark(proof:'suggestion', kind:'delete')</div>
+    <div class="tm-arrow">&rarr;</div>
+    <div class="tm-cell tm-pm">proofSuggestion(kind:'delete')</div>
+
+    <div class="tm-cell tm-ct">{~~old~>new~~}</div>
+    <div class="tm-arrow">&rarr;</div>
+    <div class="tm-cell tm-ast">proofMark(proof:'suggestion', kind:'replace')</div>
+    <div class="tm-arrow">&rarr;</div>
+    <div class="tm-cell tm-pm">proofSuggestion(kind:'replace')</div>
+
+    <div class="tm-cell tm-ct">{==text==}</div>
+    <div class="tm-arrow">&rarr;</div>
+    <div class="tm-cell tm-ast" style="background:rgba(251,191,36,0.1); color:#fde68a;">No clean equivalent</div>
+    <div class="tm-arrow">&rarr;</div>
+    <div class="tm-cell tm-pm" style="background:rgba(251,191,36,0.1); color:#fde68a;">proofFlagged? Custom?</div>
+
+    <div class="tm-cell tm-ct">{>>comment<<}</div>
+    <div class="tm-arrow">&rarr;</div>
+    <div class="tm-cell tm-ast">proofMark(proof:'comment')</div>
+    <div class="tm-arrow">&rarr;</div>
+    <div class="tm-cell tm-pm">proofComment</div>
+  </div>
+
+  <div class="breakpoint">
+    <h4>Breakpoint #3: Highlight ({==text==}) has no clean Proof equivalent</h4>
+    <p>Proof has <code>proofFlagged</code> (human review marker) and <code>proofApproved</code>, but neither maps to "highlighted for attention." Options: (a) map to <code>proofFlagged</code> with a custom attr, (b) extend Proof's mark schema, (c) accept lossy mapping. This is a semantic gap, not a technical one.</p>
+  </div>
+
+  <div class="solution-box">
+    <h4>Verdict: 4/5 types map cleanly. Highlight is a minor gap.</h4>
+    <p>Insertion, deletion, substitution, and comment have direct 1:1 equivalents. Highlight can map to <code>proofFlagged</code> with a <code>source: 'criticmarkup'</code> attribute to distinguish. No schema changes required in Proof &mdash; <code>proofFlagged</code> already supports arbitrary <code>data</code> attrs.</p>
+  </div>
+</div>
+
+<!-- SECTION 3: The Triple-Write Test -->
+<div class="section">
+  <h3>The Triple-Write Test: ydoc.transact() Atomicity</h3>
+  <p style="color: #8b949e; font-size: 13px; margin-bottom: 16px;">
+    Proof's canonical mutation updates three Yjs shared types atomically. Does CriticMarkup survive all three?
+  </p>
+
+  <div class="test-grid">
+    <div class="test-row header">
+      <div></div>
+      <div>Yjs Shared Type</div>
+      <div>Verdict</div>
+      <div>Analysis</div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">1</div>
+      <div class="test-what">
+        <h4>Y.XmlFragment ('prosemirror')</h4>
+        <p>ProseMirror document tree. Written via <code>replaceYXmlFragment()</code> which calls <code>prosemirrorToYXmlFragment(pmDoc, fragment)</code>.</p>
+      </div>
+      <div class="test-verdict v-pass">PASS</div>
+      <div class="test-detail">
+        If the remark plugin converts CriticMarkup &rarr; <code>proofMark</code> MDAST nodes, Milkdown's schema runner converts them to ProseMirror <code>proofSuggestion</code> marks. <strong>y-prosemirror handles marks natively</strong> &mdash; they serialize to Y.XmlFragment as attributes on Y.XmlText elements. No special handling needed.
+      </div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">2</div>
+      <div class="test-what">
+        <h4>Y.Text ('markdown')</h4>
+        <p>Raw markdown string. Written via <code>applyYTextDiff()</code> which finds longest common prefix/suffix and does delete+insert.</p>
+      </div>
+      <div class="test-verdict v-work">DEPENDS</div>
+      <div class="test-detail">
+        <strong>Question:</strong> What gets written to Y.Text? If the remark serializer converts <code>proofMark</code> back to CriticMarkup (via our plugin), Y.Text contains CriticMarkup. If it uses Proof's default <code>proofMarkHandler()</code>, Y.Text contains <code>&lt;span data-proof&gt;</code> HTML. <strong>This is where the roundtrip format is decided.</strong>
+      </div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">3</div>
+      <div class="test-what">
+        <h4>Y.Map ('marks')</h4>
+        <p>Metadata sidecar. Written via <code>applyMarksMapDiff()</code> which does key-level diffing of mark objects.</p>
+      </div>
+      <div class="test-verdict v-work">NEEDS BRIDGE</div>
+      <div class="test-detail">
+        <strong>This is where CT footnote metadata goes.</strong> Proof's marks have: <code>id, kind, by, at, quote, data</code>. CT footnotes have: <code>author, date, status, approvals[], discussion[], revisions[]</code>. The bridge must serialize CT metadata into Proof's <code>data</code> field. Proof's mark schema allows arbitrary <code>data</code> payloads, so this is mechanically possible.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4: Edge Case Stress Tests -->
+<div class="section">
+  <h3>Edge Case Stress Tests</h3>
+
+  <div class="test-grid">
+    <div class="test-row header">
+      <div></div>
+      <div>Scenario</div>
+      <div>Verdict</div>
+      <div>Analysis</div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">A</div>
+      <div class="test-what">
+        <h4>Block boundary crossing</h4>
+        <p><code>{++text\n\nMore text++}</code> &mdash; insertion spans two paragraphs</p>
+      </div>
+      <div class="test-verdict v-fail">BREAKS</div>
+      <div class="test-detail">
+        <strong>ProseMirror marks cannot span block nodes.</strong> A mark on a paragraph cannot extend into the next paragraph. Proof's <code>proofSuggestion</code> is an inline mark (<code>spanning: true</code> but only within a block). Remark would split this across two paragraph nodes. The remark plugin must either reject cross-block CriticMarkup or split into per-block segments with a shared group ID.
+      </div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">B</div>
+      <div class="test-what">
+        <h4>Substitution content storage</h4>
+        <p><code>{~~old~>new~~}</code> &mdash; where does "old" text live in ProseMirror?</p>
+      </div>
+      <div class="test-verdict v-pass">PASS</div>
+      <div class="test-detail">
+        Proof's <code>proofSuggestion(kind:'replace')</code> stores the replacement content in the mark's <code>content</code> attribute, while the original text remains in the document. <strong>This matches CriticMarkup's model exactly</strong> &mdash; the "old" text is the marked content, "new" is in the mark attr. Bidirectional mapping is clean.
+      </div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">C</div>
+      <div class="test-what">
+        <h4>Concurrent CRDT merge with pending CriticMarkup</h4>
+        <p>Two Yjs clients: one inserts CriticMarkup-derived marks, another edits nearby text</p>
+      </div>
+      <div class="test-verdict v-pass">PASS</div>
+      <div class="test-detail">
+        Once CriticMarkup is converted to <code>proofSuggestion</code> marks, it's just a ProseMirror mark in Yjs. <strong>y-prosemirror handles mark merging natively</strong> via Y.XmlText attributes. The CRDT merge is format-agnostic &mdash; it doesn't know or care that the mark originated from CriticMarkup.
+      </div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">D</div>
+      <div class="test-what">
+        <h4>Footnote reference survival</h4>
+        <p><code>[^ct-4]</code> in markdown &mdash; does remark-footnotes consume it?</p>
+      </div>
+      <div class="test-verdict v-work">ORDERING</div>
+      <div class="test-detail">
+        If <code>remark-footnotes</code> runs before our plugin, it consumes <code>[^ct-4]</code> as a standard footnote and removes it from the AST. <strong>Our remark plugin must run first</strong> to capture CT footnote refs and convert them to mark metadata before <code>remark-footnotes</code> sees them. Plugin ordering in unified is explicit via <code>.use()</code> chain position.
+      </div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">E</div>
+      <div class="test-what">
+        <h4>suggestions plugin double-wrapping</h4>
+        <p>CT-derived marks arrive via Yjs sync &mdash; does the plugin re-wrap them?</p>
+      </div>
+      <div class="test-verdict v-pass">PASS</div>
+      <div class="test-detail">
+        The suggestions plugin explicitly checks <code>tr.getMeta('y-sync$')</code> and <strong>passes through unchanged</strong>. Remote Yjs changes (including our CT-derived marks) skip the interception logic entirely. No double-wrapping risk.
+      </div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">F</div>
+      <div class="test-what">
+        <h4>HTML fallback cascade</h4>
+        <p><code>parseMarkdownWithHtmlFallback()</code> strips HTML on parse failure &mdash; affects CriticMarkup?</p>
+      </div>
+      <div class="test-verdict v-pass">PASS</div>
+      <div class="test-detail">
+        The fallback strips <code>&lt;span&gt;</code> and <code>&lt;code&gt;</code> HTML tags. CriticMarkup uses <code>{++</code>/<code>{--</code>/<code>{~~</code> delimiters, <strong>not HTML</strong>. The fallback cascade won't touch them. However, if our remark plugin runs first and converts CM to <code>proofMark</code> nodes, the fallback is never needed for our content.
+      </div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">G</div>
+      <div class="test-what">
+        <h4>Headless server parse</h4>
+        <p><code>milkdown-headless.ts</code> creates server-side editor &mdash; does it load our plugin?</p>
+      </div>
+      <div class="test-verdict v-work">CONFIG</div>
+      <div class="test-detail">
+        The headless parser builds its own unified pipeline: <code>remarkParse + remarkGfm + remarkProofMarks</code>. <strong>Our remark plugin must be injected here too</strong> &mdash; it's not automatic. The headless builder would need <code>.use(remarkCriticMarkup)</code> added before <code>.use(remarkProofMarks)</code>. This is a configuration change, not architectural.
+      </div>
+    </div>
+
+    <div class="test-row">
+      <div class="test-num">H</div>
+      <div class="test-what">
+        <h4>CT metadata richness vs Proof mark attrs</h4>
+        <p>Footnote: threaded discussion (depth N), amendment history (r1..rN), approval chains, resolution</p>
+      </div>
+      <div class="test-verdict v-work">LOSSY?</div>
+      <div class="test-detail">
+        Proof marks have <code>data: MarkData</code> (arbitrary JSON). <strong>Structurally it fits.</strong> But Proof's UI won't render CT's threaded discussions, amendment chains, or resolution markers &mdash; it only understands its own mark kinds. The metadata roundtrips through <code>Y.Map</code> intact but is <strong>opaque to Proof's editor</strong>. It survives for file export but is invisible during editing.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 5: Scorecard -->
+<div class="section">
+  <h3>Integration Scorecard</h3>
+  <div style="background:#0d1117; border-radius:12px; padding:24px; margin:16px 0;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap:16px; text-align:center;">
+      <div>
+        <div style="font-size:32px; font-weight:700; color:#4ade80;">5</div>
+        <div style="font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Pass</div>
+      </div>
+      <div>
+        <div style="font-size:32px; font-weight:700; color:#fbbf24;">4</div>
+        <div style="font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Needs Work</div>
+      </div>
+      <div>
+        <div style="font-size:32px; font-weight:700; color:#f87171;">1</div>
+        <div style="font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Breaks</div>
+      </div>
+      <div>
+        <div style="font-size:32px; font-weight:700; color:#60a5fa;">2</div>
+        <div style="font-size:11px; color:#6b7280; text-transform:uppercase; letter-spacing:0.5px;">Key Decisions</div>
+      </div>
+    </div>
+    <div style="margin-top:20px; padding-top:16px; border-top:1px solid #21262d;">
+      <div style="font-size:13px; color:#c9d1d9; line-height:1.7;">
+        <strong style="color:#f87171;">1 blocker:</strong> Cross-block CriticMarkup cannot map to ProseMirror inline marks. Must enforce single-block scope or split with group IDs.<br>
+        <strong style="color:#fbbf24;">2 key decisions:</strong> (1) What format lives in Y.Text &mdash; CriticMarkup or HTML spans? (2) Is CT metadata opaque to Proof's UI or do we extend their rendering?
+      </div>
+    </div>
+  </div>
+</div>

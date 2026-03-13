@@ -33,7 +33,8 @@
   "dependencies": {
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.11",
-    "@changetracks/core": "file:../core"
+    "@changetracks/core": "file:../core",
+    "changetracks": "file:../cli"
   },
   "devDependencies": {
     "@types/node": "20.2.5",

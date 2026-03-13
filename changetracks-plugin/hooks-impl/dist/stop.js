@@ -727,6 +727,8 @@ function parseConfigToml(raw) {
   const policy = parsed["policy"];
   const protocol = parsed["protocol"];
   const meta = parsed["meta"];
+  const review = parsed["review"];
+  const reasonRequired = review?.["reason_required"];
   return {
     tracking: {
       include: asStringArray(tracking?.["include"]) ?? DEFAULT_CONFIG.tracking.include,
@@ -753,6 +755,12 @@ function parseConfigToml(raw) {
     settlement: {
       auto_on_approve: typeof settlement?.["auto_on_approve"] === "boolean" ? settlement["auto_on_approve"] : DEFAULT_CONFIG.settlement.auto_on_approve,
       auto_on_reject: typeof settlement?.["auto_on_reject"] === "boolean" ? settlement["auto_on_reject"] : DEFAULT_CONFIG.settlement.auto_on_reject
+    },
+    review: {
+      reasonRequired: {
+        human: typeof reasonRequired?.["human"] === "boolean" ? reasonRequired["human"] : DEFAULT_CONFIG.review.reasonRequired.human,
+        agent: typeof reasonRequired?.["agent"] === "boolean" ? reasonRequired["agent"] : DEFAULT_CONFIG.review.reasonRequired.agent
+      }
     },
     policy: {
       mode: policy?.["mode"] === "strict" || policy?.["mode"] === "safety-net" || policy?.["mode"] === "permissive" ? policy["mode"] : derivePolicyMode(hooks?.["enforcement"]),
@@ -836,6 +844,9 @@ var DEFAULT_CONFIG = {
   settlement: {
     auto_on_approve: true,
     auto_on_reject: true
+  },
+  review: {
+    reasonRequired: { human: false, agent: true }
   },
   policy: {
     mode: "safety-net",

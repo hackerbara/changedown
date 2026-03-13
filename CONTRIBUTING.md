@@ -1,3 +1,4 @@
+<!-- ctrcks.com/v1: tracked -->
 # Contributing to ChangeTracks
 
 ## Bug Reports with Tests Get Prioritized
@@ -29,7 +30,7 @@ This **does** work (each line matches an existing step definition):
 Scenario: Parser handles unclosed insertion
   Given the input text is:
     """
-    Hello world there
+    Hello {++world there
     """
   When I parse the text
   Then the parser finds 0 changes
@@ -89,10 +90,10 @@ Tag it `@fast` (parser/logic, no VS Code launch) or `@slow` (needs VS Code). Add
 Feature: PB-XX — Description of the bug
 
   Scenario: Describe the incorrect behavior
-    Given a document with text "Hello {++worldagain there"
+    Given a document with text "Hello {++world++}{++again++} there"
     And the cursor is at offset 10
     When I accept the change at the cursor
-    Then the document text is "Hello worldagain there"
+    Then the document text is "Hello world{++again++} there"
 ```
 
 ### 4. Run it and capture the output
@@ -148,3 +149,6 @@ Test scenarios must not contain API keys, tokens, credentials (real or realistic
 ### No executable content in test data
 
 Doc strings in scenarios must not contain `<script>` tags, `javascript:` or `data:` URIs, event handler attributes (`onload`, `onerror`), or embedded iframes pointing to external resources.
+
+[^ct-1]: ai:claude-opus-4.6 | 2026-03-08 | creation | proposed
+    ai:claude-opus-4.6 2026-03-08T05:58:45Z: File created

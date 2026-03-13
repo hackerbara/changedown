@@ -89,7 +89,7 @@ export {
   type DecorationIntent, type DecorationKind, type DecorationVisibility,
   buildDecorationIntents,
 } from './renderers/decoration-intents.js';
-export { formatDocument, formatPlainText, formatAnsi, type ThreeZoneFormatOptions, type AnsiFormatOptions } from './renderers/formatters/index.js';
+export { formatDocument, formatPlainText, formatAnsi, formatHtml, type ThreeZoneFormatOptions, type AnsiFormatOptions, type HtmlFormatOptions } from './renderers/formatters/index.js';
 export {
   buildViewDocument, buildReviewDocument, buildChangesDocument,
   buildSettledDocument, buildRawDocument,

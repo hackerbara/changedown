@@ -4,6 +4,7 @@ import type { ThreeZoneDocument } from '../three-zone-types.js';
 
 export { formatPlainText } from './plain-text.js';
 export { formatAnsi, type AnsiFormatOptions } from './ansi.js';
+export { formatHtml, type HtmlFormatOptions } from './html.js';
 
 export interface ThreeZoneFormatOptions {
   /** Explicit color override. If undefined, uses isTTY. */

@@ -1,0 +1,426 @@
+<h2>ChangeTracks + Proof: Reframed Integration</h2>
+<p class="subtitle">What ChangeTracks actually provides that Proof doesn't have</p>
+
+<style>
+  .insight-box {
+    background: #0d1117;
+    border-left: 3px solid #fbbf24;
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+    margin: 20px 0;
+    color: #fde68a;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .insight-box strong { color: #fbbf24; }
+
+  .gap-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .gap-card {
+    background: #0d1117;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid #21262d;
+  }
+  .gap-card h4 {
+    margin: 0 0 8px;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .gap-card p {
+    margin: 0;
+    font-size: 13px;
+    color: #8b949e;
+    line-height: 1.6;
+  }
+  .gap-card .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 12px;
+  }
+  .tag-ct { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .tag-proof { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .tag-gap { background: rgba(239,68,68,0.15); color: #f87171; }
+  .tag-bridge { background: rgba(251,191,36,0.15); color: #fbbf24; }
+
+  .arch-v2 {
+    background: #0d1117;
+    border-radius: 12px;
+    padding: 32px;
+    margin: 24px 0;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+  }
+  .layer-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 6px;
+    align-items: stretch;
+  }
+  .layer-label-v2 {
+    width: 100px;
+    min-width: 100px;
+    padding: 10px 6px;
+    color: #6b7280;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    text-align: right;
+  }
+  .node {
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid;
+    flex: 1;
+  }
+  .node h5 {
+    margin: 0 0 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .node p {
+    margin: 0;
+    font-size: 11px;
+    opacity: 0.65;
+    line-height: 1.3;
+  }
+  .n-proof { background: rgba(139,92,246,0.06); border-color: rgba(139,92,246,0.25) !important; color: #c4b5fd; }
+  .n-proof h5 { color: #a78bfa; }
+  .n-ct { background: rgba(34,197,94,0.06); border-color: rgba(34,197,94,0.25) !important; color: #86efac; }
+  .n-ct h5 { color: #4ade80; }
+  .n-bridge { background: rgba(251,191,36,0.06); border-color: rgba(251,191,36,0.25) !important; color: #fde68a; }
+  .n-bridge h5 { color: #fbbf24; }
+  .n-shared { background: rgba(59,130,246,0.06); border-color: rgba(59,130,246,0.25) !important; color: #93c5fd; }
+  .n-shared h5 { color: #60a5fa; }
+  .connector {
+    display: flex;
+    gap: 10px;
+    margin: 2px 0;
+    align-items: center;
+  }
+  .connector .layer-label-v2 { opacity: 0; }
+  .connector .pipe {
+    flex: 1;
+    text-align: center;
+    color: #4b5563;
+    font-size: 14px;
+    letter-spacing: 4px;
+  }
+
+  .lifecycle-diagram {
+    background: #0d1117;
+    border-radius: 12px;
+    padding: 32px;
+    margin: 24px 0;
+  }
+  .lifecycle-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 20px;
+  }
+  .lc-phase {
+    flex: 1;
+    text-align: center;
+    position: relative;
+  }
+  .lc-bubble {
+    display: inline-block;
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  .lc-arrow {
+    width: 40px;
+    text-align: center;
+    color: #4b5563;
+    font-size: 16px;
+  }
+  .lc-label {
+    font-size: 10px;
+    color: #6b7280;
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .lc-owner {
+    font-size: 10px;
+    margin-top: 4px;
+    font-weight: 600;
+  }
+  .lc-proof .lc-bubble { background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.3); color: #a78bfa; }
+  .lc-proof .lc-owner { color: #a78bfa; }
+  .lc-ct .lc-bubble { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.3); color: #4ade80; }
+  .lc-ct .lc-owner { color: #4ade80; }
+  .lc-bridge .lc-bubble { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.3); color: #fbbf24; }
+  .lc-bridge .lc-owner { color: #fbbf24; }
+
+  .scenario-box {
+    background: #0d1117;
+    border-radius: 12px;
+    padding: 24px;
+    margin: 16px 0;
+    border: 1px solid #21262d;
+  }
+  .scenario-box h4 {
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: #e6edf3;
+  }
+  .scenario-step {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 10px;
+    align-items: flex-start;
+  }
+  .scenario-step .who {
+    min-width: 80px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-align: center;
+  }
+  .who-proof { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .who-ct { background: rgba(34,197,94,0.15); color: #4ade80; }
+  .who-agent { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .who-human { background: rgba(236,72,153,0.15); color: #f472b6; }
+  .who-bridge { background: rgba(251,191,36,0.15); color: #fbbf24; }
+  .scenario-step .what {
+    font-size: 13px;
+    color: #c9d1d9;
+    line-height: 1.5;
+  }
+  .scenario-step code {
+    background: rgba(110,118,129,0.15);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+</style>
+
+<div class="insight-box">
+  <strong>Reframe:</strong> ChangeTracks doesn't replace Proof's review UI or accept/reject machinery.
+  Proof owns the editing surface and will build their own review workflows.
+  ChangeTracks provides the <strong>deliberation layer</strong> and <strong>portable format</strong> that Proof's
+  in-memory CRDT state doesn't capture.
+</div>
+
+<div class="section">
+  <h3>What Proof Has vs. What ChangeTracks Adds</h3>
+  <div class="gap-grid">
+    <div class="gap-card">
+      <h4 style="color: #a78bfa;">Proof Has: Suggestions</h4>
+      <p>proofSuggestion marks (insert/delete/replace) live in ProseMirror state and Y.Doc. They render inline with accept/reject affordances. This is their track-changes.</p>
+      <div class="tag tag-proof">Proof owns this</div>
+    </div>
+    <div class="gap-card">
+      <h4 style="color: #f87171;">Proof Lacks: Reasoning</h4>
+      <p>When an agent makes a suggestion, there's no structured place for <em>why</em>. No threaded discussion on a change. No amendment history showing how a proposal evolved.</p>
+      <div class="tag tag-gap">Gap</div>
+    </div>
+    <div class="gap-card">
+      <h4 style="color: #a78bfa;">Proof Has: Provenance</h4>
+      <p>proofAuthored marks track human vs AI at the character level. Heatmap gutter shows authorship density. This is unique to Proof.</p>
+      <div class="tag tag-proof">Proof owns this</div>
+    </div>
+    <div class="gap-card">
+      <h4 style="color: #f87171;">Proof Lacks: File Portability</h4>
+      <p>All change history lives in Y.Doc binary state and server-side marks. Export to <code>.md</code> loses everything. No way to email someone a markdown file with tracked changes visible.</p>
+      <div class="tag tag-gap">Gap</div>
+    </div>
+    <div class="gap-card">
+      <h4 style="color: #a78bfa;">Proof Has: Real-time Collab</h4>
+      <p>Yjs + Hocuspocus gives live multi-cursor editing. ChangeTracks is single-user. No overlap here &mdash; Proof owns this completely.</p>
+      <div class="tag tag-proof">Proof owns this</div>
+    </div>
+    <div class="gap-card">
+      <h4 style="color: #f87171;">Proof Lacks: Agent Enforcement</h4>
+      <p>Agents can do raw edits via HTTP bridge. No hook system to intercept and force agents through tracked change proposals. The rewrite barrier is a blunt on/off.</p>
+      <div class="tag tag-gap">Gap</div>
+    </div>
+    <div class="gap-card">
+      <h4 style="color: #a78bfa;">Proof Has: Server-Side Marks</h4>
+      <p>Marks stored independently from doc content with quote-based anchoring. Supports comments, approvals, flags. But marks are ephemeral server state, not in the file.</p>
+      <div class="tag tag-proof">Proof owns this</div>
+    </div>
+    <div class="gap-card">
+      <h4 style="color: #f87171;">Proof Lacks: Deliberation History</h4>
+      <p>No structured format for: "Agent A proposed X because Y. Agent B superseded with Z because W. Human approved with note." The <em>conversation about changes</em> has no home.</p>
+      <div class="tag tag-gap">Gap</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Revised Architecture: ChangeTracks as Deliberation + Persistence Layer</h3>
+  <div class="arch-v2">
+    <div class="layer-row">
+      <div class="layer-label-v2">Agents</div>
+      <div class="node n-shared">
+        <h5>AI Agents (Claude, Cursor, Amp...)</h5>
+      </div>
+    </div>
+    <div class="connector"><div class="layer-label-v2"></div><div class="pipe">&#9660;</div></div>
+    <div class="layer-row">
+      <div class="layer-label-v2">Enforce</div>
+      <div class="node n-ct">
+        <h5>ChangeTracks Hooks</h5>
+        <p>Intercept raw edits &rarr; force tracked proposals with reasoning</p>
+      </div>
+    </div>
+    <div class="connector"><div class="layer-label-v2"></div><div class="pipe">&#9660;</div></div>
+    <div class="layer-row">
+      <div class="layer-label-v2">Deliberate</div>
+      <div class="node n-ct" style="flex: 1.5;">
+        <h5>ChangeTracks Engine</h5>
+        <p>Reasoning capture, footnote metadata, threaded discussion, amendment history, supersede chains</p>
+      </div>
+    </div>
+    <div class="connector"><div class="layer-label-v2"></div><div class="pipe">&#9660;</div></div>
+    <div class="layer-row">
+      <div class="layer-label-v2">Serialize</div>
+      <div class="node n-bridge" style="flex: 0.6;">
+        <h5>@changetracks/remark</h5>
+        <p>CriticMarkup &harr; remark AST</p>
+      </div>
+      <div class="node n-bridge" style="flex: 0.6;">
+        <h5>@changetracks/proof-bridge</h5>
+        <p>CT metadata &harr; Proof marks</p>
+      </div>
+    </div>
+    <div class="connector"><div class="layer-label-v2"></div><div class="pipe">&#9660;</div></div>
+    <div class="layer-row">
+      <div class="layer-label-v2">Edit + Collab</div>
+      <div class="node n-proof">
+        <h5>Proof Editor + Yjs + Hocuspocus</h5>
+        <p>Real-time editing, suggestions UI, provenance tracking, accept/reject &mdash; all Proof-owned</p>
+      </div>
+    </div>
+    <div class="connector"><div class="layer-label-v2"></div><div class="pipe">&#9660;</div></div>
+    <div class="layer-row">
+      <div class="layer-label-v2">Persist</div>
+      <div class="node n-ct" style="flex: 0.5;">
+        <h5>Markdown + CriticMarkup</h5>
+        <p>Portable file with changes + reasoning inline</p>
+      </div>
+      <div class="node n-proof" style="flex: 0.5;">
+        <h5>Y.Doc + SQLite</h5>
+        <p>Binary CRDT state + marks</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Document Lifecycle: Who Owns What, When</h3>
+  <div class="lifecycle-diagram">
+    <div class="lifecycle-row">
+      <div class="lc-phase lc-ct">
+        <div class="lc-bubble">Agent Proposes</div>
+        <div class="lc-label">with reasoning</div>
+        <div class="lc-owner">ChangeTracks</div>
+      </div>
+      <div class="lc-arrow">&rarr;</div>
+      <div class="lc-phase lc-bridge">
+        <div class="lc-bubble">Serialize to Proof</div>
+        <div class="lc-label">CT &rarr; suggestion marks</div>
+        <div class="lc-owner">Bridge</div>
+      </div>
+      <div class="lc-arrow">&rarr;</div>
+      <div class="lc-phase lc-proof">
+        <div class="lc-bubble">Live in Editor</div>
+        <div class="lc-label">Yjs + ProseMirror</div>
+        <div class="lc-owner">Proof</div>
+      </div>
+      <div class="lc-arrow">&rarr;</div>
+      <div class="lc-phase lc-proof">
+        <div class="lc-bubble">Human Reviews</div>
+        <div class="lc-label">Proof's own UI</div>
+        <div class="lc-owner">Proof</div>
+      </div>
+      <div class="lc-arrow">&rarr;</div>
+      <div class="lc-phase lc-bridge">
+        <div class="lc-bubble">Sync Decision Back</div>
+        <div class="lc-label">mark status &rarr; CT</div>
+        <div class="lc-owner">Bridge</div>
+      </div>
+      <div class="lc-arrow">&rarr;</div>
+      <div class="lc-phase lc-ct">
+        <div class="lc-bubble">Persist to File</div>
+        <div class="lc-label">CriticMarkup + footnotes</div>
+        <div class="lc-owner">ChangeTracks</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Concrete Scenario: Agent Proposes an Edit in Proof</h3>
+  <div class="scenario-box">
+    <h4>Agent rewrites a paragraph with reasoning and discussion</h4>
+    <div class="scenario-step">
+      <div class="who who-agent">Agent</div>
+      <div class="what">Calls <code>propose_change(old="REST API", new="GraphQL", reason="External consumers need flexible queries")</code></div>
+    </div>
+    <div class="scenario-step">
+      <div class="who who-ct">CT Engine</div>
+      <div class="what">Creates CriticMarkup: <code>{~~REST API~>GraphQL~~}[^ct-4]</code> with footnote containing author, date, reason, status:proposed</div>
+    </div>
+    <div class="scenario-step">
+      <div class="who who-bridge">Bridge</div>
+      <div class="what">Translates to Proof's format: creates <code>proofSuggestion</code> mark (kind: replace) + stores CT footnote data as extended mark metadata</div>
+    </div>
+    <div class="scenario-step">
+      <div class="who who-proof">Proof</div>
+      <div class="what">Suggestion appears in Milkdown editor with Proof's native styling. Human sees it alongside other suggestions.</div>
+    </div>
+    <div class="scenario-step">
+      <div class="who who-human">Human</div>
+      <div class="what">Reviews in Proof's UI. Accepts the suggestion. Proof updates mark status.</div>
+    </div>
+    <div class="scenario-step">
+      <div class="who who-bridge">Bridge</div>
+      <div class="what">Detects mark status change. Updates CT footnote: <code>approved: @human:alice 2026-03-12 "Confirmed with API team"</code></div>
+    </div>
+    <div class="scenario-step">
+      <div class="who who-ct">CT Engine</div>
+      <div class="what">On export/save, the <code>.md</code> file contains the full deliberation trail inline &mdash; readable in any editor, diffable in git.</div>
+    </div>
+  </div>
+
+  <div class="scenario-box">
+    <h4>What the exported markdown file looks like</h4>
+    <div style="background: #161b22; border-radius: 8px; padding: 20px; font-family: 'SF Mono', monospace; font-size: 13px; color: #c9d1d9; line-height: 1.8; margin-top: 8px; overflow-x: auto;">
+      <span style="color: #8b949e;">The service should use </span><span style="color: #f87171; text-decoration: line-through;">REST API</span><span style="color: #4ade80;">GraphQL</span><span style="color: #8b949e;"> for external consumers.</span><span style="color: #6b7280;">[^ct-4]</span>
+      <br><br>
+      <span style="color: #6b7280;">[^ct-4]: @ai:claude-opus-4.6 | 2026-03-12 | sub | accepted</span><br>
+      <span style="color: #6b7280;">&nbsp;&nbsp;&nbsp;&nbsp;context: "The service should use {REST API~>GraphQL} for..."</span><br>
+      <span style="color: #6b7280;">&nbsp;&nbsp;&nbsp;&nbsp;reason: External consumers need flexible queries</span><br>
+      <span style="color: #6b7280;">&nbsp;&nbsp;&nbsp;&nbsp;approved: @human:alice 2026-03-12 "Confirmed with API team"</span>
+    </div>
+  </div>
+</div>
+
+<div class="insight-box" style="border-color: #4ade80; margin-top: 32px;">
+  <strong>The pitch:</strong> Proof owns the editing experience and real-time collaboration.
+  ChangeTracks owns the <em>memory</em> &mdash; the structured record of why changes were made,
+  who deliberated, and what the reasoning was. That memory persists in the file itself,
+  portable across any editor, readable by any LLM, diffable in any git tool.
+</div>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ctracks.com — Three Views</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Charter:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --red: #e45858;
+    --red-dim: #c44040;
+    --red-bg: rgba(228, 88, 88, 0.12);
+    --green: #5dba6a;
+    --green-bg: rgba(93, 186, 106, 0.12);
+    --yellow-bg: rgba(210, 170, 60, 0.10);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    transition: background 0.4s ease, color 0.4s ease;
+  }
+
+  /* ===== VIEW: FINAL (default) ===== */
+  body.view-final {
+    background: #faf9f7;
+    color: #1a1a1a;
+  }
+  body.view-final .page { max-width: 640px; margin: 0 auto; padding: 80px 24px 120px; }
+  body.view-final h1 { font-family: 'Charter', Georgia, serif; font-size: 32px; font-weight: 700; margin-bottom: 12px; }
+  body.view-final .tagline { font-size: 17px; color: #555; line-height: 1.6; margin-bottom: 32px; }
+  body.view-final .body-text { font-family: 'Charter', Georgia, serif; font-size: 16px; line-height: 1.75; color: #333; }
+  body.view-final .body-text p { margin-bottom: 16px; }
+  body.view-final .body-text a { color: var(--red-dim); text-decoration: none; border-bottom: 1px solid var(--red-dim); }
+  body.view-final .body-text a:hover { color: var(--red); border-color: var(--red); }
+  body.view-final .section-break { width: 40px; height: 1px; background: #ccc; margin: 32px 0; }
+  body.view-final .nav-links { font-size: 14px; color: #888; }
+  body.view-final .nav-links a { color: var(--red-dim); text-decoration: none; border-bottom: 1px solid transparent; }
+  body.view-final .nav-links a:hover { border-color: var(--red-dim); }
+  body.view-final .cm-ins, body.view-final .cm-del, body.view-final .cm-sub,
+  body.view-final .cm-footnote, body.view-final .hashline { display: none; }
+
+  /* ===== VIEW: SIMPLE ===== */
+  body.view-simple {
+    background: #1a1a1a;
+    color: #e0e0e0;
+  }
+  body.view-simple .page { max-width: 680px; margin: 0 auto; padding: 60px 24px 120px; }
+  body.view-simple h1 { font-family: 'Inter', system-ui; font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+  body.view-simple .tagline { font-size: 14px; color: #999; margin-bottom: 28px; }
+  body.view-simple .body-text { font-family: 'Inter', system-ui; font-size: 14px; line-height: 1.7; color: #bbb; }
+  body.view-simple .body-text p { margin-bottom: 14px; }
+  body.view-simple .body-text a { color: var(--red); text-decoration: none; }
+  body.view-simple .body-text a:hover { text-decoration: underline; }
+  body.view-simple .section-break { width: 24px; height: 1px; background: #444; margin: 24px 0; }
+  body.view-simple .nav-links { font-size: 13px; color: #666; }
+  body.view-simple .nav-links a { color: var(--red); text-decoration: none; }
+  body.view-simple .cm-ins { color: var(--green); background: var(--green-bg); padding: 1px 3px; border-radius: 2px; font-size: 0.9em; }
+  body.view-simple .cm-del { display: none; }
+  body.view-simple .cm-sub .old { display: none; }
+  body.view-simple .cm-sub .new { color: var(--green); }
+  body.view-simple .cm-sub .arrow { display: none; }
+  body.view-simple .cm-footnote { display: none; }
+  body.view-simple .hashline { display: none; }
+
+  /* ===== VIEW: FULL ===== */
+  body.view-full {
+    background: #0d1117;
+    color: #c9d1d9;
+  }
+  body.view-full .page { max-width: 760px; margin: 0 auto; padding: 48px 24px 120px; font-family: 'IBM Plex Mono', 'SF Mono', monospace; font-size: 13px; line-height: 1.8; }
+  body.view-full h1 { font-size: 18px; font-weight: 600; color: #f0f6fc; margin-bottom: 4px; }
+  body.view-full .tagline { font-size: 13px; color: #8b949e; margin-bottom: 24px; }
+  body.view-full .body-text { font-size: 13px; color: #c9d1d9; }
+  body.view-full .body-text p { margin-bottom: 12px; }
+  body.view-full .body-text a { color: #e45858; text-decoration: none; }
+  body.view-full .body-text a:hover { text-decoration: underline; }
+  body.view-full .section-break { width: 40px; height: 1px; background: #30363d; margin: 20px 0; }
+  body.view-full .nav-links { font-size: 12px; color: #484f58; }
+  body.view-full .nav-links a { color: var(--red); text-decoration: none; }
+  body.view-full .hashline { display: inline; color: #484f58; margin-right: 8px; user-select: none; }
+  body.view-full .cm-ins { background: var(--green-bg); color: var(--green); padding: 1px 3px; border-radius: 2px; }
+  body.view-full .cm-ins::before { content: '{++'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-ins::after { content: '++}'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-del { background: var(--red-bg); color: var(--red); text-decoration: line-through; padding: 1px 3px; border-radius: 2px; }
+  body.view-full .cm-del::before { content: '{--'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-del::after { content: '--}'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-sub { padding: 1px 3px; border-radius: 2px; }
+  body.view-full .cm-sub::before { content: '{~~'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-sub::after { content: '~~}'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-sub .old { background: var(--red-bg); color: var(--red); text-decoration: line-through; }
+  body.view-full .cm-sub .arrow { color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-sub .new { background: var(--green-bg); color: var(--green); }
+  body.view-full .cm-footnote { color: #484f58; font-size: 0.85em; vertical-align: super; }
+  body.view-full .cm-footnote::before { content: '[^'; }
+  body.view-full .cm-footnote::after { content: ']'; }
+
+  /* ===== TOGGLE BAR ===== */
+  .view-toggle {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 16px;
+    gap: 2px;
+    z-index: 100;
+    transition: background 0.4s ease;
+  }
+  body.view-final .view-toggle { background: #faf9f7; border-top: 1px solid #e8e6e3; }
+  body.view-simple .view-toggle { background: #1a1a1a; border-top: 1px solid #2a2a2a; }
+  body.view-full .view-toggle { background: #0d1117; border-top: 1px solid #21262d; }
+
+  .view-toggle button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 6px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  body.view-final .view-toggle button { background: transparent; color: #999; }
+  body.view-final .view-toggle button.active { background: var(--red); color: #fff; }
+  body.view-final .view-toggle button:hover:not(.active) { color: #555; }
+  body.view-simple .view-toggle button { background: transparent; color: #666; }
+  body.view-simple .view-toggle button.active { background: var(--red); color: #fff; }
+  body.view-simple .view-toggle button:hover:not(.active) { color: #aaa; }
+  body.view-full .view-toggle button { background: transparent; color: #484f58; }
+  body.view-full .view-toggle button.active { background: var(--red); color: #fff; }
+  body.view-full .view-toggle button:hover:not(.active) { color: #8b949e; }
+
+  /* ===== PAGE NAV ===== */
+  .page-nav {
+    margin-bottom: 32px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  body.view-final .page-nav { color: #999; }
+  body.view-simple .page-nav { color: #666; }
+  body.view-full .page-nav { color: #484f58; }
+  .page-nav a { text-decoration: none; }
+  body.view-final .page-nav a { color: #999; }
+  body.view-final .page-nav a:hover { color: var(--red-dim); }
+  body.view-final .page-nav .current { color: var(--red-dim); border-bottom: 1px solid var(--red-dim); padding-bottom: 2px; }
+  body.view-simple .page-nav a { color: #666; }
+  body.view-simple .page-nav a:hover { color: var(--red); }
+  body.view-simple .page-nav .current { color: var(--red); border-bottom: 1px solid var(--red); padding-bottom: 2px; }
+  body.view-full .page-nav a { color: #484f58; }
+  body.view-full .page-nav a:hover { color: var(--red); }
+  body.view-full .page-nav .current { color: var(--red); border-bottom: 1px solid var(--red); padding-bottom: 2px; }
+
+  /* smooth transitions on inner elements */
+  .page, h1, .tagline, .body-text, .section-break, .nav-links, .page-nav {
+    transition: all 0.35s ease;
+  }
+</style>
+</head>
+<body class="view-final">
+
+<div class="page">
+  <nav class="page-nav">
+    <a href="#" class="current">index</a>
+    <a href="#">spec</a>
+    <a href="#">ideas</a>
+  </nav>
+
+  <h1><span class="hashline">1:a3 |</span>ChangeTracks</h1>
+  <p class="tagline"><span class="hashline">3:b8 |</span>Track changes in markdown — for humans and AI agents.</p>
+
+  <div class="body-text">
+    <p><span class="hashline">5:dd |</span>The file carries its own <span class="cm-ins">deliberation</span> history. <span class="cm-del">No external database.</span> Anyone reading it — a new team member, a code reviewer, an AI agent — sees not just the current state but the <span class="cm-sub"><span class="old">reasons</span><span class="arrow">~></span><span class="new">reasoning</span></span> that produced it.<span class="cm-footnote">ct-1</span></p>
+
+    <div class="section-break"></div>
+
+    <p><span class="hashline">8:f1 |</span><strong>For humans</strong> — a VS Code extension with the workflow you know. Accept, reject, comment, navigate. The muscle memory from Word and Google Docs, applied to markdown.</p>
+
+    <p><span class="hashline">10:c2 |</span><strong>For agents</strong> — six MCP tools with hash-verified coordinates. <span class="cm-ins">2.3x fewer tokens</span> than raw file editing. The agent reads CriticMarkup and writes it back. One language, input to output.</p>
+
+    <p><span class="hashline">12:94 |</span><strong>For everyone</strong> — plain text. Readable in any editor, diffable in git, parseable by anything. No proprietary format. No lock-in. The format is <span class="cm-sub"><span class="old">just</span><span class="arrow">~></span><span class="new">already</span></span> markdown.<span class="cm-footnote">ct-2</span></p>
+
+    <div class="section-break"></div>
+
+    <p class="nav-links"><span class="hashline">15:e6 |</span><a href="#">Read the spec</a> · <a href="#">What's next</a> · <a href="https://github.com/hackerbara/changetracks">GitHub</a></p>
+  </div>
+</div>
+
+<div class="view-toggle">
+  <button onclick="setView('final')" class="active">final</button>
+  <button onclick="setView('simple')">simple</button>
+  <button onclick="setView('full')">full</button>
+</div>
+
+<script>
+function setView(view) {
+  document.body.className = 'view-' + view;
+  document.querySelectorAll('.view-toggle button').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === view);
+  });
+}
+</script>
+
+</body>
+</html>

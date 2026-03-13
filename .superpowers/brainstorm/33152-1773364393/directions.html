@@ -1,0 +1,71 @@
+<h2>Three Directions for ctracks.com</h2>
+<p class="subtitle">Same content, three aesthetic approaches. All render .md client-side with zero build step.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #0d1117; padding: 24px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; line-height: 1.7; color: #c9d1d9; border-radius: 8px; overflow: hidden;">
+      <div style="color: #484f58; margin-bottom: 4px;">1:a3 | <span style="color: #f0f6fc; font-weight: 600;"># ChangeTracks</span></div>
+      <div style="color: #484f58;">2:05 |</div>
+      <div style="color: #484f58;">3:b8 | Track changes in markdown — for humans</div>
+      <div style="color: #484f58;">4:c2 | and AI agents.</div>
+      <div style="color: #484f58;">5:f1 |</div>
+      <div style="color: #484f58;">6:dd | The file carries its own <span style="background: rgba(63,185,80,0.15); color: #3fb950;">{++deliberation++}</span></div>
+      <div style="color: #484f58;">7:94 | history. <span style="background: rgba(248,81,73,0.15); color: #f85149; text-decoration: line-through;">{--No external database.--}</span></div>
+      <div style="color: #484f58; margin-top: 12px;">8:e6 | <span style="color: #58a6ff;">[spec →](spec.md)</span>  <span style="color: #58a6ff;">[ideas →](ideas.md)</span></div>
+    </div>
+    <div class="card-body">
+      <h3>A: "The Tracked File"</h3>
+      <p>The site looks like you're reading a ChangeTracks file. Hashline coordinates on the left. CriticMarkup rendered inline with signature green/red. Dark background, monospace. <strong>The website IS a demo.</strong></p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #fafaf9; padding: 28px 32px; font-family: 'Georgia', 'Charter', serif; font-size: 14px; line-height: 1.8; color: #1a1a1a; border-radius: 8px;">
+      <div style="font-family: 'SF Mono', monospace; font-size: 11px; color: #999; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 16px;">ctracks.com</div>
+      <div style="font-size: 22px; font-weight: 600; font-family: system-ui; margin-bottom: 8px;">ChangeTracks</div>
+      <div style="color: #555; margin-bottom: 16px;">Track changes in markdown — for humans and AI agents.</div>
+      <div style="font-size: 13px;">The file carries its own <span style="color: #1a7f37; border-bottom: 2px solid #1a7f37;">deliberation history</span>. Intent in the byte stream. No external database required.</div>
+      <div style="margin-top: 14px; font-size: 12px; font-family: system-ui;"><span style="color: #555; border-bottom: 1px solid #ccc; padding-bottom: 2px;">Spec</span> &nbsp;&middot;&nbsp; <span style="color: #555; border-bottom: 1px solid #ccc; padding-bottom: 2px;">Ideas</span></div>
+    </div>
+    <div class="card-body">
+      <h3>B: "Clean Editorial"</h3>
+      <p>Light, typographic, restrained. CriticMarkup colors as the only visual flourish — green accents for insertions, red for deletions. Everything else is quiet. The content speaks.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background: #1a1a1a; padding: 24px; font-family: system-ui, sans-serif; font-size: 13px; color: #e0e0e0; border-radius: 8px;">
+      <div style="display: flex; gap: 12px; margin-bottom: 16px; font-size: 11px; font-family: 'SF Mono', monospace;">
+        <span style="color: #3fb950; border-bottom: 2px solid #3fb950; padding-bottom: 2px;">index</span>
+        <span style="color: #888;">spec</span>
+        <span style="color: #888;">ideas</span>
+      </div>
+      <div style="font-size: 20px; font-weight: 600; margin-bottom: 10px;">ChangeTracks</div>
+      <div style="color: #aaa; font-size: 13px; line-height: 1.6; max-width: 400px;">
+        Track changes in markdown.<br>
+        <span style="color: #3fb950;">For humans</span> — VS Code extension with the workflow you know.<br>
+        <span style="color: #3fb950;">For agents</span> — 6 MCP tools, hash-verified coordinates, 2.3× fewer tokens.
+      </div>
+      <div style="margin-top: 16px; padding: 10px 14px; background: #252525; border-radius: 6px; border-left: 3px solid #3fb950; font-family: 'SF Mono', monospace; font-size: 11px; color: #ccc;">
+        npx changetracks init
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C: "Minimal Dark"</h3>
+      <p>Dark, clean, developer-oriented. Green accent from CriticMarkup insertions as the brand color. Tab navigation between the three pages. Quick-start command block. No decoration beyond what communicates.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>What's the same across all three</h3>
+  <ul>
+    <li><strong>Pure .md files</strong> — content lives in markdown, client-side JS renders it</li>
+    <li><strong>Three pages</strong> — index, spec, ideas (each a separate .md file)</li>
+    <li><strong>CriticMarkup colors</strong> — green (#3fb950) for insertions, red (#f85149) for deletions</li>
+    <li><strong>GitHub Pages</strong> — static hosting, DNS points ctracks.com there</li>
+    <li><strong>No build step</strong> — edit .md, push, done</li>
+  </ul>
+</div>

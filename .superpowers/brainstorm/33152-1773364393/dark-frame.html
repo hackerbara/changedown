@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ctracks.com — Dark Frame</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Charter:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --red: #e45858;
+    --red-hover: #f06b6b;
+    --red-dim: #c44040;
+    --red-bg: rgba(228, 88, 88, 0.12);
+    --green: #5dba6a;
+    --green-bg: rgba(93, 186, 106, 0.12);
+    --shell-bg: #111113;
+    --shell-border: #222226;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--shell-bg);
+    color: #e0e0e0;
+    min-height: 100vh;
+  }
+
+  /* ===== SHELL (always dark) ===== */
+  .shell-header {
+    padding: 24px 32px 0;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .shell-header .brand {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--red);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .page-nav {
+    display: flex;
+    gap: 20px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    margin-bottom: 0;
+  }
+  .page-nav a {
+    color: #666;
+    text-decoration: none;
+    padding-bottom: 4px;
+    transition: color 0.2s;
+  }
+  .page-nav a:hover { color: #aaa; }
+  .page-nav a.current {
+    color: var(--red);
+    border-bottom: 2px solid var(--red);
+  }
+
+  /* ===== EDITOR VIEWPORT ===== */
+  .editor-frame {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+  .editor-viewport {
+    border: 1px solid var(--shell-border);
+    border-radius: 8px;
+    margin-top: 16px;
+    overflow: hidden;
+    transition: background 0.35s ease;
+    min-height: 420px;
+  }
+
+  /* viewport backgrounds per view */
+  body.view-final .editor-viewport { background: #faf9f7; }
+  body.view-simple .editor-viewport { background: #18181b; }
+  body.view-full .editor-viewport { background: #0d1117; }
+
+  .editor-content {
+    padding: 40px 48px;
+    transition: all 0.3s ease;
+  }
+
+  /* ===== VIEW: FINAL ===== */
+  body.view-final .editor-content { color: #1a1a1a; }
+  body.view-final .editor-content h1 {
+    font-family: 'Charter', Georgia, serif;
+    font-size: 28px; font-weight: 700; margin-bottom: 8px;
+  }
+  body.view-final .editor-content .tagline { font-size: 16px; color: #666; margin-bottom: 28px; font-family: 'Charter', Georgia, serif; }
+  body.view-final .editor-content .body-text {
+    font-family: 'Charter', Georgia, serif; font-size: 15.5px; line-height: 1.75; color: #333;
+  }
+  body.view-final .editor-content .body-text a { color: var(--red-dim); text-decoration: none; border-bottom: 1px solid var(--red-dim); }
+  body.view-final .editor-content .body-text a:hover { color: var(--red); }
+  body.view-final .cm-ins, body.view-final .cm-del, body.view-final .cm-sub-wrap,
+  body.view-final .cm-footnote, body.view-final .hashline, body.view-final .footnotes-block { display: none; }
+  body.view-final .cm-ins-text { /* just show the text, no decoration */ }
+  body.view-final .cm-sub-new { /* just show new text */ }
+  body.view-final .section-break { width: 40px; height: 1px; background: #ddd; margin: 24px 0; }
+
+  /* ===== VIEW: SIMPLE ===== */
+  body.view-simple .editor-content { color: #e0e0e0; }
+  body.view-simple .editor-content h1 {
+    font-family: 'Inter', system-ui; font-size: 22px; font-weight: 600; margin-bottom: 6px; color: #f0f0f0;
+  }
+  body.view-simple .editor-content .tagline { font-size: 14px; color: #888; margin-bottom: 24px; }
+  body.view-simple .editor-content .body-text { font-size: 14px; line-height: 1.7; color: #bbb; }
+  body.view-simple .editor-content .body-text a { color: var(--red); text-decoration: none; }
+  body.view-simple .editor-content .body-text a:hover { text-decoration: underline; }
+  body.view-simple .cm-ins { color: var(--green); background: var(--green-bg); padding: 1px 4px; border-radius: 2px; }
+  body.view-simple .cm-del { display: none; }
+  body.view-simple .cm-sub-wrap .old { display: none; }
+  body.view-simple .cm-sub-wrap .arrow { display: none; }
+  body.view-simple .cm-sub-wrap .new { color: var(--green); }
+  body.view-simple .cm-footnote { display: none; }
+  body.view-simple .hashline { display: none; }
+  body.view-simple .footnotes-block { display: none; }
+  body.view-simple .section-break { width: 24px; height: 1px; background: #333; margin: 20px 0; }
+
+  /* ===== VIEW: FULL ===== */
+  body.view-full .editor-content {
+    font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.85; color: #c9d1d9;
+    padding: 32px 40px;
+  }
+  body.view-full .editor-content h1 { font-size: 16px; font-weight: 600; color: #f0f6fc; margin-bottom: 2px; }
+  body.view-full .editor-content .tagline { font-size: 13px; color: #8b949e; margin-bottom: 20px; }
+  body.view-full .editor-content .body-text { font-size: 13px; color: #c9d1d9; }
+  body.view-full .editor-content .body-text a { color: var(--red); text-decoration: none; }
+  body.view-full .hashline { display: inline; color: #484f58; margin-right: 6px; user-select: none; font-size: 12px; }
+  body.view-full .cm-ins {
+    background: var(--green-bg); color: var(--green); padding: 1px 3px; border-radius: 2px;
+  }
+  body.view-full .cm-ins::before { content: '{++'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-ins::after { content: '++}'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-del {
+    background: var(--red-bg); color: var(--red); text-decoration: line-through; padding: 1px 3px; border-radius: 2px;
+  }
+  body.view-full .cm-del::before { content: '{--'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-del::after { content: '--}'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-sub-wrap::before { content: '{~~'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-sub-wrap::after { content: '~~}'; color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-sub-wrap .old { background: var(--red-bg); color: var(--red); text-decoration: line-through; }
+  body.view-full .cm-sub-wrap .arrow { color: #484f58; font-size: 0.85em; }
+  body.view-full .cm-sub-wrap .new { background: var(--green-bg); color: var(--green); }
+  body.view-full .cm-footnote { color: #484f58; font-size: 0.85em; cursor: help; position: relative; }
+  body.view-full .cm-footnote::before { content: '[^'; }
+  body.view-full .cm-footnote::after { content: ']'; }
+  body.view-full .cm-footnote:hover { color: var(--red); }
+  body.view-full .section-break { width: 40px; height: 1px; background: #21262d; margin: 16px 0; }
+
+  /* footnote hover tooltip */
+  body.view-full .cm-footnote .fn-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1c2028;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 11px;
+    line-height: 1.5;
+    color: #8b949e;
+    white-space: nowrap;
+    z-index: 50;
+    pointer-events: none;
+  }
+  body.view-full .cm-footnote .fn-tooltip .fn-author { color: var(--red); }
+  body.view-full .cm-footnote .fn-tooltip .fn-reason { color: #c9d1d9; }
+  body.view-full .cm-footnote:hover .fn-tooltip { display: block; }
+
+  /* footnotes block at bottom (full view only) */
+  .footnotes-block {
+    margin-top: 28px;
+    padding-top: 16px;
+    border-top: 1px solid #21262d;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    color: #484f58;
+  }
+  .footnotes-block .fn-entry { margin-bottom: 6px; }
+  .footnotes-block .fn-id { color: var(--red); }
+  .footnotes-block .fn-meta { color: #8b949e; }
+
+  /* ===== VIEW TOGGLE ===== */
+  .view-toggle-bar {
+    max-width: 900px;
+    margin: 12px auto 40px;
+    padding: 0 32px;
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+  }
+  .view-toggle-bar button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 5px 14px;
+    border: 1px solid var(--shell-border);
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+    color: #555;
+    transition: all 0.2s;
+  }
+  .view-toggle-bar button.active {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+  }
+  .view-toggle-bar button:hover:not(.active) {
+    border-color: #444;
+    color: #aaa;
+  }
+
+  /* ===== SHELL FOOTER ===== */
+  .shell-footer {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 32px 40px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: #444;
+    display: flex;
+    justify-content: space-between;
+  }
+  .shell-footer a { color: var(--red); text-decoration: none; }
+  .shell-footer a:hover { color: var(--red-hover); }
+</style>
+</head>
+<body class="view-final">
+
+<div class="shell-header">
+  <div class="brand">ctracks.com</div>
+  <nav class="page-nav">
+    <a href="#" class="current">index</a>
+    <a href="#">spec</a>
+    <a href="#">ideas</a>
+  </nav>
+</div>
+
+<div class="editor-frame">
+  <div class="editor-viewport">
+    <div class="editor-content">
+
+      <h1><span class="hashline">1:a3 |</span>ChangeTracks</h1>
+      <p class="tagline"><span class="hashline">3:b8 |</span>Track changes in markdown — for humans and AI agents.</p>
+
+      <div class="body-text">
+        <p><span class="hashline">5:dd |</span>The file carries its own <span class="cm-ins">deliberation</span><span class="cm-ins-text">deliberation</span> history. <span class="cm-del">No external database needed.</span> Anyone reading it — a new team member, a code reviewer, an AI agent — sees not just the current state but the <span class="cm-sub-wrap"><span class="old">reasons</span><span class="arrow">~></span><span class="new">reasoning</span></span><span class="cm-sub-new">reasoning</span> that produced it.<span class="cm-footnote">ct-1<span class="fn-tooltip"><span class="fn-author">@ai:claude-opus-4.6</span> · 2026-02-14 · sub · accepted<br><span class="fn-reason">"Reasoning is more precise than reasons — it's the process, not the artifacts"</span></span></span></p>
+
+        <div class="section-break"></div>
+
+        <p><span class="hashline">8:f1 |</span><strong>For humans</strong> — a VS Code extension with the workflow you know. Accept, reject, comment, navigate. <span class="cm-ins">Per-author colors distinguish contributors at a glance.</span><span class="cm-ins-text">Per-author colors distinguish contributors at a glance.</span><span class="cm-footnote">ct-2<span class="fn-tooltip"><span class="fn-author">@alex</span> · 2026-03-01 · ins · accepted<br><span class="fn-reason">"Added after shipping author-colored decorations"</span></span></span></p>
+
+        <p><span class="hashline">10:c2 |</span><strong>For agents</strong> — six MCP tools with hash-verified coordinates. <span class="cm-sub-wrap"><span class="old">Dramatically fewer</span><span class="arrow">~></span><span class="new">2.3x fewer</span></span><span class="cm-sub-new">2.3x fewer</span> tokens than raw file editing.<span class="cm-footnote">ct-3<span class="fn-tooltip"><span class="fn-author">@ai:claude-opus-4.6</span> · 2026-02-28 · sub · accepted<br><span class="fn-reason">"Use the actual benchmark number, not vague language"</span></span></span> The agent reads CriticMarkup and writes it back. One language, input to output.</p>
+
+        <p><span class="hashline">12:94 |</span><strong>For everyone</strong> — plain text. Readable in any editor, diffable in git, parseable by anything. No proprietary format. No lock-in.</p>
+
+        <div class="section-break"></div>
+
+        <p><span class="hashline">14:e6 |</span><a href="#">Read the spec →</a> · <a href="#">What's next →</a> · <a href="https://github.com/hackerbara/changetracks">GitHub</a></p>
+      </div>
+
+      <div class="footnotes-block">
+        <div class="fn-entry"><span class="fn-id">[^ct-1]:</span> <span class="fn-meta">@ai:claude-opus-4.6 | 2026-02-14 | sub | accepted — "Reasoning is more precise than reasons"</span></div>
+        <div class="fn-entry"><span class="fn-id">[^ct-2]:</span> <span class="fn-meta">@alex | 2026-03-01 | ins | accepted — "Added after shipping author-colored decorations"</span></div>
+        <div class="fn-entry"><span class="fn-id">[^ct-3]:</span> <span class="fn-meta">@ai:claude-opus-4.6 | 2026-02-28 | sub | accepted — "Use the actual benchmark number, not vague language"</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="view-toggle-bar">
+  <button onclick="setView('final')" class="active">final</button>
+  <button onclick="setView('simple')">simple</button>
+  <button onclick="setView('full')">full</button>
+</div>
+
+<div class="shell-footer">
+  <span>ChangeTracks · MIT · v0.3.0</span>
+  <span><a href="https://github.com/hackerbara/changetracks">source</a> · <a href="#">install</a></span>
+</div>
+
+<script>
+function setView(view) {
+  document.body.className = 'view-' + view;
+  document.querySelectorAll('.view-toggle-bar button').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === view);
+  });
+}
+</script>
+
+</body>
+</html>

@@ -1,3 +1,4 @@
+<!-- ctrcks.com/v1: tracked -->
 
 # HTTP/3 Protocol Implementation Guide for Edge Computing Networks
 
@@ -10,11 +11,11 @@
 ## Executive Summary
 
 This document provides a comprehensive implmentation guide for deploying HTTP/3 across our edge computing infrastructure. The migration from HTTP/2.0 to HTTP/3 is motivated by the need for improved connection establishment times, better handling of packet loss in mobile networks, and native support for connection migration.
-This optimization reduces tail latency by up to 40% under congestion.
+{++This optimization reduces tail latency by up to 40% under congestion.++}[^ct-1]
 
 The protocol stack replaces TCP+TLS with QUIC, a UDP-based transport protocol that integrates encryption at the transport layer. Initial testing shows a reduction in page load times of 15-30% for users on high-latency mobile networks, with negligible impact on datacenter-to-datacenter communication.
 
-Deployment will proceed in three phases across our 16 edge locations, with full rollout targeted for Q3 2026. Each phase includes performance validation, security audit, and capacity planning review.
+Deployment will proceed in three phases across our {~~14 edge locations~>16 edge locations~~}[^ct-2], with full rollout targeted for {~~Q2 2026~>Q3 2026~~}[^ct-3]. Each phase includes performance validation, security audit, and capacity planning review.
 
 ## 1. Protocol Overview
 
@@ -47,8 +48,8 @@ Under controlled testing conditions, HTTP/3 shows the following thoughput charac
 
 Tests were conducted with 1500ms connection timeout on a simulated network with variable latency. Sample size was approximately ~500 requests per configuration.
 
-### 1.4 Connection Migration
-QUIC connections survive network transitions including Wi-Fi to cellular handoffs, maintaining session state without re-establishment.
+{++### 1.4 Connection Migration++}[^ct-4]
+{++QUIC connections survive network transitions including Wi-Fi to cellular handoffs, maintaining session state without re-establishment.++}[^ct-4]
 
 ## 2. Architecture Requirements
 
@@ -75,7 +76,7 @@ QUIC mandates TLS 1.3 with specific cipher suites. Our deployment uses:
 - **Certificate chain:** Maximum 3 certificates, total size under 4 KiB
 - **Key size:** Minimum 2048bits for RSA (legacy only), 256 bits for ECDSA
 
-Certificates are rotated every 30 days. 
+Certificates are rotated every 30 days. {--The proxy supports both ECDSA and RSA certificates simultaneously during the migration period, preferring ECDSA when the client supports it.--}[^ct-5]
 
 ### 2.3 Network Requirements
 
@@ -270,3 +271,18 @@ Before enabling HTTP/3 at each edge location, verify the following items have be
 5. RFC 9218 — Extensible Prioritization Scheme for HTTP
 6. Internal: Edge Proxy Operations Runbook (Confluence)
 7. Internal: Network Security Policy v4.2
+
+[^ct-1]: @ai:claude-sonnet-4-5 | 2026-02-15 | ins | proposed
+    @ai:claude-sonnet-4-5 2026-02-15: Added performance optimization context for congestion scenarios.
+
+[^ct-2]: @ai:claude-sonnet-4-5 | 2026-02-15 | sub | proposed
+    @ai:claude-sonnet-4-5 2026-02-15: Updated edge location count per latest infrastructure report.
+
+[^ct-3]: @human:pm | 2026-02-16 | sub | proposed
+    @human:pm 2026-02-16: Schedule slip — updated deployment target based on resource allocation review.
+
+[^ct-4]: @ai:claude-sonnet-4-5 | 2026-02-15 | ins | proposed
+    @ai:claude-sonnet-4-5 2026-02-15: Added missing connection migration subsection — critical for mobile edge deployment.
+
+[^ct-5]: @human:reviewer | 2026-02-16 | del | proposed
+    @human:reviewer 2026-02-16: Legacy TLS fallback should be removed — creates security downgrade attack vector.

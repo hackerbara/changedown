@@ -1,4 +1,4 @@
-# Bug Report: Benchmark Execution Findings
+{~~{++# Bug Report: Benchmark Execution Findings~># Bug Report: Benchmark Execution Findings~~}[^ct-2.1]
 
 **Date:** 2026-02-16
 **Context:** Full benchmark matrix execution (Phases 1-4)
@@ -11,8 +11,8 @@
 ### BUG-001: Accept Operation Deletes Footnotes Instead of Updating Status
 
 **Severity:** CRITICAL
-**Status:** ✅ FIXED (2026-02-13, commit 2ad050f)
-**Validation:** C-task4 test on 2026-02-16 confirmed fix working
+{~~**Status:** 🔴 NOT FIXED~>**Status:** ✅ FIXED (2026-02-13, commit 2ad050f)
+**Validation:** C-task4 test on 2026-02-16 confirmed fix working~~}[^ct-4.1]
 **Affects:** Both Surface C (MCP) and Surface D (CLI)
 **Location:** `@changetracks/core` accept/reject implementation
 
@@ -26,7 +26,13 @@ When accepting a tracked change via `review_change` (MCP) or `sc review` (CLI) w
 
 **Expected behavior per format spec:**
 ```markdown
-For public API responses  # Markup removed, ref kept
+For public API responses[^ct-1]  # Markup removed, ref kept
+
+[^ct-1]: @ai:... | 2026-02-14 | ins | accepted  # Status updated to "accepted"
+    approved: @ai:benchmark-agent 2026-02-16 "Good addition..."
+  @ai:... 2026-02-14: Added explicit performance benefit...
+  @reviewer 2026-02-15: Should we specify which responses...
+  @ai:benchmark-agent 2026-02-16: We should use Cache-Control header...
 ```
 
 **Actual behavior:**
@@ -39,7 +45,7 @@ For public API responses  # Markup removed, ref removed, footnote deleted entire
 **C-task4 (MCP Surface):**
 - File: `packages/benchmarks/results/phase2-new-tasks/c-task4/C-task4/after/api-spec.md`
 - Operation: `review_change` with `decision: "approve"` for ct-1
-- Result: Footnote `` completely removed from document
+- Result: Footnote `[^ct-1]` completely removed from document
 
 **D-task4 (CLI Surface):**
 - File: `packages/benchmarks/results/phase2-new-tasks/d-task4/D-task4/after/api-spec.md`
@@ -141,22 +147,24 @@ D-task3 retry after fix:
 
 ## Performance Issues (Not Bugs)
 
-### PERF-001: D-task5 High Variance (Measured: 61-113% Range)
+{~~### PERF-001: D-task5 Incompleteness (60% Correct)~>### PERF-001: D-task5 High Variance (Measured: 61-113% Range)~~}[^ct-4.2]
 
-**Severity:** MEDIUM
+{~~**Severity:** MEDIUM
+**Status:** 🟡 INVESTIGATION NEEDED
+**Nature:** Model thoroughness variance, not a bug~>**Severity:** MEDIUM
 **Status:** ✅ VARIANCE MEASURED (2026-02-16)
-**Nature:** High stochastic variance (23% CV), not a bug
+**Nature:** High stochastic variance (23% CV), not a bug~~}[^ct-4.3]
 
 #### Description
 
-D-task5 shows high stochastic variance across runs:
+{~~D-task5 made only 35/58 changes (60% completion rate) compared to C-task5's 58/58 (100%).~>D-task5 shows high stochastic variance across runs:
 - Original: 19 edits (61% vs C-task5's 31 edits)
 - Validation run 1: 22 edits (71%)
 - Validation run 2: 35 edits (113%) ✨ exceeded baseline
 - Validation run 3: 24 edits (77%)
 - **Mean: 27 edits (87%), std dev 7 (23% variance)**
 
-Original 61% result was worst case, not typical. Surface D trades some thoroughness for 40% faster execution (42s vs 70s).
+Original 61% result was worst case, not typical. Surface D trades some thoroughness for 40% faster execution (42s vs 70s).~~}[^ct-4.4]
 
 #### Analysis
 
@@ -186,7 +194,9 @@ Run D-task5 multiple times to measure variance:
 2. If results vary widely (40-100%), it's stochastic
 3. Compare Sonnet vs Kimi on same Surface D to isolate model vs surface
 
-### PERF-002: D-task3 Batch Workflow Tracking Failure
+{~~---
+
+## Design Issues (Not Bugs, But Problematic)~>### PERF-002: D-task3 Batch Workflow Tracking Failure
 
 **Severity:** HIGH
 **Status:** 🔴 UNRESOLVED - Requires Investigation
@@ -248,7 +258,7 @@ The agent attempts `sc batch` for complex structural operations (section moves, 
 
 ---
 
-## Design Issues (Not Bugs, But Problematic)
+## Design Issues (Not Bugs, But Problematic)~~}[^ct-4.5]
 
 ### DESIGN-001: CLI Batch Command Has Poor Error Messages
 
@@ -482,4 +492,18 @@ The benchmark execution successfully filled the test matrix and identified:
 
 The "Environment > Instructions" hypothesis was tested and **definitively rejected**. Instruction quality is the dominant factor in agent performance, not environmental simplicity.
 
-**Next steps:** Fix BUG-001, add tests, complete master results compilation.
+{~~**Next steps:** Fix BUG-001, add tests, complete master results compilation.
+++}[^ct-3.5]
+
+[^ct-3.5]: @ai:claude-opus-4.6 | 2026-02-16 | ins | proposed~>**Next steps:** Fix BUG-001, add tests, complete master results compilation.~~}[^ct-2.2]
+
+[^ct-2]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
+[^ct-2.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^ct-2.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+
+[^ct-4]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
+[^ct-4.5]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^ct-4.4]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^ct-4.3]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^ct-4.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^ct-4.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed

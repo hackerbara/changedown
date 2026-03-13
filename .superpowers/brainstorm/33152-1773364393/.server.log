@@ -1,0 +1,5 @@
+{"type":"server-started","port":64205,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:64205","screen_dir":"/Users/MAC/Coding/changetracks/.superpowers/brainstorm/33152-1773364393"}
+{"type":"screen-added","file":"/Users/MAC/Coding/changetracks/.superpowers/brainstorm/33152-1773364393/directions.html"}
+{"type":"screen-added","file":"/Users/MAC/Coding/changetracks/.superpowers/brainstorm/33152-1773364393/three-views.html"}
+{"type":"screen-added","file":"/Users/MAC/Coding/changetracks/.superpowers/brainstorm/33152-1773364393/dark-frame.html"}
+{"type":"server-stopped","reason":"idle timeout"}

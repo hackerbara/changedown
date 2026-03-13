@@ -1,4 +1,4 @@
-# Edit Surface Benchmark Runbook
+{++# Edit Surface Benchmark Runbook
 
 > Research agent brief for filling in the benchmark test matrix.
 > Read this fully before starting any runs.
@@ -118,7 +118,7 @@ Then rebuild: `npm run build -w packages/benchmarks`
 ### Running individual cells~>node changetracks-plugin/mcp-server/dist/cli.js --help
 ```
 
-### Running individual cells~~}
+### Running individual cells~~}[^ct-2.1]
 
 The harness uses OpenCode CLI. Environment variables control what runs:
 
@@ -231,7 +231,7 @@ After completing a phase, write a brief findings note with:
 
 **Note:** D-task5 found only 35/58 changes (60% vs C's 100%). See Results Summary below.~>| **D** | **4-6** | **5-7** | **1,337-2,471** | **75,582-123,931** | **36-47s** |
 
-**Note:** D-task5 shows 23% variance: 19-35 edits (61-113% vs C's 31), mean 27 (87%). Speed-thoroughness tradeoff.~~}~~}
+**Note:** D-task5 shows 23% variance: 19-35 edits (61-113% vs C's 31), mean 27 (87%). Speed-thoroughness tradeoff.~~}[^ct-4.2]~~}[^ct-3.1]
 
 {~~### Task 1 (rename) — Canonical v2
 
@@ -249,7 +249,7 @@ After completing a phase, write a brief findings note with:
 | C | 9 | 4 | 3,497 | 57,633 | 63s |
 | **D** | **10** | **7** | **3,405** | **134,521** | **70s** |
 
-**Note:** D-task1 was 11% slower than C-task1 (multi-file coordination overhead).~~}
+**Note:** D-task1 was 11% slower than C-task1 (multi-file coordination overhead).~~}[^ct-3.2]
 
 {~~### Task 5 Outcome-only (no tool instructions)
 
@@ -265,7 +265,7 @@ After completing a phase, write a brief findings note with:
 | C | 9 | 8 | 4,047 | 171,635 | 85s |
 | **D** | **29** | **30** | **7,133** | **1,027,451** | **150s** |
 
-**Note:** D without instructions degraded 305% (37s → 150s). Instructions > Environment.~~}
+**Note:** D without instructions degraded 305% (37s → 150s). Instructions > Environment.~~}[^ct-3.3]
 
 {~~{~~## Known Issues
 
@@ -280,20 +280,25 @@ After completing a phase, write a brief findings note with:
 3. **OpenCode runner only** — Harness uses `opencode run --format json`. For Claude Code or other runners, would need a new runner implementation.
 4. **Single runs** — All results are single-run. Agent behavior is stochastic. If a result looks anomalous, re-run before concluding.
 5. **No correctness scoring** — No automated golden-file comparison. Manual spot-check required.
-6. 🔴 **CRITICAL BUG**: Accept operation deletes footnotes instead of updating status — See BUG_REPORT.md for details~~}
-~>## Known Issues
+6. 🔴 **CRITICAL BUG**: Accept operation deletes footnotes instead of updating status — See BUG_REPORT.md for details~~}[^ct-3.4]
+++}[^ct-1]~>## Known Issues
 
 1. ✅ ~~**Fixture path stale in harness**~~ — FIXED in commit 2ae273b
 2. ✅ ~~**Surface D workspace setup not implemented**~~ — FIXED in commits 817cc23, e0320e0
 3. **OpenCode runner only** — Harness uses `opencode run --format json`. For Claude Code or other runners, would need a new runner implementation.
 4. **Single runs** — All results are single-run. Agent behavior is stochastic. If a result looks anomalous, re-run before concluding.
-5. **No correctness scoring** — No automated golden-file comparison. Manual spot-check required.
+{~~5. **No correctness scoring** — No automated golden-file comparison. Manual spot-check required.
+6. 🔴 **CRITICAL BUG**: Accept operation deletes footnotes instead of updating status — See BUG_REPORT.md for details
+
+---
+
+## Results Summary~>5. **No correctness scoring** — No automated golden-file comparison. Manual spot-check required.
 6. ✅ ~~**CRITICAL BUG**: Accept operation deletes footnotes~~ — FIXED in commit 2ad050f (2026-02-13), validated 2026-02-16
 7. 🔴 **D-task3 TRACKING FAILURE**: CLI batch workflow loses 99% of audit trail on complex structural tasks — See BUG_REPORT.md PERF-002
 
 ---
 
-## Results Summary
+## Results Summary~~}[^ct-4.1]
 
 **Last Updated:** 2026-02-16
 **Status:** Phases 1-4 complete (19 benchmark runs)
@@ -429,4 +434,20 @@ See `BUG_REPORT.md` for complete details.
 6. **Optimize prompts**: CLI-specific prompt engineering for better agent patterns
 
 **Conclusion:** The benchmark successfully filled the test matrix and provided deep insights into surface tradeoffs. Surface D shows promise but results are preliminary — refinement of testing environment and CLI implementation needed to unlock full potential.
-++}~~}
+++}[^ct-1]~~}[^ct-3.5]
+
+[^ct-1]: @ai:claude-opus-4.6 | 2026-02-16 | ins | proposed
+
+[^ct-2]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
+[^ct-2.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+
+[^ct-3]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
+[^ct-3.5]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^ct-3.4]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^ct-3.3]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^ct-3.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^ct-3.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+
+[^ct-4]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
+[^ct-4.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^ct-4.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed

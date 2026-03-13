@@ -19,13 +19,6 @@ export class ChangeComments implements vscode.Disposable {
   private disposables: vscode.Disposable[] = [];
   private refreshThreadsTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  /**
-   * Defense-in-depth flag: true when a comment thread is expanded (peek widget
-   * likely visible). Controller checks this as secondary guard against
-   * keystroke leaks from comment input. Cleared on next selection event.
-   */
-  public isCommentReplyActive: boolean = false;
-
   constructor(
     private controller: ExtensionController,
     private getDocument: () => vscode.TextDocument | undefined,
@@ -70,26 +63,10 @@ export class ChangeComments implements vscode.Disposable {
     // When cursor moves into a change that has a comment thread, expand that thread — but only when
     // commentsExpandedByDefault is true. Without this gate, scrolling through documents with many
     // commented changes causes peek widgets to flash open on every selection change event.
-    // isCommentReplyActive is still cleared when cursor leaves a change region regardless of setting.
     this.disposables.push(
       vscode.window.onDidChangeTextEditorSelection(() => {
         if (this.getCommentsExpandedByDefault()) {
           this.expandThreadForChangeAtCursor();
-        } else {
-          // Still clear the flag when cursor leaves change region
-          const doc = this.getDocument();
-          const editor = vscode.window.activeTextEditor;
-          if (doc && editor && editor.document === doc) {
-            const text = doc.getText();
-            const cursorOffset = positionToOffset(text, editor.selection.active);
-            const changes = this.controller.getChangesForDocument(doc);
-            const change = changes.find(
-              (c) => cursorOffset >= c.contentRange.start && cursorOffset < c.contentRange.end
-            );
-            if (!change || change.level < 1) {
-              this.isCommentReplyActive = false;
-            }
-          }
         }
       })
     );
@@ -110,15 +87,52 @@ export class ChangeComments implements vscode.Disposable {
       (c) => cursorOffset >= c.contentRange.start && cursorOffset < c.contentRange.end
     );
     if (!change || change.level < 1) {
-      // Cursor is outside any L1/L2 change — no comment widget should be active
-      this.isCommentReplyActive = false;
       return;
     }
 
     const thread = this.threads.get(change.id);
     if (thread && thread.collapsibleState !== vscode.CommentThreadCollapsibleState.Expanded) {
       thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
-      this.isCommentReplyActive = true;
+    }
+  }
+
+  /**
+   * Live check: is any comment thread currently expanded at the cursor position?
+   * Used by controller guards to decide whether keystrokes belong to the comment
+   * input or the document editor.
+   *
+   * This replaces the stale `isCommentReplyActive` boolean flag, which drifted
+   * because it was cleared on cursor-move rather than on widget close.
+   *
+   * Known limitation: VS Code does not guarantee collapsibleState reflects actual
+   * UI state after user-initiated close (Escape/click outside). This live check
+   * is still a significant improvement — the boolean flag drifted in more scenarios.
+   */
+  public isAnyThreadExpandedAtCursor(): boolean {
+    const editor = vscode.window.activeTextEditor;
+    const doc = this.getDocument();
+    if (!editor || !doc || editor.document !== doc) return false;
+
+    const text = doc.getText();
+    const cursorOffset = positionToOffset(text, editor.selection.active);
+    const changes = this.controller.getChangesForDocument(doc);
+    const change = changes.find(
+      (c) => cursorOffset >= c.contentRange.start && cursorOffset < c.contentRange.end
+    );
+    if (!change || change.level < 1) return false;
+
+    const thread = this.threads.get(change.id);
+    return thread?.collapsibleState === vscode.CommentThreadCollapsibleState.Expanded;
+  }
+
+  /**
+   * Expand the comment thread for a given changeId. Used by review panel
+   * "click card → navigate AND open peek widget" feature.
+   */
+  public expandThreadForChangeId(changeId: string): void {
+    const thread = this.threads.get(changeId);
+    if (thread) {
+      thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
     }
   }
 
@@ -206,7 +220,6 @@ export class ChangeComments implements vscode.Disposable {
         thread.dispose();
         this.threads.delete(id);
       }
-      this.isCommentReplyActive = false;
       return;
     }
 
@@ -228,17 +241,20 @@ export class ChangeComments implements vscode.Disposable {
         ? vscode.CommentThreadCollapsibleState.Expanded
         : vscode.CommentThreadCollapsibleState.Collapsed;
 
-      // Don't use CommentThreadState.Resolved: VS Code hides inline peeks for
-      // Resolved threads, preventing users from seeing the "accepted"/"rejected"
-      // status transition. Status is communicated via the text label in the
-      // comment body instead ("insertion · accepted", "deletion · rejected", etc).
+      // Compute thread state from resolution metadata: threads with an explicit
+      // "resolved" resolution marker use CommentThreadState.Resolved (VS Code
+      // dims them and collapses inline peeks); all others stay Unresolved.
+      const isResolved = change.metadata?.resolution?.type === 'resolved';
+      const threadState = isResolved
+        ? vscode.CommentThreadState.Resolved
+        : vscode.CommentThreadState.Unresolved;
 
       if (existing) {
         // Preserve expansion so that replying does not auto-close the thread
         const wasExpanded = existing.collapsibleState === vscode.CommentThreadCollapsibleState.Expanded;
         existing.range = range;
         existing.comments = this.buildComments(change);
-        existing.state = vscode.CommentThreadState.Unresolved;
+        existing.state = threadState;
         if (wasExpanded) {
           existing.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
         }
@@ -249,7 +265,7 @@ export class ChangeComments implements vscode.Disposable {
         const author = change.metadata?.author ?? change.inlineMetadata?.author ?? 'unknown';
         thread.label = `${typeLabelCapitalized(change.type)} by ${author}`;
         thread.canReply = true;
-        thread.state = vscode.CommentThreadState.Unresolved;
+        thread.state = threadState;
         thread.collapsibleState = defaultCollapsibleState;
         this.threads.set(change.id, thread);
       }
@@ -260,8 +276,6 @@ export class ChangeComments implements vscode.Disposable {
       if (!activeIds.has(id)) {
         thread.dispose();
         this.threads.delete(id);
-        // Thread gone — clear flag so tracking mode stops suppressing keystrokes
-        this.isCommentReplyActive = false;
       }
     }
   }
@@ -376,7 +390,6 @@ export class ChangeComments implements vscode.Disposable {
       thread.dispose();
     }
     this.threads.clear();
-    this.isCommentReplyActive = false;
     this.disposables.forEach(d => d.dispose());
   }
 }

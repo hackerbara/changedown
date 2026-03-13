@@ -21,3 +21,31 @@ npm run install:local  # Install extension + plugin locally
 Monorepo: @changetracks/core (parser) → @changetracks/lsp-server → changetracks-vscode (VS Code extension) + changetracks-plugin/ (Claude Code MCP plugin)
 
 See individual package README files for details.
+
+## Testing
+
+Three test tiers with Cucumber BDD:
+
+| Tier | Tag | What it tests | Speed |
+|------|-----|--------------|-------|
+| @fast | Parser, core logic | In-process, no VS Code | <5s |
+| @slow | UI, decorations, panels | Playwright + VS Code Electron | ~4-10s/scenario |
+| @visual | Screenshot regression | Pixel comparison vs golden baselines | ~5-15s/scenario |
+
+```bash
+npm test                # All non-@wip tests
+npm run test:core       # Core unit tests (vitest + mocha)
+npm run test:ext        # Extension Cucumber features
+
+# From packages/tests/vscode/:
+npm run test:fast       # @fast tier only
+npm run test:slow       # @slow tier (Playwright)
+npm run test:visual     # Visual regression
+npm run test:gaps       # @coverage-gap RED phase witnesses
+
+# Filter by tag or name:
+npm run test -w @changetracks/tests-vscode -- --tags '@D1'
+npm run test -w @changetracks/tests-vscode -- --name 'First impressions'
+```
+
+Test fixtures in `packages/tests/vscode/fixtures/`. Feature files in `packages/tests/vscode/features/`.

@@ -52,6 +52,8 @@ export function parseConfigToml(raw: string): ChangeTracksConfig {
   const policy = parsed['policy'] as Record<string, unknown> | undefined;
   const protocol = parsed['protocol'] as Record<string, unknown> | undefined;
   const meta = parsed['meta'] as Record<string, unknown> | undefined;
+  const review = parsed['review'] as Record<string, unknown> | undefined;
+  const reasonRequired = review?.['reason_required'] as Record<string, unknown> | undefined;
 
   return {
     tracking: {
@@ -101,6 +103,16 @@ export function parseConfigToml(raw: string): ChangeTracksConfig {
       auto_on_reject: typeof settlement?.['auto_on_reject'] === 'boolean'
         ? settlement['auto_on_reject']
         : DEFAULT_CONFIG.settlement.auto_on_reject,
+    },
+    review: {
+      reasonRequired: {
+        human: typeof reasonRequired?.['human'] === 'boolean'
+          ? reasonRequired['human']
+          : DEFAULT_CONFIG.review.reasonRequired.human,
+        agent: typeof reasonRequired?.['agent'] === 'boolean'
+          ? reasonRequired['agent']
+          : DEFAULT_CONFIG.review.reasonRequired.agent,
+      },
     },
     policy: {
       mode: policy?.['mode'] === 'strict' || policy?.['mode'] === 'safety-net' || policy?.['mode'] === 'permissive'

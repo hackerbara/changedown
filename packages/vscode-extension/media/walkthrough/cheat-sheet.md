@@ -12,7 +12,7 @@
 | Previous change | Alt+Cmd+[ | Ctrl+Alt+[ |
 | Show diff | Alt+Cmd+D | Ctrl+Alt+D |
 | Annotate from git | Alt+Cmd+G | Ctrl+Alt+G |
-| Go to linked change | Alt+Cmd+M | Ctrl+Alt+M |
+| Go to linked change | Alt+Cmd+M | Ctrl+Alt+M |[^ct-1]
 
 ### Toolbar Buttons (editor title bar)
 
@@ -24,11 +24,11 @@
 
 | Type | Write this | Result |
 |------|-----------|--------|
-| Insert | `new text` | new text (green) |
-| Delete | `` | ~~old text~~ (red) |
-| Replace | `new` | old → new (blue) |
-| Highlight | `text` | text (yellow) |
-| Comment | `` | Inline note |
+| Insert | `{++new text++}` | new text (green) |
+| Delete | `{--old text--}` | ~~old text~~ (red) |
+| Replace | `{~~old~>new~~}` | old → new (blue) |
+| Highlight | `{==text==}` | text (yellow) |
+| Comment | `{>>note<<}` | Inline note |
 
 ### Sidebar
 
@@ -53,4 +53,11 @@ Agents use the same CriticMarkup format. Their changes show up in the editor and
 changetracks init           # Initialize tracking in a project
 changetracks status         # Show tracked files and pending changes
 changetracks diff           # Show changes in diff format
-```
+```[^ct-2]
+[^ct-1]: @ai:claude-opus-4.6 | 2026-02-28 | sub | accepted
+    @ai:claude-opus-4.6 2026-02-28: Replace Shift+Cmd keybindings with Alt+Cmd scheme and add new bindings for git annotate and linked change navigation
+    approved: @ai:claude-opus-4.6 2026-02-28 "Keybinding update from Shift+Cmd to Alt+Cmd scheme to avoid VS Code conflicts"
+
+[^ct-2]: @ai:claude-opus-4.6 | 2026-03-01 | sub | accepted
+    @ai:claude-opus-4.6 2026-03-01T07:36:13Z: Add agent workflow and CLI command sections to cheat sheet for three-surface coverage
+    approved: @ai:claude-opus-4.6 2026-03-01T07:36:28Z "Add agent workflow and CLI command sections for three-surface coverage"

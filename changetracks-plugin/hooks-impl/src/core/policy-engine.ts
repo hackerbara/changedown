@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import type { PolicyDecision } from './types.js';
 import type { ChangeTracksConfig } from '../config.js';
 import { isFileInScope, isFileExcludedFromHooks } from '../scope.js';
+import { parseTrackingHeader } from '@changetracks/core';
 
 export interface RawEditOptions {
   /** When true, check if the file exists on disk. Non-existent files with
@@ -23,8 +24,25 @@ export function evaluateRawEdit(
   projectDir: string,
   options?: RawEditOptions,
 ): PolicyDecision {
-  // Not in tracking scope → allow silently
-  if (!isFileInScope(filePath, config, projectDir)) {
+  const inScope = isFileInScope(filePath, config, projectDir);
+
+  // Check per-file header override (if file exists)
+  let headerStatus: 'tracked' | 'untracked' | null = null;
+  if (fs.existsSync(filePath)) {
+    try {
+      const head = fs.readFileSync(filePath, 'utf-8').slice(0, 500);
+      const header = parseTrackingHeader(head);
+      if (header) headerStatus = header.status;
+    } catch {
+      // Can't read file — no override
+    }
+  }
+
+  // Per-file header overrides scope decision
+  if (headerStatus === 'untracked') {
+    return { action: 'allow', reason: 'File header declares untracked' };
+  }
+  if (!inScope && headerStatus !== 'tracked') {
     return { action: 'allow', reason: 'File not in tracking scope' };
   }
 

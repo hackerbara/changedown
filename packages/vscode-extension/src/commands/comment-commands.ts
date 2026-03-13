@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { scanMaxCtId, generateFootnoteDefinition, SIDECAR_BLOCK_MARKER } from '@changetracks/core';
+import { scanMaxCtId, generateFootnoteDefinition } from '@changetracks/core';
 import { findReplyInsertionPoint, formatReply } from '../footnote-writer';
 import { offsetToPosition } from '../converters';
 import { resolveAuthorIdentity } from '../author-identity';
@@ -62,6 +62,16 @@ export function registerCommentCommands(
             }
             await controller.runWithTrackedEditGuard(() => vscode.workspace.applyEdit(wsEdit));
             thread.dispose();
+        }),
+        vscode.commands.registerCommand('changetracks.resolveThread', async (thread: vscode.CommentThread) => {
+            const changeId = changeComments.getChangeIdForThread(thread);
+            if (!changeId) return;
+            await controller.sendLifecycleRequest('changetracks/resolveThread', { changeId });
+        }),
+        vscode.commands.registerCommand('changetracks.unresolveThread', async (thread: vscode.CommentThread) => {
+            const changeId = changeComments.getChangeIdForThread(thread);
+            if (!changeId) return;
+            await controller.sendLifecycleRequest('changetracks/unresolveThread', { changeId });
         }),
         vscode.commands.registerCommand('changetracks.replyToThread', async (reply: vscode.CommentReply) => {
             const editor = vscode.window.activeTextEditor;

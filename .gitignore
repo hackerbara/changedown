@@ -35,6 +35,10 @@ coverage/
 packages/tests/features/reports/
 packages/tests/features/dist/
 
+# Video test artifacts
+packages/tests/vscode/video/output/
+packages/tests/vscode/video/final/
+
 # OS files
 .DS_Store
 Thumbs.db

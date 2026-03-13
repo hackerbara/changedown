@@ -21,7 +21,7 @@ import type { ViewMode } from './view-mode';
 import { SIDECAR_BLOCK_MARKER } from '@changetracks/core';
 import { changetracksPlugin } from './preview/plugin';
 import { setOutputChannel } from './output-channel';
-import { registerChangeCommands, registerScmCommands, registerCommentCommands, registerTestCommands, registerSetupCommands } from './commands';
+import { registerChangeCommands, registerScmCommands, registerCommentCommands, registerTestCommands, registerSetupCommands, type ChangeCommandsContext } from './commands';
 import { DocxEditorProvider } from './docx/docx-editor-provider';
 
 let controller: ExtensionController;
@@ -132,11 +132,34 @@ export function activate(context: vscode.ExtensionContext) {
             }
         });
         controller.setGetChangesClient(client);
+        controller.setCursorPositionSender((uri: string, line: number, changeId?: string) => {
+            if (client?.isRunning?.()) {
+                client.sendNotification('changetracks/cursorPosition', {
+                    textDocument: { uri },
+                    line,
+                    changeId,
+                });
+            }
+        });
+        const initialMode = vscode.workspace.getConfiguration('changetracks').get<string>('codeLensMode', 'cursor');
+        client.sendNotification('changetracks/setCodeLensMode', { mode: initialMode });
         outputChannel.appendLine('[activate] LSP client connected');
     }).catch(err => {
         outputChannel.appendLine(`[activate] LSP start failed: ${err?.message ?? err}`);
         // Degraded mode: commands work, decorations arrive when LSP connects
     });
+
+    // Wire codeLensMode config watcher: send changetracks/setCodeLensMode to LSP on change
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('changetracks.codeLensMode')) {
+                const mode = vscode.workspace.getConfiguration('changetracks').get<string>('codeLensMode', 'cursor');
+                if (client?.isRunning?.()) {
+                    client.sendNotification('changetracks/setCodeLensMode', { mode });
+                }
+            }
+        })
+    );
 
     // Hover provider: show comment/reason when hovering over changes
     registerHoverProvider(context, controller);
@@ -265,7 +288,7 @@ export function activate(context: vscode.ExtensionContext) {
         controller.setChangeComments(changeComments);
     } catch (err: any) {
         outputChannel.appendLine(`[activate] ChangeComments failed to initialize: ${err.message}\n${err.stack}`);
-        changeComments = { getChangeIdForThread: () => undefined };
+        changeComments = { getChangeIdForThread: () => undefined, expandThreadForChangeId: () => undefined };
     }
 
     // Timeline provider (change events in Explorer)
@@ -283,7 +306,7 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     // Command modules (Phase 4)
-    registerChangeCommands(context, controller, statusModel);
+    registerChangeCommands(context, controller, statusModel, changeComments as ChangeCommandsContext);
     registerCommentCommands(context, controller, changeComments);
     registerTestCommands(context, controller, () => client, changeComments as any);
     registerSetupCommands(context);

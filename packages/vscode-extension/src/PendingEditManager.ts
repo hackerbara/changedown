@@ -230,6 +230,27 @@ export class PendingEditManager {
         this.log('abandon: discarded pending edit (tracking toggled off)');
     }
 
+    /**
+     * Structural flush: returns true when cursor has moved outside the pending
+     * edit's active range. This is a structural event — fires regardless of
+     * pauseThresholdMs value (threshold controls only temporal events like the
+     * safety-net timer). See spec: pauseThresholdMs Semantics.
+     *
+     * Exception: pure deletion buffers (currentText empty, originalText non-empty)
+     * are exempt — the user is likely pressing Backspace multiple times and the
+     * timer or next non-adjacent edit provides the flush backstop.
+     */
+    public shouldFlushOnCursorMove(cursorOffset: number): boolean {
+        const buf = this.state.pending;
+        if (!buf) { return false; }
+        // Pure deletion buffers: don't flush on cursor movement.
+        // User is likely pressing Backspace repeatedly to extend the deletion.
+        if (buf.currentText.length === 0 && buf.originalText.length > 0) {
+            return false;
+        }
+        return cursorOffset < buf.anchorOffset || cursorOffset > buf.anchorOffset + buf.currentText.length;
+    }
+
     public clear(): void {
         this.abandon();
     }

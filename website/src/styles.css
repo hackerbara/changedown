@@ -1,0 +1,824 @@
+/* ==========================================================================
+   ctracks.com — styles.css
+   Dark shell, editor viewport, three view modes, CriticMarkup rendering.
+   ========================================================================== */
+
+/* === DESIGN TOKENS === */
+:root {
+  --red: #e45858;
+  --red-hover: #f06b6b;
+  --red-dim: #c44040;
+  --red-bg: rgba(228, 88, 88, 0.12);
+  --green: #5dba6a;
+  --green-bg: rgba(93, 186, 106, 0.12);
+  --yellow-bg: rgba(210, 170, 60, 0.10);
+  --shell-bg: #111113;
+  --shell-border: #222226;
+  --viewport-final: #1c1c1e;
+  --viewport-changes: #18181b;
+  --viewport-agent: #0d1117;
+}
+
+/* === RESET === */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+
+/* ==========================================================================
+   SHELL (always dark)
+   ========================================================================== */
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--shell-bg);
+  color: #e0e0e0;
+  min-height: 100vh;
+}
+
+/* --- Header --- */
+.shell-header {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 32px 0;
+}
+
+.header-top {
+  margin-bottom: 16px;
+}
+
+.brand-group {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.brand-name {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f0f0f0;
+  letter-spacing: -0.01em;
+}
+
+.brand-url {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--red);
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
+/* header bar: page-nav left, view-toggle right */
+.header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.page-nav {
+  display: flex;
+  gap: 18px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+}
+
+.page-nav a {
+  color: #666;
+  text-decoration: none;
+  padding-bottom: 4px;
+  transition: color 0.2s;
+}
+.page-nav a:hover { color: #aaa; }
+.page-nav a.current {
+  color: var(--red);
+  border-bottom: 2px solid var(--red);
+}
+
+
+/* --- View toggle (top-right, inline with nav) --- */
+.view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.toggle-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #484f58;
+  margin-right: 10px;
+  user-select: none;
+  line-height: 1;
+}
+
+.view-toggle button {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 5px 14px;
+  border: 1px solid var(--shell-border);
+  cursor: pointer;
+  background: transparent;
+  color: #555;
+  transition: all 0.2s;
+  margin-left: -1px;
+}
+
+.view-toggle button:first-of-type {
+  border-radius: 5px 0 0 5px;
+  margin-left: 0;
+}
+
+.view-toggle button:last-of-type {
+  border-radius: 0 5px 5px 0;
+}
+
+.view-toggle button:not(:first-of-type):not(:last-of-type) {
+  border-radius: 0;
+}
+
+.view-toggle button.active {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+  z-index: 1;
+  position: relative;
+}
+
+.view-toggle button:hover:not(.active) {
+  border-color: #444;
+  color: #aaa;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+
+
+/* ==========================================================================
+   EDITOR VIEWPORT
+   ========================================================================== */
+.editor-frame {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.editor-viewport {
+  display: flex;
+  border: 1px solid var(--shell-border);
+  border-radius: 8px;
+  margin-top: 12px;
+  overflow: hidden;
+  min-height: 420px;
+  transition: background 0.35s ease;
+}
+
+/* viewport backgrounds per view mode */
+body.view-final   .editor-viewport { background: var(--viewport-final); }
+body.view-changes .editor-viewport { background: var(--viewport-changes); }
+body.view-agent   .editor-viewport { background: var(--viewport-agent); }
+
+
+/* --- Gutter --- */
+.editor-gutter {
+  flex: 0 0 auto;
+  width: 0;
+  overflow: hidden;
+  transition: width 0.35s ease, opacity 0.35s ease;
+  opacity: 0;
+  user-select: none;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  line-height: 1.85;
+  padding: 32px 0 32px 12px;
+  color: #484f58;
+}
+
+/* Agent view: gutter not needed — margins built into formatHtml output */
+
+.gutter-line {
+  white-space: nowrap;
+  height: 1.85em;
+}
+
+.gutter-insertion   { border-left: 3px solid var(--green); padding-left: 6px; }
+.gutter-deletion    { border-left: 3px solid var(--red); padding-left: 6px; }
+.gutter-substitution { border-left: 3px solid #d2aa3c; padding-left: 6px; }
+
+
+/* --- Editor content --- */
+.editor-content {
+  flex: 1 1 auto;
+  padding: 40px 48px;
+  min-width: 0;
+  transition: font-family 0.35s ease, font-size 0.35s ease,
+              color 0.35s ease, line-height 0.35s ease, padding 0.35s ease;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+
+/* --- Comment panel --- */
+.comment-panel {
+  flex: 0 0 auto;
+  width: 0;
+  overflow: hidden;
+  border-left: 1px solid transparent;
+  transition: width 0.35s ease, border-color 0.35s ease, opacity 0.35s ease;
+  opacity: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #8b949e;
+  padding: 32px 0;
+}
+
+.comment-panel.hidden { display: none; }
+
+/* Comment panel visible in changes view */
+body.view-changes .comment-panel {
+  width: 280px;
+  opacity: 1;
+  border-left-color: var(--shell-border);
+  padding: 32px 16px;
+}
+
+
+/* ==========================================================================
+   VIEW: CHANGES — Inter 14px, green inserts, hidden deletions, comment panel
+   ========================================================================== */
+body.view-changes .editor-content {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.75;
+  color: #d8d8d8;
+}
+
+body.view-changes .editor-content h1 {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 24px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #f0f0f0;
+}
+
+body.view-changes .editor-content h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 32px;
+  margin-bottom: 12px;
+  color: #eee;
+}
+
+body.view-changes .editor-content h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 24px;
+  margin-bottom: 8px;
+  color: #ddd;
+}
+
+body.view-changes .editor-content p {
+  margin-bottom: 18px;
+}
+
+body.view-changes .editor-content a {
+  color: var(--red-hover);
+  text-decoration: none;
+}
+body.view-changes .editor-content a:hover {
+  text-decoration: underline;
+}
+
+body.view-changes .editor-content strong {
+  color: #f0f0f0;
+  font-weight: 600;
+}
+
+body.view-changes .editor-content hr {
+  border: none;
+  border-top: 1px solid #333;
+  margin: 28px 0;
+}
+
+body.view-changes .editor-content code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+body.view-changes .editor-content pre {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 16px 20px;
+  border-radius: 6px;
+  margin: 20px 0;
+  overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+body.view-changes .editor-content pre code {
+  background: none;
+  padding: 0;
+}
+
+body.view-changes .editor-content ul,
+body.view-changes .editor-content ol {
+  margin: 12px 0 18px 24px;
+}
+
+body.view-changes .editor-content li {
+  margin-bottom: 6px;
+}
+
+body.view-changes .editor-content blockquote {
+  border-left: 3px solid #444;
+  padding-left: 16px;
+  color: #999;
+  margin: 16px 0;
+}
+
+
+/* ==========================================================================
+   VIEW: AGENT — IBM Plex Mono 13px, three-zone raw with hashlines + footnotes
+   ========================================================================== */
+body.view-agent .editor-content {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  line-height: 1.85;
+  color: #c9d1d9;
+  padding: 32px 40px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+
+/* ==========================================================================
+   VIEW: FINAL — Charter 16px serif, warm dark, clean reading
+   ========================================================================== */
+body.view-final .editor-content {
+  font-family: 'Charter', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #d8d4cc;
+}
+
+body.view-final .editor-content h1 {
+  font-family: 'Charter', Georgia, serif;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #eae6de;
+}
+
+body.view-final .editor-content h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 36px;
+  margin-bottom: 14px;
+  color: #e0dcd4;
+  font-family: 'Charter', Georgia, serif;
+}
+
+body.view-final .editor-content h3 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-top: 28px;
+  margin-bottom: 10px;
+  color: #d8d4cc;
+  font-family: 'Charter', Georgia, serif;
+}
+
+body.view-final .editor-content p {
+  margin-bottom: 20px;
+}
+
+body.view-final .editor-content a {
+  color: var(--red-hover);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(240, 107, 107, 0.3);
+  transition: border-color 0.2s;
+}
+body.view-final .editor-content a:hover {
+  border-color: var(--red-hover);
+}
+
+body.view-final .editor-content strong {
+  color: #eae6de;
+  font-weight: 700;
+}
+
+body.view-final .editor-content hr {
+  border: none;
+  border-top: 1px solid #3a3630;
+  margin: 32px 0;
+}
+
+body.view-final .editor-content code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.88em;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+body.view-final .editor-content pre {
+  background: rgba(0, 0, 0, 0.25);
+  padding: 16px 20px;
+  border-radius: 6px;
+  margin: 24px 0;
+  overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+body.view-final .editor-content pre code {
+  background: none;
+  padding: 0;
+}
+
+body.view-final .editor-content ul,
+body.view-final .editor-content ol {
+  margin: 12px 0 20px 24px;
+}
+
+body.view-final .editor-content li {
+  margin-bottom: 8px;
+}
+
+body.view-final .editor-content blockquote {
+  border-left: 3px solid #3a3630;
+  padding-left: 16px;
+  color: #999;
+  margin: 20px 0;
+}
+
+/* ==========================================================================
+   CRITICMARKUP RENDERING CLASSES (Simple + Final views via markdown-it)
+   ========================================================================== */
+
+/* --- Insertions --- */
+.ct-ins { color: #66BB6A; }
+
+/* --- Deletions --- */
+.ct-del { color: #EF5350; text-decoration: line-through; }
+
+/* --- Substitution --- */
+.ct-sub-del { color: #EF5350; text-decoration: line-through; }
+.ct-sub-ins { color: #66BB6A; }
+
+/* --- Highlights --- */
+.ct-hl { background: rgba(255, 255, 0, 0.3); padding: 0 2px; border-radius: 2px; }
+
+/* --- Comments --- */
+.ct-comment { cursor: help; font-size: 0.85em; opacity: 0.8; }
+
+/* --- Status modifiers --- */
+.ct-proposed { }
+.ct-accepted { opacity: 0.6; }
+.ct-rejected { opacity: 0.5; font-style: italic; }
+
+/* --- Footnote refs (inline badges) --- */
+.ct-ref {
+  font-size: 0.75em;
+  vertical-align: super;
+  padding: 0 3px;
+  border-radius: 3px;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #64B5F6;
+  background: rgba(100, 181, 246, 0.15);
+}
+.ct-ref a { text-decoration: none; color: inherit; }
+
+/* --- Footnote definitions panel --- */
+.ct-footnotes {
+  border-top: 1px solid #30363d;
+  margin-top: 2em;
+  padding-top: 1em;
+  font-size: 0.9em;
+}
+
+.ct-footnote {
+  margin-bottom: 0.75em;
+  padding: 0.4em 0.6em;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ct-ref-badge { font-weight: bold; font-family: 'IBM Plex Mono', monospace; margin-right: 0.5em; }
+
+/* --- Deliberation metadata --- */
+.ct-fn-author  { margin-right: 0.5em; font-weight: 500; }
+.ct-fn-date    { margin-right: 0.5em; opacity: 0.7; font-size: 0.9em; }
+.ct-fn-text    { opacity: 0.9; }
+.ct-fn-comment { margin-top: 0.3em; opacity: 0.85; }
+
+.ct-fn-status {
+  display: inline-block;
+  padding: 0.1em 0.5em;
+  border-radius: 3px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+.ct-fn-status.ct-proposed { background: rgba(100, 181, 246, 0.2); color: #64B5F6; }
+.ct-fn-status.ct-accepted { background: rgba(102, 187, 106, 0.2); color: #66BB6A; }
+.ct-fn-status.ct-rejected { background: rgba(239, 83, 80, 0.2); color: #EF5350; }
+
+/* --- Context --- */
+.ct-fn-context { margin: 0.4em 0; padding: 0.3em 0.6em; border-left: 3px solid #30363d; font-style: italic; opacity: 0.85; }
+.ct-ctx-changed { font-weight: 600; font-style: normal; }
+
+/* --- Verdicts --- */
+.ct-fn-approval, .ct-fn-rejection, .ct-fn-request-changes {
+  margin: 0.2em 0; padding: 0.15em 0.4em; border-radius: 3px; font-size: 0.85em;
+}
+.ct-fn-verdict-label { font-weight: 600; }
+.ct-fn-approval         { background: rgba(102, 187, 106, 0.1); }
+.ct-fn-rejection        { background: rgba(239, 83, 80, 0.1); }
+.ct-fn-request-changes  { background: rgba(255, 183, 77, 0.1); }
+
+/* --- Revisions --- */
+.ct-fn-revisions { margin: 0.4em 0; padding: 0.3em 0; border-left: 2px solid #30363d; padding-left: 0.6em; }
+.ct-fn-revision  { margin: 0.15em 0; font-size: 0.85em; }
+
+/* --- Discussion threads --- */
+.ct-fn-discussion { margin: 0.5em 0; }
+.ct-discussion-comment { margin: 0.2em 0; padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.9em; background: rgba(255, 255, 255, 0.03); }
+
+/* --- Labels --- */
+.ct-label { display: inline-block; padding: 0 0.4em; border-radius: 3px; font-size: 0.8em; font-weight: 500; background: rgba(100, 181, 246, 0.15); color: #64B5F6; }
+
+/* --- Resolution --- */
+.ct-fn-resolution { margin: 0.4em 0; padding: 0.3em 0.5em; border-radius: 3px; font-size: 0.85em; font-weight: 500; }
+.ct-resolved { background: rgba(102, 187, 106, 0.12); color: #66BB6A; }
+.ct-open     { background: rgba(255, 183, 77, 0.12); color: #FFB74D; }
+
+/* --- Backlinks --- */
+.ct-fn-backlink { text-decoration: none; font-size: 0.8em; opacity: 0.5; margin-left: 0.3em; }
+.ct-fn-backlink:hover { opacity: 1; }
+
+/* --- Anchor metadata --- */
+.ct-anchor-meta { font-size: 0.75em; margin-left: 0.3em; opacity: 0.7; }
+.ct-anchor-author { font-weight: 500; }
+.ct-anchor-status { display: inline-block; padding: 0 0.3em; border-radius: 2px; }
+.ct-anchor-projected { display: inline-flex; gap: 0.3em; align-items: baseline; }
+
+
+/* --- Simple view CriticMarkup overrides --- */
+body.view-changes .ct-ins {
+  color: var(--green);
+  background: var(--green-bg);
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+body.view-changes .ct-sub-ins  { color: var(--green); }
+
+/* Hide footnote definitions at bottom — sidebar handles annotations */
+body.view-changes .ct-footnotes { display: none; }
+
+
+/* ==========================================================================
+   FULL VIEW: ThreeZoneDocument HTML rendering (from core formatHtml)
+   ========================================================================== */
+
+.raw-file {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Line structure */
+.ct-line {
+  min-height: 1.85em;
+}
+.ct-line.ct-flag-proposed { border-left: 3px solid var(--red); padding-left: 6px; }
+.ct-line.ct-flag-accepted { border-left: 3px solid var(--green); padding-left: 6px; }
+
+/* Margin: line number + hash */
+.ct-margin {
+  color: #484f58;
+  font-size: 0.92em;
+  user-select: none;
+  margin-right: 8px;
+}
+
+/* CriticMarkup delimiters */
+.ct-delimiter {
+  color: #484f58;
+  font-size: 0.95em;
+}
+
+/* Insertions */
+.ct-insertion {
+  color: var(--green);
+  background: var(--green-bg);
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+/* Deletions */
+.ct-deletion {
+  color: var(--red);
+  text-decoration: line-through;
+  background: var(--red-bg);
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+/* Substitutions */
+.ct-sub-old {
+  color: var(--red);
+  text-decoration: line-through;
+}
+.ct-sub-arrow {
+  color: #484f58;
+}
+.ct-sub-new {
+  color: var(--green);
+}
+
+/* Highlights */
+.ct-highlight {
+  background: var(--yellow-bg);
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+/* Comments */
+.ct-comment {
+  color: #7eb8da;
+  font-style: italic;
+}
+
+/* Footnote anchors */
+.ct-anchor {
+  color: #64B5F6;
+  cursor: help;
+  position: relative;
+}
+.ct-anchor:hover {
+  color: var(--red);
+}
+
+/* Zone 3: inline metadata projections (agent view) */
+.ct-zone3-group {
+  margin-left: 2em;
+  opacity: 0.6;
+  font-size: 0.9em;
+}
+.ct-zone3 {
+  color: #7eb8da;
+  font-style: italic;
+}
+.ct-zone3::before { content: '{>>'; color: #484f58; }
+.ct-zone3::after { content: '<<}'; color: #484f58; }
+.ct-zone3.ct-z3-proposed { color: #64B5F6; }
+.ct-zone3.ct-z3-accepted { color: #66BB6A; }
+.ct-zone3.ct-z3-rejected { color: #EF5350; }
+
+/* Footnote definitions section (agent view) */
+.ct-footnote-section {
+  margin-top: 1.5em;
+  padding-top: 1em;
+  border-top: 1px solid #30363d;
+  white-space: pre-wrap;
+  color: #8b949e;
+  font-size: 0.92em;
+  line-height: 1.7;
+}
+
+
+/* ==========================================================================
+   FOOTNOTE TOOLTIPS (Full view)
+   ========================================================================== */
+.fn-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1c2028;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: #8b949e;
+  white-space: nowrap;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.ct-anchor:hover .fn-tooltip,
+.ct-ref:hover .fn-tooltip { display: block; }
+
+.fn-tooltip-author { color: var(--red); font-weight: 500; }
+.fn-tooltip-meta   { color: #666; font-size: 10px; }
+.fn-tooltip-reason { color: #c9d1d9; margin-top: 4px; }
+
+
+/* ==========================================================================
+   COMMENT PANEL ENTRIES
+   ========================================================================== */
+.panel-empty {
+  color: #555;
+  font-size: 11px;
+  padding: 8px 0;
+}
+
+.panel-entry {
+  padding: 10px 12px;
+  border-left: 3px solid transparent;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.panel-entry:hover,
+.panel-entry-active {
+  border-left-color: var(--red);
+  background: rgba(228, 88, 88, 0.06);
+}
+
+.panel-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.panel-author  { color: var(--red); font-weight: 500; }
+.panel-status  { color: #555; font-size: 10px; }
+.panel-date    { color: #555; font-size: 11px; margin-top: 2px; }
+.panel-comment { color: #8b949e; margin-top: 6px; line-height: 1.5; }
+
+.panel-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.panel-badge-insertion    { background: var(--green-bg); color: var(--green); }
+.panel-badge-deletion     { background: var(--red-bg); color: var(--red); }
+.panel-badge-substitution { background: var(--yellow-bg); color: #d2aa3c; }
+.panel-badge-highlight    { background: rgba(255, 255, 0, 0.1); color: #ccc; }
+.panel-badge-comment      { background: rgba(100, 181, 246, 0.12); color: #64B5F6; }
+
+.panel-thread {
+  margin-top: 6px;
+  border-left: 2px solid #2a2a2e;
+  padding-left: 8px;
+}
+.panel-thread-msg { font-size: 11px; color: #8b949e; margin-bottom: 4px; line-height: 1.4; }
+.panel-thread-msg strong { color: var(--red); }
+
+/* Highlight active change in editor (bidirectional hover) */
+.ct-highlight-active {
+  outline: 1px solid var(--red);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+
+/* ==========================================================================
+   SHELL FOOTER
+   ========================================================================== */
+.shell-footer {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 32px 40px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: #444;
+  display: flex;
+  justify-content: space-between;
+}
+
+.shell-footer a { color: var(--red); text-decoration: none; }
+.shell-footer a:hover { color: var(--red-hover); }
+
+
+/* ==========================================================================
+   TRANSITIONS
+   ========================================================================== */
+.editor-gutter,
+.comment-panel {
+  transition: width 0.35s ease, opacity 0.35s ease, border-color 0.35s ease;
+}
+
+/* View Transitions API — smooth crossfade between view modes */
+::view-transition-old(root) {
+  animation: 150ms ease-out both fade-out;
+}
+::view-transition-new(root) {
+  animation: 150ms ease-in 100ms both fade-in;
+}
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
