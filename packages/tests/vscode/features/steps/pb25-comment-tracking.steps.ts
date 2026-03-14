@@ -14,8 +14,8 @@
  * and therefore cannot test the PB-25 fix.
  *
  * ENVIRONMENT CONSTRAINT: VS Code 1.109+ disables nodeIntegration in the
- * renderer. All page.evaluate calls use Monaco API (globalThis.monaco) or
- * DOM queries — never require('vscode').
+ * renderer. All interactions use bridge commands (extension host IPC via
+ * temp files) or DOM queries — never require('vscode') or globalThis.monaco.
  */
 
 import { Given, When } from '@cucumber/cucumber';
@@ -180,7 +180,7 @@ Given(
  * isApplyingTrackedEdit guard that prevents PB-25.
  *
  * The flow:
- *   1. Use Monaco API to find `targetText` and set editor selection
+ *   1. Use _testSelectText bridge command to find `targetText` and set editor selection
  *   2. Dismiss any stale overlays (Escape)
  *   3. Open command palette and execute "ChangeTracks: Insert Comment"
  *   4. Wait for Quick Input widget to appear (.quick-input-widget visible)
@@ -194,32 +194,31 @@ When(
     async function (this: ChangeTracksWorld, targetText: string, commentText: string) {
         assert.ok(this.page, 'Page not available');
 
-        // 1. Find target text and select it via Monaco API
-        const found = await this.page!.evaluate(`(() => {
-            const editors = globalThis.monaco?.editor?.getEditors?.();
-            if (!editors || editors.length === 0) return false;
-            // Find the file:// editor (not Untitled or output panels)
-            const editor = editors.find(e => {
-                const uri = e.getModel()?.uri?.toString() ?? '';
-                return uri.startsWith('file://');
-            }) ?? editors[0];
-            const model = editor.getModel();
-            if (!model) return false;
-            const text = model.getValue();
-            const idx = text.indexOf(${JSON.stringify(targetText)});
-            if (idx === -1) return false;
-            const startPos = model.getPositionAt(idx);
-            const endPos = model.getPositionAt(idx + ${targetText.length});
-            editor.setSelection({
-                startLineNumber: startPos.lineNumber,
-                startColumn: startPos.column,
-                endLineNumber: endPos.lineNumber,
-                endColumn: endPos.column
-            });
-            editor.focus();
-            return true;
-        })()`);
-        assert.ok(found, `Target text "${targetText}" not found in document — Monaco API unavailable or editor not found`);
+        // 1. Find target text and select it via bridge command
+        //    (replaces globalThis.monaco which is unavailable in VS Code 1.109+)
+        const selectInputPath = path.join(os.tmpdir(), 'changetracks-test-select-text-input.json');
+        const selectResultPath = path.join(os.tmpdir(), 'changetracks-test-select-text.json');
+        fs.writeFileSync(selectInputPath, JSON.stringify({ target: targetText }));
+        await executeCommandViaBridge(this.page!, 'changetracks._testSelectText');
+        await this.page!.waitForTimeout(600);
+
+        // Poll for result with timeout
+        const selectDeadline = Date.now() + 5000;
+        let selectResult: { ok: boolean; error?: string } | null = null;
+        while (Date.now() < selectDeadline) {
+            try {
+                if (fs.existsSync(selectResultPath)) {
+                    const raw = fs.readFileSync(selectResultPath, 'utf8');
+                    const parsed = JSON.parse(raw);
+                    if (parsed.timestamp >= Date.now() - 6000) {
+                        selectResult = parsed;
+                        break;
+                    }
+                }
+            } catch { /* retry */ }
+            await this.page!.waitForTimeout(200);
+        }
+        assert.ok(selectResult?.ok, `Target text "${targetText}" not found in document — bridge command failed: ${selectResult?.error ?? 'no response'}`);
         await this.page!.waitForTimeout(300);
 
         // 2. Dismiss any stale overlays

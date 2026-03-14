@@ -7,14 +7,12 @@
  * CriticMarkup is preserved across save operations under various panel
  * state transitions.
  *
- * IMPORTANT: All page.evaluate calls use Monaco API (globalThis.monaco)
- * instead of require('vscode'), because VS Code 1.109+ disables
- * nodeIntegration in the renderer — require() is NOT available in
- * page.evaluate(). This is an environment-wide constraint, not specific
- * to this file.
+ * IMPORTANT: All document mutations use extension host bridge commands
+ * (_testResetDocument, _testSelectAndReplace) instead of globalThis.monaco,
+ * because Monaco API is unreliable in the Playwright renderer process.
  *
- * Approaches used instead:
- *   - Monaco API: globalThis.monaco.editor.getEditors() for model access
+ * Approaches used:
+ *   - Bridge commands: executeCommandViaBridge() for document edits
  *   - Command palette: executeCommand() for VS Code commands
  *   - Filesystem: fs.readFileSync/writeFileSync from test runner
  *   - Keyboard: Meta+S for save, etc.
@@ -38,6 +36,7 @@ import { getOrCreateInstance } from './world';
 import {
     launchWithJourneyFixture,
     executeCommand,
+    executeCommandViaBridge,
     getDocumentText,
 } from '../../journeys/playwrightHarness';
 
@@ -102,22 +101,23 @@ function readCriticMarkupFixtureContent(): string {
 }
 
 /**
- * Set the editor content via Monaco API (no require('vscode')).
- * Uses globalThis.monaco.editor.getEditors() which is available in the
- * VS Code renderer even without nodeIntegration.
+ * Set the editor content via the _testResetDocument bridge command.
+ * Runs in the extension host process — reliable, unlike globalThis.monaco
+ * which is often undefined in the Playwright renderer.
  */
 async function setEditorContent(world: ChangeTracksWorld, content: string): Promise<void> {
     assert.ok(world.page, 'Page not available');
-    await world.page!.evaluate(`(() => {
-        const editors = globalThis.monaco?.editor?.getEditors?.();
-        if (editors && editors.length > 0) {
-            const model = editors[0].getModel();
-            if (model) {
-                model.setValue(${JSON.stringify(content)});
-            }
-        }
-    })()`);
-    await world.page!.waitForTimeout(200);
+    const inputPath = path.join(os.tmpdir(), 'changetracks-test-reset-input.json');
+    fs.writeFileSync(inputPath, JSON.stringify({ content }));
+    await executeCommandViaBridge(world.page!, 'ChangeTracks: Test Reset Document');
+    await world.page!.waitForTimeout(500);
+
+    // Verify reset succeeded
+    const resultPath = path.join(os.tmpdir(), 'changetracks-test-reset.json');
+    if (fs.existsSync(resultPath)) {
+        const result = JSON.parse(fs.readFileSync(resultPath, 'utf8'));
+        assert.ok(result.ok, `Failed to reset document: ${result.error}`);
+    }
 }
 
 /**
@@ -312,7 +312,7 @@ When(
 );
 
 // ---------------------------------------------------------------------------
-// When steps — comment insertion via Monaco API
+// When steps — comment insertion via bridge commands
 // ---------------------------------------------------------------------------
 
 When(
@@ -321,25 +321,28 @@ When(
     async function (this: ChangeTracksWorld, commentText: string, targetText: string) {
         assert.ok(this.page, 'Page not available');
         const replacement = `{==${targetText}==}{>> ${commentText} <<}`;
-        await this.page!.evaluate(`(() => {
-            const editors = globalThis.monaco?.editor?.getEditors?.();
-            if (!editors || editors.length === 0) return;
-            const editor = editors[0];
-            const model = editor.getModel();
-            if (!model) return;
-            const text = model.getValue();
-            const idx = text.indexOf(${JSON.stringify(targetText)});
-            if (idx === -1) throw new Error('Target text not found: ' + ${JSON.stringify(targetText)});
-            const startPos = model.getPositionAt(idx);
-            const endPos = model.getPositionAt(idx + ${targetText.length});
-            editor.executeEdits('test', [{
-                range: new globalThis.monaco.Range(
-                    startPos.lineNumber, startPos.column,
-                    endPos.lineNumber, endPos.column
-                ),
-                text: ${JSON.stringify(replacement)}
-            }]);
-        })()`);
+
+        // Use _testSelectAndReplace bridge: find target text and replace atomically
+        const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-replace-input.json');
+        const resultPath = path.join(os.tmpdir(), 'changetracks-test-select-replace.json');
+        try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
+        fs.writeFileSync(inputPath, JSON.stringify({ target: targetText, replacement }));
+        await executeCommandViaBridge(this.page!, 'changetracks._testSelectAndReplace');
+
+        // Poll for result
+        const deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+            await this.page!.waitForTimeout(100);
+            try {
+                if (fs.existsSync(resultPath)) {
+                    const result = JSON.parse(fs.readFileSync(resultPath, 'utf-8'));
+                    if (result.ok) break;
+                    throw new Error(`add comment failed: ${result.error}`);
+                }
+            } catch (e: any) {
+                if (e.message.startsWith('add comment')) throw e;
+            }
+        }
         await this.page!.waitForTimeout(300);
     }
 );
@@ -349,49 +352,74 @@ When(
     { timeout: 15000 },
     async function (this: ChangeTracksWorld, commentText: string, targetText: string) {
         assert.ok(this.page, 'Page not available');
-        await this.page!.evaluate(`(() => {
-            const editors = globalThis.monaco?.editor?.getEditors?.();
-            if (!editors || editors.length === 0) return;
-            const editor = editors[0];
-            const model = editor.getModel();
-            if (!model) return;
-            const text = model.getValue();
-            const idx = text.indexOf(${JSON.stringify(targetText)});
-            if (idx === -1) throw new Error('Target text not found: ' + ${JSON.stringify(targetText)});
+        const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-replace-input.json');
+        const resultPath = path.join(os.tmpdir(), 'changetracks-test-select-replace.json');
 
-            // Find next available ct- ID
-            var idMatch = text.match(/\\[\\^ct-(\\d+)\\]/g);
-            var maxId = 0;
-            if (idMatch) {
-                for (var i = 0; i < idMatch.length; i++) {
-                    var n = parseInt(idMatch[i].match(/\\d+/)[0], 10);
-                    if (n > maxId) maxId = n;
-                }
+        // Read current document text to compute next ct-N ID
+        const text = await getDocumentText(this.page!, { instanceId: this.instance?.instanceId });
+        const idMatches = text.match(/\[\^ct-(\d+)\]/g);
+        let maxId = 0;
+        if (idMatches) {
+            for (const m of idMatches) {
+                const n = parseInt(m.match(/\d+/)![0], 10);
+                if (n > maxId) maxId = n;
             }
-            var newId = 'ct-' + (maxId + 1);
+        }
+        const newId = `ct-${maxId + 1}`;
 
-            var inlinePart = '{==' + ${JSON.stringify(targetText)} + '==}{>> ' + ${JSON.stringify(commentText)} + ' <<}[^' + newId + ']';
-            var footnote = '\\n\\n[^' + newId + ']: @human | 2026-03-01 | comment | proposed\\n    ' + ${JSON.stringify(commentText)};
+        const inlinePart = `{==${targetText}==}{>> ${commentText} <<}[^${newId}]`;
+        const footnote = `\n\n[^${newId}]: @human | 2026-03-01 | comment | proposed\n    ${commentText}`;
 
-            // Replace the target text with inline markup
-            var startPos = model.getPositionAt(idx);
-            var endPos = model.getPositionAt(idx + ${targetText.length});
-            editor.executeEdits('test', [{
-                range: new globalThis.monaco.Range(
-                    startPos.lineNumber, startPos.column,
-                    endPos.lineNumber, endPos.column
-                ),
-                text: inlinePart
-            }]);
+        // Edit 1: Replace the target text with inline markup
+        try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
+        fs.writeFileSync(inputPath, JSON.stringify({ target: targetText, replacement: inlinePart }));
+        await executeCommandViaBridge(this.page!, 'changetracks._testSelectAndReplace');
 
-            // Append footnote at end of document
-            var lastLine = model.getLineCount();
-            var lastCol = model.getLineMaxColumn(lastLine);
-            editor.executeEdits('test', [{
-                range: new globalThis.monaco.Range(lastLine, lastCol, lastLine, lastCol),
-                text: footnote
-            }]);
-        })()`);
+        // Poll for edit 1 result
+        let deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+            await this.page!.waitForTimeout(100);
+            try {
+                if (fs.existsSync(resultPath)) {
+                    const result = JSON.parse(fs.readFileSync(resultPath, 'utf-8'));
+                    if (result.ok) break;
+                    throw new Error(`footnoted comment edit 1 failed: ${result.error}`);
+                }
+            } catch (e: any) {
+                if (e.message.startsWith('footnoted comment')) throw e;
+            }
+        }
+
+        // Edit 2: Append footnote at end of document
+        // Read updated text to find the end position
+        const updatedText = await getDocumentText(this.page!, { instanceId: this.instance?.instanceId });
+        const lastLineIndex = updatedText.split('\n').length - 1;
+        const lastLineText = updatedText.split('\n')[lastLineIndex];
+
+        try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
+        fs.writeFileSync(inputPath, JSON.stringify({
+            startLine: lastLineIndex,
+            startCharacter: lastLineText.length,
+            endLine: lastLineIndex,
+            endCharacter: lastLineText.length,
+            replacement: footnote,
+        }));
+        await executeCommandViaBridge(this.page!, 'changetracks._testSelectAndReplace');
+
+        // Poll for edit 2 result
+        deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+            await this.page!.waitForTimeout(100);
+            try {
+                if (fs.existsSync(resultPath)) {
+                    const result = JSON.parse(fs.readFileSync(resultPath, 'utf-8'));
+                    if (result.ok) break;
+                    throw new Error(`footnoted comment edit 2 failed: ${result.error}`);
+                }
+            } catch (e: any) {
+                if (e.message.startsWith('footnoted comment')) throw e;
+            }
+        }
         await this.page!.waitForTimeout(300);
     }
 );
@@ -463,7 +491,7 @@ When(
 
 // ---------------------------------------------------------------------------
 // Then steps — live document content assertions (buffer, not disk)
-// Uses getDocumentText which reads via globalThis.monaco (no require)
+// Uses getDocumentText which reads via bridge command (temp file IPC)
 // ---------------------------------------------------------------------------
 
 Then(

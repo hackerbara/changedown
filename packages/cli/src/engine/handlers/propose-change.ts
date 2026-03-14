@@ -25,13 +25,13 @@ import { computeAffectedLines, type AffectedLineEntry, type ViewProjection } fro
 import { resolveAuthor } from '../author.js';
 import { ConfigResolver } from '../config-resolver.js';
 import { strArg, optionalStrArg } from '../args.js';
-import { applyProposeChange, contentZoneText, extractLineRange, findUniqueMatch, guardOverlap, resolveOverlapWithAuthor, stripRefsFromContent } from '../file-ops.js';
+import { applyProposeChange, contentZoneText, extractLineRange, findUniqueMatch, resolveOverlapWithAuthor, stripRefsFromContent } from '../file-ops.js';
 import { toRelativePath } from '../path-utils.js';
 import { resolveTrackingStatus } from '../scope.js';
 import { SessionState, type ViewName } from '../state.js';
 import { parseOp, nowTimestamp } from '@changetracks/core';
-import { resolveAt, parseAt } from '@changetracks/core';
 import { resolveProtocolMode } from '../config.js';
+import { resolveAndApply, type NormalizedCompactOp } from './resolve-and-apply.js';
 export interface ProposeChangeResult {
   content: Array<{ type: 'text'; text: string }>;
   isError?: boolean;
@@ -279,64 +279,6 @@ function settleOnDemandIfNeeded(
   // Settle accepted changes first, then rejected changes.
   // settleAcceptedChangesOnly and settleRejectedChangesOnly preserve footnote refs
   // inline adjacent to the settled text (the audit trail remains).
-  const { settledContent: afterAccepted } = settleAcceptedChangesOnly(fileContent);
-  const { settledContent: afterRejected } = settleRejectedChangesOnly(afterAccepted);
-
-  return { content: afterRejected, settled: true };
-}
-
-/**
- * Compact-path equivalent of settleOnDemandIfNeeded.
- *
- * Given raw line numbers from view-aware coordinate translation,
- * checks if the target region overlaps any accepted/rejected CriticMarkup.
- * If so, settles the entire file in-memory (accepted then rejected)
- * and returns the settled content.
- */
-function settleOnDemandForCompact(
-  fileContent: string,
-  rawStartLine: number,
-  rawEndLine: number,
-): { content: string; settled: boolean } {
-  // Quick path: no settleable CriticMarkup → no settlement needed.
-  // Note: {== (highlight) and {>> (comment) are not settleable; excluding them is correct.
-  if (!/\{\+\+|\{--|\{~~/.test(fileContent)) {
-    return { content: fileContent, settled: false };
-  }
-
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(fileContent, { skipCodeBlocks: false });
-  const changes = doc.getChanges();
-
-  const settleableChanges = changes.filter(
-    (c) => c.status === ChangeStatus.Accepted || c.status === ChangeStatus.Rejected,
-  );
-
-  if (settleableChanges.length === 0) {
-    return { content: fileContent, settled: false };
-  }
-
-  // Convert raw line numbers to character offsets for overlap detection
-  const lines = fileContent.split('\n');
-  let targetStart = 0;
-  for (let i = 0; i < rawStartLine - 1 && i < lines.length; i++) {
-    targetStart += lines[i].length + 1;
-  }
-  let targetEnd = targetStart;
-  for (let i = rawStartLine - 1; i < rawEndLine && i < lines.length; i++) {
-    targetEnd += lines[i].length + 1;
-  }
-
-  // Check if the target region overlaps any accepted/rejected change
-  const overlapsSettleable = settleableChanges.some(
-    (c) => c.range.start < targetEnd && c.range.end > targetStart,
-  );
-
-  if (!overlapsSettleable) {
-    return { content: fileContent, settled: false };
-  }
-
-  // Settle accepted then rejected (same as classic path)
   const { settledContent: afterAccepted } = settleAcceptedChangesOnly(fileContent);
   const { settledContent: afterRejected } = settleRejectedChangesOnly(afterAccepted);
 
@@ -630,7 +572,7 @@ export async function handleProposeChange(
     }
 
     if (protocolMode === 'compact' && hasCompactParams) {
-      return await handleCompactProposeChange(args, filePath, relativePath, config, state, fileContent, projectDir);
+      return await handleCompactProposeChange(args, filePath, relativePath, config, state, fileContent);
     }
 
     // 4b. Auto-insert tracking header if needed.
@@ -820,9 +762,13 @@ export async function handleProposeChange(
         const modifiedLines = modifiedText.split('\n');
         const affectedStart = afterLine!;
         const affectedEnd = Math.min(modifiedLines.length, afterLine! + 3);
-        affectedLines = computeAffectedLines(modifiedText, affectedStart, affectedEnd, {
-          hashlineEnabled: config.hashline.enabled,
-        });
+        try {
+          affectedLines = computeAffectedLines(modifiedText, affectedStart, affectedEnd, {
+            hashlineEnabled: config.hashline.enabled,
+          });
+        } catch {
+          affectedLines = [];
+        }
 
       } else if (useLineRange) {
         // ─── Line range mode (with or without old_text for hybrid) ──
@@ -1005,9 +951,13 @@ export async function handleProposeChange(
         // Compute affected lines for affected region
         const modifiedLines = modifiedText.split('\n');
         const affectedEnd = Math.min(modifiedLines.length, (endLine ?? startLine!) + 5);
-        affectedLines = computeAffectedLines(modifiedText, startLine!, affectedEnd, {
-          hashlineEnabled: config.hashline.enabled,
-        });
+        try {
+          affectedLines = computeAffectedLines(modifiedText, startLine!, affectedEnd, {
+            hashlineEnabled: config.hashline.enabled,
+          });
+        } catch {
+          affectedLines = [];
+        }
       } else {
         // Should not reach here — useAfterLine or useLineRange must be true
         return errorResult(
@@ -1087,9 +1037,13 @@ export async function handleProposeChange(
           break;
         }
       }
-      affectedLines = computeAffectedLines(modifiedText, affStart, affEnd, {
-        hashlineEnabled: config.hashline.enabled,
-      });
+      try {
+        affectedLines = computeAffectedLines(modifiedText, affStart, affEnd, {
+          hashlineEnabled: config.hashline.enabled,
+        });
+      } catch {
+        affectedLines = [];
+      }
     }
 
     // 8. Write back to disk
@@ -1153,7 +1107,7 @@ export async function handleProposeChange(
       ...(supersededIds.length > 0 ? { superseded: supersededIds } : {}),
     };
 
-    if (affectedLines) {
+    if (affectedLines && config.response?.affected_lines) {
       responseData.affected_lines = affectedLines;
     }
 
@@ -1280,7 +1234,6 @@ async function handleCompactProposeChange(
   config: import('../config.js').ChangeTracksConfig,
   state: SessionState,
   fileContent: string,
-  projectDir: string,
 ): Promise<ProposeChangeResult> {
   // Reject pre-compact hashline params — `at` supersedes them in compact mode
   if (args.start_line || args.end_line || args.after_line) {
@@ -1313,148 +1266,6 @@ async function handleCompactProposeChange(
   // Initialize hashline WASM
   await initHashline();
 
-  // ─── View-aware coordinate translation ───────────────────────────────────
-  // When the agent read the file in settled or committed view, the `at` string
-  // carries view-space line numbers and view-space hashes. resolveAt() works
-  // against raw file content, so we must translate before calling it.
-  //
-  // Strategy:
-  //   1. Parse the `at` string with parseAt() to extract line/hash pairs.
-  //   2. For each line, call state.resolveHash() to detect the view space and
-  //      validate the supplied hash.
-  //   3. If the view is settled or committed, map the view-space line number to
-  //      the raw line number, recompute the raw hash for that line, and rebuild
-  //      the `at` string with raw coordinates.
-  //   4. If no session state exists (no prior read), fall through unchanged —
-  //      the `at` is assumed to already use raw coordinates.
-  let resolvedAt = at;
-  // Track which view the agent was working in — used post-write for re-recording
-  // hashes in view-space and for projecting affected_lines to view coordinates.
-  let compactViewResolved: ViewName | undefined;
-  {
-    let parsedAtCoord: ReturnType<typeof parseAt>;
-    try {
-      parsedAtCoord = parseAt(at);
-    } catch (err) {
-      return errorResult(
-        err instanceof Error ? err.message : String(err),
-        'HASHLINE_REFERENCE_UNRESOLVED',
-        { file: relativePath },
-      );
-    }
-
-    const startResolution = state.resolveHash(filePath, parsedAtCoord.startLine, parsedAtCoord.startHash);
-
-    if (startResolution && !startResolution.match) {
-      // Hash supplied for start line doesn't match the expected view-space hash
-      return errorResult(
-        `Hash mismatch at line ${parsedAtCoord.startLine} (${startResolution.view} view): ` +
-        `expected ${startResolution.expectedHash}, got ${parsedAtCoord.startHash}. ` +
-        `Re-read the file to get fresh coordinates.`,
-        'HASHLINE_REFERENCE_UNRESOLVED',
-        {
-          file: relativePath,
-          quick_fix: buildQuickFix(filePath, parsedAtCoord.startLine),
-        },
-      );
-    }
-
-    if (startResolution?.match) {
-      compactViewResolved = startResolution.view;
-
-      // Translate start line from view-space to raw-space.
-      // This applies to all views (settled, changes, raw, review) —
-      // in every case, rawLineNum tells us which raw line the agent addressed,
-      // and we must recompute the actual raw hash for resolveAt().
-      const rawStartLine = startResolution.rawLineNum;
-      if (rawStartLine < 1 || rawStartLine > fileLines.length) {
-        return errorResult(
-          `Line ${parsedAtCoord.startLine} out of range after view translation (raw line ${rawStartLine}).`,
-          'HASHLINE_LINE_OUT_OF_RANGE',
-          { file: relativePath },
-        );
-      }
-      const rawStartHash = computeLineHash(rawStartLine - 1, fileLines[rawStartLine - 1], fileLines);
-
-      // Handle end line: if range, translate end too; if single line, both map to rawStartLine
-      let rawEndLine = rawStartLine;
-      let rawEndHash = rawStartHash;
-
-      if (parsedAtCoord.startLine !== parsedAtCoord.endLine) {
-        const endResolution = state.resolveHash(filePath, parsedAtCoord.endLine, parsedAtCoord.endHash);
-
-        if (endResolution && !endResolution.match) {
-          return errorResult(
-            `Hash mismatch at end line ${parsedAtCoord.endLine} (${endResolution.view} view): ` +
-            `expected ${endResolution.expectedHash}, got ${parsedAtCoord.endHash}. ` +
-            `Re-read the file to get fresh coordinates.`,
-            'HASHLINE_REFERENCE_UNRESOLVED',
-            {
-              file: relativePath,
-              quick_fix: buildQuickFix(filePath, parsedAtCoord.endLine),
-            },
-          );
-        }
-
-        if (endResolution?.match) {
-          rawEndLine = endResolution.rawLineNum;
-          if (rawEndLine < 1 || rawEndLine > fileLines.length) {
-            return errorResult(
-              `End line ${parsedAtCoord.endLine} out of range after view translation (raw line ${rawEndLine}).`,
-              'HASHLINE_LINE_OUT_OF_RANGE',
-              { file: relativePath },
-            );
-          }
-          rawEndHash = computeLineHash(rawEndLine - 1, fileLines[rawEndLine - 1], fileLines);
-        }
-      }
-
-      // Rebuild `at` with raw coordinates so resolveAt() works correctly
-      if (rawStartLine === rawEndLine) {
-        resolvedAt = `${rawStartLine}:${rawStartHash}`;
-      } else {
-        resolvedAt = `${rawStartLine}:${rawStartHash}-${rawEndLine}:${rawEndHash}`;
-      }
-    }
-  }
-
-  // ─── Compact settle-on-demand ────────────────────────────────────────────
-  // When the agent reads settled/changes view, accepted CriticMarkup appears
-  // as clean text. If the raw file still has unsettled markup at the target,
-  // settle in-memory before applying the op.
-  {
-    const rawCoords = parseAt(resolvedAt);
-    const settleResult = settleOnDemandForCompact(fileContent, rawCoords.startLine, rawCoords.endLine);
-    if (settleResult.settled) {
-      fileContent = settleResult.content;
-      fileLines = fileContent.split('\n');
-      // Recompute hash for target line(s) in settled content
-      const newStartHash = computeLineHash(rawCoords.startLine - 1, fileLines[rawCoords.startLine - 1], fileLines);
-      if (rawCoords.startLine === rawCoords.endLine) {
-        resolvedAt = `${rawCoords.startLine}:${newStartHash}`;
-      } else {
-        const newEndHash = computeLineHash(rawCoords.endLine - 1, fileLines[rawCoords.endLine - 1], fileLines);
-        resolvedAt = `${rawCoords.startLine}:${newStartHash}-${rawCoords.endLine}:${newEndHash}`;
-      }
-    }
-  }
-
-  // Resolve the at coordinate (against raw file lines)
-  let target: ReturnType<typeof resolveAt>;
-  try {
-    target = resolveAt(resolvedAt, fileLines);
-  } catch (err) {
-    const { staleLine, currentHash } = extractQuickFixFromError(err);
-    return errorResult(
-      err instanceof Error ? err.message : String(err),
-      'HASHLINE_REFERENCE_UNRESOLVED',
-      {
-        file: relativePath,
-        quick_fix: buildQuickFix(filePath, staleLine, currentHash),
-      },
-    );
-  }
-
   // Get next ID (scans file for existing ct-N IDs)
   const changeId = state.getNextId(filePath, fileContent);
 
@@ -1470,155 +1281,47 @@ async function handleCompactProposeChange(
 
   // Merge reasoning: op {>> suffix takes priority, JSON param is fallback
   const reasoning = parsed.reasoning ?? (args.reason as string | undefined);
-  const level = config.protocol?.level ?? 2;
 
   let modifiedText: string;
   let changeType: 'ins' | 'del' | 'sub' | 'highlight' | 'comment';
   const supersededIds: string[] = [];
+  // Track which view the agent was working in — used post-write for re-recording
+  // hashes in view-space and for projecting affected_lines to view coordinates.
+  let compactViewResolved: ViewName | undefined;
 
-  const ts = nowTimestamp();
-  const authorAt = author.startsWith('@') ? author : `@${author}`;
-  const l1Comment = (ct: string) => level === 1 ? `{>>${authorAt}|${ts.raw}|${ct}|proposed<<}` : '';
-
-  // ─── Auto-supersede same-author overlaps ─────────────────────────────────
-  // Check the full target range for overlapping proposed changes. If all
-  // overlapping proposals are from the same author, reject+settle them
-  // in-memory so the new proposal can be placed cleanly. Different-author
-  // overlaps still throw (same behavior as guardOverlap).
-  // Insertions don't replace text, so no overlap check needed.
-  if (parsed.type !== 'ins' && parsed.type !== 'comment') {
-    const supersedeResult = resolveOverlapWithAuthor(
-      fileContent, target.startOffset, target.endOffset - target.startOffset, author,
+  // ─── Resolve coordinates and apply markup via pipeline ───────────────────
+  let applyResult: ReturnType<typeof resolveAndApply>;
+  try {
+    const op: NormalizedCompactOp = {
+      at,
+      type: parsed.type,
+      oldText: parsed.oldText,
+      newText: parsed.newText,
+      reasoning,
+    };
+    applyResult = resolveAndApply(
+      op, fileContent, fileLines, state, filePath, config, changeId, author!,
     );
-    if (supersedeResult) {
-      fileContent = supersedeResult.settledContent;
-      fileLines = fileContent.split('\n');
-      supersededIds.push(...supersedeResult.supersededIds);
-      // Re-resolve target after settlement (offsets shift when markup is settled)
-      const rawCoords = parseAt(resolvedAt);
-      const newStartHash = computeLineHash(rawCoords.startLine - 1, fileLines[rawCoords.startLine - 1]!, fileLines);
-      if (rawCoords.startLine === rawCoords.endLine) {
-        resolvedAt = `${rawCoords.startLine}:${newStartHash}`;
-      } else {
-        const newEndHash = computeLineHash(rawCoords.endLine - 1, fileLines[rawCoords.endLine - 1]!, fileLines);
-        resolvedAt = `${rawCoords.startLine}:${newStartHash}-${rawCoords.endLine}:${newEndHash}`;
-      }
-      target = resolveAt(resolvedAt, fileLines);
-    }
+  } catch (err) {
+    const { staleLine, currentHash } = extractQuickFixFromError(err);
+    return errorResult(
+      err instanceof Error ? err.message : String(err),
+      'HASHLINE_REFERENCE_UNRESOLVED',
+      {
+        file: relativePath,
+        quick_fix: buildQuickFix(filePath, staleLine, currentHash),
+      },
+    );
   }
 
-  if (parsed.type === 'ins') {
-    // Insertion: insert after the target line
-    changeType = 'ins';
-    const inlineMarkup = level === 2
-      ? `{++${parsed.newText}++}[^${changeId}]`
-      : `{++${parsed.newText}++}${l1Comment('ins')}`;
+  modifiedText = applyResult.modifiedText;
+  changeType = applyResult.changeType;
+  supersededIds.push(...applyResult.supersededIds);
+  compactViewResolved = applyResult.viewResolved;
 
-    // Insert after the last line of the target range
-    const insertPos = fileLines.slice(0, target.endLine).join('\n').length;
-    modifiedText = fileContent.slice(0, insertPos) + '\n' + inlineMarkup + fileContent.slice(insertPos);
-  } else if (parsed.type === 'del') {
-    // Deletion: wrap the matched text in deletion markup
-    changeType = 'del';
-
-    if (parsed.oldText === '') {
-      // Whole-line or whole-range deletion: empty text after '-' means delete entire target
-      guardOverlap(fileContent, target.startOffset, target.endOffset - target.startOffset);
-      // Strip footnote refs so they don't end up inside CriticMarkup delimiters
-      const { cleaned: cleanedContent, refs: preservedRefs } = stripRefsFromContent(target.content);
-      const refTail = preservedRefs.join('');
-
-      const inlineMarkup = level === 2
-        ? `{--${cleanedContent}--}[^${changeId}]${refTail}`
-        : `{--${cleanedContent}--}${l1Comment('del')}${refTail}`;
-
-      modifiedText = fileContent.slice(0, target.startOffset) + inlineMarkup + fileContent.slice(target.endOffset);
-    } else {
-      const match = findUniqueMatch(contentZoneText(target.content), parsed.oldText, defaultNormalizer);
-      const absPos = target.startOffset + match.index;
-      guardOverlap(fileContent, absPos, match.length);
-      const absEnd = absPos + match.length;
-      // Strip footnote refs so they don't end up inside CriticMarkup delimiters
-      const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(match.originalText);
-      const refTail = preservedRefs.join('');
-
-      const inlineMarkup = level === 2
-        ? `{--${cleanedOld}--}[^${changeId}]${refTail}`
-        : `{--${cleanedOld}--}${l1Comment('del')}${refTail}`;
-
-      modifiedText = fileContent.slice(0, absPos) + inlineMarkup + fileContent.slice(absEnd);
-    }
-  } else if (parsed.type === 'sub') {
-    // Substitution: wrap the matched text in substitution markup
-    changeType = 'sub';
-
-    if (parsed.oldText === '') {
-      // Whole-line or whole-range replace: empty left side of ~> means replace entire target
-      guardOverlap(fileContent, target.startOffset, target.endOffset - target.startOffset);
-      // Strip footnote refs so they don't end up inside CriticMarkup delimiters
-      const { cleaned: cleanedContent, refs: preservedRefs } = stripRefsFromContent(target.content);
-      const refTail = preservedRefs.join('');
-
-      const inlineMarkup = level === 2
-        ? `{~~${cleanedContent}~>${parsed.newText}~~}[^${changeId}]${refTail}`
-        : `{~~${cleanedContent}~>${parsed.newText}~~}${l1Comment('sub')}${refTail}`;
-
-      modifiedText = fileContent.slice(0, target.startOffset) + inlineMarkup + fileContent.slice(target.endOffset);
-    } else {
-      const match = findUniqueMatch(contentZoneText(target.content), parsed.oldText, defaultNormalizer);
-      const absPos = target.startOffset + match.index;
-      guardOverlap(fileContent, absPos, match.length);
-      const absEnd = absPos + match.length;
-      // Strip footnote refs so they don't end up inside CriticMarkup delimiters
-      const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(match.originalText);
-      const refTail = preservedRefs.join('');
-
-      const inlineMarkup = level === 2
-        ? `{~~${cleanedOld}~>${parsed.newText}~~}[^${changeId}]${refTail}`
-        : `{~~${cleanedOld}~>${parsed.newText}~~}${l1Comment('sub')}${refTail}`;
-
-      modifiedText = fileContent.slice(0, absPos) + inlineMarkup + fileContent.slice(absEnd);
-    }
-  } else if (parsed.type === 'comment') {
-    // Standalone comment: insert comment markup at end of target line.
-    // No text matching needed — appends at the end of the target line.
-    changeType = 'comment';
-    const commentText = parsed.reasoning ?? '';
-    const inlineMarkup = level === 2
-      ? `{>>${commentText}<<}[^${changeId}]`
-      : `{>>${commentText}<<}${l1Comment('comment')}`;
-
-    // Append at end of the target line (endOffset points to end of line content, before \n)
-    modifiedText = fileContent.slice(0, target.endOffset) + inlineMarkup + fileContent.slice(target.endOffset);
-  } else {
-    // Highlight: wrap target text with highlight markup
-    changeType = 'highlight';
-    const match = findUniqueMatch(contentZoneText(target.content), parsed.oldText, defaultNormalizer);
-    const absPos = target.startOffset + match.index;
-    guardOverlap(fileContent, absPos, match.length);
-    const absEnd = absPos + match.length;
-    // Strip footnote refs so they don't end up inside CriticMarkup delimiters
-    const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(match.originalText);
-    const refTail = preservedRefs.join('');
-
-    const inlineMarkup = level === 2
-      ? `{==${cleanedOld}==}[^${changeId}]${refTail}`
-      : `{==${cleanedOld}==}${l1Comment('highlight')}${refTail}`;
-
-    modifiedText = fileContent.slice(0, absPos) + inlineMarkup + fileContent.slice(absEnd);
-  }
-
-  // Append footnote for level 2
-  if (level === 2) {
-    const footnoteHeader = generateFootnoteDefinition(changeId, changeType, author);
-    // For comments, the text is already inline ({>>text<<}) — don't duplicate it in the footnote.
-    const reasonLine = reasoning && changeType !== 'comment'
-      ? `\n    @${author} ${ts.raw}: ${reasoning}`
-      : '';
-    const footnoteBlock = footnoteHeader + reasonLine;
-    const { appendFootnote } = await import('../file-ops.js');
-    modifiedText = appendFootnote(modifiedText, footnoteBlock);
-  }
+  // Update fileContent and fileLines so re-recording block uses modified content
+  fileContent = applyResult.modifiedText;
+  fileLines = fileContent.split('\n');
 
   // Write to disk
   await fs.writeFile(filePath, modifiedText, 'utf-8');
@@ -1718,10 +1421,15 @@ async function handleCompactProposeChange(
   };
 
   // Compute affected lines — in view-space when the agent used a non-raw view
-  const affectedLines = computeAffectedLines(modifiedText, target.startLine, target.endLine, {
-    hashlineEnabled: config.hashline.enabled,
-    viewProjection,
-  });
+  let affectedLines: AffectedLineEntry[] = [];
+  try {
+    affectedLines = computeAffectedLines(modifiedText, applyResult.affectedStartLine, applyResult.affectedEndLine, {
+      hashlineEnabled: config.hashline.enabled,
+      viewProjection,
+    });
+  } catch {
+    // Degrade gracefully: return response without affected_lines rather than failing after successful write
+  }
   responseData.affected_lines = affectedLines;
 
   return {

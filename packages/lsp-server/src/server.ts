@@ -36,6 +36,7 @@ import {
   annotateMarkdown, annotateSidecar, SIDECAR_BLOCK_MARKER, VIEW_NAMES,
   applyReview, computeAmendEdits, computeSupersedeResult, computeReplyEdit,
   computeResolutionEdit, computeUnresolveEdit, compactToLevel1, compactToLevel0,
+  settleAcceptedChangesOnly, settleRejectedChangesOnly,
   CriticMarkupParser, findFootnoteBlock, parseFootnoteHeader,
 } from '@changetracks/core';
 import type { ViewName, Decision } from '@changetracks/core';
@@ -226,6 +227,7 @@ export class ChangetracksServer {
     this.connection.onRequest('changetracks/resolveThread', this.handleResolveThread.bind(this));
     this.connection.onRequest('changetracks/unresolveThread', this.handleUnresolveThread.bind(this));
     this.connection.onRequest('changetracks/compactChange', this.handleCompactChange.bind(this));
+    this.connection.onRequest('changetracks/reviewAll', this.handleReviewAll.bind(this));
 
     // Tracking event handler - receives individual edit events from client
     this.connection.onNotification('changetracks/trackingEvent', (params: {
@@ -971,7 +973,29 @@ export class ChangetracksServer {
       const author = params.author ?? this.reviewerIdentity ?? '';
       const result = applyReview(text, params.changeId, params.decision, params.reason ?? '', author);
       if ('error' in result) return { error: result.error };
-      return { edit: this.fullDocumentEdit(params.uri, result.updatedContent) };
+
+      let finalContent = result.updatedContent;
+
+      // Auto-settle if config says so and status actually changed
+      if (result.result.status_updated) {
+        const settlement = this.projectConfig?.settlement ?? DEFAULT_CONFIG.settlement;
+
+        if (settlement.auto_on_approve && params.decision === 'approve') {
+          const { settledContent, settledIds } = settleAcceptedChangesOnly(finalContent);
+          if (settledIds.length > 0) {
+            finalContent = settledContent;
+          }
+        }
+
+        if (settlement.auto_on_reject && params.decision === 'reject') {
+          const { settledContent, settledIds } = settleRejectedChangesOnly(finalContent);
+          if (settledIds.length > 0) {
+            finalContent = settledContent;
+          }
+        }
+      }
+
+      return { edit: this.fullDocumentEdit(params.uri, finalContent) };
     } catch (err) {
       this.connection.console.error(`handleReviewChange error: ${err}`);
       return { error: `Review change failed: ${err}` };
@@ -1190,6 +1214,87 @@ export class ChangetracksServer {
     } catch (err) {
       this.connection.console.error(`handleCompactChange error: ${err}`);
       return { error: `Compact change failed: ${err}` };
+    }
+  }
+
+  /**
+   * 2H: changetracks/reviewAll
+   * Apply a review decision to all proposed changes in a document in a single
+   * request, eliminating the stale-text race that occurs when looping over
+   * changetracks/reviewChange one change at a time.
+   *
+   * When changeIds is provided, only the specified changes are reviewed
+   * (used by acceptAllOnLine / rejectAllOnLine).
+   */
+  public handleReviewAll(params: {
+    uri: string;
+    decision: 'approve' | 'reject';
+    changeIds?: string[];
+  }): { edit: TextEdit; reviewedCount: number } | { error: string } {
+    try {
+      const text = this.getDocumentText(params.uri);
+      if (!text) return { error: 'Document not found' };
+
+      const author = this.reviewerIdentity ?? '';
+
+      // Parse once to identify all proposed changes
+      const parser = new CriticMarkupParser();
+      const doc = parser.parse(text);
+      const allChanges = doc.getChanges();
+
+      // Filter to proposed changes; optionally restrict to a specified ID set
+      const idSet = params.changeIds ? new Set(params.changeIds) : null;
+      const targets = allChanges.filter(c => {
+        if (c.status !== ChangeStatus.Proposed) return false;
+        if (idSet !== null && (!c.id || !idSet.has(c.id))) return false;
+        return true;
+      });
+
+      if (targets.length === 0) {
+        return { edit: this.fullDocumentEdit(params.uri, text), reviewedCount: 0 };
+      }
+
+      // Process in reverse document order (highest offset first) so earlier
+      // offsets are not invalidated by edits to later regions of the text.
+      const sorted = [...targets].sort((a, b) => b.range.start - a.range.start);
+
+      let fileContent = text;
+      let reviewedCount = 0;
+
+      for (const change of sorted) {
+        if (!change.id) continue;
+        const reviewResult = applyReview(fileContent, change.id, params.decision, '', author);
+        if ('error' in reviewResult) {
+          this.connection.console.warn(`handleReviewAll: skipping ${change.id}: ${reviewResult.error}`);
+          continue;
+        }
+        fileContent = reviewResult.updatedContent;
+        reviewedCount++;
+      }
+
+      // Auto-settle if configured
+      if (reviewedCount > 0) {
+        const settlement = this.projectConfig?.settlement ?? DEFAULT_CONFIG.settlement;
+
+        if (settlement.auto_on_approve && params.decision === 'approve') {
+          const { settledContent, settledIds } = settleAcceptedChangesOnly(fileContent);
+          if (settledIds.length > 0) {
+            fileContent = settledContent;
+          }
+        }
+
+        if (settlement.auto_on_reject && params.decision === 'reject') {
+          const { settledContent, settledIds } = settleRejectedChangesOnly(fileContent);
+          if (settledIds.length > 0) {
+            fileContent = settledContent;
+          }
+        }
+      }
+
+      return { edit: this.fullDocumentEdit(params.uri, fileContent), reviewedCount };
+    } catch (err) {
+      this.connection.console.error(`handleReviewAll error: ${err}`);
+      return { error: `Review all failed: ${err}` };
     }
   }
 }

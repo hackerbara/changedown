@@ -79,7 +79,7 @@ describe('handleReadTrackedFile', () => {
     expect(text).toContain('## file:');
     expect(text).toContain('## policy: safety-net | tracking:');
     expect(text).toContain('Hashline addressing is disabled');
-    expect(text).toContain('Use string matching in propose_change');
+    expect(text).toContain('Edits use text matching');
     expect(text).toContain('  1| Hello world.');
     expect(text).toContain('  2| Second line.');
     expect(text).not.toMatch(/\d+:[a-f0-9]{2}\|/); // no LINE:HASH

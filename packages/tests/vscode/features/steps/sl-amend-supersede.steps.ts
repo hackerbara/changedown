@@ -166,7 +166,7 @@ Then(
  * Polls for up to 8 s to allow the extension to write the change.
  */
 Then(
-    'the current document text includes {string}',
+    'the live document contains {string}',
     { timeout: 15000 },
     async function (this: ChangeTracksWorld, expected: string) {
         assert.ok(this.page, 'Page not available');

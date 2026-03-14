@@ -341,7 +341,7 @@ When('I decorate in markup mode', function (this: ChangeTracksWorld) {
     const parser = new CriticMarkupParser();
     this.parsedDoc = parser.parse(this.decorationText!);
     this.spyEditor = new SpyEditor(0, 0);
-    decorator.decorate(this.spyEditor, this.parsedDoc, true, this.decorationText!);
+    decorator.decorate(this.spyEditor, this.parsedDoc, true, this.decorationText!, true);
 });
 
 When('I decorate in markup mode with cursor at {int}:{int}', function (
@@ -352,7 +352,7 @@ When('I decorate in markup mode with cursor at {int}:{int}', function (
     const parser = new CriticMarkupParser();
     this.parsedDoc = parser.parse(this.decorationText!);
     this.spyEditor = new SpyEditor(line, char);
-    decorator.decorate(this.spyEditor, this.parsedDoc, true, this.decorationText!);
+    decorator.decorate(this.spyEditor, this.parsedDoc, true, this.decorationText!, true);
 });
 
 When('I decorate in smart view mode', function (this: ChangeTracksWorld) {
@@ -530,7 +530,7 @@ When('I decorate the manual changes in markup mode', function (this: ChangeTrack
     const decorator = getOrCreateDecorator(this);
     const doc = new VirtualDocument(this.manualChanges!);
     this.spyEditor = new SpyEditor(99, 0);
-    decorator.decorate(this.spyEditor, doc, true, this.decorationText!);
+    decorator.decorate(this.spyEditor, doc, true, this.decorationText!, true);
 });
 
 When('I decorate the manual changes in markup mode with cursor at {int}:{int}', function (
@@ -541,7 +541,7 @@ When('I decorate the manual changes in markup mode with cursor at {int}:{int}', 
     const decorator = getOrCreateDecorator(this);
     const doc = new VirtualDocument(this.manualChanges!);
     this.spyEditor = new SpyEditor(line, char);
-    decorator.decorate(this.spyEditor, doc, true, this.decorationText!);
+    decorator.decorate(this.spyEditor, doc, true, this.decorationText!, true);
 });
 
 When('I decorate the manual changes in smart view mode', function (this: ChangeTracksWorld) {
@@ -608,7 +608,7 @@ When('I re-decorate the manual changes in markup mode', function (this: ChangeTr
     assert.ok(this.spyEditor, 'No spy editor — run an initial decorate step first');
     const decorator = getOrCreateDecorator(this);
     const doc = new VirtualDocument(this.manualChanges!);
-    decorator.decorate(this.spyEditor, doc, true, this.decorationText!);
+    decorator.decorate(this.spyEditor, doc, true, this.decorationText!, true);
 });
 
 When('I re-decorate the manual changes in smart view mode', function (this: ChangeTracksWorld) {

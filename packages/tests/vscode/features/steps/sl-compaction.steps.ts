@@ -18,7 +18,7 @@
 import { When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
 import type { ChangeTracksWorld } from './world';
-import { getDocumentText } from '../../journeys/playwrightHarness';
+import { getDocumentText, executeCommandViaBridge } from '../../journeys/playwrightHarness';
 
 // ── Extend World with SL-CP notification tracking state ─────────────
 
@@ -111,11 +111,12 @@ Then(
 );
 
 Then(
-    'the current document text does not include {string}',
+    'the live document does not contain {string}',
     { timeout: 10000 },
     async function (this: ChangeTracksWorld, unexpected: string) {
         assert.ok(this.page, 'Page not available');
-        // Brief settle wait then assert absence
+        // Wait for LSP edit to propagate before asserting absence
+        await executeCommandViaBridge(this.page, 'changetracks._testWaitForChanges');
         await this.page.waitForTimeout(500);
         const docText = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
         assert.ok(

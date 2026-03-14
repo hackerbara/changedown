@@ -3138,6 +3138,7 @@ function parseConfigToml(raw) {
   const policy = parsed["policy"];
   const protocol = parsed["protocol"];
   const meta = parsed["meta"];
+  const response = parsed["response"];
   const review = parsed["review"];
   const reasonRequired = review?.["reason_required"];
   return {
@@ -3187,6 +3188,9 @@ function parseConfigToml(raw) {
     },
     meta: {
       compact_threshold: typeof meta?.["compact_threshold"] === "number" && meta["compact_threshold"] > 0 ? meta["compact_threshold"] : DEFAULT_CONFIG.meta?.compact_threshold ?? 80
+    },
+    response: {
+      affected_lines: typeof response?.["affected_lines"] === "boolean" ? response["affected_lines"] : false
     }
   };
 }

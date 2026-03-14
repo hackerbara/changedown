@@ -28,7 +28,7 @@ export { ChangeProvider } from './providers/change-provider.js';
 export { parseTrackingHeader, generateTrackingHeader, insertTrackingHeader, TrackingHeader } from './tracking-header.js';
 export { defaultNormalizer, normalizedIndexOf, collapseWhitespace, buildWhitespaceCollapseMap, whitespaceCollapsedFind, whitespaceCollapsedIsAmbiguous, diagnosticConfusableNormalize, unicodeName, tryDiagnosticConfusableMatch, TextNormalizer, WhitespaceCollapsedMatch, ConfusableDifference, DiagnosticConfusableResult } from './text-normalizer.js';
 export { computeSettledReplace, computeSettledText, settleAcceptedChangesOnly, settleRejectedChangesOnly, computeSettledView, type SettledTextOptions, type SettledLine, type SettledViewResult } from './operations/settled-text.js';
-export { initHashline, computeLineHash, formatHashLines, parseLineRef, validateLineRef, HashlineMismatchError } from './hashline.js';
+export { initHashline, ensureHashlineReady, computeLineHash, formatHashLines, parseLineRef, validateLineRef, HashlineMismatchError } from './hashline.js';
 export { settledLine, computeSettledLineHash, formatTrackedHashLines, formatTrackedHeader } from './hashline-tracked.js';
 export { stripHashlinePrefixes, detectNoOp, relocateHashRef, stripBoundaryEcho } from './hashline-cleanup.js';
 export { parseFootnotes, type FootnoteInfo } from './footnote-parser.js';

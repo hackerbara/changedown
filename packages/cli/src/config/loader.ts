@@ -52,6 +52,7 @@ export function parseConfigToml(raw: string): ChangeTracksConfig {
   const policy = parsed['policy'] as Record<string, unknown> | undefined;
   const protocol = parsed['protocol'] as Record<string, unknown> | undefined;
   const meta = parsed['meta'] as Record<string, unknown> | undefined;
+  const response = parsed['response'] as Record<string, unknown> | undefined;
   const review = parsed['review'] as Record<string, unknown> | undefined;
   const reasonRequired = review?.['reason_required'] as Record<string, unknown> | undefined;
 
@@ -146,6 +147,11 @@ export function parseConfigToml(raw: string): ChangeTracksConfig {
       compact_threshold: typeof meta?.['compact_threshold'] === 'number' && meta['compact_threshold'] > 0
         ? meta['compact_threshold']
         : DEFAULT_CONFIG.meta?.compact_threshold ?? 80,
+    },
+    response: {
+      affected_lines: typeof response?.['affected_lines'] === 'boolean'
+        ? response['affected_lines']
+        : false,
     },
   };
 }

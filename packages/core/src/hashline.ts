@@ -33,6 +33,15 @@ export async function initHashline(): Promise<void> {
   }
 }
 
+/**
+ * Ensure the hashline WASM module is initialized. Semantic alias for
+ * `initHashline()` — intended for handler entry points that want to
+ * guarantee readiness without caring whether init already happened.
+ *
+ * Idempotent: no-op if already initialized.
+ */
+export const ensureHashlineReady: () => Promise<void> = initHashline;
+
 // ─── computeLineHash ───────────────────────────────────────────────────────
 
 /**
@@ -60,7 +69,12 @@ function stripForHash(line: string): string {
  */
 export function computeLineHash(idx: number, line: string, allLines?: string[]): string {
   if (!xxhash) {
-    throw new Error('Call initHashline() before using hashline functions');
+    throw new Error(
+      'xxhash-wasm not initialized. Call `await initHashline()` or ' +
+      '`await ensureHashlineReady()` before using hashline functions. ' +
+      'If this occurs in tests, add `deps: { inline: ["@changetracks/core"] }` ' +
+      'to vitest.config.ts to prevent duplicate module instances.'
+    );
   }
   const stripped = stripForHash(line);
 

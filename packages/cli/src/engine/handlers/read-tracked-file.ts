@@ -354,14 +354,14 @@ export async function handleReadTrackedFile(
       );
       let headerWithoutHashlineTip = header.replace(
         /## tip:.*/,
-        '## tip: Hashline addressing is disabled. Use string matching in propose_change.',
+        '## tip: Hashline addressing is disabled. Edits use text matching; re-read for current content if propose_change fails.',
       );
       // Append protocol mode label for non-hashline path
       const nonHashProtocolMode = resolveProtocolMode(config.protocol.mode);
       if (nonHashProtocolMode === 'compact') {
         headerWithoutHashlineTip = headerWithoutHashlineTip.replace(
           /## tip:.*/,
-          '## tip: Hashline addressing is disabled (compact mode requires hashline). Use string matching in propose_change.',
+          '## tip: Hashline addressing is disabled but compact mode requires it. Enable in .changetracks/config.toml: [hashline] enabled = true',
         );
       }
       const contentToShow =

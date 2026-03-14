@@ -100,7 +100,7 @@ When('I accept the change at cursor', { timeout: 10000 }, async function (this: 
     this.lastBulkOperation = false;
     const before = await getDecorationCounts(this.page);
     this.decorationCountBefore = before.total;
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Accept Change');
+    await executeCommandViaBridge(this.page, 'ChangeTracks: Accept Change', [undefined, 'approve']);
     await this.page.waitForTimeout(800);
 });
 
@@ -109,7 +109,7 @@ When('I reject the change at cursor', { timeout: 10000 }, async function (this: 
     this.lastBulkOperation = false;
     const before = await getDecorationCounts(this.page);
     this.decorationCountBefore = before.total;
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Reject Change');
+    await executeCommandViaBridge(this.page, 'ChangeTracks: Reject Change', [undefined, 'reject']);
     await this.page.waitForTimeout(800);
 });
 

@@ -26,6 +26,9 @@ export interface ChangeTracksConfig {
     enabled: boolean;
     auto_remap: boolean;
   };
+  response?: {
+    affected_lines?: boolean;
+  };
   settlement: {
     auto_on_approve: boolean;
     auto_on_reject: boolean;

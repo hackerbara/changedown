@@ -1410,16 +1410,6 @@ export class ExtensionController {
         }
 
 
-        // Skip standalone whitespace insertions ONLY when no pending edit is active.
-        // When a pending edit exists, whitespace (spaces, tabs) must flow through to
-        // PendingEditManager so it can extend the buffer — otherwise "hello world"
-        // becomes two separate insertions because the space breaks adjacency tracking.
-        if (/^[ \t]+$/.test(change.text) && isInsertion && !this.pendingEditManager.hasPendingEdit()) {
-            getOutputChannel()?.appendLine('[tracking] skip: standalone whitespace (space/tab), no pending edit');
-            // Shadow will be updated by caller
-            return;
-        }
-
         if (isInsertion) {
             const text = editor.document.getText();
             const insertOffset = positionToOffset(text, change.range.start);
@@ -1757,41 +1747,11 @@ export class ExtensionController {
 
         if (!await this.confirmBulkAction('Accept', changes.length)) return;
 
-        // Iterate through changes via LSP, re-parsing between each review
-        // (same pattern as compactAllResolved — each review mutates the document)
-        let acceptedCount = 0;
-        let lastCandidateId: string | undefined;
-        while (true) {
-            const currentEditor = this.findSupportedEditor();
-            if (!currentEditor) break;
-
-            const freshDoc = this.getVirtualDocumentFor(
-                currentEditor.document.uri.toString(),
-                currentEditor.document.getText(),
-                currentEditor.document.languageId,
-                true
-            );
-
-            // Pick the last change (highest offset) for offset safety
-            const candidate = freshDoc.getChanges()
-                .filter(c => c.id)
-                .sort((a, b) => b.range.start - a.range.start)[0];
-
-            if (!candidate) break;
-            // Guard against infinite loop if LSP succeeds but doesn't remove the change
-            if (candidate.id === lastCandidateId) break;
-            lastCandidateId = candidate.id;
-
-            const { success } = await this.sendLifecycleRequest('changetracks/reviewChange', {
-                changeId: candidate.id,
-                decision: 'approve',
-            });
-            if (!success) break;
-            acceptedCount++;
-        }
-
-        if (acceptedCount > 0) {
-            vscode.window.showInformationMessage(`Accepted ${acceptedCount} change${acceptedCount === 1 ? '' : 's'}`);
+        const { success, result } = await this.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+            decision: 'approve',
+        });
+        if (success && result?.reviewedCount) {
+            vscode.window.showInformationMessage(`Accepted ${result.reviewedCount} change${result.reviewedCount === 1 ? '' : 's'}`);
         }
     }
 
@@ -1817,49 +1777,18 @@ export class ExtensionController {
 
         if (!await this.confirmBulkAction('Reject', changes.length)) return;
 
-        // Iterate through changes via LSP, re-parsing between each review
-        // (same pattern as compactAllResolved — each review mutates the document)
-        let rejectedCount = 0;
-        let lastCandidateId: string | undefined;
-        while (true) {
-            const currentEditor = this.findSupportedEditor();
-            if (!currentEditor) break;
-
-            const freshDoc = this.getVirtualDocumentFor(
-                currentEditor.document.uri.toString(),
-                currentEditor.document.getText(),
-                currentEditor.document.languageId,
-                true
-            );
-
-            // Pick the last change (highest offset) for offset safety
-            const candidate = freshDoc.getChanges()
-                .filter(c => c.id)
-                .sort((a, b) => b.range.start - a.range.start)[0];
-
-            if (!candidate) break;
-            // Guard against infinite loop if LSP succeeds but doesn't remove the change
-            if (candidate.id === lastCandidateId) break;
-            lastCandidateId = candidate.id;
-
-            const { success } = await this.sendLifecycleRequest('changetracks/reviewChange', {
-                changeId: candidate.id,
-                decision: 'reject',
-            });
-            if (!success) break;
-            rejectedCount++;
-        }
-
-        if (rejectedCount > 0) {
-            vscode.window.showInformationMessage(`Rejected ${rejectedCount} change${rejectedCount === 1 ? '' : 's'}`);
+        const { success, result } = await this.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+            decision: 'reject',
+        });
+        if (success && result?.reviewedCount) {
+            vscode.window.showInformationMessage(`Rejected ${result.reviewedCount} change${result.reviewedCount === 1 ? '' : 's'}`);
         }
     }
 
     /**
      * Accept all proposed changes on the current cursor line.
-     * Uses LSP loop pattern: capture change IDs from the original cursor line
-     * BEFORE mutations, then filter by ID in the loop to avoid fragile
-     * re-computation of cursor line position after each mutation.
+     * Captures change IDs from the original cursor line BEFORE the LSP call
+     * and passes them to reviewAll, which processes all of them atomically.
      */
     public async acceptAllOnLine(): Promise<void> {
         const editor = this.findSupportedEditor();
@@ -1883,51 +1812,21 @@ export class ExtensionController {
             return;
         }
 
-        // Capture change IDs on the original line BEFORE mutations shift positions
-        const targetChangeIds = new Set(onLine.map((c: ChangeNode) => c.id).filter((id): id is string => Boolean(id)));
+        const targetChangeIds = onLine.map((c: ChangeNode) => c.id).filter((id): id is string => Boolean(id));
 
-        // LSP loop: accept each change by ID (not by re-filtering line position)
-        let acceptedCount = 0;
-        let lastCandidateId: string | undefined;
-        while (true) {
-            const currentEditor = this.findSupportedEditor();
-            if (!currentEditor) break;
-
-            const freshText = currentEditor.document.getText();
-            const freshDoc = this.getVirtualDocumentFor(
-                currentEditor.document.uri.toString(),
-                freshText,
-                currentEditor.document.languageId,
-                true
-            );
-
-            // Find remaining changes from the original set (by ID, not line position)
-            const candidate = freshDoc.getChanges()
-                .filter(c => c.id && targetChangeIds.has(c.id))
-                .sort((a, b) => b.range.start - a.range.start)[0];
-
-            if (!candidate) break;
-            if (candidate.id === lastCandidateId) break;
-            lastCandidateId = candidate.id;
-
-            const { success } = await this.sendLifecycleRequest('changetracks/reviewChange', {
-                changeId: candidate.id,
-                decision: 'approve',
-            });
-            if (!success) break;
-            acceptedCount++;
-        }
-
-        if (acceptedCount > 0) {
-            vscode.window.showInformationMessage(`Accepted ${acceptedCount} change${acceptedCount === 1 ? '' : 's'} on line`);
+        const { success, result } = await this.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+            decision: 'approve',
+            changeIds: targetChangeIds,
+        });
+        if (success && result?.reviewedCount) {
+            vscode.window.showInformationMessage(`Accepted ${result.reviewedCount} change${result.reviewedCount === 1 ? '' : 's'} on line`);
         }
     }
 
     /**
      * Reject all proposed changes on the current cursor line.
-     * Uses LSP loop pattern: capture change IDs from the original cursor line
-     * BEFORE mutations, then filter by ID in the loop to avoid fragile
-     * re-computation of cursor line position after each mutation.
+     * Captures change IDs from the original cursor line BEFORE the LSP call
+     * and passes them to reviewAll, which processes all of them atomically.
      */
     public async rejectAllOnLine(): Promise<void> {
         const editor = this.findSupportedEditor();
@@ -1951,50 +1850,20 @@ export class ExtensionController {
             return;
         }
 
-        // Capture change IDs on the original line BEFORE mutations shift positions
-        const targetChangeIds = new Set(onLine.map((c: ChangeNode) => c.id).filter((id): id is string => Boolean(id)));
+        const targetChangeIds = onLine.map((c: ChangeNode) => c.id).filter((id): id is string => Boolean(id));
 
-        // LSP loop: reject each change by ID (not by re-filtering line position)
-        let rejectedCount = 0;
-        let lastCandidateId: string | undefined;
-        while (true) {
-            const currentEditor = this.findSupportedEditor();
-            if (!currentEditor) break;
-
-            const freshText = currentEditor.document.getText();
-            const freshDoc = this.getVirtualDocumentFor(
-                currentEditor.document.uri.toString(),
-                freshText,
-                currentEditor.document.languageId,
-                true
-            );
-
-            // Find remaining changes from the original set (by ID, not line position)
-            const candidate = freshDoc.getChanges()
-                .filter(c => c.id && targetChangeIds.has(c.id))
-                .sort((a, b) => b.range.start - a.range.start)[0];
-
-            if (!candidate) break;
-            if (candidate.id === lastCandidateId) break;
-            lastCandidateId = candidate.id;
-
-            const { success } = await this.sendLifecycleRequest('changetracks/reviewChange', {
-                changeId: candidate.id,
-                decision: 'reject',
-            });
-            if (!success) break;
-            rejectedCount++;
-        }
-
-        if (rejectedCount > 0) {
-            vscode.window.showInformationMessage(`Rejected ${rejectedCount} change${rejectedCount === 1 ? '' : 's'} on line`);
+        const { success, result } = await this.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+            decision: 'reject',
+            changeIds: targetChangeIds,
+        });
+        if (success && result?.reviewedCount) {
+            vscode.window.showInformationMessage(`Rejected ${result.reviewedCount} change${result.reviewedCount === 1 ? '' : 's'} on line`);
         }
     }
 
     /**
      * Accept all pending changes in the document at the given URI.
      * Used from SCM context menu (file-scoped accept all).
-     * Uses LSP loop pattern (one change at a time) to avoid overlapping-range errors.
      */
     public async acceptAllInDocument(uri: vscode.Uri): Promise<void> {
         const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString())
@@ -2009,51 +1878,22 @@ export class ExtensionController {
         if (changes.length === 0) return;
         if (!await this.confirmBulkAction('Accept', changes.length)) return;
 
-        // CRITICAL: Focus target document before LSP loop.
+        // CRITICAL: Focus target document before the LSP call.
         // sendLifecycleRequest uses findSupportedEditor() which returns the ACTIVE editor.
         // If SCM context menu targets a non-active document, this silently operates on the wrong doc.
         await vscode.window.showTextDocument(doc, { preview: false });
 
-        // LSP loop pattern (same as acceptAllChanges)
-        let acceptedCount = 0;
-        let lastCandidateId: string | undefined;
-        while (true) {
-            const freshDoc = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString())
-                ?? await vscode.workspace.openTextDocument(uri);
-            const freshVirtualDoc = this.getVirtualDocumentFor(
-                uri.toString(),
-                freshDoc.getText(),
-                freshDoc.languageId,
-                true
-            );
-
-            // Pick the last change (highest offset) for offset safety
-            const candidate = freshVirtualDoc.getChanges()
-                .filter(c => c.id)
-                .sort((a, b) => b.range.start - a.range.start)[0];
-
-            if (!candidate) break;
-            // Guard against infinite loop if LSP succeeds but doesn't remove the change
-            if (candidate.id === lastCandidateId) break;
-            lastCandidateId = candidate.id;
-
-            const { success } = await this.sendLifecycleRequest('changetracks/reviewChange', {
-                changeId: candidate.id,
-                decision: 'approve',
-            });
-            if (!success) break;
-            acceptedCount++;
-        }
-
-        if (acceptedCount > 0) {
-            vscode.window.showInformationMessage(`Accepted ${acceptedCount} change${acceptedCount === 1 ? '' : 's'} in file`);
+        const { success, result } = await this.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+            decision: 'approve',
+        });
+        if (success && result?.reviewedCount) {
+            vscode.window.showInformationMessage(`Accepted ${result.reviewedCount} change${result.reviewedCount === 1 ? '' : 's'} in file`);
         }
     }
 
     /**
      * Reject all pending changes in the document at the given URI.
      * Used from SCM context menu (file-scoped reject all).
-     * Uses LSP loop pattern (one change at a time) to avoid overlapping-range errors.
      */
     public async rejectAllInDocument(uri: vscode.Uri): Promise<void> {
         const doc = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString())
@@ -2068,44 +1908,16 @@ export class ExtensionController {
         if (changes.length === 0) return;
         if (!await this.confirmBulkAction('Reject', changes.length)) return;
 
-        // CRITICAL: Focus target document before LSP loop.
+        // CRITICAL: Focus target document before the LSP call.
         // sendLifecycleRequest uses findSupportedEditor() which returns the ACTIVE editor.
         // If SCM context menu targets a non-active document, this silently operates on the wrong doc.
         await vscode.window.showTextDocument(doc, { preview: false });
 
-        // LSP loop pattern (same as rejectAllChanges)
-        let rejectedCount = 0;
-        let lastCandidateId: string | undefined;
-        while (true) {
-            const freshDoc = vscode.workspace.textDocuments.find(d => d.uri.toString() === uri.toString())
-                ?? await vscode.workspace.openTextDocument(uri);
-            const freshVirtualDoc = this.getVirtualDocumentFor(
-                uri.toString(),
-                freshDoc.getText(),
-                freshDoc.languageId,
-                true
-            );
-
-            // Pick the last change (highest offset) for offset safety
-            const candidate = freshVirtualDoc.getChanges()
-                .filter(c => c.id)
-                .sort((a, b) => b.range.start - a.range.start)[0];
-
-            if (!candidate) break;
-            // Guard against infinite loop if LSP succeeds but doesn't remove the change
-            if (candidate.id === lastCandidateId) break;
-            lastCandidateId = candidate.id;
-
-            const { success } = await this.sendLifecycleRequest('changetracks/reviewChange', {
-                changeId: candidate.id,
-                decision: 'reject',
-            });
-            if (!success) break;
-            rejectedCount++;
-        }
-
-        if (rejectedCount > 0) {
-            vscode.window.showInformationMessage(`Rejected ${rejectedCount} change${rejectedCount === 1 ? '' : 's'} in file`);
+        const { success, result } = await this.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+            decision: 'reject',
+        });
+        if (success && result?.reviewedCount) {
+            vscode.window.showInformationMessage(`Rejected ${result.reviewedCount} change${result.reviewedCount === 1 ? '' : 's'} in file`);
         }
     }
 

@@ -5,9 +5,9 @@
  *   - @fast @EXT1-pkg: Pure JSON assertions against package.json. No VS Code.
  *   - @integration @EXT1: Playwright-driven checks against running VS Code.
  *
- * The @integration steps use bridge commands (_testExtensionState) instead of
- * page.evaluate() with require('vscode'), which is unavailable in the
- * Playwright renderer process. Document operations use Monaco APIs.
+ * The @integration steps use bridge commands (_testExtensionState, _testResetDocument)
+ * instead of page.evaluate() with require('vscode') or window.monaco, which are
+ * unavailable/unreliable in the Playwright renderer process.
  */
 
 import { Given, When, Then } from '@cucumber/cucumber';
@@ -64,6 +64,11 @@ interface ExtensionState {
 async function importExecuteCommand(): Promise<typeof import('../../journeys/playwrightHarness')['executeCommand']> {
     const { executeCommand } = await import('../../journeys/playwrightHarness');
     return executeCommand;
+}
+
+async function importExecuteCommandViaBridge(): Promise<typeof import('../../journeys/playwrightHarness')['executeCommandViaBridge']> {
+    const { executeCommandViaBridge } = await import('../../journeys/playwrightHarness');
+    return executeCommandViaBridge;
 }
 
 /**
@@ -141,20 +146,14 @@ When(
     async function (this: ChangeTracksWorld, content: string) {
         assert.ok(this.page, 'Page not available');
 
-        // Use Monaco API to set editor content. The extension-lifecycle-test.md
-        // fixture is already open; we replace its content via the Monaco model.
-        const escaped = JSON.stringify(content);
-        await this.page!.evaluate(`
-            (async () => {
-                const editor = window.monaco?.editor?.getEditors?.()?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        model.setValue(${escaped});
-                    }
-                }
-            })()
-        `);
+        // Use the _testResetDocument bridge command to set editor content.
+        // The extension-lifecycle-test.md fixture is already open; we replace
+        // its content via the bridge command which calls editor.edit() in the
+        // extension host (reliable, unlike window.monaco which is often undefined).
+        const inputPath = path.join(os.tmpdir(), 'changetracks-test-reset-input.json');
+        fs.writeFileSync(inputPath, JSON.stringify({ content }));
+        const executeCommandViaBridge = await importExecuteCommandViaBridge();
+        await executeCommandViaBridge(this.page!, 'ChangeTracks: Test Reset Document');
         await this.page!.waitForTimeout(500);
     }
 );
@@ -165,25 +164,17 @@ When(
     async function (this: ChangeTracksWorld, content: string) {
         assert.ok(this.page, 'Page not available');
 
-        // Open a new untitled file via command palette, then set content via Monaco.
-        // Since we cannot call require('vscode'), we use the command palette
-        // to create a new file, then set its content via Monaco.
+        // Open a new untitled text file via command palette, then set content
+        // via the _testResetDocument bridge command (which calls editor.edit()
+        // on the active editor, regardless of language mode).
         const executeCommand = await importExecuteCommand();
         await executeCommand(this.page!, 'File: New Untitled Text File');
         await this.page!.waitForTimeout(500);
 
-        const escaped = JSON.stringify(content);
-        await this.page!.evaluate(`
-            (async () => {
-                const editor = window.monaco?.editor?.getEditors?.()?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        model.setValue(${escaped});
-                    }
-                }
-            })()
-        `);
+        const inputPath = path.join(os.tmpdir(), 'changetracks-test-reset-input.json');
+        fs.writeFileSync(inputPath, JSON.stringify({ content }));
+        const executeCommandViaBridge = await importExecuteCommandViaBridge();
+        await executeCommandViaBridge(this.page!, 'ChangeTracks: Test Reset Document');
         await this.page!.waitForTimeout(500);
     }
 );

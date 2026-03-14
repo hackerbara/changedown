@@ -384,9 +384,13 @@ export async function handleReviewChanges(
         if (config.hashline.enabled) {
           await initHashline();
         }
-        affectedLines = computeAffectedLines(fileContent, minLine, maxLine, {
-          hashlineEnabled: config.hashline.enabled,
-        });
+        try {
+          affectedLines = computeAffectedLines(fileContent, minLine, maxLine, {
+            hashlineEnabled: config.hashline.enabled,
+          });
+        } catch {
+          affectedLines = [];
+        }
       }
     }
 
@@ -420,7 +424,7 @@ export async function handleReviewChanges(
         `The file now contains clean prose where those changes were. ` +
         `Proposed changes remain as markup.`;
     }
-    if (affectedLines) {
+    if (affectedLines && config.response?.affected_lines) {
       response.affected_lines = affectedLines;
     }
     const remaining = countFootnoteHeadersWithStatus(fileContent, 'proposed');

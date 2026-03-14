@@ -143,14 +143,35 @@ When(
         await this.page.keyboard.press('Control+Shift+F12');
         await this.page.waitForTimeout(600);
 
-        // Trigger accept — this will produce the QuickPick that the next step selects
-        await executeCommandViaBridge(this.page, 'changetracks.acceptChange');
+        // Trigger accept — pass decision to bypass the QuickPick UI
+        await executeCommandViaBridge(this.page, 'changetracks.acceptChange', [undefined, 'approve']);
         await this.page.waitForTimeout(500);
     }
 );
 
-// NOTE: 'the panel card for {word} shows status {string}' is defined in
-// sl-cross-surface.steps.ts — reused here for SL-PN scenarios.
+// ── Card status after action ──────────────────────────────────────────
+
+Then(
+    'the panel card for {word} shows status {string}',
+    { timeout: 15000 },
+    async function (this: ChangeTracksWorld, changeId: string, expectedStatus: string) {
+        assert.ok(this.page, 'Page not available');
+        const deadline = Date.now() + 8000;
+        let lastStatus = '';
+        while (Date.now() < deadline) {
+            const { cards } = await getReviewPanelCards(this.page);
+            const card = cards.find(c => c.changeId === changeId);
+            if (card) {
+                if (card.status === expectedStatus) return;
+                lastStatus = card.status;
+            } else {
+                lastStatus = '(card not found)';
+            }
+            await this.page.waitForTimeout(400);
+        }
+        assert.fail(`Card ${changeId}: expected status "${expectedStatus}", got "${lastStatus}"`);
+    }
+);
 
 // ── Panel filter ──────────────────────────────────────────────────────
 

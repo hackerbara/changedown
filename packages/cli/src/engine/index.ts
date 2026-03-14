@@ -112,3 +112,7 @@ export type { AffectedLineEntry } from './handlers/propose-utils.js';
 export { validateOrRelocate, validateOrAutoRemap, tryRelocate, computeLineHash as computeHandlerLineHash } from './handlers/hashline-relocate.js';
 export type { RelocationEntry, RelocationResult, AutoRemapResult } from './handlers/hashline-relocate.js';
 export { TYPE_MAP, offsetToLineNumber } from './handlers/change-utils.js';
+
+// ── Coordinate Pipeline ──
+export { resolveCoordinates, applyCompactOp, resolveAndApply } from './handlers/resolve-and-apply.js';
+export type { NormalizedCompactOp, ResolvedCoordinates, ApplyResult } from './handlers/resolve-and-apply.js';

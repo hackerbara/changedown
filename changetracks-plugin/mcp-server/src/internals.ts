@@ -42,6 +42,7 @@ export {
   tryRelocate,
 } from './tools/hashline-relocate.js';
 export type { RelocationResult } from './tools/hashline-relocate.js';
+export { initHashline } from '@changetracks/core';
 
 // ── Core utilities ──────────────────────────────────────────────────
 export { parseAt, resolveAt } from './at-resolver.js';
@@ -68,3 +69,7 @@ export {
   compactProposeChangeSchema,
   classicProposeChangeSchema,
 } from './tool-schemas.js';
+
+// ── Coordinate Pipeline ──────────────────────────────────────────────
+export { resolveCoordinates, applyCompactOp, resolveAndApply } from 'changetracks/engine';
+export type { NormalizedCompactOp, ResolvedCoordinates, ApplyResult } from 'changetracks/engine';

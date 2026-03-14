@@ -434,52 +434,37 @@ When('I select {string} on line {int}', { timeout: 15000 }, async function (
 
 /**
  * Click at a specific line/column position in the editor.
- * Uses Monaco revealPosition + Playwright click, which fires real
- * mouse events (unlike setCursorPosition which only calls editor.setPosition).
+ * Uses _testPositionCursor bridge command to position the cursor (which also
+ * reveals the line), then clicks the editor to simulate a real mouse event.
+ * This avoids globalThis.monaco which is unavailable in some Playwright contexts.
  */
-When('I click at line {int} column {int}', { timeout: 5000 }, async function (
+When('I click at line {int} column {int}', { timeout: 10000 }, async function (
     this: ChangeTracksWorld, line: number, col: number
 ) {
     assert.ok(this.page, 'Page not available');
-    // First reveal the target line so it's visible
-    await this.page.evaluate(`(() => {
-        const editors = globalThis.monaco?.editor?.getEditors?.();
-        const editor = editors?.[0];
-        if (editor) {
-            editor.revealLineInCenter(${line});
-        }
-    })()`);
-    await this.page.waitForTimeout(200);
 
-    // Use Monaco's coordinate system to find the pixel position
-    const coords = await this.page.evaluate(`(() => {
-        const editors = globalThis.monaco?.editor?.getEditors?.();
-        const editor = editors?.[0];
-        if (editor) {
-            const pos = { lineNumber: ${line}, column: ${col} };
-            const scrolledPos = editor.getScrolledVisiblePosition(pos);
-            const domNode = editor.getDomNode();
-            if (scrolledPos && domNode) {
-                const rect = domNode.getBoundingClientRect();
-                return {
-                    x: rect.left + scrolledPos.left,
-                    y: rect.top + scrolledPos.top + scrolledPos.height / 2
-                };
+    // Position cursor via bridge command (0-based line/character)
+    const inputPath = path.join(os.tmpdir(), 'changetracks-test-position-cursor-input.json');
+    const resultPath = path.join(os.tmpdir(), 'changetracks-test-position-cursor.json');
+    try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
+    fs.writeFileSync(inputPath, JSON.stringify({ line: line - 1, character: col - 1 }));
+    await executeCommandViaBridge(this.page, 'ChangeTracks: Test Position Cursor');
+
+    // Poll for result
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+        try {
+            if (fs.existsSync(resultPath)) {
+                const result = JSON.parse(fs.readFileSync(resultPath, 'utf8'));
+                assert.ok(result.ok, `Failed to position cursor at line ${line} col ${col}: ${result.error}`);
+                break;
             }
-        }
-        return null;
-    })()`) as { x: number; y: number } | null;
-
-    if (coords) {
-        await this.page.mouse.click(coords.x, coords.y);
-    } else {
-        // Fallback: use setCursorPosition via Monaco
-        await this.page.evaluate(`(() => {
-            const editors = globalThis.monaco?.editor?.getEditors?.();
-            const editor = editors?.[0];
-            if (editor) editor.setPosition({ lineNumber: ${line}, column: ${col} });
-        })()`);
+        } catch { /* not ready */ }
+        await this.page.waitForTimeout(100);
     }
+
+    // Click the editor to trigger mouse-event side effects (e.g., flush pending edits)
+    await this.page.click('.monaco-editor .view-lines', { force: true });
     await this.page.waitForTimeout(200);
 });
 

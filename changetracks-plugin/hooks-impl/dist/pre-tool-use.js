@@ -3177,7 +3177,7 @@ function stripForHash(line) {
 }
 function computeLineHash(idx, line, allLines) {
   if (!xxhash) {
-    throw new Error("Call initHashline() before using hashline functions");
+    throw new Error('xxhash-wasm not initialized. Call `await initHashline()` or `await ensureHashlineReady()` before using hashline functions. If this occurs in tests, add `deps: { inline: ["@changetracks/core"] }` to vitest.config.ts to prevent duplicate module instances.');
   }
   const stripped = stripForHash(line);
   if (stripped.length > 0 || !allLines) {
@@ -3253,7 +3253,7 @@ function validateLineRef(ref, fileLines) {
     throw new HashlineMismatchError([{ line: ref.line, expected: ref.hash, actual: actualHash }], fileLines);
   }
 }
-var HASH_LEN, RADIX, HASH_MOD, DICT, encoder, xxhash, HashlineMismatchError;
+var HASH_LEN, RADIX, HASH_MOD, DICT, encoder, xxhash, ensureHashlineReady, HashlineMismatchError;
 var init_hashline = __esm({
   "../../packages/core/dist-esm/hashline.js"() {
     "use strict";
@@ -3264,6 +3264,7 @@ var init_hashline = __esm({
     DICT = Array.from({ length: HASH_MOD }, (_, i) => i.toString(RADIX).padStart(HASH_LEN, "0"));
     encoder = new TextEncoder();
     xxhash = null;
+    ensureHashlineReady = initHashline;
     HashlineMismatchError = class extends Error {
       constructor(mismatches, fileLines) {
         const CONTEXT = 2;
@@ -8318,6 +8319,7 @@ __export(dist_esm_exports, {
   defaultNormalizer: () => defaultNormalizer,
   detectNoOp: () => detectNoOp,
   diagnosticConfusableNormalize: () => diagnosticConfusableNormalize,
+  ensureHashlineReady: () => ensureHashlineReady,
   ensureL2: () => ensureL2,
   escapeRegex: () => escapeRegex,
   extendBuffer: () => extend,
@@ -9202,6 +9204,7 @@ function parseConfigToml(raw) {
   const policy = parsed["policy"];
   const protocol = parsed["protocol"];
   const meta = parsed["meta"];
+  const response = parsed["response"];
   const review = parsed["review"];
   const reasonRequired = review?.["reason_required"];
   return {
@@ -9251,6 +9254,9 @@ function parseConfigToml(raw) {
     },
     meta: {
       compact_threshold: typeof meta?.["compact_threshold"] === "number" && meta["compact_threshold"] > 0 ? meta["compact_threshold"] : DEFAULT_CONFIG.meta?.compact_threshold ?? 80
+    },
+    response: {
+      affected_lines: typeof response?.["affected_lines"] === "boolean" ? response["affected_lines"] : false
     }
   };
 }

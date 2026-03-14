@@ -1,8 +1,8 @@
-@wip @coverage-gap @red @slow
+@coverage-gap @slow
 Feature: TM2 — Tracking Mode Coverage Gaps
 
-  These scenarios document KNOWN UNTESTED behaviors. They are expected to fail.
-  When a scenario starts passing, remove @red and @wip.
+  TM2-01 and TM2-02 verify BUG-6 fix (undo/redo pending buffer cleanup).
+  TM2-03 through TM2-06 document known untested behaviors (still @wip).
 
   @fixture(tracking-mode-test)
   Scenario: TM2-01 Undo reverses tracked insertion
@@ -25,7 +25,7 @@ Feature: TM2 — Tracking Mode Coverage Gaps
     And I wait for edit boundary detection
     Then the document contains "{++ beautiful++}"
 
-  @fixture(tracking-mode-test)
+  @wip @red @fixture(tracking-mode-test)
   Scenario: TM2-03 Select-then-type creates substitution
     Given a tracking-mode editor with content "Hello world"
     When I select from line 1 column 6 to line 1 column 11
@@ -33,7 +33,7 @@ Feature: TM2 — Tracking Mode Coverage Gaps
     And I wait for edit boundary detection
     Then the document contains "{~~world~>universe~~}"
 
-  @fixture(tracking-mode-test)
+  @wip @red @fixture(tracking-mode-test)
   Scenario: TM2-04 Find-and-replace creates tracked change
     Given a tracking-mode editor with content "Hello world"
     When I press "Meta+h"
@@ -46,14 +46,14 @@ Feature: TM2 — Tracking Mode Coverage Gaps
     Then the document contains "{~~world~>universe~~}"
     # Or possibly {--world--}{++universe++} depending on implementation
 
-  @fixture(tracking-mode-test)
+  @wip @red @fixture(tracking-mode-test)
   Scenario: TM2-05 Arrow key flushes pending edit
     Given a tracking-mode editor with content "Hello world"
     When I type " there"
     And I press "ArrowLeft"
     Then the document contains "{++ there++}"
 
-  @fixture(tracking-mode-test)
+  @wip @red @fixture(tracking-mode-test)
   Scenario: TM2-06 J5 timing — 2500ms wait does NOT flush with 30000ms threshold
     Given a tracking-mode editor with content "Hello world"
     When I type " test"

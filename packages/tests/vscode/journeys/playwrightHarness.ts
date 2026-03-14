@@ -63,13 +63,15 @@ const COMMAND_TITLE_TO_ID: Record<string, string> = {
  * command palette entirely. This avoids fuzzy-matching ambiguity (e.g.,
  * "Compact Change" vs "Compact Change Fully") and cursor movement side effects.
  *
- * Writes the command ID to a temp file, then presses Ctrl+Shift+F12 to
- * trigger changetracks._testExecuteCommand, which reads the file and calls
- * vscode.commands.executeCommand() directly.
+ * Writes the command ID (and optional args) to a temp file, then presses
+ * Ctrl+Shift+F12 to trigger changetracks._testExecuteCommand, which reads the
+ * file and calls vscode.commands.executeCommand(commandId, ...(args ?? [])).
  *
  * Falls back to command palette execution for unknown commands.
+ *
+ * @param args Optional positional arguments spread into executeCommand(commandId, ...args)
  */
-export async function executeCommandViaBridge(page: Page, command: string): Promise<boolean> {
+export async function executeCommandViaBridge(page: Page, command: string, args?: unknown[]): Promise<boolean> {
     const commandId = COMMAND_TITLE_TO_ID[command] ?? command;
 
     // If no mapping found and it doesn't look like a command ID, fall back to palette
@@ -85,7 +87,7 @@ export async function executeCommandViaBridge(page: Page, command: string): Prom
     try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
 
     // Write command to input file
-    fs.writeFileSync(inputPath, JSON.stringify({ command: commandId }));
+    fs.writeFileSync(inputPath, JSON.stringify({ command: commandId, args }));
 
     // Press the bridge keybinding (Ctrl+Shift+F12)
     await page.keyboard.press('Control+Shift+F12');
@@ -592,42 +594,21 @@ export async function getDocumentTextViaBridge(page: Page, options?: { expectedF
 /**
  * Read the raw text content of the file via the VS Code API.
  *
- * Tries bridge (auto-synced temp file) first — immune to Monaco renderer
- * staleness after command palette interactions. Falls back to Monaco API
- * for cold-start scenarios before the extension has activated.
+ * Uses the Extension Host bridge (auto-synced temp file) which is immune to
+ * Monaco renderer staleness after command palette interactions. The bridge
+ * includes 3-retry fallback via explicit command palette invocation, so no
+ * Monaco API fallback is needed.
+ *
+ * NOTE: A globalThis.monaco fallback was removed here because Monaco API is
+ * unavailable in VS Code 1.109+ (nodeIntegration disabled in renderer).
+ * Optional chaining masked the failure, silently returning '' and giving
+ * false passes. The bridge handles cold-start scenarios via its retry logic.
  */
 export async function getDocumentText(page: Page, options?: { expectedFilename?: string; instanceId?: string }): Promise<string> {
-    // Try bridge first — Extension Host auto-syncs document text to a temp file
-    // on every change. This is reliable even after command palette interactions
-    // that leave Monaco editors in a stale state.
-    const bridgeResult = await getDocumentTextViaBridge(page, options);
-    if (bridgeResult.length > 0) {
-        return bridgeResult;
-    }
-
-    // Fallback: Monaco API — needed during cold start before extension activates
-    // and begins writing the temp file. Filter for file:// editors to avoid
-    // internal Monaco editors (command palette, search, settings).
-    const result = await page.evaluate(`(() => {
-        const editors = globalThis.monaco?.editor?.getEditors?.();
-        if (editors && editors.length > 0) {
-            // Prefer editors with file:// URI (actual document editors)
-            const fileEditor = editors.find(e => {
-                const uri = e.getModel()?.uri?.toString() ?? '';
-                return uri.startsWith('file://');
-            });
-            if (fileEditor) return fileEditor.getModel()?.getValue() ?? '';
-            // Fallback to first editor
-            return editors[0].getModel()?.getValue() ?? '';
-        }
-        return '';
-    })()`).catch(() => '');
-
-    if (typeof result === 'string' && result.length > 0) {
-        return result;
-    }
-
-    return '';
+    // Extension Host auto-syncs document text to a per-instance temp file on
+    // every change. getDocumentTextViaBridge reads the file, with 3-retry
+    // fallback via explicit _testGetDocumentText command palette invocation.
+    return await getDocumentTextViaBridge(page, options);
 }
 
 /**

@@ -13,7 +13,7 @@ Declare your identity using the `author` parameter on every `propose_change` and
 
 1. **Use `propose_change` for ALL edits to tracked files.** Never use Edit/Write directly. If you do, hooks auto-wrap your edit in CriticMarkup — but with worse formatting and no annotations.
 
-2. **Read before you write.** Call `read_tracked_file` first. It gives you the content, change status, and (when hashlines are enabled) LINE:HASH coordinates for precise addressing.
+2. **Read before you write.** Call `read_tracked_file` first. It gives you the content, change status, and addressing information for precise targeting.
 
 3. **Use `review_changes` to approve, reject, or discuss.** One call handles one or many reviews. Include a reason for every decision.
 
@@ -26,7 +26,7 @@ Declare your identity using the `author` parameter on every `propose_change` and
 
 Default view is project-configured. Omit the `view` parameter to use the project default.
 
-All views are writable projection surfaces. You can propose changes from any view using hash-addressed coordinates from that view's output.[^sc-18.1]
+All views are writable projection surfaces. You can propose changes from any view using lines or coordinates from that view's output.[^sc-18.1]
 
 ## The Six Tools
 
@@ -35,13 +35,13 @@ All views are writable projection surfaces. You can propose changes from any vie
 | # | Tool | What it does |
 |---|------|-------------|
 | 1 | `read_tracked_file` | See what's there. Default: review view (three-zone format). |
-| 2 | `propose_change` | Make changes. Hash-addressed ops (compact) or old_text/new_text (classic). |
+| 2 | `propose_change` | Make changes. Your first `read_tracked_file` includes editing syntax for this project. |
 | 3 | `review_changes` | Decide on changes. Accept/reject with `reviews`. Reply to threads with `responses`. |
 | 4 | `amend_change` | Fix YOUR OWN proposals. Same-author enforcement. |
 | 5 | `list_changes` | Change inventory with detail levels. `detail=summary` for overview, `detail=context` for surrounding lines, `detail=full` for threads and revision history. Use `change_id` or `change_ids` to fetch specific changes. Filter by status. **Prefer using `propose_change` response data** (contains change IDs, `affected_lines`, and per-change `preview`)[^sc-21.1] over calling this — saves a round trip. |
 | 6 | `supersede_change` | Replace someone else's proposal. Atomically rejects old + proposes new. |
 
-## Reading the Three-Zone Format
+## Reading the Three-Zone Format (review view)
 
 Every line in the review view has three zones:
 
@@ -49,7 +49,7 @@ Every line in the review view has three zones:
 MARGIN | CONTENT | METADATA
 ```
 
-- **Zone 1 (Margin)**: `LINE:HASH FLAG|` — coordinates for targeting. `P` = pending proposal, `A` = accepted change.
+- **Zone 1 (Margin)**: Addressing and flags. `P` = pending proposal, `A` = accepted change.
 - **Zone 2 (Content)**: Committed text with CriticMarkup inline. `[sc-N]` anchors link to Zone 3.
 - **Zone 3 (Metadata)**: `{>>sc-N @author: reason | K replies<<}` at end of line. WHO proposed and WHY.
 
@@ -61,7 +61,7 @@ Example:
 
 ## Deletion Semantics
 
-In review view, `{--text--}` means *proposed for deletion* — the text is still present in the committed document. When targeting text with `old_text` (classic) or `op` (compact), the deleted text is part of the committed content until the deletion is accepted.
+In review view, `{--text--}` means *proposed for deletion* — the text is still present in the committed document. The deleted text is still present in the committed content until the deletion is accepted. When targeting this text for further edits, account for the deletion markup in what you see.
 
 ## Tool Routing
 
@@ -76,19 +76,21 @@ In review view, `{--text--}` means *proposed for deletion* — the text is still
 ## Workflow
 
 ```
-1. read_tracked_file(file)               — get content + coordinates
-2. propose_change(file, ...)             — make edits (use hashes from step 1)
+1. read_tracked_file(file)               — get content + addressing
+2. propose_change(file, ...)             — make edits (use addressing from step 1)
 3. Fire more propose_change calls        — server auto-relocates shifted lines
 4. review_changes(file, reviews=[...])   — approve/reject when done
 ```
 
-Your first `read_tracked_file` call includes an edit guide tailored to this project's configuration — protocol syntax, identity rules, and view semantics.
+Your first `read_tracked_file` call includes an **editing guide** tailored to this project — syntax, identity rules, and view semantics. That guide is your reference for how to structure `propose_change` calls.
+
+**Strict mode:** In strict-mode projects, raw `Read` calls on tracked markdown files are blocked. Use `read_tracked_file` — it is the only path to tracked content.
 
 **Subagents:** When spawning subagents (e.g., via Claude Code's Task tool), include `include_guide: true` in the subagent's first `read_tracked_file` call. All subagents share one MCP session, so only the first agent gets the guide automatically — subsequent agents must request it explicitly.[^sc-19]
 
-**Check rejection history before proposing.** If you're modifying a section that others have reviewed, read it in `review` view first. Rejected proposals leave orphaned footnote refs (`[^sc-N]` with `rejected` status) visible in review mode. These tell you what was tried and why it was rejected, preventing wasted proposals.
+**Check rejection history before proposing.** If you're modifying a section that others have reviewed, read it in `review` view first. Rejected proposals leave orphaned footnote refs (`[^sc-N]` with `rejected` status) visible in review mode — these tell you what was tried and why it was rejected, preventing wasted proposals. Read the rejection reason before proposing similar changes.
 
-**No re-reads needed between edits.** Each `propose_change` response includes `affected_lines` (neighboring lines with content and coordinates) and per-change `preview` in the `applied` array. Use those for your next edit.[^sc-21.2] Re-read only after review (accept/reject) or when relocation is ambiguous.
+**No re-reads needed between edits.** Each `propose_change` response includes `affected_lines` (neighboring lines with content and addressing) and per-change `preview` in the `applied` array. Use those for your next edit.[^sc-21.2] Re-read only after review (accept/reject) or when relocation is ambiguous.
 
 **UX:** After applying changes, mention the modified file path in your reply so the user can click to open it.
 
@@ -163,12 +165,12 @@ read_tracked_file(file="path/to/file.md")
 ```
 
 **Views (canonical names):**
-- `review` (aliases: `all`, `meta`) — full annotations at point of contact, deliberation summary header. Hashline includes P/A flags. CriticMarkup overlays show what's proposed. Best for evaluating and triaging proposals.
+- `review` (aliases: `all`, `meta`) — full annotations at point of contact, deliberation summary header. Output includes P/A flags in the margin. CriticMarkup overlays show what's proposed. Best for evaluating and triaging proposals.
 - `changes` (aliases: `simple`, `committed`) — committed text with P/A flags in the margin. No inline CriticMarkup. Clean prose with "fresh eyes." Best for copy-editing and independent judgment.
 - `settled` (aliases: `final`) — document as if all proposals were accepted. Clean text. Best for coherence checks before approving.
 - `raw` (aliases: `content`, `full`) — literal file bytes with all CriticMarkup markup and footnotes visible. Diagnostic/debugging only. Not a writable surface.
 
-**P/A flags in hashline:**
+**P/A flags in the margin:**
 ```
  4:b2  | The API should use REST for the external interface.
  5:6f P| Rate limiting should be set to 1000 requests per minute.
@@ -180,9 +182,7 @@ read_tracked_file(file="path/to/file.md")
 
 **Options:** `offset` / `limit` for pagination (default: 500 lines, max: 2000), `include_meta` for change levels in header, `include_guide: true` to re-deliver the editing guide (for subagents sharing an MCP session).[^sc-20]
 
-**Hashline output:** When hashlines are enabled (in project config), output includes `LINE:HASH|content` per line. **Use the hash from your current view in `propose_change` calls** — the server resolves each view's hash space back to raw file positions.
-
-**Always use `read_tracked_file`** for tracked files, not the built-in `read` tool. `read_tracked_file` provides hash coordinates, change awareness, and session binding. The built-in `read` returns raw bytes without any of these features.
+**Always use `read_tracked_file`** for tracked files, not the built-in `read` tool. `read_tracked_file` provides addressing, change awareness, and session binding. The built-in `read` returns raw bytes without any of these features.
 
 ---
 
@@ -203,10 +203,9 @@ If `propose_change` fails with "file not tracked," the response includes diagnos
 |-----------|--------|
 | propose_change fails with "file not tracked" | Check response diagnostic; file needs tracking header |
 | File has accepted-but-unsettled markup | Re-read; compaction is automatic on approve. If markup persists, re-read the file — the settled view (`read_tracked_file(file, view="settled")`) confirms what the final text looks like |
-| Text matching fails | Use LINE:HASH addressing or re-read for current content |
-| Batch fails with hash mismatch | Re-read file, then apply edits one at a time with re-reads between |
+| propose_change fails with unexpected content | Re-read with `read_tracked_file` for current content and fresh addressing |
+| Batch fails with addressing mismatch | Re-read file for fresh addressing, then retry |
 | Editing non-tracked files (.ts, .json) | Normal Edit/Write — hooks do not intercept |
-| Re-proposing rejected ideas | Before proposing changes to a section, read in `review` view to check for rejection history. Orphaned `[^sc-N]` anchors with `rejected` status in Zone 3 metadata indicate prior deliberation — read the rejection reason before proposing similar changes. |
 
 ---
 
@@ -257,7 +256,7 @@ ChangeTracks uses platform hooks to enforce tracking discipline:
 
 **Both platforms guarantee the same final state** — tracked files end up with CriticMarkup. The difference is timing: Claude Code prevents; Cursor catches and wraps.
 
-**If a raw read is blocked:** Use `read_tracked_file` instead. It provides deliberation context, LINE:HASH coordinates, and change metadata.
+**If a raw read is blocked:** Use `read_tracked_file` instead. It provides deliberation context, addressing, and change metadata.
 
 **Safety-net wrapping** produces worse formatting than `propose_change` — no annotations, no grouping, substitution markup instead of clean insertions/deletions. Always prefer `propose_change`.
 

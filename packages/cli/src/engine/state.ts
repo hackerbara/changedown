@@ -1,3 +1,5 @@
+import * as path from 'node:path';
+import { realpathSync } from 'node:fs';
 import { scanMaxCtId } from '@changetracks/core';
 
 export type ViewName = 'review' | 'changes' | 'settled' | 'raw';
@@ -104,6 +106,7 @@ export class SessionState {
    * calls, increments from the cached counter.
    */
   getNextId(filePath: string, currentText: string): string {
+    filePath = this.normalizePath(filePath);
     if (this.activeGroup) {
       // In a group: assign dotted child ID
       this.activeGroup.childCount++;
@@ -178,6 +181,7 @@ export class SessionState {
    * will re-scan the document text to determine the max existing ID.
    */
   resetFile(filePath: string): void {
+    filePath = this.normalizePath(filePath);
     this.counters.delete(filePath);
   }
 
@@ -187,6 +191,7 @@ export class SessionState {
    * Overwrites the recorded hashes for the last-read view of the file.
    */
   recordFileHashes(filePath: string, hashes: Array<{ line: number; raw: string; settled: string; committed?: string; settledView?: string; rawLineNum?: number }>): void {
+    filePath = this.normalizePath(filePath);
     const view = this.getLastReadView(filePath) ?? 'raw';
     if (!this.fileHashesByView.has(filePath)) {
       this.fileHashesByView.set(filePath, new Map());
@@ -203,6 +208,7 @@ export class SessionState {
    * back to `'raw'` if no view has been recorded for the file yet.
    */
   getRecordedHashes(filePath: string, view?: ViewName): Array<{ line: number; raw: string; settled: string; committed?: string; settledView?: string; rawLineNum?: number }> | undefined {
+    filePath = this.normalizePath(filePath);
     const viewTables = this.fileHashesByView.get(filePath);
     if (!viewTables) return undefined;
     const targetView = view ?? this.getLastReadView(filePath) ?? 'raw';
@@ -219,6 +225,7 @@ export class SessionState {
     hashes: Array<{ line: number; raw: string; settled: string; committed?: string; settledView?: string; rawLineNum?: number }>,
     rawContent: string,
   ): void {
+    filePath = this.normalizePath(filePath);
     const newFingerprint = this.fingerprint(rawContent);
     const existingRecord = this.fileRecords.get(filePath);
 
@@ -250,6 +257,7 @@ export class SessionState {
     newContent: string,
     hashes: Array<{ line: number; raw: string; settled: string; committed?: string; settledView?: string; rawLineNum?: number }>,
   ): void {
+    filePath = this.normalizePath(filePath);
     const existingRecord = this.fileRecords.get(filePath);
     this.resetFile(filePath);
     // Clear ALL view tables (content changed)
@@ -271,6 +279,7 @@ export class SessionState {
    * or undefined if the file has not been read in this session.
    */
   getLastReadView(filePath: string): ViewName | undefined {
+    filePath = this.normalizePath(filePath);
     return this.fileRecords.get(filePath)?.lastReadView;
   }
 
@@ -279,6 +288,7 @@ export class SessionState {
    * Compares the stored fingerprint against a fingerprint of the given content.
    */
   isStale(filePath: string, currentContent: string): boolean {
+    filePath = this.normalizePath(filePath);
     const record = this.fileRecords.get(filePath);
     if (!record) return true;
     return record.contentFingerprint !== this.fingerprint(currentContent);
@@ -307,6 +317,7 @@ export class SessionState {
     | { match: true; rawLineNum: number; view: ViewName }
     | { match: false; expectedHash: string; view: ViewName }
     | undefined {
+    filePath = this.normalizePath(filePath);
     const viewTables = this.fileHashesByView.get(filePath);
     const lastView = this.getLastReadView(filePath);
     if (!viewTables || viewTables.size === 0 || !lastView) return undefined;
@@ -402,5 +413,41 @@ export class SessionState {
       hash = ((hash << 5) + hash + content.charCodeAt(i)) | 0;
     }
     return hash.toString(36);
+  }
+
+  /**
+   * Normalizes a file path to a canonical form for consistent Map key usage.
+   * Resolves relative paths and follows symlinks. If the file doesn't exist
+   * yet, walks up to the nearest existing ancestor, resolves its realpath,
+   * and appends remaining segments.
+   */
+  private normalizePath(filePath: string): string {
+    const resolved = path.resolve(filePath);
+    try {
+      return realpathSync(resolved);
+    } catch {
+      // File doesn't exist yet. Walk up to find the nearest existing ancestor,
+      // resolve its realpath, then append the remaining path segments.
+      const segments: string[] = [];
+      let current = resolved;
+
+      while (true) {
+        const parent = path.dirname(current);
+        if (parent === current) {
+          // Reached filesystem root without finding an existing path.
+          // Return the resolved path as-is.
+          return resolved;
+        }
+        segments.unshift(path.basename(current));
+        current = parent;
+
+        try {
+          const realParent = realpathSync(current);
+          return path.join(realParent, ...segments);
+        } catch {
+          // This ancestor doesn't exist either, keep walking up.
+        }
+      }
+    }
   }
 }

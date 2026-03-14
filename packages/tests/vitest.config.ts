@@ -10,5 +10,8 @@ export default defineConfig({
       'opencode/**/*.test.ts',
       'lsp/**/*.test.ts',
     ],
+    deps: {
+      inline: ['@changetracks/core'],
+    },
   },
 });

@@ -1,5 +1,4 @@
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import {
   initHashline,
   defaultNormalizer,
@@ -10,6 +9,7 @@ import {
   nowTimestamp,
 } from '@changetracks/core';
 import { validateOrAutoRemap, type RelocationEntry, type AutoRemapResult } from './hashline-relocate.js';
+import { resolveCoordinates, applyCompactOp, type NormalizedCompactOp, type ResolvedCoordinates } from './resolve-and-apply.js';
 import { resolveAuthor } from '../author.js';
 import { ConfigResolver } from '../config-resolver.js';
 import { strArg, optionalStrArg } from '../args.js';
@@ -18,8 +18,7 @@ import { computeAffectedLines, type AffectedLineEntry } from './propose-utils.js
 import { toRelativePath } from '../path-utils.js';
 import { resolveTrackingStatus } from '../scope.js';
 import { SessionState } from '../state.js';
-import { parseOp } from '@changetracks/core';
-import { parseAt } from '@changetracks/core';
+import { parseOp, parseAt } from '@changetracks/core';
 import { resolveProtocolMode } from '../config.js';
 import { rerecordState } from '../state-utils.js';
 
@@ -56,16 +55,16 @@ export const proposeBatchTool = {
         items: {
           type: 'object',
           properties: {
-            old_text: { type: 'string' },
-            new_text: { type: 'string' },
-            reason: { type: 'string' },
-            insert_after: { type: 'string' },
-            start_line: { type: 'number' },
-            start_hash: { type: 'string' },
-            end_line: { type: 'number' },
-            end_hash: { type: 'string' },
-            after_line: { type: 'number' },
-            after_hash: { type: 'string' },
+            old_text: { type: 'string', description: 'Text to replace (classic mode only)' },
+            new_text: { type: 'string', description: 'Replacement text (classic mode only)' },
+            reason: { type: 'string', description: 'Annotation for the change' },
+            insert_after: { type: 'string', description: 'Anchor text for insertion (classic mode only)' },
+            start_line: { type: 'number', description: 'Start line number (classic mode only)' },
+            start_hash: { type: 'string', description: 'Start line hash (classic mode only)' },
+            end_line: { type: 'number', description: 'End line number (classic mode only)' },
+            end_hash: { type: 'string', description: 'End line hash (classic mode only)' },
+            after_line: { type: 'number', description: 'Line number for insertion (classic mode only)' },
+            after_hash: { type: 'string', description: 'Line hash for insertion (classic mode only)' },
             at: { type: 'string', description: 'Hashline coordinate (compact mode)' },
             op: { type: 'string', description: 'Operation expression (compact mode)' },
           },
@@ -316,6 +315,11 @@ export async function handleProposeBatch(
     }
     const resolvedOps: ResolvedOp[] = [];
 
+    // Compact-mode resolved data keyed by original op index.
+    // Stored separately so the apply loop can dispatch to applyCompactOp
+    // instead of applySingleOperation for compact-path operations.
+    const compactResolvedMap = new Map<number, { resolved: ResolvedCoordinates; compactOp: NormalizedCompactOp }>();
+
     // Track positions of each change in the original file for overlap detection.
     // Insertions (afterLine with empty oldText) are excluded from overlap checks
     // because they insert new content rather than targeting existing text.
@@ -343,7 +347,7 @@ export async function handleProposeBatch(
 
       const op = changesRaw[i] as Record<string, unknown>;
 
-      // ─── Compact mode: convert {at, op} → classic format ───────
+      // ─── Compact mode: use resolveCoordinates pipeline ──────────
       if (protocolMode === 'compact' && (typeof op.at === 'string' || typeof op.op === 'string')) {
         if (!op.at || !op.op) {
           throw new OpValidationError(`Operation ${i}: compact mode requires both "at" and "op".`);
@@ -358,125 +362,70 @@ export async function handleProposeBatch(
           );
         }
 
-        let atParsed: ReturnType<typeof parseAt>;
-        try {
-          atParsed = parseAt(op.at as string);
-        } catch (err) {
-          throw new OpValidationError(
-            `Operation ${i}: ${err instanceof Error ? err.message : String(err)}`
-          );
-        }
-
-        // Adjust for auto-header line shift (read_tracked_file showed the file
-        // without the header; validation runs against header-inserted content)
-        if (headerLineDelta > 0) {
-          atParsed = {
-            ...atParsed,
-            startLine: atParsed.startLine + headerLineDelta,
-            endLine: atParsed.endLine + headerLineDelta,
-          };
-        }
-
         const opReasoning = parsedOp.reasoning ?? (op.reason as string | undefined);
 
-        if (parsedOp.type === 'ins') {
-          // Insertion: use after_line
-          const resolved: ResolvedOp = {
-            oldText: '',
-            newText: parsedOp.newText,
-            reason: opReasoning,
-            afterLine: atParsed.startLine,
-          };
-          // Validate hash
-          try {
-            const afterResult = validateOrAutoRemap(
-              { line: atParsed.startLine, hash: atParsed.startHash },
-              fileLines,
-              'after_line',
-              relocations,
-              autoRemap,
-            );
-            resolved.afterLine = afterResult.line;
-            if (afterResult.remap) remaps.push(afterResult.remap);
-          } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : String(err);
-            throw new OpValidationError(message);
-          }
-          resolvedOps.push(resolved);
-        } else {
-          // Sub, del, highlight: verify hash, then use line-range addressing.
-          // Line-range with delta adjustment is correct here because:
-          // 1. bodyLineCount() excludes footnotes, so appended footnotes don't shift delta
-          // 2. Inline CriticMarkup from earlier ops modifies content but not line count
-          // 3. String matching against currentText would find false matches inside
-          //    CriticMarkup from earlier ops (e.g. {~~old~>new~~} contains both old and new text)
-          let resolvedStartLine: number;
-          try {
-            const startResult = validateOrAutoRemap(
-              { line: atParsed.startLine, hash: atParsed.startHash },
-              fileLines,
-              'start_line',
-              relocations,
-              autoRemap,
-            );
-            resolvedStartLine = startResult.line;
-            if (startResult.remap) remaps.push(startResult.remap);
-          } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : String(err);
-            throw new OpValidationError(message);
-          }
-          let resolvedEndLine = resolvedStartLine;
-          if (atParsed.endLine !== atParsed.startLine) {
-            try {
-              const endResult = validateOrAutoRemap(
-                { line: atParsed.endLine, hash: atParsed.endHash },
-                fileLines,
-                'end_line',
-                relocations,
-                autoRemap,
-              );
-              resolvedEndLine = endResult.line;
-              if (endResult.remap) remaps.push(endResult.remap);
-            } catch (err: unknown) {
-              const message = err instanceof Error ? err.message : String(err);
-              throw new OpValidationError(message);
-            }
-          }
-          // Pass startLine/endLine so applySingleOperation uses extractLineRange
-          // to narrow search scope to the target line(s) only
-          const resolved: ResolvedOp = {
-            oldText: parsedOp.oldText,
-            newText: parsedOp.newText,
-            reason: opReasoning,
-            startLine: resolvedStartLine,
-            endLine: resolvedEndLine,
-          };
-          resolvedOps.push(resolved);
-
-          // Record position for overlap detection (line-range based)
-          if (parsedOp.oldText !== '') {
-            // Sub-line match within the range: find exact position
-            try {
-              const rangeResult = extractLineRange(fileLines, resolvedStartLine, resolvedEndLine);
-              const match = findUniqueMatch(rangeResult.content, parsedOp.oldText, defaultNormalizer);
-              batchPositions.push({
-                index: i,
-                startOffset: rangeResult.startOffset + match.index,
-                endOffset: rangeResult.startOffset + match.index + match.length,
-              });
-            } catch (err) {
-              console.error(`[changetracks] overlap detection: match failed, deferring to apply phase: ${err}`);
-            }
+        // Adjust the `at` coordinate for auto-header line shift.
+        // read_tracked_file shows the file without the header, so the agent's
+        // coordinates must be shifted to match the header-inserted content.
+        let adjustedAt = op.at as string;
+        if (headerLineDelta > 0) {
+          // Parse → shift line numbers → reserialize as "startLine:startHash" or
+          // "startLine:startHash-endLine:endHash". Hashes are not recomputed here
+          // because they haven't changed — the file content is the same, only line
+          // numbers differ. resolveCoordinates handles hash validation/remap.
+          const atParsed = parseAt(adjustedAt);
+          if (atParsed.startLine === atParsed.endLine) {
+            adjustedAt = `${atParsed.startLine + headerLineDelta}:${atParsed.startHash}`;
           } else {
-            // Whole-range target
-            const rangeResult = extractLineRange(fileLines, resolvedStartLine, resolvedEndLine);
-            batchPositions.push({
-              index: i,
-              startOffset: rangeResult.startOffset,
-              endOffset: rangeResult.endOffset,
-            });
+            adjustedAt = `${atParsed.startLine + headerLineDelta}:${atParsed.startHash}-${atParsed.endLine + headerLineDelta}:${atParsed.endHash}`;
           }
         }
+
+        const compactOp: NormalizedCompactOp = {
+          at: adjustedAt,
+          type: parsedOp.type,
+          oldText: parsedOp.oldText,
+          newText: parsedOp.newText,
+          reasoning: opReasoning,
+        };
+
+        // Validate via the unified pipeline (stages 1-3: parse → view-aware
+        // translation → auto-relocation). Throws on hash mismatch or out-of-range.
+        let resolved: ResolvedCoordinates;
+        try {
+          resolved = resolveCoordinates(compactOp, fileContent, fileLines, state, filePath, config);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          throw new OpValidationError(`Operation ${i}: ${message}`);
+        }
+
+        // Accumulate relocations/remaps from the resolved result
+        relocations.push(...resolved.relocations);
+        remaps.push(...resolved.remaps);
+
+        // Store for the apply phase
+        compactResolvedMap.set(i, { resolved, compactOp });
+
+        // Push a sentinel ResolvedOp so indices stay aligned with changesRaw.
+        // startLine is set so the sort order in the apply loop is correct.
+        resolvedOps.push({
+          oldText: parsedOp.oldText,
+          newText: parsedOp.newText,
+          reason: opReasoning,
+          startLine: resolved.rawStartLine,
+          endLine: resolved.rawEndLine,
+        });
+
+        // Record position for overlap detection using resolved character offsets.
+        // Insertions are excluded — they insert new content, not targeting existing text.
+        if (parsedOp.type !== 'ins') {
+          batchPositions.push({
+            index: i,
+            startOffset: resolved.startOffset,
+            endOffset: resolved.endOffset,
+          });
+        }
+
         continue; // Skip classic param extraction below
       }
 
@@ -656,7 +605,7 @@ export async function handleProposeBatch(
     const groupId = state.beginGroup(reasoning ?? 'propose_batch', reasoning, knownMaxId);
     let currentText = fileContent;
     let cumulativeDelta = 0;
-    const results: Array<{ change_id: string; type: 'ins' | 'del' | 'sub'; index: number; startLine?: number; endLine?: number }> = [];
+    const results: Array<{ change_id: string; type: 'ins' | 'del' | 'sub' | 'highlight' | 'comment'; index: number; startLine?: number; endLine?: number }> = [];
     // Application-phase failures (partial mode)
     const applicationFailures: Array<{ index: number; reason: string }> = [];
 
@@ -682,38 +631,77 @@ export async function handleProposeBatch(
       try {
         const changeId = state.getNextId(filePath, currentText);
         const delta = cumulativeDelta;
-        const adjAfter = op.afterLine !== undefined ? op.afterLine + delta : undefined;
-        const adjStart = op.startLine !== undefined ? op.startLine + delta : undefined;
-        const adjEnd = op.endLine !== undefined ? op.endLine + delta : undefined;
 
-        if ((op.afterLine !== undefined || op.startLine !== undefined) && adjStart === undefined && adjAfter === undefined) {
-          throw new Error(`Operation ${originalIndex}: hashline params require after_line or start_line.`);
+        const compactEntry = compactResolvedMap.get(originalIndex);
+        if (compactEntry) {
+          // ─── Compact path: use applyCompactOp (stages 4-7) ──────
+          // Adjust raw line numbers by the cumulative delta from earlier ops so
+          // applyCompactOp targets the correct lines in the evolved currentText.
+          // Note: startOffset/endOffset from the spread are stale (from validation
+          // pass against original content), but applyCompactOp rebuilds fresh
+          // offsets from rawStartLine/rawEndLine via resolveAt against currentText.
+          const adjustedResolved: ResolvedCoordinates = {
+            ...compactEntry.resolved,
+            rawStartLine: compactEntry.resolved.rawStartLine + delta,
+            rawEndLine: compactEntry.resolved.rawEndLine + delta,
+          };
+          const currentLines = currentText.split('\n');
+          const applied = applyCompactOp(
+            adjustedResolved,
+            compactEntry.compactOp,
+            currentText,
+            currentLines,
+            changeId,
+            author!,
+            config,
+          );
+
+          const linesAfter = bodyLineCount(applied.modifiedText);
+          const linesBeforeBody = bodyLineCount(currentText);
+          cumulativeDelta += linesAfter - linesBeforeBody;
+          currentText = applied.modifiedText;
+          results.push({
+            change_id: changeId,
+            type: applied.changeType,
+            index: originalIndex,
+            startLine: applied.affectedStartLine,
+            endLine: applied.affectedEndLine,
+          });
+        } else {
+          // ─── Classic path: use applySingleOperation ──────────────
+          const adjAfter = op.afterLine !== undefined ? op.afterLine + delta : undefined;
+          const adjStart = op.startLine !== undefined ? op.startLine + delta : undefined;
+          const adjEnd = op.endLine !== undefined ? op.endLine + delta : undefined;
+
+          if ((op.afterLine !== undefined || op.startLine !== undefined) && adjStart === undefined && adjAfter === undefined) {
+            throw new Error(`Operation ${originalIndex}: hashline params require after_line or start_line.`);
+          }
+
+          const applied = applySingleOperation({
+            fileContent: currentText,
+            oldText: op.oldText,
+            newText: op.newText,
+            changeId,
+            author: author!,
+            reasoning: op.reason,
+            insertAfter: op.insertAfter,
+            afterLine: adjAfter,
+            startLine: adjStart,
+            endLine: adjEnd,
+          });
+
+          const linesAfter = bodyLineCount(applied.modifiedText);
+          const linesBeforeBody = bodyLineCount(currentText);
+          cumulativeDelta += linesAfter - linesBeforeBody;
+          currentText = applied.modifiedText;
+          results.push({
+            change_id: changeId,
+            type: applied.changeType,
+            index: originalIndex,
+            startLine: applied.affectedStartLine,
+            endLine: applied.affectedEndLine,
+          });
         }
-
-        const applied = applySingleOperation({
-          fileContent: currentText,
-          oldText: op.oldText,
-          newText: op.newText,
-          changeId,
-          author: author!,
-          reasoning: op.reason,
-          insertAfter: op.insertAfter,
-          afterLine: adjAfter,
-          startLine: adjStart,
-          endLine: adjEnd,
-        });
-
-        const linesAfter = bodyLineCount(applied.modifiedText);
-        const linesBeforeBody = bodyLineCount(currentText);
-        cumulativeDelta += linesAfter - linesBeforeBody;
-        currentText = applied.modifiedText;
-        results.push({
-          change_id: changeId,
-          type: applied.changeType,
-          index: originalIndex,
-          startLine: applied.affectedStartLine,
-          endLine: applied.affectedEndLine,
-        });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         if (!partial) {
@@ -816,7 +804,7 @@ export async function handleProposeBatch(
       reasoning: reasoning ?? undefined,
       applied: results,
       failed: allFailures,
-      affected_lines: affectedLinesResult,
+      ...(config.response?.affected_lines ? { affected_lines: affectedLinesResult } : {}),
       document_state: {
         total_changes: footnoteCount,
         proposed: proposedCount,

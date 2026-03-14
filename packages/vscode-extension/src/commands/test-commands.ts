@@ -80,7 +80,8 @@ export function registerTestCommands(
             fs.writeFileSync(statePath, JSON.stringify(state));
         }),
         vscode.commands.registerCommand('changetracks._testQueryPanelState', () => {
-            const editor = vscode.window.activeTextEditor;
+            const editor = vscode.window.activeTextEditor
+                ?? vscode.window.visibleTextEditors.find(e => e.document.languageId === 'markdown');
             const doc = editor?.document.languageId === 'markdown' ? editor.document : undefined;
             const changes = doc ? controller.getChangesForDocument(doc) : [];
             const state = {
@@ -239,19 +240,35 @@ export function registerTestCommands(
                     fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: 'no active editor', timestamp: Date.now() }));
                     return;
                 }
-                const text = editor.document.getText();
-                const idx = text.indexOf(input.target);
-                if (idx < 0) {
-                    fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: 'target not found', target: input.target, textLen: text.length, timestamp: Date.now() }));
+
+                let pos: vscode.Position;
+
+                if (input.location === 'end') {
+                    // Position at end of document
+                    const lastLine = editor.document.lineCount - 1;
+                    const lastCol = editor.document.lineAt(lastLine).text.length;
+                    pos = new vscode.Position(lastLine, lastCol);
+                } else if (input.location === 'start') {
+                    // Position at start of document
+                    pos = new vscode.Position(0, 0);
+                } else if (typeof input.line === 'number' && typeof input.character === 'number') {
+                    // Position at explicit line/character (0-based)
+                    pos = new vscode.Position(input.line, input.character);
+                } else if (input.target) {
+                    // Original text-search mode
+                    const text = editor.document.getText();
+                    const idx = text.indexOf(input.target);
+                    if (idx < 0) {
+                        fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: 'target not found', target: input.target, textLen: text.length, timestamp: Date.now() }));
+                        return;
+                    }
+                    const offset = input.position === 'before' ? idx : idx + input.target.length;
+                    pos = editor.document.positionAt(offset);
+                } else {
+                    fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: 'no target, location, or line/character specified', timestamp: Date.now() }));
                     return;
                 }
-                let offset: number;
-                if (input.position === 'before') {
-                    offset = idx;
-                } else {
-                    offset = idx + input.target.length;
-                }
-                const pos = editor.document.positionAt(offset);
+
                 editor.selection = new vscode.Selection(pos, pos);
                 editor.revealRange(new vscode.Range(pos, pos));
                 fs.writeFileSync(statePath, JSON.stringify({ ok: true, line: pos.line + 1, col: pos.character + 1, timestamp: Date.now() }));
@@ -294,18 +311,40 @@ export function registerTestCommands(
                     fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: 'no active editor', timestamp: Date.now() }));
                     return;
                 }
-                const text = editor.document.getText();
-                const idx = text.indexOf(input.target);
-                if (idx < 0) {
-                    fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: 'target not found', target: input.target, timestamp: Date.now() }));
+
+                let startPos: vscode.Position;
+                let endPos: vscode.Position;
+
+                if (typeof input.startLine === 'number' && typeof input.startCharacter === 'number') {
+                    // Line/character mode (0-based)
+                    startPos = new vscode.Position(input.startLine, input.startCharacter);
+                    endPos = new vscode.Position(input.endLine, input.endCharacter);
+                } else if (input.target) {
+                    // Text-search mode
+                    const text = editor.document.getText();
+                    const idx = text.indexOf(input.target);
+                    if (idx < 0) {
+                        fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: 'target not found', target: input.target, timestamp: Date.now() }));
+                        return;
+                    }
+                    startPos = editor.document.positionAt(idx);
+                    endPos = editor.document.positionAt(idx + input.target.length);
+                } else {
+                    fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: 'no target or line/character specified', timestamp: Date.now() }));
                     return;
                 }
-                const startPos = editor.document.positionAt(idx);
-                const endPos = editor.document.positionAt(idx + input.target.length);
-                // Set selection — typing will be done via DOM keyboard by the test step
-                editor.selection = new vscode.Selection(startPos, endPos);
-                // Reveal so the selected text is visible
-                editor.revealRange(new vscode.Range(startPos, endPos));
+
+                if (typeof input.replacement === 'string') {
+                    // Replace mode: select and replace atomically via editor.edit
+                    const range = new vscode.Range(startPos, endPos);
+                    await editor.edit(builder => {
+                        builder.replace(range, input.replacement);
+                    });
+                } else {
+                    // Select-only mode: set selection for subsequent keyboard typing
+                    editor.selection = new vscode.Selection(startPos, endPos);
+                    editor.revealRange(new vscode.Range(startPos, endPos));
+                }
                 fs.writeFileSync(statePath, JSON.stringify({ ok: true, timestamp: Date.now() }));
             } catch (err: any) {
                 fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: err.message, timestamp: Date.now() }));

@@ -374,7 +374,7 @@ When('I click the Accept button on an insertion item', { timeout: 10000 }, async
     assert.ok(this.page, 'Page not available');
     await executeCommandViaBridge(this.page, 'changetracks.nextChange');
     await this.page.waitForTimeout(500);
-    await executeCommandViaBridge(this.page, 'changetracks.acceptChange');
+    await executeCommandViaBridge(this.page, 'changetracks.acceptChange', [undefined, 'approve']);
     await this.page.waitForTimeout(800);
 });
 
@@ -382,7 +382,7 @@ When('I click the Reject button on a deletion item', { timeout: 10000 }, async f
     assert.ok(this.page, 'Page not available');
     await executeCommandViaBridge(this.page, 'changetracks.nextChange');
     await this.page.waitForTimeout(300);
-    await executeCommandViaBridge(this.page, 'changetracks.rejectChange');
+    await executeCommandViaBridge(this.page, 'changetracks.rejectChange', [undefined, 'reject']);
     await this.page.waitForTimeout(800);
 });
 

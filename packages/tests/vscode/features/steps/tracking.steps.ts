@@ -80,11 +80,45 @@ async function getTrackedDocumentText(world: ChangeTracksWorld): Promise<string>
 }
 
 // ---------------------------------------------------------------------------
-// Helper: open a temp file with content via command palette + Monaco
+// Helper: position cursor via bridge command
+// ---------------------------------------------------------------------------
+/**
+ * Position cursor using the _testPositionCursor bridge command.
+ * Accepts location ('start'|'end'), line/character coords, or text target.
+ * Throws on failure instead of silently returning.
+ */
+async function positionCursorViaBridge(
+    page: Page,
+    input: { location: 'start' | 'end' } | { line: number; character: number } | { target: string; position: 'before' | 'after' }
+): Promise<void> {
+    const inputPath = path.join(os.tmpdir(), 'changetracks-test-position-cursor-input.json');
+    const resultPath = path.join(os.tmpdir(), 'changetracks-test-position-cursor.json');
+    try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
+    fs.writeFileSync(inputPath, JSON.stringify(input));
+    await executeCommandViaBridge(page, 'changetracks._testPositionCursor');
+    // Poll for result — the bridge command writes its own result file
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+        await page.waitForTimeout(100);
+        try {
+            if (fs.existsSync(resultPath)) {
+                const result = JSON.parse(fs.readFileSync(resultPath, 'utf-8'));
+                if (result.ok) return;
+                throw new Error(`positionCursorViaBridge failed: ${result.error}`);
+            }
+        } catch (e: any) {
+            if (e.message.startsWith('positionCursorViaBridge')) throw e;
+        }
+    }
+    throw new Error('positionCursorViaBridge timed out');
+}
+
+// ---------------------------------------------------------------------------
+// Helper: open a temp file with content via command palette
 // ---------------------------------------------------------------------------
 /**
  * Write content to a temp file, open it via VS Code's command palette,
- * and ensure the Monaco model matches the desired content.
+ * and revert if stale content is present.
  */
 async function openTempFileWithContent(page: Page, content: string, tmpPath: string): Promise<void> {
     fs.writeFileSync(tmpPath, content, 'utf-8');
@@ -94,14 +128,8 @@ async function openTempFileWithContent(page: Page, content: string, tmpPath: str
     await page.waitForTimeout(300);
     await page.keyboard.press('Enter');
     await page.waitForTimeout(1000);
-    // Ensure model content matches (in case file was already open with stale content)
-    await page.evaluate(`
-        (() => {
-            const editors = globalThis.monaco?.editor?.getEditors?.();
-            const model = editors?.[0]?.getModel();
-            if (model) model.setValue(${JSON.stringify(content)});
-        })()
-    `);
+    // If the file was already open with stale content, revert from disk
+    await executeCommand(page, 'File: Revert File');
     await page.waitForTimeout(500);
 }
 
@@ -133,6 +161,12 @@ Given(
         if (!text.includes('ctrcks.com/v1: tracked')) {
             throw new Error(`Tracking header not found in document after reset. Content: ${text.substring(0, 100)}`);
         }
+
+        // Position cursor at end of content (after the user-provided text, not the header).
+        // Without this, cursor stays at position 0 after _testResetDocument and typed text
+        // goes before the tracking header.
+        await positionCursorViaBridge(this.page!, { location: 'end' });
+        await this.page!.waitForTimeout(200);
     }
 );
 
@@ -243,54 +277,29 @@ Given(
 
 When(
     'I insert {string} at the end',
-    { timeout: 10000 },
+    { timeout: 15000 },
     async function (this: ChangeTracksWorld, text: string) {
         assert.ok(this.page, 'Page not available');
-        // Move cursor to end of document via Monaco, then insert text atomically
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        const lastLine = model.getLineCount();
-                        const lastCol = model.getLineMaxColumn(lastLine);
-                        editor.setPosition({ lineNumber: lastLine, column: lastCol });
-                        model.pushEditOperations([], [{
-                            range: { startLineNumber: lastLine, startColumn: lastCol, endLineNumber: lastLine, endColumn: lastCol },
-                            text: ${JSON.stringify(text)}
-                        }], () => null);
-                    }
-                }
-            })()
-        `);
+        // Position cursor at end of document via bridge command
+        await positionCursorViaBridge(this.page!, { location: 'end' });
+        await this.page!.waitForTimeout(100);
+        // Type text via keyboard — goes through VS Code's input pipeline,
+        // which triggers onDidChangeTextDocument and tracking mode wrapping
+        await this.page!.keyboard.type(text, { delay: 0 });
         await this.page!.waitForTimeout(50);
     }
 );
 
 When(
     'I insert {string} at the beginning',
-    { timeout: 10000 },
+    { timeout: 15000 },
     async function (this: ChangeTracksWorld, text: string) {
         assert.ok(this.page, 'Page not available');
-        // Move cursor to beginning, then insert text via Monaco
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        editor.setPosition({ lineNumber: 1, column: 1 });
-                        model.pushEditOperations([], [{
-                            range: { startLineNumber: 1, startColumn: 1, endLineNumber: 1, endColumn: 1 },
-                            text: ${JSON.stringify(text)}
-                        }], () => null);
-                    }
-                }
-            })()
-        `);
+        // Position cursor at start of document via bridge command
+        await positionCursorViaBridge(this.page!, { location: 'start' });
+        await this.page!.waitForTimeout(100);
+        // Type text via keyboard
+        await this.page!.keyboard.type(text, { delay: 0 });
         await this.page!.waitForTimeout(50);
     }
 );
@@ -300,55 +309,28 @@ When(
     { timeout: 10000 },
     async function (this: ChangeTracksWorld, text: string) {
         assert.ok(this.page, 'Page not available');
-        // Insert text at current cursor position via Monaco
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    const pos = editor.getPosition();
-                    if (model && pos) {
-                        model.pushEditOperations([], [{
-                            range: { startLineNumber: pos.lineNumber, startColumn: pos.column, endLineNumber: pos.lineNumber, endColumn: pos.column },
-                            text: ${JSON.stringify(text)}
-                        }], () => null);
-                    }
-                }
-            })()
-        `);
+        // Type text at current cursor position via keyboard
+        await this.page!.keyboard.type(text, { delay: 0 });
         await this.page!.waitForTimeout(50);
     }
 );
 
 When(
     'I type {string}, {string}, {string}, {string}, {string} at the end with {int}ms gaps',
-    { timeout: 15000 },
+    { timeout: 20000 },
     async function (
         this: ChangeTracksWorld,
         c1: string, c2: string, c3: string, c4: string, c5: string,
         gapMs: number
     ) {
         assert.ok(this.page, 'Page not available');
+        // Position cursor at end of document
+        await positionCursorViaBridge(this.page!, { location: 'end' });
+        await this.page!.waitForTimeout(100);
+        // Type each character with specified gaps
         const chars = [c1, c2, c3, c4, c5];
         for (let i = 0; i < chars.length; i++) {
-            // Insert character at end via Monaco
-            await this.page!.evaluate((char: string) => {
-                const editors = (globalThis as any).monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        const lastLine = model.getLineCount();
-                        const lastCol = model.getLineMaxColumn(lastLine);
-                        editor.setPosition({ lineNumber: lastLine, column: lastCol });
-                        model.pushEditOperations([], [{
-                            range: { startLineNumber: lastLine, startColumn: lastCol, endLineNumber: lastLine, endColumn: lastCol },
-                            text: char
-                        }], () => null);
-                    }
-                }
-            }, chars[i]);
+            await this.page!.keyboard.type(chars[i], { delay: 0 });
             if (i < chars.length - 1) {
                 await this.page!.waitForTimeout(gapMs);
             }
@@ -358,149 +340,100 @@ When(
 
 When(
     'I rapidly insert {string}, {string}, {string}, {string}, {string} at the end',
-    { timeout: 10000 },
+    { timeout: 15000 },
     async function (
         this: ChangeTracksWorld,
         c1: string, c2: string, c3: string, c4: string, c5: string
     ) {
         assert.ok(this.page, 'Page not available');
-        const chars = [c1, c2, c3, c4, c5];
-        for (const char of chars) {
-            // Insert character at end via Monaco (no delay between)
-            await this.page!.evaluate((c: string) => {
-                const editors = (globalThis as any).monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        const lastLine = model.getLineCount();
-                        const lastCol = model.getLineMaxColumn(lastLine);
-                        editor.setPosition({ lineNumber: lastLine, column: lastCol });
-                        model.pushEditOperations([], [{
-                            range: { startLineNumber: lastLine, startColumn: lastCol, endLineNumber: lastLine, endColumn: lastCol },
-                            text: c
-                        }], () => null);
-                    }
-                }
-            }, char);
-        }
+        // Position cursor at end of document
+        await positionCursorViaBridge(this.page!, { location: 'end' });
+        await this.page!.waitForTimeout(100);
+        // Type all characters rapidly (concatenated, no delay)
+        const text = [c1, c2, c3, c4, c5].join('');
+        await this.page!.keyboard.type(text, { delay: 0 });
     }
 );
 
 When(
     'I delete the character at position {int},{int}',
-    { timeout: 10000 },
+    { timeout: 15000 },
     async function (this: ChangeTracksWorld, line: number, col: number) {
         assert.ok(this.page, 'Page not available');
-        // Monaco uses 1-based line/column; vscode Range uses 0-based line, 0-based col
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        model.pushEditOperations([], [{
-                            range: { startLineNumber: ${line + 1}, startColumn: ${col + 1}, endLineNumber: ${line + 1}, endColumn: ${col + 2} },
-                            text: ''
-                        }], () => null);
-                    }
-                }
-            })()
-        `);
+        // Position cursor AFTER the character to delete (col+1), then press Backspace
+        await positionCursorViaBridge(this.page!, { line, character: col + 1 });
+        await this.page!.waitForTimeout(100);
+        await this.page!.keyboard.press('Backspace');
         await this.page!.waitForTimeout(50);
     }
 );
 
 When(
     'I delete the range {int},{int} to {int},{int}',
-    { timeout: 10000 },
+    { timeout: 15000 },
     async function (
         this: ChangeTracksWorld,
         startLine: number, startCol: number,
         endLine: number, endCol: number
     ) {
         assert.ok(this.page, 'Page not available');
-        // Monaco uses 1-based line/column; vscode Range uses 0-based
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        model.pushEditOperations([], [{
-                            range: { startLineNumber: ${startLine + 1}, startColumn: ${startCol + 1}, endLineNumber: ${endLine + 1}, endColumn: ${endCol + 1} },
-                            text: ''
-                        }], () => null);
-                    }
+        // Use _testSelectAndReplace bridge to select the range and replace with empty string
+        const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-replace-input.json');
+        const resultPath = path.join(os.tmpdir(), 'changetracks-test-select-replace.json');
+        try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
+        fs.writeFileSync(inputPath, JSON.stringify({
+            startLine, startCharacter: startCol,
+            endLine, endCharacter: endCol,
+            replacement: ''
+        }));
+        await executeCommandViaBridge(this.page!, 'changetracks._testSelectAndReplace');
+        // Poll for result
+        const deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+            await this.page!.waitForTimeout(100);
+            try {
+                if (fs.existsSync(resultPath)) {
+                    const result = JSON.parse(fs.readFileSync(resultPath, 'utf-8'));
+                    if (result.ok) break;
+                    throw new Error(`delete range failed: ${result.error}`);
                 }
-            })()
-        `);
+            } catch (e: any) {
+                if (e.message.startsWith('delete range')) throw e;
+            }
+        }
         await this.page!.waitForTimeout(50);
     }
 );
 
 When(
     'I backspace-delete at position {int},{int}',
-    { timeout: 10000 },
+    { timeout: 15000 },
     async function (this: ChangeTracksWorld, line: number, col: number) {
         assert.ok(this.page, 'Page not available');
-        // Backspace deletes the character before the cursor position
-        // Monaco 1-based: vscode(line, col-1) -> (line+1, col), vscode(line, col) -> (line+1, col+1)
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        model.pushEditOperations([], [{
-                            range: { startLineNumber: ${line + 1}, startColumn: ${col}, endLineNumber: ${line + 1}, endColumn: ${col + 1} },
-                            text: ''
-                        }], () => null);
-                    }
-                }
-            })()
-        `);
+        // Position cursor at the given position, then press Backspace
+        await positionCursorViaBridge(this.page!, { line, character: col });
+        await this.page!.waitForTimeout(100);
+        await this.page!.keyboard.press('Backspace');
         await this.page!.waitForTimeout(50);
     }
 );
 
 When(
     'I delete the first unwrapped character after the deletion',
-    { timeout: 10000 },
+    { timeout: 15000 },
     async function (this: ChangeTracksWorld) {
         assert.ok(this.page, 'Page not available');
-        // Find 'b' in the document text and delete it via Monaco
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        const text = model.getValue();
-                        const bPos = text.indexOf('b');
-                        if (bPos >= 0) {
-                            const startPos = model.getPositionAt(bPos);
-                            const endPos = model.getPositionAt(bPos + 1);
-                            model.pushEditOperations([], [{
-                                range: { startLineNumber: startPos.lineNumber, startColumn: startPos.column, endLineNumber: endPos.lineNumber, endColumn: endPos.column },
-                                text: ''
-                            }], () => null);
-                        }
-                    }
-                }
-            })()
-        `);
+        // Position cursor after 'b' and press Backspace
+        await positionCursorViaBridge(this.page!, { target: 'b', position: 'after' });
+        await this.page!.waitForTimeout(100);
+        await this.page!.keyboard.press('Backspace');
         await this.page!.waitForTimeout(50);
     }
 );
 
 When(
     'I replace the range {int},{int} to {int},{int} with {string}',
-    { timeout: 10000 },
+    { timeout: 15000 },
     async function (
         this: ChangeTracksWorld,
         startLine: number, startCol: number,
@@ -508,73 +441,58 @@ When(
         newText: string
     ) {
         assert.ok(this.page, 'Page not available');
-        // Monaco uses 1-based line/column; vscode Range uses 0-based
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        model.pushEditOperations([], [{
-                            range: { startLineNumber: ${startLine + 1}, startColumn: ${startCol + 1}, endLineNumber: ${endLine + 1}, endColumn: ${endCol + 1} },
-                            text: ${JSON.stringify(newText)}
-                        }], () => null);
-                    }
+        // Use _testSelectAndReplace bridge
+        const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-replace-input.json');
+        const resultPath = path.join(os.tmpdir(), 'changetracks-test-select-replace.json');
+        try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
+        fs.writeFileSync(inputPath, JSON.stringify({
+            startLine, startCharacter: startCol,
+            endLine, endCharacter: endCol,
+            replacement: newText
+        }));
+        await executeCommandViaBridge(this.page!, 'changetracks._testSelectAndReplace');
+        const deadline = Date.now() + 5000;
+        while (Date.now() < deadline) {
+            await this.page!.waitForTimeout(100);
+            try {
+                if (fs.existsSync(resultPath)) {
+                    const result = JSON.parse(fs.readFileSync(resultPath, 'utf-8'));
+                    if (result.ok) break;
+                    throw new Error(`replace range failed: ${result.error}`);
                 }
-            })()
-        `);
+            } catch (e: any) {
+                if (e.message.startsWith('replace range')) throw e;
+            }
+        }
         await this.page!.waitForTimeout(50);
     }
 );
 
 When(
     'I move the cursor to position {int},{int}',
-    { timeout: 5000 },
+    { timeout: 15000 },
     async function (this: ChangeTracksWorld, line: number, col: number) {
         assert.ok(this.page, 'Page not available');
-        // Monaco uses 1-based line/column; vscode Position uses 0-based
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    editor.setPosition({ lineNumber: ${line + 1}, column: ${col + 1} });
-                }
-            })()
-        `);
+        // Position cursor at the specified line/character (0-based) via bridge
+        await positionCursorViaBridge(this.page!, { line, character: col });
         await this.page!.waitForTimeout(50);
     }
 );
 
 When(
     'I move the cursor to a safe mid-position',
-    { timeout: 5000 },
+    { timeout: 15000 },
     async function (this: ChangeTracksWorld) {
         assert.ok(this.page, 'Page not available');
-        // Move cursor to the midpoint of the document via Monaco
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        const len = model.getValue().length;
-                        const midOffset = Math.floor(len / 2);
-                        const pos = model.getPositionAt(midOffset);
-                        editor.setPosition(pos);
-                    }
-                }
-            })()
-        `);
+        // Position cursor at start of document (safe position away from any pending edits)
+        await positionCursorViaBridge(this.page!, { location: 'start' });
         await this.page!.waitForTimeout(50);
     }
 );
 
 When(
     'I rapidly move cursor to positions \\({int},{int}\\), \\({int},{int}\\), \\({int},{int}\\)',
-    { timeout: 5000 },
+    { timeout: 20000 },
     async function (
         this: ChangeTracksWorld,
         l1: number, c1: number,
@@ -582,51 +500,23 @@ When(
         l3: number, c3: number
     ) {
         assert.ok(this.page, 'Page not available');
-        // Rapidly set cursor to three positions via Monaco (1-based)
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    editor.setPosition({ lineNumber: ${l1 + 1}, column: ${c1 + 1} });
-                    editor.setPosition({ lineNumber: ${l2 + 1}, column: ${c2 + 1} });
-                    editor.setPosition({ lineNumber: ${l3 + 1}, column: ${c3 + 1} });
-                }
-            })()
-        `);
+        // Rapidly position cursor at three positions via bridge
+        await positionCursorViaBridge(this.page!, { line: l1, character: c1 });
+        await positionCursorViaBridge(this.page!, { line: l2, character: c2 });
+        await positionCursorViaBridge(this.page!, { line: l3, character: c3 });
         await this.page!.waitForTimeout(50);
     }
 );
 
 When(
     'I apply a multi-change edit',
-    { timeout: 10000 },
+    { timeout: 15000 },
     async function (this: ChangeTracksWorld) {
         assert.ok(this.page, 'Page not available');
-        // Apply two insertions in a single batch via Monaco pushEditOperations
-        await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                const editor = editors?.[0];
-                if (editor) {
-                    const model = editor.getModel();
-                    if (model) {
-                        const lastLine = model.getLineCount();
-                        const lastCol = model.getLineMaxColumn(lastLine);
-                        model.pushEditOperations([], [
-                            {
-                                range: { startLineNumber: lastLine, startColumn: lastCol, endLineNumber: lastLine, endColumn: lastCol },
-                                text: 'auto'
-                            },
-                            {
-                                range: { startLineNumber: lastLine, startColumn: lastCol + 4, endLineNumber: lastLine, endColumn: lastCol + 4 },
-                                text: 'complete'
-                            }
-                        ], () => null);
-                    }
-                }
-            })()
-        `);
+        // Type two words rapidly at the end — simulates a multi-character batch
+        await positionCursorViaBridge(this.page!, { location: 'end' });
+        await this.page!.waitForTimeout(100);
+        await this.page!.keyboard.type('autocomplete', { delay: 0 });
         await this.page!.waitForTimeout(50);
     }
 );
@@ -652,12 +542,7 @@ When(
     async function (this: ChangeTracksWorld) {
         assert.ok(this.page, 'Page not available');
         // Capture current text before save, then save via keyboard shortcut
-        const textBeforeSave = await this.page!.evaluate(`
-            (() => {
-                const editors = globalThis.monaco?.editor?.getEditors?.();
-                return editors?.[0]?.getModel()?.getValue() ?? '';
-            })()
-        `) as string;
+        const textBeforeSave = await getDocumentText(this.page!, { instanceId: this.instance?.instanceId });
         await this.page!.keyboard.press('Meta+s');
         await this.page!.waitForTimeout(500);
         // After save, capture the text (approximation: the model text at save time)
@@ -883,14 +768,9 @@ Then(
                 }
             }
         }
-        // Fallback: read from Monaco model (in-memory content post-save)
+        // Fallback: read from bridge (VS Code extension API)
         if (!savedContent) {
-            savedContent = await this.page!.evaluate(`
-                (() => {
-                    const editors = globalThis.monaco?.editor?.getEditors?.();
-                    return editors?.[0]?.getModel()?.getValue() ?? '';
-                })()
-            `) as string;
+            savedContent = await getTrackedDocumentText(this);
         }
         assert.ok(
             savedContent.includes(expected),
@@ -904,7 +784,7 @@ Then(
     { timeout: 10000 },
     async function (this: ChangeTracksWorld, text: string) {
         assert.ok(this.page, 'Page not available');
-        // Read saved file content from disk or Monaco model
+        // Read saved file content from disk or bridge
         let savedContent = '';
         if (this.trackingFileBacked) {
             const candidates = [
@@ -920,12 +800,7 @@ Then(
             }
         }
         if (!savedContent) {
-            savedContent = await this.page!.evaluate(`
-                (() => {
-                    const editors = globalThis.monaco?.editor?.getEditors?.();
-                    return editors?.[0]?.getModel()?.getValue() ?? '';
-                })()
-            `) as string;
+            savedContent = await getTrackedDocumentText(this);
         }
         const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const unwrappedMatch = savedContent.match(new RegExp(`${escaped}(?!\\+\\+)`, 'g'));

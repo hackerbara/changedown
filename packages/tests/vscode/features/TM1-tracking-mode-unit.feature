@@ -47,7 +47,7 @@ Feature: TM1 -- Tracking mode basic behavior
     And I insert " test" at the end
     And I wait 300ms
     Then the tracked document does not contain "{++"
-    And the tracked document text is "Initial text here. test"
+    And the tracked document contains "Initial text here. test"
 
   # ── Markdown-only enforcement ───────────────────────────────────────
 

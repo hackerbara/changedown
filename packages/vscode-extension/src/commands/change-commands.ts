@@ -21,11 +21,11 @@ export function registerChangeCommands(
         vscode.commands.registerCommand('changetracks.toggleTracking', () => {
             controller.toggleTracking();
         }),
-        vscode.commands.registerCommand('changetracks.acceptChange', async (changeId?: string) => {
-            await controller.acceptChangeAtCursor(changeId);
+        vscode.commands.registerCommand('changetracks.acceptChange', async (changeId?: string, decision?: 'approve' | 'request_changes', reason?: string) => {
+            await controller.acceptChangeAtCursor(changeId, decision, reason);
         }),
-        vscode.commands.registerCommand('changetracks.rejectChange', async (changeId?: string) => {
-            await controller.rejectChangeAtCursor(changeId);
+        vscode.commands.registerCommand('changetracks.rejectChange', async (changeId?: string, decision?: 'reject', reason?: string) => {
+            await controller.rejectChangeAtCursor(changeId, decision, reason);
         }),
         vscode.commands.registerCommand('changetracks.acceptAll', async () => {
             await controller.acceptAllChanges();

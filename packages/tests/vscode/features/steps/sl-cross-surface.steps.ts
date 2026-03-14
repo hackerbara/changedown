@@ -100,8 +100,8 @@ When(
         await setCursorPosition(this.page, lineNum, 15);
         await this.page.waitForTimeout(500);
 
-        // Trigger accept — this opens the QuickPick (or accepts directly if no reason required)
-        await executeCommandViaBridge(this.page, 'changetracks.acceptChange');
+        // Trigger accept — pass decision to bypass the QuickPick UI
+        await executeCommandViaBridge(this.page, 'changetracks.acceptChange', [undefined, 'approve']);
         await this.page.waitForTimeout(500);
     }
 );
