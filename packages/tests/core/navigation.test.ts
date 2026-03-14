@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import {
   CriticMarkupParser,
   nextChange,
@@ -13,8 +13,8 @@ describe('Navigation', () => {
     it('returns first change when cursor is at beginning of document', () => {
       const doc = parser.parse('Hello {++world++} foo');
       const result = nextChange(doc, 0);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.modifiedText, 'world');
+      expect(result).not.toBe(null);
+      expect(result!.modifiedText).toBe('world');
     });
 
     it('returns next change when cursor is between two changes', () => {
@@ -23,8 +23,8 @@ describe('Navigation', () => {
       // First change: {++first++} occupies [0, 11)
       // Second change: {--second--} starts at 19
       const result = nextChange(doc, 15);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.originalText, 'second');
+      expect(result).not.toBe(null);
+      expect(result!.originalText).toBe('second');
     });
 
     it('wraps to first change when cursor is after the last change', () => {
@@ -32,29 +32,29 @@ describe('Navigation', () => {
       // "trailing" starts after the last change ends
       // {--beta--} ends at 27, so cursor at 30 is after
       const result = nextChange(doc, 30);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.modifiedText, 'alpha');
+      expect(result).not.toBe(null);
+      expect(result!.modifiedText).toBe('alpha');
     });
 
     it('returns null when document has no changes', () => {
       const doc = parser.parse('plain text with no markup');
       const result = nextChange(doc, 0);
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('wraps to itself when only one change exists and cursor is after it', () => {
       const doc = parser.parse('{++only++} trailing');
       // {++only++} spans [0, 10), cursor at 12 is after
       const result = nextChange(doc, 12);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.modifiedText, 'only');
+      expect(result).not.toBe(null);
+      expect(result!.modifiedText).toBe('only');
     });
 
     it('returns the single change when cursor is before it', () => {
       const doc = parser.parse('prefix {++only++}');
       const result = nextChange(doc, 0);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.modifiedText, 'only');
+      expect(result).not.toBe(null);
+      expect(result!.modifiedText).toBe('only');
     });
 
     it('skips current change and returns next when cursor is at change start', () => {
@@ -64,35 +64,35 @@ describe('Navigation', () => {
       const result = nextChange(doc, 0);
       // cursorOffset=0, first change start=0, 0 > 0 is false so skips first
       // second change start=12, 12 > 0 is true so returns second
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.originalText, 'second');
+      expect(result).not.toBe(null);
+      expect(result!.originalText).toBe('second');
     });
 
     it('handles three changes and navigates through them', () => {
       const doc = parser.parse('a{++ins++}b{--del--}c{~~old~>new~~}d');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 3);
+      expect(changes).toHaveLength(3);
 
       // From before all changes
       const first = nextChange(doc, 0);
-      assert.notStrictEqual(first, null);
-      assert.strictEqual(first!.modifiedText, 'ins');
+      expect(first).not.toBe(null);
+      expect(first!.modifiedText).toBe('ins');
 
       // From between first and second
       const second = nextChange(doc, changes[0].range.end);
-      assert.notStrictEqual(second, null);
-      assert.strictEqual(second!.originalText, 'del');
+      expect(second).not.toBe(null);
+      expect(second!.originalText).toBe('del');
 
       // From between second and third
       const third = nextChange(doc, changes[1].range.end);
-      assert.notStrictEqual(third, null);
-      assert.strictEqual(third!.originalText, 'old');
-      assert.strictEqual(third!.modifiedText, 'new');
+      expect(third).not.toBe(null);
+      expect(third!.originalText).toBe('old');
+      expect(third!.modifiedText).toBe('new');
     });
 
     it('returns empty document changes as null', () => {
       const doc = parser.parse('');
-      assert.strictEqual(nextChange(doc, 0), null);
+      expect(nextChange(doc, 0)).toBeNull();
     });
   });
 
@@ -100,8 +100,8 @@ describe('Navigation', () => {
     it('returns last change before cursor when cursor is at end', () => {
       const doc = parser.parse('Hello {++world++} end');
       const result = previousChange(doc, 21);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.modifiedText, 'world');
+      expect(result).not.toBe(null);
+      expect(result!.modifiedText).toBe('world');
     });
 
     it('returns the change immediately before cursor when between changes', () => {
@@ -109,8 +109,8 @@ describe('Navigation', () => {
       // First change ends at 11, second starts at 19
       // Cursor at 15 is in "middle"
       const result = previousChange(doc, 15);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.modifiedText, 'first');
+      expect(result).not.toBe(null);
+      expect(result!.modifiedText).toBe('first');
     });
 
     it('wraps to last change when cursor is before the first change', () => {
@@ -118,56 +118,56 @@ describe('Navigation', () => {
       const doc = parser.parse('{++alpha++} text {--beta--}');
       // Cursor at 0, first change starts at 0 — 0 < 0 is false
       const result = previousChange(doc, 0);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.originalText, 'beta');
+      expect(result).not.toBe(null);
+      expect(result!.originalText).toBe('beta');
     });
 
     it('returns null when document has no changes', () => {
       const doc = parser.parse('no markup here');
       const result = previousChange(doc, 5);
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('wraps to itself when only one change exists and cursor is before it', () => {
       const doc = parser.parse('prefix {--only--}');
       // {--only--} starts at 7, cursor at 0: 7 < 0 is false, so wraps to last = itself
       const result = previousChange(doc, 0);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.originalText, 'only');
+      expect(result).not.toBe(null);
+      expect(result!.originalText).toBe('only');
     });
 
     it('returns the single change when cursor is after it', () => {
       const doc = parser.parse('{--only--} suffix');
       // {--only--} starts at 0, cursor at 15: 0 < 15 is true
       const result = previousChange(doc, 15);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.originalText, 'only');
+      expect(result).not.toBe(null);
+      expect(result!.originalText).toBe('only');
     });
 
     it('handles three changes and navigates backwards through them', () => {
       const doc = parser.parse('a{++ins++}b{--del--}c{~~old~>new~~}d');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 3);
+      expect(changes).toHaveLength(3);
 
       // From after all changes
       const last = previousChange(doc, 100);
-      assert.notStrictEqual(last, null);
-      assert.strictEqual(last!.originalText, 'old');
+      expect(last).not.toBe(null);
+      expect(last!.originalText).toBe('old');
 
       // From between second and third
       const middle = previousChange(doc, changes[2].range.start);
-      assert.notStrictEqual(middle, null);
-      assert.strictEqual(middle!.originalText, 'del');
+      expect(middle).not.toBe(null);
+      expect(middle!.originalText).toBe('del');
 
       // From between first and second
       const first = previousChange(doc, changes[1].range.start);
-      assert.notStrictEqual(first, null);
-      assert.strictEqual(first!.modifiedText, 'ins');
+      expect(first).not.toBe(null);
+      expect(first!.modifiedText).toBe('ins');
     });
 
     it('returns empty document changes as null', () => {
       const doc = parser.parse('');
-      assert.strictEqual(previousChange(doc, 0), null);
+      expect(previousChange(doc, 0)).toBeNull();
     });
 
     it('returns the closer change when cursor is between two adjacent changes', () => {
@@ -175,21 +175,21 @@ describe('Navigation', () => {
       // {++a++} range [0,7), {--b--} range [7,14)
       const doc = parser.parse('{++a++}{--b--}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
-      assert.strictEqual(changes[0].range.end, 7);
-      assert.strictEqual(changes[1].range.start, 7);
+      expect(changes).toHaveLength(2);
+      expect(changes[0].range.end).toBe(7);
+      expect(changes[1].range.start).toBe(7);
 
       // Cursor at 8 is inside the second change.
       // Iterating backwards: second change start=7, 7 < 8 is true => returns second (deletion).
       const result = previousChange(doc, 8);
-      assert.notStrictEqual(result, null);
-      assert.strictEqual(result!.originalText, 'b');
+      expect(result).not.toBe(null);
+      expect(result!.originalText).toBe('b');
 
       // Cursor exactly at boundary (7): second change start=7, 7 < 7 is false.
       // First change start=0, 0 < 7 is true => returns first (insertion).
       const atBoundary = previousChange(doc, 7);
-      assert.notStrictEqual(atBoundary, null);
-      assert.strictEqual(atBoundary!.modifiedText, 'a');
+      expect(atBoundary).not.toBe(null);
+      expect(atBoundary!.modifiedText).toBe('a');
     });
   });
 });

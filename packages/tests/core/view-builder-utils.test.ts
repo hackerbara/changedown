@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import {
   buildDeliberationHeader,
   buildLineRefMap,
@@ -21,11 +21,11 @@ describe('view-builder-utils', () => {
         viewPolicy: 'suggest',
         footnotes,
       });
-      assert.strictEqual(header.counts.proposed, 1);
-      assert.strictEqual(header.counts.accepted, 1);
-      assert.strictEqual(header.counts.rejected, 0);
-      assert.deepStrictEqual(header.authors, ['@alice', '@bob']);
-      assert.strictEqual(header.threadCount, 1);
+      expect(header.counts.proposed).toBe(1);
+      expect(header.counts.accepted).toBe(1);
+      expect(header.counts.rejected).toBe(0);
+      expect(header.authors).toStrictEqual(['@alice', '@bob']);
+      expect(header.threadCount).toBe(1);
     });
 
     it('returns zero counts for empty footnotes', () => {
@@ -37,8 +37,8 @@ describe('view-builder-utils', () => {
         viewPolicy: 'suggest',
         footnotes: new Map(),
       });
-      assert.strictEqual(header.counts.proposed, 0);
-      assert.deepStrictEqual(header.authors, []);
+      expect(header.counts.proposed).toBe(0);
+      expect(header.authors).toStrictEqual([]);
     });
   });
 
@@ -47,9 +47,9 @@ describe('view-builder-utils', () => {
       const content = 'Hello[^ct-1] world.\nSecond line[^ct-2].\n\n[^ct-1]: a\n[^ct-2]: b';
       const lines = content.split('\n');
       const map = buildLineRefMap(lines);
-      assert.deepStrictEqual([...map.get(0)!], ['ct-1']);
-      assert.deepStrictEqual([...map.get(1)!], ['ct-2']);
-      assert.ok(!map.has(2));
+      expect([...map.get(0)!]).toStrictEqual(['ct-1']);
+      expect([...map.get(1)!]).toStrictEqual(['ct-2']);
+      expect(map.has(2)).toBe(false);
     });
   });
 });

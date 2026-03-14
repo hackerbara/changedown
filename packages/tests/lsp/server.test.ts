@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createServer, ChangetracksServer, TextDocumentSyncKind } from '@changetracks/lsp-server/internals';
 import type { Connection, InitializeParams, InitializeResult } from '@changetracks/lsp-server/internals';
 import { ChangeType } from '@changetracks/core';
@@ -47,14 +47,14 @@ describe('Server', () => {
     it('should create a server instance', () => {
       const mockConnection = createMockConnection();
       const server = createServer(mockConnection);
-      assert.ok(server);
-      assert.ok(server instanceof ChangetracksServer);
+      expect(server).toBeTruthy();
+      expect(server instanceof ChangetracksServer).toBeTruthy();
     });
 
     it('should initialize workspace on creation', () => {
       const mockConnection = createMockConnection();
       const server = createServer(mockConnection);
-      assert.ok(server.workspace);
+      expect(server.workspace).toBeTruthy();
     });
   });
 
@@ -68,11 +68,11 @@ describe('Server', () => {
     });
 
     it('should have a connection', () => {
-      assert.ok(server.connection);
+      expect(server.connection).toBeTruthy();
     });
 
     it('should have a text document manager', () => {
-      assert.ok(server.documents);
+      expect(server.documents).toBeTruthy();
     });
 
     it('should return server capabilities on initialize', async () => {
@@ -84,30 +84,30 @@ describe('Server', () => {
       };
 
       const result = await server.handleInitialize(params);
-      assert.ok(result);
-      assert.ok(result.capabilities);
-      assert.strictEqual(result.capabilities.textDocumentSync, TextDocumentSyncKind.Full);
+      expect(result).toBeTruthy();
+      expect(result.capabilities).toBeTruthy();
+      expect(result.capabilities.textDocumentSync).toBe(TextDocumentSyncKind.Full);
     });
 
     it('should handle initialized notification', () => {
       // Should not throw
-      assert.doesNotThrow(() => {
+      expect(() => {
         server.handleInitialized();
-      });
+      }).not.toThrow();
     });
 
     it('should handle shutdown', async () => {
       // Should not throw
-      await assert.doesNotReject(async () => {
+      await expect((async () => {
         await server.handleShutdown();
-      });
+      })()).resolves.not.toThrow();
     });
 
     it('should handle exit', () => {
       // Should not throw
-      assert.doesNotThrow(() => {
+      expect(() => {
         server.handleExit();
-      });
+      }).not.toThrow();
     });
 
     it('should parse document on open', () => {
@@ -117,10 +117,10 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text);
 
       const parseResult = server.getParseResult(uri);
-      assert.ok(parseResult);
-      assert.strictEqual(parseResult.getChanges().length, 1);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
-      assert.strictEqual(change.type, ChangeType.Insertion);
+      expect(change.type).toBe(ChangeType.Insertion);
     });
 
     it('should update parse result on document change', () => {
@@ -130,14 +130,14 @@ describe('Server', () => {
 
       server.handleDocumentOpen(uri, initialText);
       let parseResult = server.getParseResult(uri);
-      assert.strictEqual(parseResult?.getChanges().length, 0);
+      expect(parseResult?.getChanges()).toHaveLength(0);
 
       server.handleDocumentChange(uri, updatedText);
       parseResult = server.getParseResult(uri);
-      assert.ok(parseResult);
-      assert.strictEqual(parseResult.getChanges().length, 1);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
-      assert.strictEqual(change.type, ChangeType.Insertion);
+      expect(change.type).toBe(ChangeType.Insertion);
     });
 
     it('should cache parse results by URI', () => {
@@ -152,33 +152,33 @@ describe('Server', () => {
       const result1 = server.getParseResult(uri1);
       const result2 = server.getParseResult(uri2);
 
-      assert.ok(result1);
-      assert.ok(result2);
-      assert.notStrictEqual(result1, result2);
-      assert.strictEqual(result1.getChanges()[0].type, ChangeType.Insertion);
-      assert.strictEqual(result2.getChanges()[0].type, ChangeType.Deletion);
+      expect(result1).toBeTruthy();
+      expect(result2).toBeTruthy();
+      expect(result1).not.toBe(result2);
+      expect(result1.getChanges()[0].type).toBe(ChangeType.Insertion);
+      expect(result2.getChanges()[0].type).toBe(ChangeType.Deletion);
     });
 
     it('should handle multiple changes to same document', () => {
       const uri = 'file:///test.md';
 
       server.handleDocumentOpen(uri, 'plain text');
-      assert.strictEqual(server.getParseResult(uri)?.getChanges().length, 0);
+      expect(server.getParseResult(uri)?.getChanges()).toHaveLength(0);
 
       server.handleDocumentChange(uri, '{++addition++}');
       const result1 = server.getParseResult(uri);
-      assert.ok(result1);
-      assert.strictEqual(result1.getChanges().length, 1);
+      expect(result1).toBeTruthy();
+      expect(result1.getChanges()).toHaveLength(1);
 
       server.handleDocumentChange(uri, '{++add1++} and {--del1--}');
       const result2 = server.getParseResult(uri);
-      assert.ok(result2);
-      assert.strictEqual(result2.getChanges().length, 2);
+      expect(result2).toBeTruthy();
+      expect(result2.getChanges()).toHaveLength(2);
     });
 
     it('should return undefined for non-existent document', () => {
       const result = server.getParseResult('file:///nonexistent.md');
-      assert.strictEqual(result, undefined);
+      expect(result).toBeUndefined();
     });
 
     it('should parse complex CriticMarkup syntax', () => {
@@ -194,23 +194,23 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text);
       const parseResult = server.getParseResult(uri);
 
-      assert.ok(parseResult);
+      expect(parseResult).toBeTruthy();
       // Should have 6 changes: insertion, deletion, substitution, highlight, comment, highlight with attached comment
       // The last one is a single highlight node with comment metadata
       const changes = parseResult.getChanges();
-      assert.strictEqual(changes.length, 6);
+      expect(changes).toHaveLength(6);
 
       // Verify change types
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
-      assert.strictEqual(changes[1].type, ChangeType.Deletion);
-      assert.strictEqual(changes[2].type, ChangeType.Substitution);
-      assert.strictEqual(changes[3].type, ChangeType.Highlight);
-      assert.strictEqual(changes[4].type, ChangeType.Comment);
-      assert.strictEqual(changes[5].type, ChangeType.Highlight);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
+      expect(changes[1].type).toBe(ChangeType.Deletion);
+      expect(changes[2].type).toBe(ChangeType.Substitution);
+      expect(changes[3].type).toBe(ChangeType.Highlight);
+      expect(changes[4].type).toBe(ChangeType.Comment);
+      expect(changes[5].type).toBe(ChangeType.Highlight);
 
       // Verify the last highlight has attached comment
-      assert.ok(changes[5].metadata);
-      assert.ok(changes[5].metadata?.comment);
+      expect(changes[5].metadata).toBeTruthy();
+      expect(changes[5].metadata?.comment).toBeTruthy();
     });
 
     it('should handle code lens request for document with no changes', () => {
@@ -220,8 +220,8 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text);
 
       const lenses = server.handleCodeLens({ textDocument: { uri } });
-      assert.ok(Array.isArray(lenses));
-      assert.strictEqual(lenses.length, 0);
+      expect(Array.isArray(lenses)).toBeTruthy();
+      expect(lenses).toHaveLength(0);
     });
 
     it('should return code lenses for document with changes', () => {
@@ -231,30 +231,30 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text);
 
       const lenses = server.handleCodeLens({ textDocument: { uri } });
-      assert.ok(Array.isArray(lenses));
+      expect(Array.isArray(lenses)).toBeTruthy();
       // Should have 2 document-level lenses + 2 changes × 2 lenses each = 6 total
-      assert.strictEqual(lenses.length, 6);
+      expect(lenses).toHaveLength(6);
 
       // Check that we have document-level lenses
       const docLenses = lenses.filter(lens =>
         lens.command?.title.startsWith('Accept All') ||
         lens.command?.title.startsWith('Reject All')
       );
-      assert.strictEqual(docLenses.length, 2);
+      expect(docLenses).toHaveLength(2);
 
       // Check that we have per-change lenses
       const perChangeLenses = lenses.filter(lens =>
         lens.command?.command === 'changetracks.acceptChange' ||
         lens.command?.command === 'changetracks.rejectChange'
       );
-      assert.strictEqual(perChangeLenses.length, 4);
+      expect(perChangeLenses).toHaveLength(4);
     });
 
     it('should return empty array for code lens on non-existent document', () => {
       const uri = 'file:///nonexistent.md';
       const lenses = server.handleCodeLens({ textDocument: { uri } });
-      assert.ok(Array.isArray(lenses));
-      assert.strictEqual(lenses.length, 0);
+      expect(Array.isArray(lenses)).toBeTruthy();
+      expect(lenses).toHaveLength(0);
     });
 
     it('should provide semantic tokens capability in initialization', () => {
@@ -266,9 +266,9 @@ describe('Server', () => {
       };
 
       const result = server.handleInitialize(params);
-      assert.ok(result.capabilities.semanticTokensProvider);
-      assert.ok(result.capabilities.semanticTokensProvider.legend);
-      assert.ok(result.capabilities.semanticTokensProvider.full);
+      expect(result.capabilities.semanticTokensProvider).toBeTruthy();
+      expect(result.capabilities.semanticTokensProvider.legend).toBeTruthy();
+      expect(result.capabilities.semanticTokensProvider.full).toBeTruthy();
     });
 
     it('should return semantic tokens for parsed document', () => {
@@ -281,9 +281,9 @@ describe('Server', () => {
         textDocument: { uri }
       });
 
-      assert.ok(semanticTokens);
-      assert.ok(Array.isArray(semanticTokens.data));
-      assert.strictEqual(semanticTokens.data.length, 5); // One token: 5 integers
+      expect(semanticTokens).toBeTruthy();
+      expect(Array.isArray(semanticTokens.data)).toBeTruthy();
+      expect(semanticTokens.data).toHaveLength(5); // One token: 5 integers
     });
 
     it('should return empty semantic tokens for non-existent document', () => {
@@ -291,8 +291,8 @@ describe('Server', () => {
         textDocument: { uri: 'file:///nonexistent.md' }
       });
 
-      assert.ok(semanticTokens);
-      assert.strictEqual(semanticTokens.data.length, 0);
+      expect(semanticTokens).toBeTruthy();
+      expect(semanticTokens.data).toHaveLength(0);
     });
 
     it('should parse markdown file with CriticMarkup when languageId is markdown', () => {
@@ -302,10 +302,10 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text, 'markdown');
 
       const parseResult = server.getParseResult(uri);
-      assert.ok(parseResult);
-      assert.strictEqual(parseResult.getChanges().length, 1);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
-      assert.strictEqual(change.type, ChangeType.Insertion);
+      expect(change.type).toBe(ChangeType.Insertion);
     });
 
     it('should parse Python file with sidecar annotations when languageId is python', () => {
@@ -321,11 +321,11 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text, 'python');
 
       const parseResult = server.getParseResult(uri);
-      assert.ok(parseResult);
-      assert.strictEqual(parseResult.getChanges().length, 1);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
-      assert.strictEqual(change.type, ChangeType.Insertion);
-      assert.strictEqual(change.id, 'ct-1');
+      expect(change.type).toBe(ChangeType.Insertion);
+      expect(change.id).toBe('ct-1');
     });
 
     it('should parse JavaScript file with sidecar annotations when languageId is javascript', () => {
@@ -342,11 +342,11 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text, 'javascript');
 
       const parseResult = server.getParseResult(uri);
-      assert.ok(parseResult);
-      assert.strictEqual(parseResult.getChanges().length, 1);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
-      assert.strictEqual(change.type, ChangeType.Insertion);
-      assert.strictEqual(change.id, 'ct-1');
+      expect(change.type).toBe(ChangeType.Insertion);
+      expect(change.id).toBe('ct-1');
     });
 
     it('should parse TypeScript file with sidecar annotations when languageId is typescript', () => {
@@ -363,11 +363,11 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text, 'typescript');
 
       const parseResult = server.getParseResult(uri);
-      assert.ok(parseResult);
-      assert.strictEqual(parseResult.getChanges().length, 1);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
-      assert.strictEqual(change.type, ChangeType.Insertion);
-      assert.strictEqual(change.id, 'ct-1');
+      expect(change.type).toBe(ChangeType.Insertion);
+      expect(change.id).toBe('ct-1');
     });
 
     it('should handle code file without sidecar annotations', () => {
@@ -378,8 +378,8 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text, 'python');
 
       const parseResult = server.getParseResult(uri);
-      assert.ok(parseResult);
-      assert.strictEqual(parseResult.getChanges().length, 0);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(0);
     });
 
     it('should update parse result with languageId on document change', () => {
@@ -395,15 +395,15 @@ describe('Server', () => {
 
       server.handleDocumentOpen(uri, initialText, 'python');
       let parseResult = server.getParseResult(uri);
-      assert.strictEqual(parseResult?.getChanges().length, 0);
+      expect(parseResult?.getChanges()).toHaveLength(0);
 
       server.handleDocumentChange(uri, updatedText, 'python');
       parseResult = server.getParseResult(uri);
-      assert.ok(parseResult);
-      assert.strictEqual(parseResult.getChanges().length, 1);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
-      assert.strictEqual(change.type, ChangeType.Insertion);
-      assert.strictEqual(change.id, 'ct-1');
+      expect(change.type).toBe(ChangeType.Insertion);
+      expect(change.id).toBe('ct-1');
     });
 
     it('should handle sidecar substitution in code file', () => {
@@ -421,11 +421,11 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text, 'python');
 
       const parseResult = server.getParseResult(uri);
-      assert.ok(parseResult);
-      assert.strictEqual(parseResult.getChanges().length, 1);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
-      assert.strictEqual(change.type, ChangeType.Substitution);
-      assert.strictEqual(change.id, 'ct-1');
+      expect(change.type).toBe(ChangeType.Substitution);
+      expect(change.id).toBe('ct-1');
     });
 
     it('should parse code file with multiple sidecar changes', () => {
@@ -446,10 +446,10 @@ describe('Server', () => {
       server.handleDocumentOpen(uri, text, 'python');
 
       const parseResult = server.getParseResult(uri);
-      assert.ok(parseResult);
-      assert.strictEqual(parseResult.getChanges().length, 2);
-      assert.strictEqual(parseResult.getChanges()[0].type, ChangeType.Insertion);
-      assert.strictEqual(parseResult.getChanges()[1].type, ChangeType.Substitution);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(2);
+      expect(parseResult.getChanges()[0].type).toBe(ChangeType.Insertion);
+      expect(parseResult.getChanges()[1].type).toBe(ChangeType.Substitution);
     });
   });
 });

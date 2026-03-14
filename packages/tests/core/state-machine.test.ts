@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import type {
   EditBoundaryState,
   EditBoundaryConfig,
@@ -70,14 +70,14 @@ function singleEffect<T extends Effect['type']>(
   type: T,
 ): Extract<Effect, { type: T }> {
   const matches = effectsOfType(effects, type);
-  assert.strictEqual(matches.length, 1, `Expected exactly 1 '${type}' effect, got ${matches.length}`);
+  expect(matches).toHaveLength(1);
   return matches[0];
 }
 
 /** Assert no effects of given type exist. */
 function noEffect(effects: Effect[], type: Effect['type']): void {
   const matches = effectsOfType(effects, type);
-  assert.strictEqual(matches.length, 0, `Expected no '${type}' effects, got ${matches.length}`);
+  expect(matches).toHaveLength(0);
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────
@@ -92,9 +92,9 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: 'a' },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, 'a');
-      assert.strictEqual(newState.pending!.anchorOffset, 5);
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('a');
+      expect(newState.pending!.anchorOffset).toBe(5);
     });
 
     it('emits updatePendingOverlay with correct data', () => {
@@ -104,11 +104,11 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const overlay = singleEffect(effects, 'updatePendingOverlay');
-      assert.ok(overlay.overlay !== null);
-      assert.strictEqual(overlay.overlay!.anchorOffset, 5);
-      assert.strictEqual(overlay.overlay!.currentLength, 3);
-      assert.strictEqual(overlay.overlay!.currentText, 'abc');
-      assert.strictEqual(overlay.overlay!.cursorOffset, 3);
+      expect(overlay.overlay !== null).toBeTruthy();
+      expect(overlay.overlay!.anchorOffset).toBe(5);
+      expect(overlay.overlay!.currentLength).toBe(3);
+      expect(overlay.overlay!.currentText).toBe('abc');
+      expect(overlay.overlay!.cursorOffset).toBe(3);
     });
 
     it('calls allocateScId and assigns it to the buffer', () => {
@@ -118,8 +118,8 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: 'x' },
         ctx(() => { called = true; return 'ct-42'; }),
       );
-      assert.ok(called, 'allocateScId should have been called');
-      assert.strictEqual(newState.pending!.scId, 'ct-42');
+      expect(called, 'allocateScId should have been called').toBeTruthy();
+      expect(newState.pending!.scId).toBe('ct-42');
     });
 
     it('works without allocateScId', () => {
@@ -128,7 +128,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: 'x' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.scId, undefined);
+      expect(newState.pending!.scId).toBeUndefined();
     });
 
     it('sets cursorOffset to text length', () => {
@@ -137,7 +137,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 0, text: 'hello' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.cursorOffset, 5);
+      expect(newState.pending!.cursorOffset).toBe(5);
     });
   });
 
@@ -150,10 +150,10 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 5, deletedText: 'abc' },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, '');
-      assert.strictEqual(newState.pending!.originalText, 'abc');
-      assert.strictEqual(newState.pending!.anchorOffset, 5);
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('');
+      expect(newState.pending!.originalText).toBe('abc');
+      expect(newState.pending!.anchorOffset).toBe(5);
     });
 
     it('emits overlay, not crystallize', () => {
@@ -173,8 +173,8 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 5, deletedText: 'x' },
         ctx(() => { called = true; return 'ct-42'; }),
       );
-      assert.ok(called, 'allocateScId should have been called');
-      assert.strictEqual(newState.pending!.scId, 'ct-42');
+      expect(called, 'allocateScId should have been called').toBeTruthy();
+      expect(newState.pending!.scId).toBe('ct-42');
     });
   });
 
@@ -187,10 +187,10 @@ describe('processEvent (state machine)', () => {
         { type: 'substitution', offset: 5, oldText: 'abc', newText: 'XYZ' },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, 'XYZ');
-      assert.strictEqual(newState.pending!.originalText, 'abc');
-      assert.strictEqual(newState.pending!.anchorOffset, 5);
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('XYZ');
+      expect(newState.pending!.originalText).toBe('abc');
+      expect(newState.pending!.anchorOffset).toBe(5);
       noEffect(effects, 'crystallize');
       singleEffect(effects, 'updatePendingOverlay');
     });
@@ -205,7 +205,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 13, text: 'lo' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.currentText, 'hello');
+      expect(newState.pending!.currentText).toBe('hello');
     });
 
     it('preserves anchorOffset', () => {
@@ -214,7 +214,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 13, text: 'd' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.anchorOffset, 10);
+      expect(newState.pending!.anchorOffset).toBe(10);
     });
 
     it('advances cursorOffset', () => {
@@ -223,7 +223,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 13, text: 'de' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.cursorOffset, 5);
+      expect(newState.pending!.cursorOffset).toBe(5);
     });
 
     it('emits updatePendingOverlay with extended data', () => {
@@ -233,9 +233,9 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const overlay = singleEffect(effects, 'updatePendingOverlay');
-      assert.ok(overlay.overlay !== null);
-      assert.strictEqual(overlay.overlay!.currentText, 'hello');
-      assert.strictEqual(overlay.overlay!.currentLength, 5);
+      expect(overlay.overlay !== null).toBeTruthy();
+      expect(overlay.overlay!.currentText).toBe('hello');
+      expect(overlay.overlay!.currentLength).toBe(5);
     });
 
     it('preserves scId through extension', () => {
@@ -244,7 +244,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 11, text: 'b' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.scId, 'ct-99');
+      expect(newState.pending!.scId).toBe('ct-99');
     });
   });
 
@@ -257,8 +257,8 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 14, deletedText: 'o' },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, 'hell');
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('hell');
     });
 
     it('emits updatePendingOverlay with shrunk data', () => {
@@ -268,9 +268,9 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const overlay = singleEffect(effects, 'updatePendingOverlay');
-      assert.ok(overlay.overlay !== null);
-      assert.strictEqual(overlay.overlay!.currentText, 'hell');
-      assert.strictEqual(overlay.overlay!.currentLength, 4);
+      expect(overlay.overlay !== null).toBeTruthy();
+      expect(overlay.overlay!.currentText).toBe('hell');
+      expect(overlay.overlay!.currentLength).toBe(4);
     });
 
     it('clears pending when buffer becomes empty (single char, no originalText)', () => {
@@ -279,7 +279,7 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 10, deletedText: 'a' },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
     });
 
     it('emits null overlay when buffer empties', () => {
@@ -289,7 +289,7 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const overlay = singleEffect(effects, 'updatePendingOverlay');
-      assert.strictEqual(overlay.overlay, null);
+      expect(overlay.overlay).toBeNull();
     });
 
     it('does NOT emit crystallize when buffer empties (silent discard)', () => {
@@ -311,7 +311,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 11, text: 'e' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.currentText, 'hello');
+      expect(newState.pending!.currentText).toBe('hello');
     });
 
     it('emits overlay with spliced buffer', () => {
@@ -321,8 +321,8 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const overlay = singleEffect(effects, 'updatePendingOverlay');
-      assert.ok(overlay.overlay !== null);
-      assert.strictEqual(overlay.overlay!.currentText, 'hello');
+      expect(overlay.overlay !== null).toBeTruthy();
+      expect(overlay.overlay!.currentText).toBe('hello');
     });
 
     it('inserts at buffer start', () => {
@@ -331,7 +331,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 10, text: 'h' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.currentText, 'hello');
+      expect(newState.pending!.currentText).toBe('hello');
     });
   });
 
@@ -344,8 +344,8 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 11, deletedText: 'el' },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, 'hlo');
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('hlo');
     });
 
     it('emits overlay with spliced buffer', () => {
@@ -355,8 +355,8 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const overlay = singleEffect(effects, 'updatePendingOverlay');
-      assert.ok(overlay.overlay !== null);
-      assert.strictEqual(overlay.overlay!.currentText, 'hlo');
+      expect(overlay.overlay !== null).toBeTruthy();
+      expect(overlay.overlay!.currentText).toBe('hlo');
     });
 
     it('clears pending when splice delete empties buffer (no originalText)', () => {
@@ -365,7 +365,7 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 10, deletedText: 'ab' },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
     });
 
     it('emits null overlay when splice empties buffer', () => {
@@ -375,7 +375,7 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const overlay = singleEffect(effects, 'updatePendingOverlay');
-      assert.strictEqual(overlay.overlay, null);
+      expect(overlay.overlay).toBeNull();
       noEffect(effects, 'crystallize');
     });
   });
@@ -389,7 +389,7 @@ describe('processEvent (state machine)', () => {
         { type: 'save' },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
       singleEffect(effects, 'crystallize');
     });
 
@@ -400,9 +400,9 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const cryst = singleEffect(effects, 'crystallize');
-      assert.strictEqual(cryst.changeType, 'insertion');
-      assert.strictEqual(cryst.offset, 5);
-      assert.strictEqual(cryst.currentText, 'test');
+      expect(cryst.changeType).toBe('insertion');
+      expect(cryst.offset).toBe(5);
+      expect(cryst.currentText).toBe('test');
     });
   });
 
@@ -415,8 +415,8 @@ describe('processEvent (state machine)', () => {
         { type: 'save' },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
-      assert.strictEqual(effects.length, 0);
+      expect(newState.pending).toBeNull();
+      expect(effects).toHaveLength(0);
     });
   });
 
@@ -429,7 +429,7 @@ describe('processEvent (state machine)', () => {
         { type: 'editorSwitch' },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
       singleEffect(effects, 'crystallize');
     });
 
@@ -439,7 +439,7 @@ describe('processEvent (state machine)', () => {
         { type: 'editorSwitch' },
         ctx(),
       );
-      assert.strictEqual(effects.length, 0);
+      expect(effects).toHaveLength(0);
     });
   });
 
@@ -452,8 +452,8 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 15, text: 'x' },
         ctx(),
       );
-      assert.strictEqual(effects.length, 0);
-      assert.strictEqual(newState.pending!.currentText, 'hello');
+      expect(effects).toHaveLength(0);
+      expect(newState.pending!.currentText).toBe('hello');
     });
 
     it('deletion during composition is ignored', () => {
@@ -462,8 +462,8 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 14, deletedText: 'o' },
         ctx(),
       );
-      assert.strictEqual(effects.length, 0);
-      assert.strictEqual(newState.pending!.currentText, 'hello');
+      expect(effects).toHaveLength(0);
+      expect(newState.pending!.currentText).toBe('hello');
     });
 
     it('substitution during composition is ignored', () => {
@@ -472,8 +472,8 @@ describe('processEvent (state machine)', () => {
         { type: 'substitution', offset: 10, oldText: 'he', newText: 'HE' },
         ctx(),
       );
-      assert.strictEqual(effects.length, 0);
-      assert.strictEqual(newState.pending!.currentText, 'hello');
+      expect(effects).toHaveLength(0);
+      expect(newState.pending!.currentText).toBe('hello');
     });
 
     it('isComposing flag is preserved', () => {
@@ -482,7 +482,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 15, text: 'x' },
         ctx(),
       );
-      assert.strictEqual(newState.isComposing, true);
+      expect(newState.isComposing).toBe(true);
     });
   });
 
@@ -495,10 +495,10 @@ describe('processEvent (state machine)', () => {
         { type: 'flush' },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
       const cryst = singleEffect(effects, 'crystallize');
-      assert.strictEqual(cryst.changeType, 'insertion');
-      assert.strictEqual(cryst.currentText, 'hello');
+      expect(cryst.changeType).toBe('insertion');
+      expect(cryst.currentText).toBe('hello');
     });
 
     it('no effects when no pending', () => {
@@ -507,7 +507,7 @@ describe('processEvent (state machine)', () => {
         { type: 'flush' },
         ctx(),
       );
-      assert.strictEqual(effects.length, 0);
+      expect(effects).toHaveLength(0);
     });
   });
 
@@ -520,15 +520,15 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 15, text: '\n' },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
       const crystallizes = effectsOfType(effects, 'crystallize');
-      assert.strictEqual(crystallizes.length, 2);
+      expect(crystallizes).toHaveLength(2);
       // First crystallize: flush of pending buffer
-      assert.strictEqual(crystallizes[0].changeType, 'insertion');
-      assert.strictEqual(crystallizes[0].currentText, 'hello');
+      expect(crystallizes[0].changeType).toBe('insertion');
+      expect(crystallizes[0].currentText).toBe('hello');
       // Second crystallize: the newline itself
-      assert.strictEqual(crystallizes[1].changeType, 'insertion');
-      assert.strictEqual(crystallizes[1].currentText, '\n');
+      expect(crystallizes[1].changeType).toBe('insertion');
+      expect(crystallizes[1].currentText).toBe('\n');
     });
 
     it('crystallizes newline immediately with no pending', () => {
@@ -537,10 +537,10 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: '\n' },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
       const cryst = singleEffect(effects, 'crystallize');
-      assert.strictEqual(cryst.changeType, 'insertion');
-      assert.strictEqual(cryst.currentText, '\n');
+      expect(cryst.changeType).toBe('insertion');
+      expect(cryst.currentText).toBe('\n');
     });
 
     it('multi-line text causes break', () => {
@@ -550,7 +550,7 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const crystallizes = effectsOfType(effects, 'crystallize');
-      assert.ok(crystallizes.length >= 2);
+      expect(crystallizes.length >= 2).toBeTruthy();
     });
   });
 
@@ -563,8 +563,8 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 15, text: '\n' },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, 'hello\n');
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('hello\n');
     });
 
     it('creates buffer for newline with no pending', () => {
@@ -573,8 +573,8 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: '\n' },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, '\n');
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('\n');
     });
   });
 
@@ -588,11 +588,11 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 15, text: pasteText },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
       const crystallizes = effectsOfType(effects, 'crystallize');
-      assert.strictEqual(crystallizes.length, 2);
-      assert.strictEqual(crystallizes[0].currentText, 'hello'); // flush
-      assert.strictEqual(crystallizes[1].currentText, pasteText); // paste
+      expect(crystallizes).toHaveLength(2);
+      expect(crystallizes[0].currentText).toBe('hello'); // flush
+      expect(crystallizes[1].currentText).toBe(pasteText); // paste
     });
 
     it('large paste crystallizes immediately (no pending)', () => {
@@ -602,9 +602,9 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: pasteText },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
       const cryst = singleEffect(effects, 'crystallize');
-      assert.strictEqual(cryst.currentText, pasteText);
+      expect(cryst.currentText).toBe(pasteText);
     });
 
     it('under-threshold text creates buffer normally', () => {
@@ -614,8 +614,8 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: shortText },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, shortText);
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe(shortText);
     });
 
     it('custom pasteMinChars threshold', () => {
@@ -625,7 +625,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: pasteText },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
     });
   });
 
@@ -636,18 +636,18 @@ describe('processEvent (state machine)', () => {
       let state = stateNoPending();
       let result = processEvent(state, { type: 'insertion', offset: 0, text: 'h' }, ctx(() => 'ct-1'));
       state = result.newState;
-      assert.strictEqual(state.pending!.currentText, 'h');
-      assert.strictEqual(state.pending!.scId, 'ct-1');
+      expect(state.pending!.currentText).toBe('h');
+      expect(state.pending!.scId).toBe('ct-1');
 
       result = processEvent(state, { type: 'insertion', offset: 1, text: 'e' }, ctx());
       state = result.newState;
-      assert.strictEqual(state.pending!.currentText, 'he');
-      assert.strictEqual(state.pending!.scId, 'ct-1');
+      expect(state.pending!.currentText).toBe('he');
+      expect(state.pending!.scId).toBe('ct-1');
 
       result = processEvent(state, { type: 'insertion', offset: 2, text: 'l' }, ctx());
       state = result.newState;
-      assert.strictEqual(state.pending!.currentText, 'hel');
-      assert.strictEqual(state.pending!.scId, 'ct-1');
+      expect(state.pending!.currentText).toBe('hel');
+      expect(state.pending!.scId).toBe('ct-1');
     });
 
     it('only one buffer is ever active (no double-create)', () => {
@@ -660,7 +660,7 @@ describe('processEvent (state machine)', () => {
 
       // Extend: allocateScId not called again
       processEvent(state, { type: 'insertion', offset: 1, text: 'b' }, ctx(alloc));
-      assert.strictEqual(allocCount, 2); // Called only once per processEvent with new-edit
+      expect(allocCount).toBe(2); // Called only once per processEvent with new-edit
     });
   });
 
@@ -674,13 +674,13 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       // Flush produces crystallize; new deletion creates buffer
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, '');
-      assert.strictEqual(newState.pending!.originalText, 'x');
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('');
+      expect(newState.pending!.originalText).toBe('x');
       const crystallizes = effectsOfType(effects, 'crystallize');
-      assert.strictEqual(crystallizes.length, 1);
-      assert.strictEqual(crystallizes[0].changeType, 'insertion');
-      assert.strictEqual(crystallizes[0].currentText, 'hello');
+      expect(crystallizes).toHaveLength(1);
+      expect(crystallizes[0].changeType).toBe('insertion');
+      expect(crystallizes[0].currentText).toBe('hello');
     });
 
     it('deletion before buffer range flushes + creates deletion buffer', () => {
@@ -689,13 +689,13 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 5, deletedText: 'ab' },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, '');
-      assert.strictEqual(newState.pending!.originalText, 'ab');
-      assert.strictEqual(newState.pending!.anchorOffset, 5);
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('');
+      expect(newState.pending!.originalText).toBe('ab');
+      expect(newState.pending!.anchorOffset).toBe(5);
       const crystallizes = effectsOfType(effects, 'crystallize');
-      assert.strictEqual(crystallizes.length, 1);
-      assert.strictEqual(crystallizes[0].changeType, 'insertion');
+      expect(crystallizes).toHaveLength(1);
+      expect(crystallizes[0].changeType).toBe('insertion');
     });
   });
 
@@ -718,7 +718,7 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 10, deletedText: 'x' },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
     });
   });
 
@@ -732,7 +732,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: 'a' },
         ctx(() => { count++; return 'ct-' + count; }),
       );
-      assert.strictEqual(count, 1);
+      expect(count).toBe(1);
     });
 
     it('scId preserved through extend operations', () => {
@@ -749,14 +749,14 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 1, text: 'b' },
         ctx(() => 'ct-SHOULD-NOT-CALL'),
       );
-      assert.strictEqual(s2.pending!.scId, 'ct-100');
+      expect(s2.pending!.scId).toBe('ct-100');
     });
 
     it('scId included in crystallize effect on flush', () => {
       const state = stateWithPending('abc', 10, {}, 'ct-77');
       const { effects } = processEvent(state, { type: 'flush' }, ctx());
       const cryst = singleEffect(effects, 'crystallize');
-      assert.strictEqual(cryst.scId, 'ct-77');
+      expect(cryst.scId).toBe('ct-77');
     });
 
     it('scId preserved through splice operations (backspace)', () => {
@@ -766,7 +766,7 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 12, deletedText: 'c' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.scId, 'ct-42');
+      expect(newState.pending!.scId).toBe('ct-42');
     });
 
     it('scId preserved through splice operations (insert)', () => {
@@ -776,7 +776,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 12, text: 'X' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.scId, 'ct-99');
+      expect(newState.pending!.scId).toBe('ct-99');
     });
   });
 
@@ -789,10 +789,10 @@ describe('processEvent (state machine)', () => {
         { type: 'flush' },
         ctx(),
       );
-      assert.strictEqual(effects[0].type, 'crystallize');
-      assert.strictEqual(effects[1].type, 'updatePendingOverlay');
-      assert.strictEqual(effects[2].type, 'mergeAdjacent');
-      assert.strictEqual(effects.length, 3);
+      expect(effects[0].type).toBe('crystallize');
+      expect(effects[1].type).toBe('updatePendingOverlay');
+      expect(effects[2].type).toBe('mergeAdjacent');
+      expect(effects).toHaveLength(3);
     });
 
     it('new buffer effects are: overlay only', () => {
@@ -801,8 +801,8 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: 'a' },
         ctx(),
       );
-      assert.strictEqual(effects[0].type, 'updatePendingOverlay');
-      assert.strictEqual(effects.length, 1);
+      expect(effects[0].type).toBe('updatePendingOverlay');
+      expect(effects).toHaveLength(1);
     });
 
     it('hard break with edit: flush effects then buffer effects for edit', () => {
@@ -812,12 +812,12 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       // flush effects first
-      assert.strictEqual(effects[0].type, 'crystallize'); // flush
-      assert.strictEqual(effects[1].type, 'updatePendingOverlay'); // null overlay
-      assert.strictEqual(effects[2].type, 'mergeAdjacent');
+      expect(effects[0].type).toBe('crystallize'); // flush
+      expect(effects[1].type).toBe('updatePendingOverlay'); // null overlay
+      expect(effects[2].type).toBe('mergeAdjacent');
       // then the new buffer effects
-      assert.strictEqual(effects[3].type, 'updatePendingOverlay'); // new overlay
-      assert.strictEqual(effects.length, 4);
+      expect(effects[3].type).toBe('updatePendingOverlay'); // new overlay
+      expect(effects).toHaveLength(4);
     });
   });
 
@@ -829,13 +829,13 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       // Flush produces crystallize; new substitution creates buffer
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, 'XYZ');
-      assert.strictEqual(newState.pending!.originalText, 'abc');
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('XYZ');
+      expect(newState.pending!.originalText).toBe('abc');
       const crystallizes = effectsOfType(effects, 'crystallize');
-      assert.strictEqual(crystallizes.length, 1);
-      assert.strictEqual(crystallizes[0].changeType, 'insertion'); // flush
-      assert.strictEqual(crystallizes[0].currentText, 'hello');
+      expect(crystallizes).toHaveLength(1);
+      expect(crystallizes[0].changeType).toBe('insertion'); // flush
+      expect(crystallizes[0].currentText).toBe('hello');
     });
   });
 
@@ -846,7 +846,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 10, text: 'X' },
         ctx(),
       );
-      assert.strictEqual(newState.pending!.currentText, 'Xhello');
+      expect(newState.pending!.currentText).toBe('Xhello');
     });
   });
 
@@ -858,7 +858,7 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const merge = singleEffect(effects, 'mergeAdjacent');
-      assert.strictEqual(merge.offset, 42);
+      expect(merge.offset).toBe(42);
     });
 
     it('mergeAdjacent carries anchorOffset on save flush', () => {
@@ -868,7 +868,7 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const merge = singleEffect(effects, 'mergeAdjacent');
-      assert.strictEqual(merge.offset, 7);
+      expect(merge.offset).toBe(7);
     });
   });
 
@@ -877,15 +877,15 @@ describe('processEvent (state machine)', () => {
       const state = stateWithPending('hello', 10);
       const originalPending = state.pending;
       processEvent(state, { type: 'insertion', offset: 15, text: 'x' }, ctx());
-      assert.strictEqual(state.pending, originalPending);
-      assert.strictEqual(state.pending!.currentText, 'hello');
+      expect(state.pending).toBe(originalPending);
+      expect(state.pending!.currentText).toBe('hello');
     });
 
     it('processEvent does not mutate state on flush', () => {
       const state = stateWithPending('hello', 10);
       processEvent(state, { type: 'flush' }, ctx());
-      assert.ok(state.pending !== null);
-      assert.strictEqual(state.pending!.currentText, 'hello');
+      expect(state.pending !== null).toBeTruthy();
+      expect(state.pending!.currentText).toBe('hello');
     });
   });
 
@@ -897,10 +897,10 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const overlay = singleEffect(effects, 'updatePendingOverlay').overlay!;
-      assert.strictEqual(overlay.anchorOffset, newState.pending!.anchorOffset);
-      assert.strictEqual(overlay.currentLength, newState.pending!.currentText.length);
-      assert.strictEqual(overlay.currentText, newState.pending!.currentText);
-      assert.strictEqual(overlay.cursorOffset, newState.pending!.cursorOffset);
+      expect(overlay.anchorOffset).toBe(newState.pending!.anchorOffset);
+      expect(overlay.currentLength).toBe(newState.pending!.currentText.length);
+      expect(overlay.currentText).toBe(newState.pending!.currentText);
+      expect(overlay.cursorOffset).toBe(newState.pending!.cursorOffset);
     });
 
     it('overlay matches buffer state after splice insert', () => {
@@ -910,8 +910,8 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const overlay = singleEffect(effects, 'updatePendingOverlay').overlay!;
-      assert.strictEqual(overlay.currentText, newState.pending!.currentText);
-      assert.strictEqual(overlay.cursorOffset, newState.pending!.cursorOffset);
+      expect(overlay.currentText).toBe(newState.pending!.currentText);
+      expect(overlay.cursorOffset).toBe(newState.pending!.cursorOffset);
     });
   });
 
@@ -922,10 +922,10 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 7, deletedText: 'world' },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, '');
-      assert.strictEqual(newState.pending!.originalText, 'world');
-      assert.strictEqual(newState.pending!.anchorOffset, 7);
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('');
+      expect(newState.pending!.originalText).toBe('world');
+      expect(newState.pending!.anchorOffset).toBe(7);
     });
 
     it('allocateScId called for deletion buffer', () => {
@@ -935,7 +935,7 @@ describe('processEvent (state machine)', () => {
         { type: 'deletion', offset: 7, deletedText: 'x' },
         ctx(() => { scIdValue = 'ct-42'; return scIdValue; }),
       );
-      assert.strictEqual(newState.pending!.scId, 'ct-42');
+      expect(newState.pending!.scId).toBe('ct-42');
     });
   });
 
@@ -946,10 +946,10 @@ describe('processEvent (state machine)', () => {
         { type: 'substitution', offset: 3, oldText: 'foo', newText: 'bar' },
         ctx(),
       );
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, 'bar');
-      assert.strictEqual(newState.pending!.originalText, 'foo');
-      assert.strictEqual(newState.pending!.anchorOffset, 3);
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('bar');
+      expect(newState.pending!.originalText).toBe('foo');
+      expect(newState.pending!.anchorOffset).toBe(3);
     });
   });
 
@@ -964,14 +964,14 @@ describe('processEvent (state machine)', () => {
 
       // Splice insert at position 1
       state = processEvent(state, { type: 'insertion', offset: 1, text: 'X' }, ctx()).newState;
-      assert.strictEqual(state.pending!.currentText, 'hXel');
+      expect(state.pending!.currentText).toBe('hXel');
 
       // Flush
       const { newState, effects } = processEvent(state, { type: 'flush' }, ctx());
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
       const cryst = singleEffect(effects, 'crystallize');
-      assert.strictEqual(cryst.currentText, 'hXel');
-      assert.strictEqual(cryst.scId, 'ct-1');
+      expect(cryst.currentText).toBe('hXel');
+      expect(cryst.scId).toBe('ct-1');
     });
 
     it('type → editor switch → type again = two separate buffers', () => {
@@ -988,16 +988,16 @@ describe('processEvent (state machine)', () => {
         { type: 'editorSwitch' },
         ctx(),
       );
-      assert.strictEqual(flushed.pending, null);
+      expect(flushed.pending).toBeNull();
       const cryst1 = singleEffect(flushEffects, 'crystallize');
-      assert.strictEqual(cryst1.currentText, 'abc');
-      assert.strictEqual(cryst1.scId, 'ct-1');
+      expect(cryst1.currentText).toBe('abc');
+      expect(cryst1.scId).toBe('ct-1');
 
       // Type "xy" — new buffer
       state = processEvent(flushed, { type: 'insertion', offset: 20, text: 'x' }, ctx(() => 'ct-2')).newState;
       state = processEvent(state, { type: 'insertion', offset: 21, text: 'y' }, ctx()).newState;
-      assert.strictEqual(state.pending!.currentText, 'xy');
-      assert.strictEqual(state.pending!.scId, 'ct-2');
+      expect(state.pending!.currentText).toBe('xy');
+      expect(state.pending!.scId).toBe('ct-2');
     });
 
     it('type → backspace all → type again = new buffer with new scId', () => {
@@ -1009,15 +1009,15 @@ describe('processEvent (state machine)', () => {
 
       // Backspace both (splice to empty)
       state = processEvent(state, { type: 'deletion', offset: 1, deletedText: 'b' }, ctx()).newState;
-      assert.strictEqual(state.pending!.currentText, 'a');
+      expect(state.pending!.currentText).toBe('a');
 
       state = processEvent(state, { type: 'deletion', offset: 0, deletedText: 'a' }, ctx()).newState;
-      assert.strictEqual(state.pending, null);
+      expect(state.pending).toBeNull();
 
       // Type again → new buffer
       state = processEvent(state, { type: 'insertion', offset: 0, text: 'X' }, ctx(() => 'ct-2')).newState;
-      assert.strictEqual(state.pending!.currentText, 'X');
-      assert.strictEqual(state.pending!.scId, 'ct-2');
+      expect(state.pending!.currentText).toBe('X');
+      expect(state.pending!.scId).toBe('ct-2');
     });
 
     it('type + save + type again = two separate buffers', () => {
@@ -1029,11 +1029,11 @@ describe('processEvent (state machine)', () => {
         { type: 'save' },
         ctx(),
       );
-      assert.strictEqual(savedState.pending, null);
+      expect(savedState.pending).toBeNull();
       singleEffect(saveEffects, 'crystallize');
 
       state = processEvent(savedState, { type: 'insertion', offset: 1, text: 'b' }, ctx(() => 'ct-2')).newState;
-      assert.strictEqual(state.pending!.scId, 'ct-2');
+      expect(state.pending!.scId).toBe('ct-2');
     });
   });
 
@@ -1045,8 +1045,8 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       // Empty text creates a buffer (the buffer itself starts empty)
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, '');
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('');
     });
 
     it('config values propagate correctly through state', () => {
@@ -1057,9 +1057,9 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 0, text: 'a' },
         ctx(),
       );
-      assert.strictEqual(newState.config.pauseThresholdMs, 5000);
-      assert.strictEqual(newState.config.breakOnNewline, false);
-      assert.strictEqual(newState.config.pasteMinChars, 20);
+      expect(newState.config.pauseThresholdMs).toBe(5000);
+      expect(newState.config.breakOnNewline).toBe(false);
+      expect(newState.config.pasteMinChars).toBe(20);
     });
 
     it('insertion at exactly paste threshold boundary is paste', () => {
@@ -1069,7 +1069,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 0, text },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null); // crystallized immediately
+      expect(newState.pending).toBeNull(); // crystallized immediately
     });
 
     it('insertion at paste threshold minus 1 is not paste', () => {
@@ -1079,7 +1079,7 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 0, text },
         ctx(),
       );
-      assert.ok(newState.pending !== null); // buffered
+      expect(newState.pending !== null).toBeTruthy(); // buffered
     });
   });
 
@@ -1091,14 +1091,14 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       // Flush produces crystallize, then new deletion creates buffer
-      assert.ok(newState.pending !== null);
-      assert.strictEqual(newState.pending!.currentText, '');
-      assert.strictEqual(newState.pending!.originalText, 'xyz');
-      assert.strictEqual(newState.pending!.anchorOffset, 30);
+      expect(newState.pending !== null).toBeTruthy();
+      expect(newState.pending!.currentText).toBe('');
+      expect(newState.pending!.originalText).toBe('xyz');
+      expect(newState.pending!.anchorOffset).toBe(30);
       const crystallizes = effectsOfType(effects, 'crystallize');
-      assert.strictEqual(crystallizes.length, 1);
-      assert.strictEqual(crystallizes[0].changeType, 'insertion');
-      assert.strictEqual(crystallizes[0].currentText, 'abc');
+      expect(crystallizes).toHaveLength(1);
+      expect(crystallizes[0].changeType).toBe('insertion');
+      expect(crystallizes[0].currentText).toBe('abc');
     });
   });
 
@@ -1109,10 +1109,10 @@ describe('processEvent (state machine)', () => {
         { type: 'save' },
         ctx(),
       );
-      assert.strictEqual(effects.length, 3);
-      assert.ok(effectsOfType(effects, 'crystallize').length === 1);
-      assert.ok(effectsOfType(effects, 'updatePendingOverlay').length === 1);
-      assert.ok(effectsOfType(effects, 'mergeAdjacent').length === 1);
+      expect(effects).toHaveLength(3);
+      expect(effectsOfType(effects, 'crystallize').length === 1).toBeTruthy();
+      expect(effectsOfType(effects, 'updatePendingOverlay').length === 1).toBeTruthy();
+      expect(effectsOfType(effects, 'mergeAdjacent').length === 1).toBeTruthy();
     });
 
     it('flush via editorSwitch includes 3 effect types', () => {
@@ -1121,7 +1121,7 @@ describe('processEvent (state machine)', () => {
         { type: 'editorSwitch' },
         ctx(),
       );
-      assert.strictEqual(effects.length, 3);
+      expect(effects).toHaveLength(3);
     });
 
     it('flush via explicit flush includes 3 effect types', () => {
@@ -1130,7 +1130,7 @@ describe('processEvent (state machine)', () => {
         { type: 'flush' },
         ctx(),
       );
-      assert.strictEqual(effects.length, 3);
+      expect(effects).toHaveLength(3);
     });
   });
 
@@ -1141,11 +1141,11 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 5, text: '\n' },
         ctx(),
       );
-      assert.strictEqual(newState.pending, null);
+      expect(newState.pending).toBeNull();
       const cryst = singleEffect(effects, 'crystallize');
-      assert.strictEqual(cryst.changeType, 'insertion');
-      assert.strictEqual(cryst.currentText, '\n');
-      assert.strictEqual(cryst.offset, 5);
+      expect(cryst.changeType).toBe('insertion');
+      expect(cryst.currentText).toBe('\n');
+      expect(cryst.offset).toBe(5);
     });
   });
 
@@ -1157,8 +1157,8 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 0, text: pasteText },
         ctx(),
       );
-      assert.strictEqual(effects.length, 1);
-      assert.strictEqual(effects[0].type, 'crystallize');
+      expect(effects).toHaveLength(1);
+      expect(effects[0].type).toBe('crystallize');
     });
   });
 
@@ -1170,9 +1170,9 @@ describe('processEvent (state machine)', () => {
         ctx(),
       );
       const cryst = singleEffect(effects, 'crystallize');
-      assert.strictEqual(cryst.offset, 42);
-      assert.strictEqual(cryst.length, 5);
-      assert.strictEqual(cryst.currentText, 'hello');
+      expect(cryst.offset).toBe(42);
+      expect(cryst).toHaveLength(5);
+      expect(cryst.currentText).toBe('hello');
     });
 
     it('deletion crystallize via flush: length is 0 (deleted text gone from document)', () => {
@@ -1184,8 +1184,8 @@ describe('processEvent (state machine)', () => {
       };
       const { effects } = processEvent(state, { type: 'flush' }, ctx());
       const cryst = singleEffect(effects, 'crystallize');
-      assert.strictEqual(cryst.changeType, 'deletion');
-      assert.strictEqual(cryst.length, 0);
+      expect(cryst.changeType).toBe('deletion');
+      expect(cryst).toHaveLength(0);
     });
 
     it('substitution crystallize via flush: length matches currentText length', () => {
@@ -1197,8 +1197,8 @@ describe('processEvent (state machine)', () => {
       };
       const { effects } = processEvent(state, { type: 'flush' }, ctx());
       const cryst = singleEffect(effects, 'crystallize');
-      assert.strictEqual(cryst.changeType, 'substitution');
-      assert.strictEqual(cryst.length, 5); // 'hello'.length
+      expect(cryst.changeType).toBe('substitution');
+      expect(cryst).toHaveLength(5); // 'hello'.length
     });
   });
 
@@ -1210,11 +1210,11 @@ describe('processEvent (state machine)', () => {
       state = processEvent(state, { type: 'insertion', offset: 0, text: 'h' }, ctx(() => 'ct-1')).newState;
       state = processEvent(state, { type: 'insertion', offset: 1, text: 'e' }, ctx()).newState;
       state = processEvent(state, { type: 'insertion', offset: 2, text: 'l' }, ctx()).newState;
-      assert.strictEqual(state.pending!.currentText, 'hel');
+      expect(state.pending!.currentText).toBe('hel');
 
       // Set isComposing=true directly
       state = { ...state, isComposing: true };
-      assert.strictEqual(state.isComposing, true);
+      expect(state.isComposing).toBe(true);
 
       // Edits during composition are ignored
       const { newState: s1, effects: e1 } = processEvent(
@@ -1222,17 +1222,17 @@ describe('processEvent (state machine)', () => {
         { type: 'insertion', offset: 3, text: 'lo' },
         ctx(),
       );
-      assert.strictEqual(e1.length, 0);
-      assert.strictEqual(s1.pending!.currentText, 'hel'); // unchanged
+      expect(e1).toHaveLength(0);
+      expect(s1.pending!.currentText).toBe('hel'); // unchanged
       state = s1;
 
       // Clear isComposing=false directly
       state = { ...state, isComposing: false };
-      assert.strictEqual(state.isComposing, false);
+      expect(state.isComposing).toBe(false);
 
       // Resume typing normally
       state = processEvent(state, { type: 'insertion', offset: 3, text: 'l' }, ctx()).newState;
-      assert.strictEqual(state.pending!.currentText, 'hell');
+      expect(state.pending!.currentText).toBe('hell');
     });
   });
 
@@ -1251,10 +1251,10 @@ describe('processEvent (state machine)', () => {
           { type: 'deletion', offset: 5, deletedText: 'abc' },
           ctx(),
         );
-        assert.ok(result.newState.pending !== null);
-        assert.strictEqual(result.newState.pending!.currentText, '');
-        assert.strictEqual(result.newState.pending!.originalText, 'abc');
-        assert.strictEqual(result.newState.pending!.anchorOffset, 5);
+        expect(result.newState.pending !== null).toBeTruthy();
+        expect(result.newState.pending!.currentText).toBe('');
+        expect(result.newState.pending!.originalText).toBe('abc');
+        expect(result.newState.pending!.anchorOffset).toBe(5);
       });
 
       it('emits overlay, not crystallize', () => {
@@ -1263,8 +1263,8 @@ describe('processEvent (state machine)', () => {
           { type: 'deletion', offset: 5, deletedText: 'x' },
           ctx(),
         );
-        assert.strictEqual(effectsOfType(result.effects, 'crystallize').length, 0);
-        assert.strictEqual(effectsOfType(result.effects, 'updatePendingOverlay').length, 1);
+        expect(effectsOfType(result.effects, 'crystallize')).toHaveLength(0);
+        expect(effectsOfType(result.effects, 'updatePendingOverlay')).toHaveLength(1);
       });
     });
 
@@ -1277,10 +1277,10 @@ describe('processEvent (state machine)', () => {
           { type: 'substitution', offset: 5, oldText: 'old', newText: 'new' },
           ctx(),
         );
-        assert.ok(result.newState.pending !== null);
-        assert.strictEqual(result.newState.pending!.currentText, 'new');
-        assert.strictEqual(result.newState.pending!.originalText, 'old');
-        assert.strictEqual(result.newState.pending!.anchorOffset, 5);
+        expect(result.newState.pending !== null).toBeTruthy();
+        expect(result.newState.pending!.currentText).toBe('new');
+        expect(result.newState.pending!.originalText).toBe('old');
+        expect(result.newState.pending!.anchorOffset).toBe(5);
       });
 
       it('emits overlay, not crystallize', () => {
@@ -1289,8 +1289,8 @@ describe('processEvent (state machine)', () => {
           { type: 'substitution', offset: 5, oldText: 'old', newText: 'new' },
           ctx(),
         );
-        assert.strictEqual(effectsOfType(result.effects, 'crystallize').length, 0);
-        assert.strictEqual(effectsOfType(result.effects, 'updatePendingOverlay').length, 1);
+        expect(effectsOfType(result.effects, 'crystallize')).toHaveLength(0);
+        expect(effectsOfType(result.effects, 'updatePendingOverlay')).toHaveLength(1);
       });
     });
 
@@ -1308,10 +1308,10 @@ describe('processEvent (state machine)', () => {
           { type: 'deletion', offset: 9, deletedText: 'x' },
           ctx(),
         );
-        assert.ok(result.newState.pending !== null);
-        assert.strictEqual(result.newState.pending!.originalText, 'xold');
-        assert.strictEqual(result.newState.pending!.anchorOffset, 9);
-        assert.strictEqual(result.newState.pending!.currentText, 'new');
+        expect(result.newState.pending !== null).toBeTruthy();
+        expect(result.newState.pending!.originalText).toBe('xold');
+        expect(result.newState.pending!.anchorOffset).toBe(9);
+        expect(result.newState.pending!.currentText).toBe('new');
       });
     });
 
@@ -1325,10 +1325,10 @@ describe('processEvent (state machine)', () => {
           { type: 'deletion', offset: 15, deletedText: 'x' },
           ctx(),
         );
-        assert.ok(result.newState.pending !== null);
-        assert.strictEqual(result.newState.pending!.originalText, 'x');
-        assert.strictEqual(result.newState.pending!.anchorOffset, 10);
-        assert.strictEqual(result.newState.pending!.currentText, 'hello');
+        expect(result.newState.pending !== null).toBeTruthy();
+        expect(result.newState.pending!.originalText).toBe('x');
+        expect(result.newState.pending!.anchorOffset).toBe(10);
+        expect(result.newState.pending!.currentText).toBe('hello');
       });
     });
 
@@ -1339,10 +1339,10 @@ describe('processEvent (state machine)', () => {
         const state = stateWithPending('hello', 10);
         const result = processEvent(state, { type: 'flush' }, ctx());
         const cryst = effectsOfType(result.effects, 'crystallize');
-        assert.strictEqual(cryst.length, 1);
-        assert.strictEqual((cryst[0] as any).changeType, 'insertion');
-        assert.strictEqual((cryst[0] as any).currentText, 'hello');
-        assert.strictEqual((cryst[0] as any).originalText, '');
+        expect(cryst).toHaveLength(1);
+        expect((cryst[0] as any).changeType).toBe('insertion');
+        expect((cryst[0] as any).currentText).toBe('hello');
+        expect((cryst[0] as any).originalText).toBe('');
       });
 
       it('deletion: currentText empty, originalText non-empty', () => {
@@ -1353,9 +1353,9 @@ describe('processEvent (state machine)', () => {
         };
         const result = processEvent(state, { type: 'flush' }, ctx());
         const cryst = effectsOfType(result.effects, 'crystallize');
-        assert.strictEqual(cryst.length, 1);
-        assert.strictEqual((cryst[0] as any).changeType, 'deletion');
-        assert.strictEqual((cryst[0] as any).originalText, 'deleted');
+        expect(cryst).toHaveLength(1);
+        expect((cryst[0] as any).changeType).toBe('deletion');
+        expect((cryst[0] as any).originalText).toBe('deleted');
       });
 
       it('substitution: both non-empty', () => {
@@ -1366,10 +1366,10 @@ describe('processEvent (state machine)', () => {
         };
         const result = processEvent(state, { type: 'flush' }, ctx());
         const cryst = effectsOfType(result.effects, 'crystallize');
-        assert.strictEqual(cryst.length, 1);
-        assert.strictEqual((cryst[0] as any).changeType, 'substitution');
-        assert.strictEqual((cryst[0] as any).currentText, 'new');
-        assert.strictEqual((cryst[0] as any).originalText, 'old');
+        expect(cryst).toHaveLength(1);
+        expect((cryst[0] as any).changeType).toBe('substitution');
+        expect((cryst[0] as any).currentText).toBe('new');
+        expect((cryst[0] as any).originalText).toBe('old');
       });
 
       it('self-cancellation: both empty → no crystallize', () => {
@@ -1380,8 +1380,8 @@ describe('processEvent (state machine)', () => {
         };
         const result = processEvent(state, { type: 'flush' }, ctx());
         const cryst = effectsOfType(result.effects, 'crystallize');
-        assert.strictEqual(cryst.length, 0);
-        assert.strictEqual(result.newState.pending, null);
+        expect(cryst).toHaveLength(0);
+        expect(result.newState.pending).toBeNull();
       });
     });
 
@@ -1392,23 +1392,23 @@ describe('processEvent (state machine)', () => {
         let state = stateNoPending();
         let result = processEvent(state, { type: 'deletion', offset: 4, deletedText: 'o' }, ctx());
         state = result.newState;
-        assert.strictEqual(state.pending!.originalText, 'o');
+        expect(state.pending!.originalText).toBe('o');
 
         result = processEvent(state, { type: 'deletion', offset: 3, deletedText: 'l' }, ctx());
         state = result.newState;
-        assert.strictEqual(state.pending!.originalText, 'lo');
-        assert.strictEqual(state.pending!.anchorOffset, 3);
+        expect(state.pending!.originalText).toBe('lo');
+        expect(state.pending!.anchorOffset).toBe(3);
 
         result = processEvent(state, { type: 'deletion', offset: 2, deletedText: 'l' }, ctx());
         state = result.newState;
-        assert.strictEqual(state.pending!.originalText, 'llo');
-        assert.strictEqual(state.pending!.anchorOffset, 2);
+        expect(state.pending!.originalText).toBe('llo');
+        expect(state.pending!.anchorOffset).toBe(2);
 
         result = processEvent(state, { type: 'flush' }, ctx());
         const cryst = effectsOfType(result.effects, 'crystallize');
-        assert.strictEqual(cryst.length, 1);
-        assert.strictEqual((cryst[0] as any).changeType, 'deletion');
-        assert.strictEqual((cryst[0] as any).originalText, 'llo');
+        expect(cryst).toHaveLength(1);
+        expect((cryst[0] as any).changeType).toBe('deletion');
+        expect((cryst[0] as any).originalText).toBe('llo');
       });
 
       it('delete-then-type produces substitution', () => {
@@ -1423,9 +1423,9 @@ describe('processEvent (state machine)', () => {
         state = result.newState;
         result = processEvent(state, { type: 'deletion', offset: 4, deletedText: 'q' }, ctx());
         state = result.newState;
-        assert.strictEqual(state.pending!.originalText, 'quick');
-        assert.strictEqual(state.pending!.currentText, '');
-        assert.strictEqual(state.pending!.anchorOffset, 4);
+        expect(state.pending!.originalText).toBe('quick');
+        expect(state.pending!.currentText).toBe('');
+        expect(state.pending!.anchorOffset).toBe(4);
 
         result = processEvent(state, { type: 'insertion', offset: 4, text: 's' }, ctx());
         state = result.newState;
@@ -1435,15 +1435,15 @@ describe('processEvent (state machine)', () => {
         state = result.newState;
         result = processEvent(state, { type: 'insertion', offset: 7, text: 'w' }, ctx());
         state = result.newState;
-        assert.strictEqual(state.pending!.originalText, 'quick');
-        assert.strictEqual(state.pending!.currentText, 'slow');
+        expect(state.pending!.originalText).toBe('quick');
+        expect(state.pending!.currentText).toBe('slow');
 
         result = processEvent(state, { type: 'flush' }, ctx());
         const cryst = effectsOfType(result.effects, 'crystallize');
-        assert.strictEqual(cryst.length, 1);
-        assert.strictEqual((cryst[0] as any).changeType, 'substitution');
-        assert.strictEqual((cryst[0] as any).originalText, 'quick');
-        assert.strictEqual((cryst[0] as any).currentText, 'slow');
+        expect(cryst).toHaveLength(1);
+        expect((cryst[0] as any).changeType).toBe('substitution');
+        expect((cryst[0] as any).originalText).toBe('quick');
+        expect((cryst[0] as any).currentText).toBe('slow');
       });
 
       it('type-then-backspace-all produces self-cancellation', () => {
@@ -1462,7 +1462,7 @@ describe('processEvent (state machine)', () => {
         result = processEvent(state, { type: 'deletion', offset: 0, deletedText: 'a' }, ctx());
         state = result.newState;
 
-        assert.strictEqual(state.pending, null);
+        expect(state.pending).toBeNull();
       });
 
       it('forward delete coalesces', () => {
@@ -1471,14 +1471,14 @@ describe('processEvent (state machine)', () => {
         state = result.newState;
         result = processEvent(state, { type: 'deletion', offset: 5, deletedText: 'b' }, ctx());
         state = result.newState;
-        assert.strictEqual(state.pending!.originalText, 'ab');
-        assert.strictEqual(state.pending!.anchorOffset, 5);
+        expect(state.pending!.originalText).toBe('ab');
+        expect(state.pending!.anchorOffset).toBe(5);
 
         result = processEvent(state, { type: 'flush' }, ctx());
         const cryst = effectsOfType(result.effects, 'crystallize');
-        assert.strictEqual(cryst.length, 1);
-        assert.strictEqual((cryst[0] as any).changeType, 'deletion');
-        assert.strictEqual((cryst[0] as any).originalText, 'ab');
+        expect(cryst).toHaveLength(1);
+        expect((cryst[0] as any).changeType).toBe('deletion');
+        expect((cryst[0] as any).originalText).toBe('ab');
       });
     });
 
@@ -1498,9 +1498,9 @@ describe('processEvent (state machine)', () => {
           { now: 7001 },
         );
         // Should flush old buffer (crystallize) and start new one
-        assert.ok(effects.some(e => e.type === 'crystallize'));
-        assert.ok(newState.pending !== null);
-        assert.strictEqual(newState.pending!.currentText, 'x');
+        expect(effects.some(e => e.type === 'crystallize')).toBeTruthy();
+        expect(newState.pending !== null).toBeTruthy();
+        expect(newState.pending!.currentText).toBe('x');
       });
 
       it('extends when time gap is within pauseThresholdMs', () => {
@@ -1515,8 +1515,8 @@ describe('processEvent (state machine)', () => {
           { type: 'insertion', offset: 2, text: 'c' },
           { now: 4000 },
         );
-        assert.ok(!effects.some(e => e.type === 'crystallize'));
-        assert.strictEqual(newState.pending!.currentText, 'abc');
+        expect(effects.some(e => e.type === 'crystallize')).toBeFalsy();
+        expect(newState.pending!.currentText).toBe('abc');
       });
 
       it('skips timestamp check when pauseThresholdMs is 0', () => {
@@ -1531,7 +1531,7 @@ describe('processEvent (state machine)', () => {
           { type: 'insertion', offset: 2, text: 'c' },
           { now: 999999 },
         );
-        assert.strictEqual(newState.pending!.currentText, 'abc');
+        expect(newState.pending!.currentText).toBe('abc');
       });
     });
   });

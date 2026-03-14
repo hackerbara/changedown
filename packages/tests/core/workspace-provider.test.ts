@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { Workspace, ChangeType, ChangeStatus } from '@changetracks/core/internals';
 
 describe('Workspace provider dispatch', () => {
@@ -14,8 +14,8 @@ describe('Workspace provider dispatch', () => {
     it('parses CriticMarkup when no languageId provided', () => {
       const doc = ws.parse('Hello {++world++}!');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
     });
 
     it('acceptChange works without languageId (CriticMarkup path)', () => {
@@ -23,30 +23,30 @@ describe('Workspace provider dispatch', () => {
       const change = doc.getChanges()[0];
       const edits = ws.acceptChange(change);
       // Always returns TextEdit[]
-      assert.ok(Array.isArray(edits));
-      assert.strictEqual(edits.length, 1);
-      assert.strictEqual(edits[0].newText, 'world');
+      expect(Array.isArray(edits)).toBeTruthy();
+      expect(edits).toHaveLength(1);
+      expect(edits[0].newText).toBe('world');
     });
 
     it('rejectChange works without languageId (CriticMarkup path)', () => {
       const doc = ws.parse('Hello {--world--}!');
       const change = doc.getChanges()[0];
       const edits = ws.rejectChange(change);
-      assert.ok(Array.isArray(edits));
-      assert.strictEqual(edits.length, 1);
-      assert.strictEqual(edits[0].newText, 'world');
+      expect(Array.isArray(edits)).toBeTruthy();
+      expect(edits).toHaveLength(1);
+      expect(edits[0].newText).toBe('world');
     });
 
     it('acceptAll works without languageId', () => {
       const doc = ws.parse('{++one++} {++two++}');
       const edits = ws.acceptAll(doc);
-      assert.strictEqual(edits.length, 2);
+      expect(edits).toHaveLength(2);
     });
 
     it('rejectAll works without languageId', () => {
       const doc = ws.parse('{++one++} {++two++}');
       const edits = ws.rejectAll(doc);
-      assert.strictEqual(edits.length, 2);
+      expect(edits).toHaveLength(2);
     });
   });
 
@@ -56,16 +56,16 @@ describe('Workspace provider dispatch', () => {
     it('parses CriticMarkup for markdown languageId', () => {
       const doc = ws.parse('Hello {++world++}!', 'markdown');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
     });
 
     it('uses CriticMarkup even if markdown text contains "ChangeTracks" string', () => {
       const text = 'Hello {++world++}!\n\n-- ChangeTracks --\nSome text';
       const doc = ws.parse(text, 'markdown');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
     });
   });
 
@@ -84,9 +84,9 @@ describe('Workspace provider dispatch', () => {
     it('parses sidecar annotations for python languageId when sidecar block present', () => {
       const doc = ws.parse(pythonSidecar, 'python');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
-      assert.strictEqual(changes[0].id, 'ct-1');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
+      expect(changes[0].id).toBe('ct-1');
     });
 
     it('parses sidecar annotations for typescript languageId when sidecar block present', () => {
@@ -100,8 +100,8 @@ describe('Workspace provider dispatch', () => {
       ].join('\n');
       const doc = ws.parse(tsSidecar, 'typescript');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
     });
 
     it('acceptChange returns TextEdit[] for sidecar changes', () => {
@@ -111,8 +111,8 @@ describe('Workspace provider dispatch', () => {
         pythonSidecar,
         'python'
       );
-      assert.ok(Array.isArray(result));
-      assert.ok((result as any[]).length > 0);
+      expect(Array.isArray(result)).toBeTruthy();
+      expect((result as any[]).length > 0).toBeTruthy();
     });
 
     it('rejectChange returns TextEdit[] for sidecar changes', () => {
@@ -122,20 +122,20 @@ describe('Workspace provider dispatch', () => {
         pythonSidecar,
         'python'
       );
-      assert.ok(Array.isArray(result));
-      assert.ok((result as any[]).length > 0);
+      expect(Array.isArray(result)).toBeTruthy();
+      expect((result as any[]).length > 0).toBeTruthy();
     });
 
     it('acceptAll dispatches to sidecar for code files with sidecar block', () => {
       const doc = ws.parse(pythonSidecar, 'python');
       const edits = ws.acceptAll(doc, pythonSidecar, 'python');
-      assert.ok(edits.length > 0);
+      expect(edits.length > 0).toBeTruthy();
     });
 
     it('rejectAll dispatches to sidecar for code files with sidecar block', () => {
       const doc = ws.parse(pythonSidecar, 'python');
       const edits = ws.rejectAll(doc, pythonSidecar, 'python');
-      assert.ok(edits.length > 0);
+      expect(edits.length > 0).toBeTruthy();
     });
   });
 
@@ -146,16 +146,16 @@ describe('Workspace provider dispatch', () => {
       const text = 'x = 1\n{++y = 2++}\n';
       const doc = ws.parse(text, 'python');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
     });
 
     it('falls back to CriticMarkup for unknown language', () => {
       const text = 'Hello {--world--}!';
       const doc = ws.parse(text, 'brainfuck');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Deletion);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Deletion);
     });
   });
 
@@ -171,8 +171,8 @@ describe('Workspace provider dispatch', () => {
       ].join('\n');
       const doc = ws.parse(text, 'python');
       // Sidecar path used: should find ct-1
-      assert.strictEqual(doc.getChanges().length, 1);
-      assert.strictEqual(doc.getChanges()[0].id, 'ct-1');
+      expect(doc.getChanges()).toHaveLength(1);
+      expect(doc.getChanges()[0].id).toBe('ct-1');
     });
 
     it('does not detect sidecar for markdown even with matching text', () => {
@@ -180,15 +180,15 @@ describe('Workspace provider dispatch', () => {
       const text = '# -- ChangeTracks ---\n{++hello++}';
       const doc = ws.parse(text, 'markdown');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
     });
 
     it('does not use sidecar when text lacks sidecar block', () => {
       const text = 'x = 1  # ct-1\ny = 2';
       const doc = ws.parse(text, 'python');
       // Without sidecar block, falls back to CriticMarkup — no CriticMarkup in this text
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
   });
 });

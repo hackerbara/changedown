@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import {
   findUniqueMatch,
   applyProposeChange,
@@ -21,48 +21,36 @@ const TODAY = new Date().toISOString().slice(0, 10);
 describe('findUniqueMatch', () => {
   it('returns exact match with wasNormalized=false', () => {
     const result = findUniqueMatch('Hello world.', 'world');
-    assert.strictEqual(result.index, 6);
-    assert.strictEqual(result.length, 5);
-    assert.strictEqual(result.originalText, 'world');
-    assert.strictEqual(result.wasNormalized, false);
+    expect(result.index).toBe(6);
+    expect(result).toHaveLength(5);
+    expect(result.originalText).toBe('world');
+    expect(result.wasNormalized).toBe(false);
   });
 
   it('throws when target not found (no normalizer)', () => {
-    assert.throws(
-      () => findUniqueMatch('Hello world.', 'xyz'),
-      /not found/i,
-    );
+    expect(() => findUniqueMatch('Hello world.', 'xyz')).toThrow(/not found/i);
   });
 
   it('throws when target is ambiguous (no normalizer)', () => {
-    assert.throws(
-      () => findUniqueMatch('the cat and the dog', 'the'),
-      /multiple|ambiguous/i,
-    );
+    expect(() => findUniqueMatch('the cat and the dog', 'the')).toThrow(/multiple|ambiguous/i);
   });
 
   it('does not match smart quotes against ASCII (no confusables)', () => {
     const text = 'Sublime\u2019s architecture is elegant.';
     // With confusables removed, smart quote U+2019 is distinct from ASCII apostrophe
-    assert.throws(
-      () => findUniqueMatch(text, "Sublime's", defaultNormalizer),
-      /not found/i,
-    );
+    expect(() => findUniqueMatch(text, "Sublime's", defaultNormalizer)).toThrow(/not found/i);
   });
 
   it('finds target with NBSP via normalization', () => {
     const text = 'hello\u00A0world';
     const result = findUniqueMatch(text, 'hello world', defaultNormalizer);
-    assert.strictEqual(result.index, 0);
-    assert.strictEqual(result.length, 11);
-    assert.strictEqual(result.wasNormalized, true);
+    expect(result.index).toBe(0);
+    expect(result).toHaveLength(11);
+    expect(result.wasNormalized).toBe(true);
   });
 
   it('throws with diagnostic message when all levels fail', () => {
-    assert.throws(
-      () => findUniqueMatch('Hello world.', 'completely missing', defaultNormalizer),
-      /not found/i,
-    );
+    expect(() => findUniqueMatch('Hello world.', 'completely missing', defaultNormalizer)).toThrow(/not found/i);
   });
 
   // ─── Error message improvements: haystack preview ─────────────────────────
@@ -71,13 +59,10 @@ describe('findUniqueMatch', () => {
     const haystack = 'The quick brown fox jumps over the lazy dog.';
     try {
       findUniqueMatch(haystack, 'completely missing text', defaultNormalizer);
-      assert.fail('Should have thrown');
+      expect.unreachable('Should have thrown');
     } catch (err: any) {
-      assert.ok(err.message.includes('Searched in'), 'should include Target label');
-      assert.ok(
-        err.message.includes('The quick brown fox'),
-        'should include first chars of haystack',
-      );
+      expect(err.message.includes('Searched in')).toBeTruthy();
+      expect(err.message.includes('The quick brown fox')).toBeTruthy();
     }
   });
 
@@ -85,16 +70,13 @@ describe('findUniqueMatch', () => {
     const haystack = 'A'.repeat(300) + ' end.';
     try {
       findUniqueMatch(haystack, 'not in here', defaultNormalizer);
-      assert.fail('Should have thrown');
+      expect.unreachable('Should have thrown');
     } catch (err: any) {
-      assert.ok(err.message.includes('Searched in'), 'should include Target label');
+      expect(err.message.includes('Searched in')).toBeTruthy();
       // The preview is 200 chars + "..."
-      assert.ok(err.message.includes('...'), 'should truncate with ...');
+      expect(err.message.includes('...')).toBeTruthy();
       // Should NOT include all 300 A's
-      assert.ok(
-        !err.message.includes('A'.repeat(300)),
-        'should not include full 300 chars',
-      );
+      expect(err.message.includes('A'.repeat(300))).toBeFalsy();
     }
   });
 
@@ -102,13 +84,10 @@ describe('findUniqueMatch', () => {
     const haystack = 'line one\nline two\nline three\nline four';
     try {
       findUniqueMatch(haystack, 'not present', defaultNormalizer);
-      assert.fail('Should have thrown');
+      expect.unreachable('Should have thrown');
     } catch (err: any) {
       // Should mention 4 lines
-      assert.ok(
-        err.message.includes('4 lines'),
-        `should include line count, got: ${err.message}`,
-      );
+      expect(err.message.includes('4 lines')).toBeTruthy();
     }
   });
 
@@ -116,10 +95,10 @@ describe('findUniqueMatch', () => {
     const haystack = 'single line content';
     try {
       findUniqueMatch(haystack, 'not present', defaultNormalizer);
-      assert.fail('Should have thrown');
+      expect.unreachable('Should have thrown');
     } catch (err: any) {
-      assert.ok(err.message.includes('1 line,'), 'should use singular form');
-      assert.ok(!err.message.includes('1 lines'), 'should NOT use plural for 1');
+      expect(err.message.includes('1 line,')).toBeTruthy();
+      expect(err.message.includes('1 lines')).toBeFalsy();
     }
   });
 
@@ -128,24 +107,18 @@ describe('findUniqueMatch', () => {
     const haystack = 'Running \u2014 STUB=true';
     try {
       findUniqueMatch(haystack, 'Running - STUB=true', defaultNormalizer);
-      assert.fail('Should have thrown');
+      expect.unreachable('Should have thrown');
     } catch (err: any) {
-      assert.ok(err.message.includes('Unicode mismatch'), 'should be confusable error');
-      assert.ok(err.message.includes('Searched in'), 'confusable error should also include Target preview');
-      assert.ok(
-        err.message.includes('Running'),
-        'confusable error should include haystack content',
-      );
+      expect(err.message.includes('Unicode mismatch')).toBeTruthy();
+      expect(err.message.includes('Searched in')).toBeTruthy();
+      expect(err.message.includes('Running')).toBeTruthy();
     }
   });
 
   it('does not match smart quotes against ASCII even when repeated (no confusables)', () => {
     const text = 'Sublime\u2019s and Sublime\u2019s';
     // With confusables removed, ASCII apostrophe does not bridge to smart quote
-    assert.throws(
-      () => findUniqueMatch(text, "Sublime's", defaultNormalizer),
-      /not found/i,
-    );
+    expect(() => findUniqueMatch(text, "Sublime's", defaultNormalizer)).toThrow(/not found/i);
   });
 
   // Whitespace-collapsed matching (Level 3)
@@ -153,26 +126,23 @@ describe('findUniqueMatch', () => {
     const text = 'ground truth; \nprojections derive current state.';
     const target = 'truth;\nprojections derive current state.';
     const result = findUniqueMatch(text, target, defaultNormalizer);
-    assert.strictEqual(result.index, 7);
-    assert.strictEqual(result.originalText, 'truth; \nprojections derive current state.');
-    assert.strictEqual(result.wasNormalized, true);
+    expect(result.index).toBe(7);
+    expect(result.originalText).toBe('truth; \nprojections derive current state.');
+    expect(result.wasNormalized).toBe(true);
   });
 
   it('matches when LLM collapses multiple spaces to one', () => {
     const text = 'hello    world  here';
     const target = 'hello world here';
     const result = findUniqueMatch(text, target, defaultNormalizer);
-    assert.strictEqual(result.index, 0);
-    assert.strictEqual(result.length, 20);
-    assert.strictEqual(result.wasNormalized, true);
+    expect(result.index).toBe(0);
+    expect(result).toHaveLength(20);
+    expect(result.wasNormalized).toBe(true);
   });
 
   it('throws when whitespace-collapsed match is ambiguous', () => {
     const text = 'hello  world and hello\nworld';
-    assert.throws(
-      () => findUniqueMatch(text, 'hello world', defaultNormalizer),
-      /ambiguous/i,
-    );
+    expect(() => findUniqueMatch(text, 'hello world', defaultNormalizer)).toThrow(/ambiguous/i);
   });
 
   // Ref-transparent matching (Level 1.5)
@@ -180,30 +150,27 @@ describe('findUniqueMatch', () => {
     it('finds clean prose when haystack has inline ref', () => {
       const text = 'The latency is 10-20 milliseconds[^ct-2.1] in practice.';
       const match = findUniqueMatch(text, '10-20 milliseconds in practice', defaultNormalizer);
-      assert.strictEqual(match.index, 15); // start of "10-20"
+      expect(match.index).toBe(15); // start of "10-20"
       // Length spans from "10-20" to "in practice" INCLUDING the ref
-      assert.ok(text.slice(match.index, match.index + match.length).includes('[^ct-2.1]'));
+      expect(text.slice(match.index, match.index + match.length).includes('[^ct-2.1]')).toBeTruthy();
     });
 
     it('finds clean prose when haystack has multiple refs', () => {
       const text = 'value[^ct-4][^ct-2.1] is correct.';
       const match = findUniqueMatch(text, 'value is correct', defaultNormalizer);
-      assert.strictEqual(match.index, 0);
-      assert.ok(text.slice(match.index, match.index + match.length).includes('[^ct-4]'));
+      expect(match.index).toBe(0);
+      expect(text.slice(match.index, match.index + match.length).includes('[^ct-4]')).toBeTruthy();
     });
 
     it('strips refs from needle too (agent copied from view)', () => {
       const text = 'value[^ct-1] is correct.';
       const match = findUniqueMatch(text, 'value[^ct-1] is correct', defaultNormalizer);
-      assert.strictEqual(match.index, 0);
+      expect(match.index).toBe(0);
     });
 
     it('rejects ambiguous match after ref stripping', () => {
       const text = 'value[^ct-1] then value again.';
-      assert.throws(
-        () => findUniqueMatch(text, 'value', defaultNormalizer),
-        /ambiguous|multiple/i,
-      );
+      expect(() => findUniqueMatch(text, 'value', defaultNormalizer)).toThrow(/ambiguous|multiple/i);
     });
   });
 
@@ -214,9 +181,9 @@ describe('findUniqueMatch', () => {
     // Level 1.5 handles [^ct-N] only, not CriticMarkup, so target needs to include markup
     const target = 'The {++quick++} brown';
     const result = findUniqueMatch(text, target);
-    assert.strictEqual(result.wasNormalized, true);
+    expect(result.wasNormalized).toBe(true);
     // Raw text includes the footnote ref
-    assert.ok(result.originalText.includes('[^ct-1]'));
+    expect(result.originalText.includes('[^ct-1]')).toBeTruthy();
   });
 
   // Settled-text matching (Level 5)
@@ -224,15 +191,15 @@ describe('findUniqueMatch', () => {
     const text = 'Hello {++beautiful ++}world.';
     const target = 'Hello beautiful world.';
     const result = findUniqueMatch(text, target, defaultNormalizer);
-    assert.strictEqual(result.wasSettledMatch, true);
-    assert.strictEqual(result.wasNormalized, true);
+    expect(result.wasSettledMatch).toBe(true);
+    expect(result.wasNormalized).toBe(true);
   });
 
   it('matches via settled text when target references substituted content', () => {
     const text = 'Hello {~~old~>new~~} world.';
     const target = 'Hello new world.';
     const result = findUniqueMatch(text, target, defaultNormalizer);
-    assert.strictEqual(result.wasSettledMatch, true);
+    expect(result.wasSettledMatch).toBe(true);
   });
 
   // Diagnostic confusable detection (ADR-061)
@@ -242,14 +209,14 @@ describe('findUniqueMatch', () => {
       const text = 'Running \u2014 STUB=true';
       try {
         findUniqueMatch(text, 'Running - STUB=true', defaultNormalizer);
-        assert.fail('Should have thrown');
+        expect.unreachable('Should have thrown');
       } catch (err: any) {
-        assert.ok(err.message.includes('Unicode mismatch'), 'should mention Unicode mismatch');
-        assert.ok(err.message.includes('EM DASH'), 'should name the file character');
-        assert.ok(err.message.includes('HYPHEN-MINUS'), 'should name the agent character');
-        assert.ok(err.message.includes('U+2014'), 'should include file codepoint');
-        assert.ok(err.message.includes('U+002D'), 'should include agent codepoint');
-        assert.ok(err.message.includes('Running \u2014 STUB=true'), 'should include copy-pasteable file text');
+        expect(err.message.includes('Unicode mismatch')).toBeTruthy();
+        expect(err.message.includes('EM DASH')).toBeTruthy();
+        expect(err.message.includes('HYPHEN-MINUS')).toBeTruthy();
+        expect(err.message.includes('U+2014')).toBeTruthy();
+        expect(err.message.includes('U+002D')).toBeTruthy();
+        expect(err.message.includes('Running \u2014 STUB=true')).toBeTruthy();
       }
     });
 
@@ -257,24 +224,22 @@ describe('findUniqueMatch', () => {
       const text = 'She said \u201Chello\u201D today';
       try {
         findUniqueMatch(text, 'She said "hello" today', defaultNormalizer);
-        assert.fail('Should have thrown');
+        expect.unreachable('Should have thrown');
       } catch (err: any) {
-        assert.ok(err.message.includes('Unicode mismatch'));
-        assert.ok(
-          err.message.includes('LEFT DOUBLE QUOTATION MARK') || err.message.includes('SMART DOUBLE QUOTE'),
-        );
+        expect(err.message.includes('Unicode mismatch')).toBeTruthy();
+        expect(err.message.includes('LEFT DOUBLE QUOTATION MARK') || err.message.includes('SMART DOUBLE QUOTE')).toBeTruthy();
       }
     });
 
     it('returns generic error when no confusable mismatch', () => {
       try {
         findUniqueMatch('Hello world.', 'completely missing', defaultNormalizer);
-        assert.fail('Should have thrown');
+        expect.unreachable('Should have thrown');
       } catch (err: any) {
-        assert.ok(!err.message.includes('Unicode mismatch'), 'should NOT mention Unicode mismatch');
-        assert.ok(err.message.includes('not found'), 'should be generic not-found');
-        assert.ok(err.message.includes('Searched in (1 lines'), 'should include haystack preview');
-        assert.ok(err.message.includes('Hello world.'), 'should include haystack content');
+        expect(err.message.includes('Unicode mismatch')).toBeFalsy();
+        expect(err.message.includes('not found')).toBeTruthy();
+        expect(err.message.includes('Searched in (1 lines')).toBeTruthy();
+        expect(err.message.includes('Hello world.')).toBeTruthy();
       }
     });
 
@@ -282,10 +247,10 @@ describe('findUniqueMatch', () => {
       const text = '2020\u20132025 report';
       try {
         findUniqueMatch(text, '2020-2025 report', defaultNormalizer);
-        assert.fail('Should have thrown');
+        expect.unreachable('Should have thrown');
       } catch (err: any) {
-        assert.ok(err.message.includes('Unicode mismatch'));
-        assert.ok(err.message.includes('EN DASH'));
+        expect(err.message.includes('Unicode mismatch')).toBeTruthy();
+        expect(err.message.includes('EN DASH')).toBeTruthy();
       }
     });
 
@@ -293,10 +258,10 @@ describe('findUniqueMatch', () => {
       const text = 'it\u2019s working';
       try {
         findUniqueMatch(text, "it's working", defaultNormalizer);
-        assert.fail('Should have thrown');
+        expect.unreachable('Should have thrown');
       } catch (err: any) {
-        assert.ok(err.message.includes('Unicode mismatch'));
-        assert.ok(err.message.includes('RIGHT SINGLE QUOTATION MARK'));
+        expect(err.message.includes('Unicode mismatch')).toBeTruthy();
+        expect(err.message.includes('RIGHT SINGLE QUOTATION MARK')).toBeTruthy();
       }
     });
   });
@@ -314,11 +279,11 @@ describe('applyProposeChange', () => {
         changeId: 'ct-1',
         author: 'ai:claude-opus-4.6',
       });
-      assert.strictEqual(result.changeType, 'sub');
-      assert.ok(result.modifiedText.includes('{~~quick brown~>slow red~~}[^ct-1]'));
-      assert.ok(result.modifiedText.includes(
+      expect(result.changeType).toBe('sub');
+      expect(result.modifiedText.includes('{~~quick brown~>slow red~~}[^ct-1]')).toBeTruthy();
+      expect(result.modifiedText.includes(
         `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`
-      ));
+      )).toBeTruthy();
     });
   });
 
@@ -331,11 +296,11 @@ describe('applyProposeChange', () => {
         changeId: 'ct-2',
         author: 'ai:claude-opus-4.6',
       });
-      assert.strictEqual(result.changeType, 'del');
-      assert.ok(result.modifiedText.includes('{-- brown--}[^ct-2]'));
-      assert.ok(result.modifiedText.includes(
+      expect(result.changeType).toBe('del');
+      expect(result.modifiedText.includes('{-- brown--}[^ct-2]')).toBeTruthy();
+      expect(result.modifiedText.includes(
         `[^ct-2]: @ai:claude-opus-4.6 | ${TODAY} | del | proposed`
-      ));
+      )).toBeTruthy();
     });
   });
 
@@ -349,11 +314,11 @@ describe('applyProposeChange', () => {
         author: 'ai:claude-opus-4.6',
         insertAfter: 'quick',
       });
-      assert.strictEqual(result.changeType, 'ins');
-      assert.ok(result.modifiedText.includes('quick{++ brown++}[^ct-3]'));
-      assert.ok(result.modifiedText.includes(
+      expect(result.changeType).toBe('ins');
+      expect(result.modifiedText.includes('quick{++ brown++}[^ct-3]')).toBeTruthy();
+      expect(result.modifiedText.includes(
         `[^ct-3]: @ai:claude-opus-4.6 | ${TODAY} | ins | proposed`
-      ));
+      )).toBeTruthy();
     });
   });
 
@@ -367,78 +332,64 @@ describe('applyProposeChange', () => {
         author: 'ai:claude-opus-4.6',
         reasoning: 'More specific term',
       });
-      assert.ok(result.modifiedText.includes(
+      expect(result.modifiedText.includes(
         `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed\n    @ai:claude-opus-4.6 ${TODAY}: More specific term`
-      ));
+      )).toBeTruthy();
     });
   });
 
   describe('overlap guard', () => {
     it('throws when oldText targets inside existing CriticMarkup', () => {
       const text = 'Before {++inserted text++} after.';
-      assert.throws(
-        () => applyProposeChange({
+      expect(() => applyProposeChange({
           text,
           oldText: 'inserted text',
           newText: 'replacement',
           changeId: 'ct-2',
           author: 'ai:test',
-        }),
-        /overlaps with proposed change/,
-      );
+        })).toThrow(/overlaps with proposed change/);
     });
   });
 
   describe('error cases', () => {
     it('throws when oldText is not found in text', () => {
-      assert.throws(
-        () => applyProposeChange({
+      expect(() => applyProposeChange({
           text: 'Hello world.',
           oldText: 'xyz not here',
           newText: 'replacement',
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
-        }),
-        /xyz not here/,
-      );
+        })).toThrow(/xyz not here/);
     });
 
     it('throws when oldText is found multiple times', () => {
-      assert.throws(
-        () => applyProposeChange({
+      expect(() => applyProposeChange({
           text: 'the cat and the dog',
           oldText: 'the',
           newText: 'a',
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
-        }),
-        /ambiguous|multiple|context/i,
-      );
+        })).toThrow(/ambiguous|multiple|context/i);
     });
 
     it('throws when both oldText and newText are empty', () => {
-      assert.throws(
-        () => applyProposeChange({
+      expect(() => applyProposeChange({
           text: 'Hello world.',
           oldText: '',
           newText: '',
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
-        }),
-      );
+        })).toThrow();
     });
 
     it('throws when insertion has no insertAfter anchor', () => {
-      assert.throws(
-        () => applyProposeChange({
+      expect(() => applyProposeChange({
           text: 'Hello world.',
           oldText: '',
           newText: 'inserted text',
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
-        }),
-        /insertAfter/i,
-      );
+        })).toThrow(/insertAfter/i);
     });
   });
 });
@@ -448,7 +399,7 @@ describe('applyProposeChange', () => {
 describe('appendFootnote', () => {
   it('appends to text without existing footnotes', () => {
     const result = appendFootnote('Some text.', '\n\n[^ct-1]: @alice | 2026-02-10 | sub | proposed');
-    assert.strictEqual(result, 'Some text.\n\n[^ct-1]: @alice | 2026-02-10 | sub | proposed');
+    expect(result).toBe('Some text.\n\n[^ct-1]: @alice | 2026-02-10 | sub | proposed');
   });
 
   it('appends after existing footnotes', () => {
@@ -458,8 +409,8 @@ describe('appendFootnote', () => {
     @alice 2026-02-10: reason`;
 
     const result = appendFootnote(text, '\n\n[^ct-2]: @bob | 2026-02-10 | ins | proposed');
-    assert.ok(result.includes('reason\n\n[^ct-2]:'));
-    assert.ok(result.includes('[^ct-1]:'));
+    expect(result.includes('reason\n\n[^ct-2]:')).toBeTruthy();
+    expect(result.includes('[^ct-1]:')).toBeTruthy();
   });
 
   it('ignores footnote definitions inside fenced code blocks', () => {
@@ -473,7 +424,7 @@ describe('appendFootnote', () => {
 
     const result = appendFootnote(text, '\n\n[^ct-1]: @bob | 2026-02-10 | ins | proposed');
     // The new footnote should appear at the end, not after the fenced code block footnote
-    assert.ok(result.endsWith('[^ct-1]: @bob | 2026-02-10 | ins | proposed'));
+    expect(result.endsWith('[^ct-1]: @bob | 2026-02-10 | ins | proposed')).toBeTruthy();
   });
 
   it('places footnote after last footnote block when document contains tables', () => {
@@ -498,10 +449,10 @@ describe('appendFootnote', () => {
     const lines = result.split('\n');
     const ct1Line = lines.findIndex(l => l.startsWith('[^ct-1]:'));
     const ct2Line = lines.findIndex(l => l.startsWith('[^ct-2]:'));
-    assert.ok(ct2Line > ct1Line, `ct-2 line (${ct2Line}) should be after ct-1 line (${ct1Line})`);
+    expect(ct2Line > ct1Line).toBeTruthy();
 
     // Table should be intact
-    assert.ok(result.includes('| Col A | Col B |'));
+    expect(result.includes('| Col A | Col B |')).toBeTruthy();
   });
 });
 
@@ -510,32 +461,32 @@ describe('appendFootnote', () => {
 describe('stripCriticMarkupWithMap', () => {
   it('keeps insertion content', () => {
     const result = stripCriticMarkupWithMap('Hello {++beautiful ++}world.');
-    assert.strictEqual(result.settled, 'Hello beautiful world.');
+    expect(result.settled).toBe('Hello beautiful world.');
   });
 
   it('removes deletion content', () => {
     const result = stripCriticMarkupWithMap('Hello {--ugly --}world.');
-    assert.strictEqual(result.settled, 'Hello world.');
+    expect(result.settled).toBe('Hello world.');
   });
 
   it('keeps substitution new text', () => {
     const result = stripCriticMarkupWithMap('Hello {~~old~>new~~} world.');
-    assert.strictEqual(result.settled, 'Hello new world.');
+    expect(result.settled).toBe('Hello new world.');
   });
 
   it('keeps highlight content', () => {
     const result = stripCriticMarkupWithMap('Hello {==important==} world.');
-    assert.strictEqual(result.settled, 'Hello important world.');
+    expect(result.settled).toBe('Hello important world.');
   });
 
   it('removes comment content', () => {
     const result = stripCriticMarkupWithMap('Hello{>>a note<<} world.');
-    assert.strictEqual(result.settled, 'Hello world.');
+    expect(result.settled).toBe('Hello world.');
   });
 
   it('removes footnote references', () => {
     const result = stripCriticMarkupWithMap('Hello[^ct-1] world[^ct-2.3].');
-    assert.strictEqual(result.settled, 'Hello world.');
+    expect(result.settled).toBe('Hello world.');
   });
 
   it('provides correct position mapping for insertion', () => {
@@ -544,22 +495,19 @@ describe('stripCriticMarkupWithMap', () => {
     const result = stripCriticMarkupWithMap('Hello {++beautiful ++}world.');
     // settled: "Hello beautiful world."
     // The 'b' of 'beautiful' is at settled index 6, raw index 9 (after '{++')
-    assert.strictEqual(result.toRaw[6], 9);
+    expect(result.toRaw[6]).toBe(9);
   });
 
   it('returns plain text unchanged', () => {
     const result = stripCriticMarkupWithMap('No markup here.');
-    assert.strictEqual(result.settled, 'No markup here.');
-    assert.strictEqual(result.markupRanges.length, 0);
+    expect(result.settled).toBe('No markup here.');
+    expect(result.markupRanges).toHaveLength(0);
   });
 });
 
 describe('stripCriticMarkup', () => {
   it('returns settled text as a string', () => {
-    assert.strictEqual(
-      stripCriticMarkup('Hello {++beautiful ++}world.'),
-      'Hello beautiful world.',
-    );
+    expect(stripCriticMarkup('Hello {++beautiful ++}world.')).toBe('Hello beautiful world.');
   });
 });
 
@@ -570,29 +518,29 @@ describe('checkCriticMarkupOverlap', () => {
     const text = 'Before {++inserted++} after.';
     // "Before " is at index 0-6, overlapping with nothing
     const result = checkCriticMarkupOverlap(text, 0, 6);
-    assert.strictEqual(result, null);
+    expect(result).toBeNull();
   });
 
   it('detects overlap with insertion', () => {
     const text = 'Before {++inserted++} after.';
     // The insertion spans index 7-21. Target index 10 is inside it.
     const result = checkCriticMarkupOverlap(text, 10, 4);
-    assert.notStrictEqual(result, null);
-    assert.strictEqual(result!.changeType, 'ins');
+    expect(result).not.toBe(null);
+    expect(result!.changeType).toBe('ins');
   });
 
   it('detects overlap with substitution', () => {
     const text = 'Before {~~old~>new~~} after.';
     const result = checkCriticMarkupOverlap(text, 10, 3);
-    assert.notStrictEqual(result, null);
-    assert.strictEqual(result!.changeType, 'sub');
+    expect(result).not.toBe(null);
+    expect(result!.changeType).toBe('sub');
   });
 
   it('detects overlap with deletion', () => {
     const text = 'Before {--deleted--} after.';
     const result = checkCriticMarkupOverlap(text, 10, 3);
-    assert.notStrictEqual(result, null);
-    assert.strictEqual(result!.changeType, 'del');
+    expect(result).not.toBe(null);
+    expect(result!.changeType).toBe('del');
   });
 });
 
@@ -602,14 +550,14 @@ describe('checkCriticMarkupOverlap — semantic filtering', () => {
     const text = 'The quick brown fox[^ct-1] jumps over.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | accepted';
     const idx = text.indexOf('quick brown fox');
     const result = checkCriticMarkupOverlap(text, idx, 'quick brown fox'.length);
-    assert.strictEqual(result, null, 'accepted settled ref should not block');
+    expect(result).toBeNull();
   });
 
   it('skips settled footnote refs (rejected status)', () => {
     const text = 'The quick brown fox[^ct-1] jumps over.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | rejected';
     const idx = text.indexOf('quick brown fox');
     const result = checkCriticMarkupOverlap(text, idx, 'quick brown fox'.length);
-    assert.strictEqual(result, null, 'rejected settled ref should not block');
+    expect(result).toBeNull();
   });
 
   it('skips standalone settled refs even with proposed status in footnote', () => {
@@ -618,58 +566,55 @@ describe('checkCriticMarkupOverlap — semantic filtering', () => {
     const text = 'Result: done[^ct-1] next step.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | proposed';
     const idx = text.indexOf('Result: done');
     const result = checkCriticMarkupOverlap(text, idx, 'Result: done'.length);
-    assert.strictEqual(result, null, 'standalone settled ref should not block regardless of footnote status');
+    expect(result).toBeNull();
   });
 
   it('still blocks overlap with proposed inline CriticMarkup', () => {
     const text = 'Before {++inserted text++}[^ct-1] after.\n\n[^ct-1]: @ai:test | 2026-02-20 | ins | proposed';
     const idx = text.indexOf('inserted text');
     const result = checkCriticMarkupOverlap(text, idx, 'inserted text'.length);
-    assert.notStrictEqual(result, null, 'proposed inline markup must still block');
-    assert.strictEqual(result!.changeType, 'ins');
+    expect(result).not.toBeNull();
+    expect(result!.changeType).toBe('ins');
   });
 
   it('still blocks overlap with proposed substitution', () => {
     const text = 'Before {~~old~>new~~}[^ct-1] after.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | proposed';
     const idx = text.indexOf('old');
     const result = checkCriticMarkupOverlap(text, idx, 'old'.length);
-    assert.notStrictEqual(result, null, 'proposed inline sub must still block');
+    expect(result).not.toBeNull();
   });
 
   it('allows overlap with accepted inline CriticMarkup (pre-compaction)', () => {
     const text = 'Before {++added++}[^ct-1] after.\n\n[^ct-1]: @ai:test | 2026-02-20 | ins | accepted';
     const idx = text.indexOf('added');
     const result = checkCriticMarkupOverlap(text, idx, 'added'.length);
-    assert.strictEqual(result, null, 'accepted inline markup should not block');
+    expect(result).toBeNull();
   });
 
   it('allows overlap with rejected inline CriticMarkup (pre-compaction)', () => {
     const text = 'Before {--removed--}[^ct-1] after.\n\n[^ct-1]: @ai:test | 2026-02-20 | del | rejected';
     const idx = text.indexOf('removed');
     const result = checkCriticMarkupOverlap(text, idx, 'removed'.length);
-    assert.strictEqual(result, null, 'rejected inline markup should not block');
+    expect(result).toBeNull();
   });
 
   it('blocks Level 0 markup (no footnote, status defaults to Proposed)', () => {
     const text = 'Before {++inserted text++} after.';
     const idx = text.indexOf('inserted text');
     const result = checkCriticMarkupOverlap(text, idx, 'inserted text'.length);
-    assert.notStrictEqual(result, null, 'Level 0 markup with no status should block');
+    expect(result).not.toBeNull();
   });
 });
 
 describe('guardOverlap', () => {
   it('does not throw for safe range', () => {
     const text = 'Before {++inserted++} after.';
-    assert.doesNotThrow(() => guardOverlap(text, 0, 6));
+    expect(() => guardOverlap(text, 0, 6)).not.toThrow();
   });
 
   it('throws for overlapping range', () => {
     const text = 'Before {++inserted++} after.';
-    assert.throws(
-      () => guardOverlap(text, 10, 4),
-      /overlaps with proposed change/,
-    );
+    expect(() => guardOverlap(text, 10, 4)).toThrow(/overlaps with proposed change/);
   });
 });
 
@@ -680,45 +625,36 @@ describe('extractLineRange', () => {
 
   it('extracts a single line', () => {
     const result = extractLineRange(lines, 1, 1);
-    assert.strictEqual(result.content, 'line one');
-    assert.strictEqual(result.startOffset, 0);
-    assert.strictEqual(result.endOffset, 8);
+    expect(result.content).toBe('line one');
+    expect(result.startOffset).toBe(0);
+    expect(result.endOffset).toBe(8);
   });
 
   it('extracts a multi-line range', () => {
     const result = extractLineRange(lines, 1, 2);
-    assert.strictEqual(result.content, 'line one\nline two');
-    assert.strictEqual(result.startOffset, 0);
-    assert.strictEqual(result.endOffset, 17);
+    expect(result.content).toBe('line one\nline two');
+    expect(result.startOffset).toBe(0);
+    expect(result.endOffset).toBe(17);
   });
 
   it('extracts the last line', () => {
     const result = extractLineRange(lines, 3, 3);
-    assert.strictEqual(result.content, 'line three');
+    expect(result.content).toBe('line three');
     // 'line one\n' = 9, 'line two\n' = 9 => start at 18
-    assert.strictEqual(result.startOffset, 18);
-    assert.strictEqual(result.endOffset, 28);
+    expect(result.startOffset).toBe(18);
+    expect(result.endOffset).toBe(28);
   });
 
   it('throws for out-of-range start line', () => {
-    assert.throws(
-      () => extractLineRange(lines, 0, 1),
-      /out of range/,
-    );
+    expect(() => extractLineRange(lines, 0, 1)).toThrow(/out of range/);
   });
 
   it('throws for out-of-range end line', () => {
-    assert.throws(
-      () => extractLineRange(lines, 1, 4),
-      /out of range/,
-    );
+    expect(() => extractLineRange(lines, 1, 4)).toThrow(/out of range/);
   });
 
   it('throws when endLine < startLine', () => {
-    assert.throws(
-      () => extractLineRange(lines, 2, 1),
-      /out of range/,
-    );
+    expect(() => extractLineRange(lines, 2, 1)).toThrow(/out of range/);
   });
 });
 
@@ -726,38 +662,26 @@ describe('extractLineRange', () => {
 
 describe('replaceUnique', () => {
   it('replaces exact unique match', () => {
-    assert.strictEqual(
-      replaceUnique('Hello world.', 'world', 'earth'),
-      'Hello earth.',
-    );
+    expect(replaceUnique('Hello world.', 'world', 'earth')).toBe('Hello earth.');
   });
 
   it('throws when target not found', () => {
-    assert.throws(
-      () => replaceUnique('Hello world.', 'xyz', 'replacement'),
-      /not found/i,
-    );
+    expect(() => replaceUnique('Hello world.', 'xyz', 'replacement')).toThrow(/not found/i);
   });
 
   it('throws when target is ambiguous', () => {
-    assert.throws(
-      () => replaceUnique('the cat and the dog', 'the', 'a'),
-      /multiple|ambiguous/i,
-    );
+    expect(() => replaceUnique('the cat and the dog', 'the', 'a')).toThrow(/multiple|ambiguous/i);
   });
 
   it('does not match smart quotes against ASCII (no confusables)', () => {
     const text = 'Sublime\u2019s architecture is elegant.';
     // Without confusables, smart quote vs ASCII apostrophe is a mismatch.
-    assert.throws(
-      () => replaceUnique(text, "Sublime's", 'REPLACED', defaultNormalizer),
-      /not found/i,
-    );
+    expect(() => replaceUnique(text, "Sublime's", 'REPLACED', defaultNormalizer)).toThrow(/not found/i);
   });
 
   it('without normalizer throws on Unicode mismatch', () => {
     const text = 'Sublime\u2019s architecture';
-    assert.throws(() => replaceUnique(text, "Sublime's", 'REPLACED'));
+    expect(() => replaceUnique(text, "Sublime's", 'REPLACED')).toThrow();
   });
 });
 
@@ -772,8 +696,8 @@ describe('applySingleOperation', () => {
       changeId: 'ct-1',
       author: 'ai:test',
     });
-    assert.strictEqual(result.changeType, 'sub');
-    assert.ok(result.modifiedText.includes('{~~world~>earth~~}[^ct-1]'));
+    expect(result.changeType).toBe('sub');
+    expect(result.modifiedText.includes('{~~world~>earth~~}[^ct-1]')).toBeTruthy();
   });
 
   it('handles afterLine insertion', () => {
@@ -785,8 +709,8 @@ describe('applySingleOperation', () => {
       author: 'ai:test',
       afterLine: 1,
     });
-    assert.strictEqual(result.changeType, 'ins');
-    assert.ok(result.modifiedText.includes('{++inserted text++}'));
+    expect(result.changeType).toBe('ins');
+    expect(result.modifiedText.includes('{++inserted text++}')).toBeTruthy();
   });
 
   it('handles startLine/endLine range substitution', () => {
@@ -799,20 +723,18 @@ describe('applySingleOperation', () => {
       startLine: 2,
       endLine: 2,
     });
-    assert.strictEqual(result.changeType, 'sub');
-    assert.ok(result.modifiedText.includes('{~~line two~>replaced content~~}'));
+    expect(result.changeType).toBe('sub');
+    expect(result.modifiedText.includes('{~~line two~>replaced content~~}')).toBeTruthy();
   });
 
   it('throws when both oldText and newText are empty', () => {
-    assert.throws(
-      () => applySingleOperation({
+    expect(() => applySingleOperation({
         fileContent: 'Hello world.',
         oldText: '',
         newText: '',
         changeId: 'ct-1',
         author: 'ai:test',
-      }),
-    );
+      })).toThrow();
   });
 });
 
@@ -821,32 +743,32 @@ describe('applySingleOperation', () => {
 describe('stripRefsFromContent', () => {
   it('strips single ref and returns it', () => {
     const result = stripRefsFromContent('| **RUNNING** | check |[^ct-2.1]');
-    assert.strictEqual(result.cleaned, '| **RUNNING** | check |');
-    assert.deepStrictEqual(result.refs, ['[^ct-2.1]']);
+    expect(result.cleaned).toBe('| **RUNNING** | check |');
+    expect(result.refs).toStrictEqual(['[^ct-2.1]']);
   });
 
   it('strips multiple refs', () => {
     const result = stripRefsFromContent('text[^ct-1][^ct-2] more');
-    assert.strictEqual(result.cleaned, 'text more');
-    assert.deepStrictEqual(result.refs, ['[^ct-1]', '[^ct-2]']);
+    expect(result.cleaned).toBe('text more');
+    expect(result.refs).toStrictEqual(['[^ct-1]', '[^ct-2]']);
   });
 
   it('handles dotted refs (ct-N.M)', () => {
     const result = stripRefsFromContent('data[^ct-3.1] here[^ct-3.2]');
-    assert.strictEqual(result.cleaned, 'data here');
-    assert.deepStrictEqual(result.refs, ['[^ct-3.1]', '[^ct-3.2]']);
+    expect(result.cleaned).toBe('data here');
+    expect(result.refs).toStrictEqual(['[^ct-3.1]', '[^ct-3.2]']);
   });
 
   it('returns text unchanged when no refs', () => {
     const result = stripRefsFromContent('just plain text');
-    assert.strictEqual(result.cleaned, 'just plain text');
-    assert.deepStrictEqual(result.refs, []);
+    expect(result.cleaned).toBe('just plain text');
+    expect(result.refs).toStrictEqual([]);
   });
 
   it('handles multi-line text, returning all refs', () => {
     const result = stripRefsFromContent('line1[^ct-1]\nline2[^ct-2]');
-    assert.strictEqual(result.cleaned, 'line1\nline2');
-    assert.deepStrictEqual(result.refs, ['[^ct-1]', '[^ct-2]']);
+    expect(result.cleaned).toBe('line1\nline2');
+    expect(result.refs).toStrictEqual(['[^ct-1]', '[^ct-2]']);
   });
 });
 
@@ -862,11 +784,11 @@ describe('applyProposeChange — ref preservation', () => {
       changeId: 'ct-2',
       author: 'ai:test',
     });
-    assert.ok(result.modifiedText.includes('[^ct-1]'), 'settled ref must be preserved');
-    assert.ok(result.modifiedText.includes('{~~'), 'should contain substitution markup');
+    expect(result.modifiedText.includes('[^ct-1]')).toBeTruthy();
+    expect(result.modifiedText.includes('{~~')).toBeTruthy();
     const subMatch = result.modifiedText.match(/\{~~[^~]*~>[^~]*~~\}/);
-    assert.ok(subMatch, 'should have substitution');
-    assert.ok(!subMatch![0].includes('[^ct-1]'), 'ref should not be inside delimiters');
+    expect(subMatch, 'should have substitution').toBeTruthy();
+    expect(subMatch![0].includes('[^ct-1]')).toBeFalsy();
   });
 
   it('preserves settled ref during deletion', () => {
@@ -878,7 +800,7 @@ describe('applyProposeChange — ref preservation', () => {
       changeId: 'ct-2',
       author: 'ai:test',
     });
-    assert.ok(result.modifiedText.includes('[^ct-1]'), 'settled ref must be preserved');
+    expect(result.modifiedText.includes('[^ct-1]')).toBeTruthy();
   });
 
   it('preserves ref in applySingleOperation line-range path', () => {
@@ -892,6 +814,6 @@ describe('applyProposeChange — ref preservation', () => {
       startLine: 2,
       endLine: 2,
     });
-    assert.ok(result.modifiedText.includes('[^ct-1]'), 'settled ref must be preserved');
+    expect(result.modifiedText.includes('[^ct-1]')).toBeTruthy();
   });
 });

@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import { createCodeActions, CodeActionKind, DiagnosticSeverity } from '@changetracks/lsp-server/internals';
 import type { Diagnostic } from '@changetracks/lsp-server/internals';
 import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
@@ -30,39 +30,39 @@ describe('Code Actions', () => {
       const actions = createCodeActions(diagnostic, changes, text, 'file:///test.md');
 
       // Should have 2 per-change actions + 2 bulk actions
-      assert.ok(actions.length >= 2);
+      expect(actions.length >= 2).toBeTruthy();
 
       // Filter for per-change actions (QuickFix kind)
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      assert.strictEqual(perChangeActions.length, 2);
+      expect(perChangeActions).toHaveLength(2);
 
       // Accept action
       const acceptAction = perChangeActions[0];
-      assert.strictEqual(acceptAction.title, 'Accept insertion');
-      assert.strictEqual(acceptAction.kind, CodeActionKind.QuickFix);
-      assert.ok(acceptAction.edit);
-      assert.ok(acceptAction.edit.changes);
+      expect(acceptAction.title).toBe('Accept insertion');
+      expect(acceptAction.kind).toBe(CodeActionKind.QuickFix);
+      expect(acceptAction.edit).toBeTruthy();
+      expect(acceptAction.edit.changes).toBeTruthy();
 
       // Should remove delimiters, keep content
       const acceptEdits = acceptAction.edit.changes!['file:///test.md'];
-      assert.strictEqual(acceptEdits.length, 1);
-      assert.strictEqual(acceptEdits[0].newText, 'world');
-      assert.deepStrictEqual(acceptEdits[0].range, {
+      expect(acceptEdits).toHaveLength(1);
+      expect(acceptEdits[0].newText).toBe('world');
+      expect(acceptEdits[0].range).toStrictEqual({
         start: { line: 0, character: 6 },
         end: { line: 0, character: 17 }
       });
 
       // Reject action
       const rejectAction = perChangeActions[1];
-      assert.strictEqual(rejectAction.title, 'Reject insertion');
-      assert.strictEqual(rejectAction.kind, CodeActionKind.QuickFix);
-      assert.ok(rejectAction.edit);
+      expect(rejectAction.title).toBe('Reject insertion');
+      expect(rejectAction.kind).toBe(CodeActionKind.QuickFix);
+      expect(rejectAction.edit).toBeTruthy();
 
       // Should remove entire markup
       const rejectEdits = rejectAction.edit.changes!['file:///test.md'];
-      assert.strictEqual(rejectEdits.length, 1);
-      assert.strictEqual(rejectEdits[0].newText, '');
-      assert.deepStrictEqual(rejectEdits[0].range, {
+      expect(rejectEdits).toHaveLength(1);
+      expect(rejectEdits[0].newText).toBe('');
+      expect(rejectEdits[0].range).toStrictEqual({
         start: { line: 0, character: 6 },
         end: { line: 0, character: 17 }
       });
@@ -96,19 +96,19 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      assert.strictEqual(perChangeActions.length, 2);
+      expect(perChangeActions).toHaveLength(2);
 
       // Accept action - should remove entire markup including content
       const acceptAction = perChangeActions[0];
-      assert.strictEqual(acceptAction.title, 'Accept deletion');
+      expect(acceptAction.title).toBe('Accept deletion');
       const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      assert.strictEqual(acceptEdits[0].newText, '');
+      expect(acceptEdits[0].newText).toBe('');
 
       // Reject action - should remove delimiters, keep content
       const rejectAction = perChangeActions[1];
-      assert.strictEqual(rejectAction.title, 'Reject deletion');
+      expect(rejectAction.title).toBe('Reject deletion');
       const rejectEdits = rejectAction.edit!.changes!['file:///test.md'];
-      assert.strictEqual(rejectEdits[0].newText, 'world');
+      expect(rejectEdits[0].newText).toBe('world');
     });
   });
 
@@ -142,19 +142,19 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      assert.strictEqual(perChangeActions.length, 2);
+      expect(perChangeActions).toHaveLength(2);
 
       // Accept action - should replace with modified text
       const acceptAction = perChangeActions[0];
-      assert.strictEqual(acceptAction.title, 'Accept substitution');
+      expect(acceptAction.title).toBe('Accept substitution');
       const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      assert.strictEqual(acceptEdits[0].newText, 'universe');
+      expect(acceptEdits[0].newText).toBe('universe');
 
       // Reject action - should replace with original text
       const rejectAction = perChangeActions[1];
-      assert.strictEqual(rejectAction.title, 'Reject substitution');
+      expect(rejectAction.title).toBe('Reject substitution');
       const rejectEdits = rejectAction.edit!.changes!['file:///test.md'];
-      assert.strictEqual(rejectEdits[0].newText, 'world');
+      expect(rejectEdits[0].newText).toBe('world');
     });
 
     it('should handle substitution with short text', () => {
@@ -186,14 +186,14 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      assert.strictEqual(perChangeActions.length, 2);
+      expect(perChangeActions).toHaveLength(2);
 
       // Should use originalText/modifiedText from the change node
       const acceptEdits = perChangeActions[0].edit!.changes!['file:///test.md'];
-      assert.strictEqual(acceptEdits[0].newText, 'new');
+      expect(acceptEdits[0].newText).toBe('new');
 
       const rejectEdits = perChangeActions[1].edit!.changes!['file:///test.md'];
-      assert.strictEqual(rejectEdits[0].newText, 'old');
+      expect(rejectEdits[0].newText).toBe('old');
     });
   });
 
@@ -224,13 +224,13 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions (highlights only have 1 action)
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      assert.strictEqual(perChangeActions.length, 1);
+      expect(perChangeActions).toHaveLength(1);
 
       // Accept action - remove markup, keep content
       const acceptAction = perChangeActions[0];
-      assert.strictEqual(acceptAction.title, 'Remove highlight');
+      expect(acceptAction.title).toBe('Remove highlight');
       const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      assert.strictEqual(acceptEdits[0].newText, 'world');
+      expect(acceptEdits[0].newText).toBe('world');
     });
 
     it('should create accept action for comment', () => {
@@ -258,13 +258,13 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions (comments only have 1 action)
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      assert.strictEqual(perChangeActions.length, 1);
+      expect(perChangeActions).toHaveLength(1);
 
       // Accept action - remove entire comment
       const acceptAction = perChangeActions[0];
-      assert.strictEqual(acceptAction.title, 'Remove comment');
+      expect(acceptAction.title).toBe('Remove comment');
       const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      assert.strictEqual(acceptEdits[0].newText, '');
+      expect(acceptEdits[0].newText).toBe('');
     });
   });
 
@@ -303,24 +303,24 @@ describe('Code Actions', () => {
       const actions = createCodeActions(diagnostic, changes, text, 'file:///test.md');
 
       // Should have per-change actions + bulk actions
-      assert.ok(actions.length >= 4); // 2 per-change + 2 bulk
+      expect(actions.length >= 4).toBeTruthy(); // 2 per-change + 2 bulk
 
       // Find bulk accept action
       const bulkAccept = actions.find(a => a.title === 'Accept all changes');
-      assert.ok(bulkAccept);
-      assert.strictEqual(bulkAccept!.kind, CodeActionKind.Source);
+      expect(bulkAccept).toBeTruthy();
+      expect(bulkAccept!.kind).toBe(CodeActionKind.Source);
 
       // Should process in reverse order to preserve ranges
       const edits = bulkAccept!.edit!.changes!['file:///test.md'];
-      assert.strictEqual(edits.length, 2);
+      expect(edits).toHaveLength(2);
 
       // First edit should be for the deletion (later in document)
-      assert.strictEqual(edits[0].range.start.character, 18);
-      assert.strictEqual(edits[0].newText, '');
+      expect(edits[0].range.start.character).toBe(18);
+      expect(edits[0].newText).toBe('');
 
       // Second edit should be for the insertion
-      assert.strictEqual(edits[1].range.start.character, 0);
-      assert.strictEqual(edits[1].newText, 'insert');
+      expect(edits[1].range.start.character).toBe(0);
+      expect(edits[1].newText).toBe('insert');
     });
 
     it('should create bulk reject all action', () => {
@@ -358,20 +358,20 @@ describe('Code Actions', () => {
 
       // Find bulk reject action
       const bulkReject = actions.find(a => a.title === 'Reject all changes');
-      assert.ok(bulkReject);
-      assert.strictEqual(bulkReject!.kind, CodeActionKind.Source);
+      expect(bulkReject).toBeTruthy();
+      expect(bulkReject!.kind).toBe(CodeActionKind.Source);
 
       // Should process in reverse order
       const edits = bulkReject!.edit!.changes!['file:///test.md'];
-      assert.strictEqual(edits.length, 2);
+      expect(edits).toHaveLength(2);
 
       // First edit should be for the deletion (reject = keep content)
-      assert.strictEqual(edits[0].range.start.character, 18);
-      assert.strictEqual(edits[0].newText, 'delete');
+      expect(edits[0].range.start.character).toBe(18);
+      expect(edits[0].newText).toBe('delete');
 
       // Second edit should be for the insertion (reject = remove all)
-      assert.strictEqual(edits[1].range.start.character, 0);
-      assert.strictEqual(edits[1].newText, '');
+      expect(edits[1].range.start.character).toBe(0);
+      expect(edits[1].newText).toBe('');
     });
 
     it('should handle bulk operations with substitutions', () => {
@@ -402,11 +402,11 @@ describe('Code Actions', () => {
       const actions = createCodeActions(diagnostic, changes, text, 'file:///test.md');
 
       const bulkAccept = actions.find(a => a.title === 'Accept all changes');
-      assert.ok(bulkAccept);
+      expect(bulkAccept).toBeTruthy();
 
       const edits = bulkAccept!.edit!.changes!['file:///test.md'];
-      assert.strictEqual(edits.length, 1);
-      assert.strictEqual(edits[0].newText, 'new');
+      expect(edits).toHaveLength(1);
+      expect(edits[0].newText).toBe('new');
     });
   });
 
@@ -437,11 +437,11 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      assert.ok(perChangeActions.length >= 2);
+      expect(perChangeActions.length >= 2).toBeTruthy();
 
       const acceptAction = perChangeActions[0];
       const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      assert.strictEqual(acceptEdits[0].newText, 'Line 2\nLine 3');
+      expect(acceptEdits[0].newText).toBe('Line 2\nLine 3');
     });
 
     it('should handle CRLF line endings', () => {
@@ -470,11 +470,11 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      assert.ok(perChangeActions.length >= 2);
+      expect(perChangeActions.length >= 2).toBeTruthy();
 
       const acceptAction = perChangeActions[0];
       const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      assert.strictEqual(acceptEdits[0].newText, 'Line 2');
+      expect(acceptEdits[0].newText).toBe('Line 2');
     });
 
     it('should return empty array for unknown change type', () => {
@@ -492,9 +492,9 @@ describe('Code Actions', () => {
       const actions = createCodeActions(diagnostic, changes, text, 'file:///test.md');
 
       // Should still have bulk actions
-      assert.ok(actions.length >= 2);
-      assert.ok(actions.find(a => a.title === 'Accept all changes'));
-      assert.ok(actions.find(a => a.title === 'Reject all changes'));
+      expect(actions.length >= 2).toBeTruthy();
+      expect(actions.find(a => a.title === 'Accept all changes')).toBeTruthy();
+      expect(actions.find(a => a.title === 'Reject all changes')).toBeTruthy();
     });
   });
 });

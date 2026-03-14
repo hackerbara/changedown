@@ -1,7 +1,7 @@
-import * as assert from 'node:assert';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { initHashline, buildChangesDocument } from '@changetracks/core/internals';
 
-before(async () => { await initHashline(); });
+beforeAll(async () => { await initHashline(); });
 
 describe('buildChangesDocument', () => {
   it('produces committed text with no CriticMarkup', () => {
@@ -10,9 +10,9 @@ describe('buildChangesDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.strictEqual(doc.view, 'changes');
-    assert.strictEqual(doc.lines[0].content[0].text, 'Hello .');
-    assert.ok(doc.lines[0].content[0].type === 'plain');
+    expect(doc.view).toBe('changes');
+    expect(doc.lines[0].content[0].text).toBe('Hello .');
+    expect(doc.lines[0].content[0].type === 'plain').toBeTruthy();
   });
 
   it('sets P flag for lines with pending proposals', () => {
@@ -21,7 +21,7 @@ describe('buildChangesDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.deepStrictEqual(doc.lines[0].margin.flags, ['P']);
+    expect(doc.lines[0].margin.flags).toStrictEqual(['P']);
   });
 
   it('sets A flag for lines with accepted changes', () => {
@@ -30,8 +30,8 @@ describe('buildChangesDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.strictEqual(doc.lines[0].content[0].text, 'Hello world.');
-    assert.deepStrictEqual(doc.lines[0].margin.flags, ['A']);
+    expect(doc.lines[0].content[0].text).toBe('Hello world.');
+    expect(doc.lines[0].margin.flags).toStrictEqual(['A']);
   });
 
   it('includes change IDs in metadata', () => {
@@ -40,8 +40,8 @@ describe('buildChangesDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.strictEqual(doc.lines[0].metadata.length, 1);
-    assert.strictEqual(doc.lines[0].metadata[0].changeId, 'ct-1');
+    expect(doc.lines[0].metadata).toHaveLength(1);
+    expect(doc.lines[0].metadata[0].changeId).toBe('ct-1');
   });
 
   it('excludes footnote definition lines', () => {
@@ -50,8 +50,8 @@ describe('buildChangesDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.strictEqual(doc.lines.length, 1);
-    assert.strictEqual(doc.lines[0].content[0].text, 'Content.');
+    expect(doc.lines).toHaveLength(1);
+    expect(doc.lines[0].content[0].text).toBe('Content.');
   });
 
   it('carries sessionHashes with committed hash', () => {
@@ -60,8 +60,8 @@ describe('buildChangesDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.ok(doc.lines[0].sessionHashes);
-    assert.ok(doc.lines[0].sessionHashes!.committed);
-    assert.ok(doc.lines[0].sessionHashes!.raw);
+    expect(doc.lines[0].sessionHashes).toBeTruthy();
+    expect(doc.lines[0].sessionHashes!.committed).toBeTruthy();
+    expect(doc.lines[0].sessionHashes!.raw).toBeTruthy();
   });
 });

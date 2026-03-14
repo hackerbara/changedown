@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   CriticMarkupParser,
   ChangeType,
@@ -21,66 +21,66 @@ describe('CriticMarkupParser', () => {
     it('parses an insertion', () => {
       const doc = parser.parse('{++added text++}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Insertion);
-      assert.strictEqual(c.modifiedText, 'added text');
-      assert.strictEqual(c.originalText, undefined);
-      assert.deepStrictEqual(c.range, { start: 0, end: 16 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 13 });
+      expect(c.type).toBe(ChangeType.Insertion);
+      expect(c.modifiedText).toBe('added text');
+      expect(c.originalText).toBeUndefined();
+      expect(c.range).toStrictEqual({ start: 0, end: 16 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 13 });
     });
 
     it('parses a deletion', () => {
       const doc = parser.parse('{--removed text--}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Deletion);
-      assert.strictEqual(c.originalText, 'removed text');
-      assert.strictEqual(c.modifiedText, undefined);
-      assert.deepStrictEqual(c.range, { start: 0, end: 18 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 15 });
+      expect(c.type).toBe(ChangeType.Deletion);
+      expect(c.originalText).toBe('removed text');
+      expect(c.modifiedText).toBeUndefined();
+      expect(c.range).toStrictEqual({ start: 0, end: 18 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 15 });
     });
 
     it('parses a substitution', () => {
       const doc = parser.parse('{~~old~>new~~}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Substitution);
-      assert.strictEqual(c.originalText, 'old');
-      assert.strictEqual(c.modifiedText, 'new');
+      expect(c.type).toBe(ChangeType.Substitution);
+      expect(c.originalText).toBe('old');
+      expect(c.modifiedText).toBe('new');
       // full range: 0 to 14
-      assert.deepStrictEqual(c.range, { start: 0, end: 14 });
+      expect(c.range).toStrictEqual({ start: 0, end: 14 });
       // contentRange: from after {~~ (3) to before ~~} (11)
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 11 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 11 });
       // originalRange: from 3 to separatorPos (6)
-      assert.deepStrictEqual(c.originalRange, { start: 3, end: 6 });
+      expect(c.originalRange).toStrictEqual({ start: 3, end: 6 });
       // modifiedRange: from after ~> (8) to before ~~} (11)
-      assert.deepStrictEqual(c.modifiedRange, { start: 8, end: 11 });
+      expect(c.modifiedRange).toStrictEqual({ start: 8, end: 11 });
     });
 
     it('parses a highlight', () => {
       const doc = parser.parse('{==highlighted==}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Highlight);
-      assert.strictEqual(c.originalText, 'highlighted');
-      assert.deepStrictEqual(c.range, { start: 0, end: 17 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 14 });
-      assert.strictEqual(c.metadata, undefined);
+      expect(c.type).toBe(ChangeType.Highlight);
+      expect(c.originalText).toBe('highlighted');
+      expect(c.range).toStrictEqual({ start: 0, end: 17 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 14 });
+      expect(c.metadata).toBeUndefined();
     });
 
     it('parses a standalone comment', () => {
       const doc = parser.parse('{>>a note<<}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Comment);
-      assert.deepStrictEqual(c.range, { start: 0, end: 12 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 9 });
-      assert.deepStrictEqual(c.metadata, { comment: 'a note' });
+      expect(c.type).toBe(ChangeType.Comment);
+      expect(c.range).toStrictEqual({ start: 0, end: 12 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 9 });
+      expect(c.metadata).toStrictEqual({ comment: 'a note' });
     });
   });
 
@@ -94,11 +94,11 @@ describe('CriticMarkupParser', () => {
       //        6  9    14 (contentRange.end) then ++} ends at 17
       const doc = parser.parse('Hello {++world++} there');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.deepStrictEqual(c.range, { start: 6, end: 17 });
-      assert.deepStrictEqual(c.contentRange, { start: 9, end: 14 });
-      assert.strictEqual(c.modifiedText, 'world');
+      expect(c.range).toStrictEqual({ start: 6, end: 17 });
+      expect(c.contentRange).toStrictEqual({ start: 9, end: 14 });
+      expect(c.modifiedText).toBe('world');
     });
 
     it('computes correct offsets for deletion within surrounding text', () => {
@@ -108,11 +108,11 @@ describe('CriticMarkupParser', () => {
       //     3  6  9   12
       const doc = parser.parse('abc{--xyz--}def');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.deepStrictEqual(c.range, { start: 3, end: 12 });
-      assert.deepStrictEqual(c.contentRange, { start: 6, end: 9 });
-      assert.strictEqual(c.originalText, 'xyz');
+      expect(c.range).toStrictEqual({ start: 3, end: 12 });
+      expect(c.contentRange).toStrictEqual({ start: 6, end: 9 });
+      expect(c.originalText).toBe('xyz');
     });
 
     it('computes correct offsets for substitution within surrounding text', () => {
@@ -122,14 +122,14 @@ describe('CriticMarkupParser', () => {
       //  'before' = 4..10, '~>' at 10..12, 'after' = 12..17, '~~}' = 17..20
       const doc = parser.parse('X{~~before~>after~~}Y');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.deepStrictEqual(c.range, { start: 1, end: 20 });
-      assert.deepStrictEqual(c.contentRange, { start: 4, end: 17 });
-      assert.deepStrictEqual(c.originalRange, { start: 4, end: 10 });
-      assert.deepStrictEqual(c.modifiedRange, { start: 12, end: 17 });
-      assert.strictEqual(c.originalText, 'before');
-      assert.strictEqual(c.modifiedText, 'after');
+      expect(c.range).toStrictEqual({ start: 1, end: 20 });
+      expect(c.contentRange).toStrictEqual({ start: 4, end: 17 });
+      expect(c.originalRange).toStrictEqual({ start: 4, end: 10 });
+      expect(c.modifiedRange).toStrictEqual({ start: 12, end: 17 });
+      expect(c.originalText).toBe('before');
+      expect(c.modifiedText).toBe('after');
     });
 
     it('computes correct offsets for highlight with attached comment', () => {
@@ -140,13 +140,13 @@ describe('CriticMarkupParser', () => {
       // The highlight absorbs the comment; range goes 0..20
       const doc = parser.parse('{==text==}{>>note<<}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Highlight);
-      assert.deepStrictEqual(c.range, { start: 0, end: 20 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 7 });
-      assert.strictEqual(c.originalText, 'text');
-      assert.deepStrictEqual(c.metadata, { comment: 'note' });
+      expect(c.type).toBe(ChangeType.Highlight);
+      expect(c.range).toStrictEqual({ start: 0, end: 20 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 7 });
+      expect(c.originalText).toBe('text');
+      expect(c.metadata).toStrictEqual({ comment: 'note' });
     });
   });
 
@@ -158,12 +158,12 @@ describe('CriticMarkupParser', () => {
       // {++ = 0..3, content = 3..14 ('line1\nline2'), ++} = 14..17
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Insertion);
-      assert.strictEqual(c.modifiedText, 'line1\nline2');
-      assert.deepStrictEqual(c.range, { start: 0, end: 17 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 14 });
+      expect(c.type).toBe(ChangeType.Insertion);
+      expect(c.modifiedText).toBe('line1\nline2');
+      expect(c.range).toStrictEqual({ start: 0, end: 17 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 14 });
     });
 
     it('parses deletion spanning multiple lines', () => {
@@ -171,11 +171,11 @@ describe('CriticMarkupParser', () => {
       // A = 0, {-- = 1..4, content = 4..22 ('first\nsecond\nthird'), --} = 22..25, B = 25
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.originalText, 'first\nsecond\nthird');
-      assert.deepStrictEqual(c.range, { start: 1, end: 25 });
-      assert.deepStrictEqual(c.contentRange, { start: 4, end: 22 });
+      expect(c.originalText).toBe('first\nsecond\nthird');
+      expect(c.range).toStrictEqual({ start: 1, end: 25 });
+      expect(c.contentRange).toStrictEqual({ start: 4, end: 22 });
     });
 
     it('parses substitution spanning multiple lines', () => {
@@ -187,14 +187,14 @@ describe('CriticMarkupParser', () => {
       // ~~} at 21..24
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.originalText, 'old\ntext');
-      assert.strictEqual(c.modifiedText, 'new\ntext');
-      assert.deepStrictEqual(c.range, { start: 0, end: 24 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 21 });
-      assert.deepStrictEqual(c.originalRange, { start: 3, end: 11 });
-      assert.deepStrictEqual(c.modifiedRange, { start: 13, end: 21 });
+      expect(c.originalText).toBe('old\ntext');
+      expect(c.modifiedText).toBe('new\ntext');
+      expect(c.range).toStrictEqual({ start: 0, end: 24 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 21 });
+      expect(c.originalRange).toStrictEqual({ start: 3, end: 11 });
+      expect(c.modifiedRange).toStrictEqual({ start: 13, end: 21 });
     });
   });
 
@@ -205,27 +205,27 @@ describe('CriticMarkupParser', () => {
       const text = '{++first++} middle {--second--} end {~~old~>new~~}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 3);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
-      assert.strictEqual(changes[0].modifiedText, 'first');
-      assert.strictEqual(changes[1].type, ChangeType.Deletion);
-      assert.strictEqual(changes[1].originalText, 'second');
-      assert.strictEqual(changes[2].type, ChangeType.Substitution);
-      assert.strictEqual(changes[2].originalText, 'old');
-      assert.strictEqual(changes[2].modifiedText, 'new');
+      expect(changes).toHaveLength(3);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
+      expect(changes[0].modifiedText).toBe('first');
+      expect(changes[1].type).toBe(ChangeType.Deletion);
+      expect(changes[1].originalText).toBe('second');
+      expect(changes[2].type).toBe(ChangeType.Substitution);
+      expect(changes[2].originalText).toBe('old');
+      expect(changes[2].modifiedText).toBe('new');
 
       // ranges should be in ascending order
-      assert.ok(changes[0].range.end <= changes[1].range.start);
-      assert.ok(changes[1].range.end <= changes[2].range.start);
+      expect(changes[0].range.end <= changes[1].range.start).toBeTruthy();
+      expect(changes[1].range.end <= changes[2].range.start).toBeTruthy();
     });
 
     it('assigns incrementing counter-based IDs', () => {
       const text = '{++a++}{--b--}{~~c~>d~~}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes[0].id, 'ct-1');
-      assert.strictEqual(changes[1].id, 'ct-2');
-      assert.strictEqual(changes[2].id, 'ct-3');
+      expect(changes[0].id).toBe('ct-1');
+      expect(changes[1].id).toBe('ct-2');
+      expect(changes[2].id).toBe('ct-3');
     });
   });
 
@@ -237,13 +237,13 @@ describe('CriticMarkupParser', () => {
       // {++a++} = 0..7, {--b--} = 7..14
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
-      assert.strictEqual(changes[0].modifiedText, 'a');
-      assert.deepStrictEqual(changes[0].range, { start: 0, end: 7 });
-      assert.strictEqual(changes[1].type, ChangeType.Deletion);
-      assert.strictEqual(changes[1].originalText, 'b');
-      assert.deepStrictEqual(changes[1].range, { start: 7, end: 14 });
+      expect(changes).toHaveLength(2);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
+      expect(changes[0].modifiedText).toBe('a');
+      expect(changes[0].range).toStrictEqual({ start: 0, end: 7 });
+      expect(changes[1].type).toBe(ChangeType.Deletion);
+      expect(changes[1].originalText).toBe('b');
+      expect(changes[1].range).toStrictEqual({ start: 7, end: 14 });
     });
 
     it('parses three adjacent nodes', () => {
@@ -254,14 +254,14 @@ describe('CriticMarkupParser', () => {
       // Then {++Z++} = 14..21
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
-      assert.strictEqual(changes[0].type, ChangeType.Highlight);
-      assert.strictEqual(changes[0].originalText, 'X');
-      assert.deepStrictEqual(changes[0].metadata, { comment: 'Y' });
-      assert.deepStrictEqual(changes[0].range, { start: 0, end: 14 });
-      assert.strictEqual(changes[1].type, ChangeType.Insertion);
-      assert.strictEqual(changes[1].modifiedText, 'Z');
-      assert.deepStrictEqual(changes[1].range, { start: 14, end: 21 });
+      expect(changes).toHaveLength(2);
+      expect(changes[0].type).toBe(ChangeType.Highlight);
+      expect(changes[0].originalText).toBe('X');
+      expect(changes[0].metadata).toStrictEqual({ comment: 'Y' });
+      expect(changes[0].range).toStrictEqual({ start: 0, end: 14 });
+      expect(changes[1].type).toBe(ChangeType.Insertion);
+      expect(changes[1].modifiedText).toBe('Z');
+      expect(changes[1].range).toStrictEqual({ start: 14, end: 21 });
     });
   });
 
@@ -271,85 +271,85 @@ describe('CriticMarkupParser', () => {
     it('parses empty insertion {++++}', () => {
       const doc = parser.parse('{++++}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Insertion);
-      assert.strictEqual(c.modifiedText, '');
-      assert.deepStrictEqual(c.range, { start: 0, end: 6 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 3 });
+      expect(c.type).toBe(ChangeType.Insertion);
+      expect(c.modifiedText).toBe('');
+      expect(c.range).toStrictEqual({ start: 0, end: 6 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 3 });
     });
 
     it('parses empty deletion {----}', () => {
       const doc = parser.parse('{----}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Deletion);
-      assert.strictEqual(changes[0].originalText, '');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Deletion);
+      expect(changes[0].originalText).toBe('');
     });
 
     it('parses empty highlight {====}', () => {
       const doc = parser.parse('{====}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Highlight);
-      assert.strictEqual(changes[0].originalText, '');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Highlight);
+      expect(changes[0].originalText).toBe('');
     });
 
     it('parses empty comment {>><<}', () => {
       const doc = parser.parse('{>><<}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Comment);
-      assert.deepStrictEqual(changes[0].metadata, { comment: '' });
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Comment);
+      expect(changes[0].metadata).toStrictEqual({ comment: '' });
     });
 
     it('skips unclosed insertion', () => {
       const doc = parser.parse('hello {++unclosed text');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
 
     it('skips unclosed deletion', () => {
       const doc = parser.parse('{--no close');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
 
     it('skips unclosed substitution', () => {
       const doc = parser.parse('{~~old~>new');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
 
     it('skips unclosed highlight', () => {
       const doc = parser.parse('{==no close');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
 
     it('skips unclosed comment', () => {
       const doc = parser.parse('{>>no close');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
 
     it('skips substitution without separator', () => {
       // {~~oldnew~~} has no ~> separator, so parser returns null
       const doc = parser.parse('{~~oldnew~~}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
 
     it('returns empty changes for plain text', () => {
       const doc = parser.parse('This is plain text with no markup.');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
 
     it('returns empty changes for empty string', () => {
       const doc = parser.parse('');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
 
     it('skips unclosed markup but parses valid markup after it', () => {
@@ -369,9 +369,9 @@ describe('CriticMarkupParser', () => {
       // So we get one insertion.
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
-      assert.strictEqual(changes[0].modifiedText, 'valid');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
+      expect(changes[0].modifiedText).toBe('valid');
     });
   });
 
@@ -385,19 +385,19 @@ describe('CriticMarkupParser', () => {
       // 'this is a comment' = 17 chars: 20..37, <<} = 37..40
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Highlight);
-      assert.strictEqual(c.originalText, 'highlighted');
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 14 });
-      assert.deepStrictEqual(c.range, { start: 0, end: 40 });
-      assert.deepStrictEqual(c.metadata, { comment: 'this is a comment' });
+      expect(c.type).toBe(ChangeType.Highlight);
+      expect(c.originalText).toBe('highlighted');
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 14 });
+      expect(c.range).toStrictEqual({ start: 0, end: 40 });
+      expect(c.metadata).toStrictEqual({ comment: 'this is a comment' });
     });
 
     it('sets metadata.comment to the comment text', () => {
       const doc = parser.parse('{==X==}{>>Y<<}');
       const c = doc.getChanges()[0];
-      assert.deepStrictEqual(c.metadata, { comment: 'Y' });
+      expect(c.metadata).toStrictEqual({ comment: 'Y' });
     });
 
     it('works with empty comment attached to highlight', () => {
@@ -405,10 +405,10 @@ describe('CriticMarkupParser', () => {
       // {== = 0..3, 'text' = 3..7, ==} = 7..10
       // {>> = 10..13, '' = 13..13, <<} = 13..16
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Highlight);
-      assert.deepStrictEqual(changes[0].range, { start: 0, end: 16 });
-      assert.deepStrictEqual(changes[0].metadata, { comment: '' });
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Highlight);
+      expect(changes[0].range).toStrictEqual({ start: 0, end: 16 });
+      expect(changes[0].metadata).toStrictEqual({ comment: '' });
     });
 
     it('highlight absorbs comment even when comment is also unclosed (no absorption)', () => {
@@ -417,11 +417,11 @@ describe('CriticMarkupParser', () => {
       // find '<<}' from 13 => not found => comment not absorbed, endPos stays at 10.
       const doc = parser.parse('{==text==}{>>unclosed');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Highlight);
-      assert.deepStrictEqual(c.range, { start: 0, end: 10 });
-      assert.strictEqual(c.metadata, undefined);
+      expect(c.type).toBe(ChangeType.Highlight);
+      expect(c.range).toStrictEqual({ start: 0, end: 10 });
+      expect(c.metadata).toBeUndefined();
       // The unclosed {>> after position 10 produces no node either
     });
   });
@@ -438,27 +438,27 @@ describe('CriticMarkupParser', () => {
       // comment: {>> = 11..14, 'comment' = 14..21, <<} = 21..24
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
+      expect(changes).toHaveLength(2);
 
-      assert.strictEqual(changes[0].type, ChangeType.Highlight);
-      assert.strictEqual(changes[0].originalText, 'text');
-      assert.deepStrictEqual(changes[0].range, { start: 0, end: 10 });
-      assert.strictEqual(changes[0].metadata, undefined);
+      expect(changes[0].type).toBe(ChangeType.Highlight);
+      expect(changes[0].originalText).toBe('text');
+      expect(changes[0].range).toStrictEqual({ start: 0, end: 10 });
+      expect(changes[0].metadata).toBeUndefined();
 
-      assert.strictEqual(changes[1].type, ChangeType.Comment);
-      assert.deepStrictEqual(changes[1].range, { start: 11, end: 24 });
-      assert.deepStrictEqual(changes[1].metadata, { comment: 'comment' });
+      expect(changes[1].type).toBe(ChangeType.Comment);
+      expect(changes[1].range).toStrictEqual({ start: 11, end: 24 });
+      expect(changes[1].metadata).toStrictEqual({ comment: 'comment' });
     });
 
     it('produces TWO nodes when newline separates highlight and comment', () => {
       const text = '{==text==}\n{>>comment<<}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
-      assert.strictEqual(changes[0].type, ChangeType.Highlight);
-      assert.deepStrictEqual(changes[0].range, { start: 0, end: 10 });
-      assert.strictEqual(changes[1].type, ChangeType.Comment);
-      assert.deepStrictEqual(changes[1].range, { start: 11, end: 24 });
+      expect(changes).toHaveLength(2);
+      expect(changes[0].type).toBe(ChangeType.Highlight);
+      expect(changes[0].range).toStrictEqual({ start: 0, end: 10 });
+      expect(changes[1].type).toBe(ChangeType.Comment);
+      expect(changes[1].range).toStrictEqual({ start: 11, end: 24 });
     });
   });
 
@@ -471,8 +471,8 @@ describe('CriticMarkupParser', () => {
       // {++ = 0..3, find '++}' from 3 => at 23. content = 'text with {+ partial'
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].modifiedText, 'text with {+ partial');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].modifiedText).toBe('text with {+ partial');
     });
 
     it('handles closing delimiter characters inside content of different type', () => {
@@ -481,8 +481,8 @@ describe('CriticMarkupParser', () => {
       // {++ = 0..3, find '++}' from 3 => at 16. content = 'some --} text'
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].modifiedText, 'some --} text');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].modifiedText).toBe('some --} text');
     });
 
     it('handles multiple ~> separators in substitution (first one wins)', () => {
@@ -492,9 +492,9 @@ describe('CriticMarkupParser', () => {
       // originalText = text[3..4] = 'a', modifiedStart = 4+2 = 6, modifiedText = text[6..10] = 'b~>c'
       const doc = parser.parse('{~~a~>b~>c~~}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].originalText, 'a');
-      assert.strictEqual(changes[0].modifiedText, 'b~>c');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].originalText).toBe('a');
+      expect(changes[0].modifiedText).toBe('b~>c');
     });
 
     it('handles content that looks like other markup delimiters', () => {
@@ -506,9 +506,9 @@ describe('CriticMarkupParser', () => {
       // '--}' first at index 17. content = text[3..17] = '{++not real++}'
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Deletion);
-      assert.strictEqual(changes[0].originalText, '{++not real++}');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Deletion);
+      expect(changes[0].originalText).toBe('{++not real++}');
     });
 
     it('handles curly brace that is not a delimiter', () => {
@@ -518,9 +518,9 @@ describe('CriticMarkupParser', () => {
       // content = 'added', range = 18..29
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
-      assert.strictEqual(changes[0].modifiedText, 'added');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
+      expect(changes[0].modifiedText).toBe('added');
     });
   });
 
@@ -531,16 +531,16 @@ describe('CriticMarkupParser', () => {
       const text = '{++ins++}{--del--}{~~sub~>stitution~~}{==hig==}{>>com<<}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 4); // highlight absorbs the comment
+      expect(changes).toHaveLength(4); // highlight absorbs the comment
 
       // ct-1
-      assert.strictEqual(changes[0].id, 'ct-1');
+      expect(changes[0].id).toBe('ct-1');
       // ct-2
-      assert.strictEqual(changes[1].id, 'ct-2');
+      expect(changes[1].id).toBe('ct-2');
       // ct-3
-      assert.strictEqual(changes[2].id, 'ct-3');
+      expect(changes[2].id).toBe('ct-3');
       // ct-4 (highlight that absorbed comment)
-      assert.strictEqual(changes[3].id, 'ct-4');
+      expect(changes[3].id).toBe('ct-4');
     });
 
     it('all changes have Pending status', () => {
@@ -548,7 +548,7 @@ describe('CriticMarkupParser', () => {
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       for (const c of changes) {
-        assert.strictEqual(c.status, ChangeStatus.Proposed);
+        expect(c.status).toBe(ChangeStatus.Proposed);
       }
     });
 
@@ -556,19 +556,19 @@ describe('CriticMarkupParser', () => {
       const text = '{--x--}{--y--}{--z--}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes[0].id, 'ct-1');
-      assert.strictEqual(changes[1].id, 'ct-2');
-      assert.strictEqual(changes[2].id, 'ct-3');
+      expect(changes[0].id).toBe('ct-1');
+      expect(changes[1].id).toBe('ct-2');
+      expect(changes[2].id).toBe('ct-3');
     });
 
     it('generates correct ct-N ID for comment type', () => {
       const doc = parser.parse('{>>note<<}');
-      assert.strictEqual(doc.getChanges()[0].id, 'ct-1');
+      expect(doc.getChanges()[0].id).toBe('ct-1');
     });
 
     it('generates correct ct-N ID for highlight type', () => {
       const doc = parser.parse('{==note==}');
-      assert.strictEqual(doc.getChanges()[0].id, 'ct-1');
+      expect(doc.getChanges()[0].id).toBe('ct-1');
     });
   });
 
@@ -593,9 +593,9 @@ describe('CriticMarkupParser', () => {
       // originalText = text[3..5] = '  ', modifiedStart = 5+2 = 7, modifiedText = text[7..10] = 'new'
       const doc = parser.parse('{~~  ~>new~~}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].originalText, '  ');
-      assert.strictEqual(changes[0].modifiedText, 'new');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].originalText).toBe('  ');
+      expect(changes[0].modifiedText).toBe('new');
     });
 
     it('parses substitution with non-empty original and empty modified', () => {
@@ -610,20 +610,20 @@ describe('CriticMarkupParser', () => {
       // originalText = text[3..6] = 'old', modifiedStart = 6+2 = 8, modifiedText = text[8..8] = ''
       const doc = parser.parse('{~~old~>~~}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].originalText, 'old');
-      assert.strictEqual(changes[0].modifiedText, '');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].originalText).toBe('old');
+      expect(changes[0].modifiedText).toBe('');
     });
 
     it('parses substitution when new text contains literal ~~} inside backticks', () => {
       // Closing ~~} inside `...` must not end the substitution; the real close is after the backticks.
       const doc = parser.parse('{~~old~>drops the `{~~` and `~~}` wrapping.~~}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.type, ChangeType.Substitution);
-      assert.strictEqual(c.originalText, 'old');
-      assert.strictEqual(c.modifiedText, 'drops the `{~~` and `~~}` wrapping.');
+      expect(c.type).toBe(ChangeType.Substitution);
+      expect(c.originalText).toBe('old');
+      expect(c.modifiedText).toBe('drops the `{~~` and `~~}` wrapping.');
     });
 
     it('handles substitution where ~> appears after close (treated as malformed)', () => {
@@ -640,13 +640,13 @@ describe('CriticMarkupParser', () => {
       // Let's just use '{~~nosep~~}'
       const doc = parser.parse('{~~nosep~~}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
 
     it('handles only opening brace characters (not full delimiters)', () => {
       const doc = parser.parse('{+ {- {~ {= {>');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
 
     it('handles a document with all five types', () => {
@@ -654,24 +654,24 @@ describe('CriticMarkupParser', () => {
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       // highlight absorbs the comment: {==mark==}{>>note<<} = 1 node
-      assert.strictEqual(changes.length, 4);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
-      assert.strictEqual(changes[1].type, ChangeType.Deletion);
-      assert.strictEqual(changes[2].type, ChangeType.Substitution);
-      assert.strictEqual(changes[3].type, ChangeType.Highlight);
-      assert.deepStrictEqual(changes[3].metadata, { comment: 'note' });
+      expect(changes).toHaveLength(4);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
+      expect(changes[1].type).toBe(ChangeType.Deletion);
+      expect(changes[2].type).toBe(ChangeType.Substitution);
+      expect(changes[3].type).toBe(ChangeType.Highlight);
+      expect(changes[3].metadata).toStrictEqual({ comment: 'note' });
     });
 
     it('handles standalone comment not preceded by highlight', () => {
       const text = 'Some text {>>standalone comment<<} more text';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Comment);
-      assert.deepStrictEqual(changes[0].metadata, { comment: 'standalone comment' });
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Comment);
+      expect(changes[0].metadata).toStrictEqual({ comment: 'standalone comment' });
       // 'Some text ' = 10 chars. {>> = 10..13, content = 13..31, <<} = 31..34
-      assert.deepStrictEqual(changes[0].range, { start: 10, end: 34 });
-      assert.deepStrictEqual(changes[0].contentRange, { start: 13, end: 31 });
+      expect(changes[0].range).toStrictEqual({ start: 10, end: 34 });
+      expect(changes[0].contentRange).toStrictEqual({ start: 13, end: 31 });
     });
   });
 
@@ -684,13 +684,13 @@ describe('CriticMarkupParser', () => {
       //  {++ = 0..3, 'added' = 3..8, ++} = 8..11, [^ct-1] = 11..18
       const doc = parser.parse('{++added++}[^ct-1]');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-1');
-      assert.strictEqual(c.type, ChangeType.Insertion);
-      assert.deepStrictEqual(c.range, { start: 0, end: 18 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 8 });
-      assert.strictEqual(c.modifiedText, 'added');
+      expect(c.id).toBe('ct-1');
+      expect(c.type).toBe(ChangeType.Insertion);
+      expect(c.range).toStrictEqual({ start: 0, end: 18 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 8 });
+      expect(c.modifiedText).toBe('added');
     });
 
     it('parses deletion with footnote ref [^ct-2]', () => {
@@ -699,13 +699,13 @@ describe('CriticMarkupParser', () => {
       //  {-- = 0..3, 'removed' = 3..10, --} = 10..13, [^ct-2] = 13..20
       const doc = parser.parse('{--removed--}[^ct-2]');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-2');
-      assert.strictEqual(c.type, ChangeType.Deletion);
-      assert.deepStrictEqual(c.range, { start: 0, end: 20 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 10 });
-      assert.strictEqual(c.originalText, 'removed');
+      expect(c.id).toBe('ct-2');
+      expect(c.type).toBe(ChangeType.Deletion);
+      expect(c.range).toStrictEqual({ start: 0, end: 20 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 10 });
+      expect(c.originalText).toBe('removed');
     });
 
     it('parses substitution with footnote ref [^ct-3]', () => {
@@ -714,14 +714,14 @@ describe('CriticMarkupParser', () => {
       //  {~~ = 0..3, 'old' = 3..6, ~> = 6..8, 'new' = 8..11, ~~} = 11..14, [^ct-3] = 14..21
       const doc = parser.parse('{~~old~>new~~}[^ct-3]');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-3');
-      assert.strictEqual(c.type, ChangeType.Substitution);
-      assert.deepStrictEqual(c.range, { start: 0, end: 21 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 11 });
-      assert.strictEqual(c.originalText, 'old');
-      assert.strictEqual(c.modifiedText, 'new');
+      expect(c.id).toBe('ct-3');
+      expect(c.type).toBe(ChangeType.Substitution);
+      expect(c.range).toStrictEqual({ start: 0, end: 21 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 11 });
+      expect(c.originalText).toBe('old');
+      expect(c.modifiedText).toBe('new');
     });
 
     it('parses highlight with footnote ref [^ct-4]', () => {
@@ -730,13 +730,13 @@ describe('CriticMarkupParser', () => {
       //  {== = 0..3, 'text' = 3..7, ==} = 7..10, [^ct-4] = 10..17
       const doc = parser.parse('{==text==}[^ct-4]');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-4');
-      assert.strictEqual(c.type, ChangeType.Highlight);
-      assert.deepStrictEqual(c.range, { start: 0, end: 17 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 7 });
-      assert.strictEqual(c.originalText, 'text');
+      expect(c.id).toBe('ct-4');
+      expect(c.type).toBe(ChangeType.Highlight);
+      expect(c.range).toStrictEqual({ start: 0, end: 17 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 7 });
+      expect(c.originalText).toBe('text');
     });
 
     it('parses highlight+comment with footnote ref [^ct-5]', () => {
@@ -747,14 +747,14 @@ describe('CriticMarkupParser', () => {
       //  [^ct-5] = 20..27
       const doc = parser.parse('{==text==}{>>note<<}[^ct-5]');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-5');
-      assert.strictEqual(c.type, ChangeType.Highlight);
-      assert.deepStrictEqual(c.range, { start: 0, end: 27 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 7 });
-      assert.strictEqual(c.originalText, 'text');
-      assert.deepStrictEqual(c.metadata, { comment: 'note' });
+      expect(c.id).toBe('ct-5');
+      expect(c.type).toBe(ChangeType.Highlight);
+      expect(c.range).toStrictEqual({ start: 0, end: 27 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 7 });
+      expect(c.originalText).toBe('text');
+      expect(c.metadata).toStrictEqual({ comment: 'note' });
     });
 
     it('attaches footnote ref to Level 1 nodes (inline comment + footnote)', () => {
@@ -762,9 +762,9 @@ describe('CriticMarkupParser', () => {
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       const change = changes.find(c => c.id === 'ct-3');
-      assert.ok(change, 'should find change with ct-3 ID from footnote ref');
-      assert.strictEqual(change!.level, 2);
-      assert.strictEqual(change!.anchored, true);
+      expect(change, 'should find change with ct-3 ID from footnote ref').toBeTruthy();
+      expect(change!.level).toBe(2);
+      expect(change!.anchored).toBe(true);
     });
 
     it('parses dotted ID [^ct-17.2]', () => {
@@ -773,20 +773,20 @@ describe('CriticMarkupParser', () => {
       //  {++ = 0..3, 'text' = 3..7, ++} = 7..10, [^ct-17.2] = 10..20
       const doc = parser.parse('{++text++}[^ct-17.2]');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-17.2');
-      assert.strictEqual(c.type, ChangeType.Insertion);
-      assert.deepStrictEqual(c.range, { start: 0, end: 20 });
-      assert.deepStrictEqual(c.contentRange, { start: 3, end: 7 });
-      assert.strictEqual(c.modifiedText, 'text');
+      expect(c.id).toBe('ct-17.2');
+      expect(c.type).toBe(ChangeType.Insertion);
+      expect(c.range).toStrictEqual({ start: 0, end: 20 });
+      expect(c.contentRange).toStrictEqual({ start: 3, end: 7 });
+      expect(c.modifiedText).toBe('text');
     });
 
     it('assigns ct-1 ID when no footnote ref present', () => {
       const doc = parser.parse('{++text++}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].id, 'ct-1');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].id).toBe('ct-1');
     });
 
     it('computes correct ranges with surrounding text', () => {
@@ -798,12 +798,12 @@ describe('CriticMarkupParser', () => {
       //  ' there' = 24..30
       const doc = parser.parse('Hello {++world++}[^ct-1] there');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-1');
-      assert.deepStrictEqual(c.range, { start: 6, end: 24 });
-      assert.deepStrictEqual(c.contentRange, { start: 9, end: 14 });
-      assert.strictEqual(c.modifiedText, 'world');
+      expect(c.id).toBe('ct-1');
+      expect(c.range).toStrictEqual({ start: 6, end: 24 });
+      expect(c.contentRange).toStrictEqual({ start: 9, end: 14 });
+      expect(c.modifiedText).toBe('world');
     });
   });
 
@@ -818,11 +818,11 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-1');
-      assert.strictEqual(c.metadata?.author, '@alice');
-      assert.strictEqual(c.metadata?.date, '2026-02-10');
+      expect(c.id).toBe('ct-1');
+      expect(c.metadata?.author).toBe('@alice');
+      expect(c.metadata?.date).toBe('2026-02-10');
     });
 
     it('maps reason: to discussion comment (backward compat)', () => {
@@ -834,9 +834,9 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.discussion?.[0].text, 'Redundant paragraph');
-      assert.strictEqual(c.metadata?.discussion?.[0].author, '@bob');
-      assert.strictEqual(c.metadata?.author, '@bob');
+      expect(c.metadata?.discussion?.[0].text).toBe('Redundant paragraph');
+      expect(c.metadata?.discussion?.[0].author).toBe('@bob');
+      expect(c.metadata?.author).toBe('@bob');
     });
 
     it('maps status from footnote definition', () => {
@@ -846,7 +846,7 @@ describe('CriticMarkupParser', () => {
         '[^ct-1]: @alice | 2026-02-10 | ins | accepted',
       ].join('\n');
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges()[0].status, ChangeStatus.Accepted);
+      expect(doc.getChanges()[0].status).toBe(ChangeStatus.Accepted);
     });
 
     it('maps rejected status from footnote definition', () => {
@@ -856,7 +856,7 @@ describe('CriticMarkupParser', () => {
         '[^ct-1]: @alice | 2026-02-10 | del | rejected',
       ].join('\n');
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges()[0].status, ChangeStatus.Rejected);
+      expect(doc.getChanges()[0].status).toBe(ChangeStatus.Rejected);
     });
 
     it('parses multiple footnote definitions', () => {
@@ -868,10 +868,10 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
-      assert.strictEqual(changes[0].metadata?.author, '@alice');
-      assert.strictEqual(changes[1].metadata?.author, '@bob');
-      assert.strictEqual(changes[1].status, ChangeStatus.Accepted);
+      expect(changes).toHaveLength(2);
+      expect(changes[0].metadata?.author).toBe('@alice');
+      expect(changes[1].metadata?.author).toBe('@bob');
+      expect(changes[1].status).toBe(ChangeStatus.Accepted);
     });
 
     it('handles dotted IDs in footnote definitions', () => {
@@ -883,20 +883,20 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
-      assert.strictEqual(changes[0].id, 'ct-17.1');
-      assert.strictEqual(changes[1].id, 'ct-17.2');
-      assert.strictEqual(changes[0].metadata?.author, '@alice');
-      assert.strictEqual(changes[1].metadata?.author, '@alice');
+      expect(changes).toHaveLength(2);
+      expect(changes[0].id).toBe('ct-17.1');
+      expect(changes[1].id).toBe('ct-17.2');
+      expect(changes[0].metadata?.author).toBe('@alice');
+      expect(changes[1].metadata?.author).toBe('@alice');
     });
 
     it('works when inline markup has no matching footnote definition', () => {
       const text = '{++orphan++}[^ct-99]';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].id, 'ct-99');
-      assert.strictEqual(changes[0].status, ChangeStatus.Proposed);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].id).toBe('ct-99');
+      expect(changes[0].status).toBe(ChangeStatus.Proposed);
       // No metadata merged — should be undefined or only have pre-existing metadata
     });
 
@@ -909,9 +909,9 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].id, 'ct-1');
-      assert.strictEqual(changes[0].metadata?.author, '@alice');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].id).toBe('ct-1');
+      expect(changes[0].metadata?.author).toBe('@alice');
     });
 
     it('synthesizes ChangeNodes from settled footnote refs (post-Layer-1 settlement)', () => {
@@ -928,21 +928,21 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
+      expect(changes).toHaveLength(2);
 
       // ct-1: settled substitution
-      assert.strictEqual(changes[0].id, 'ct-1');
-      assert.strictEqual(changes[0].type, ChangeType.Substitution);
-      assert.strictEqual(changes[0].status, ChangeStatus.Accepted);
-      assert.strictEqual(changes[0].settled, true);
-      assert.strictEqual(changes[0].level, 2);
-      assert.strictEqual(changes[0].metadata?.author, '@ai:claude');
+      expect(changes[0].id).toBe('ct-1');
+      expect(changes[0].type).toBe(ChangeType.Substitution);
+      expect(changes[0].status).toBe(ChangeStatus.Accepted);
+      expect(changes[0].settled).toBe(true);
+      expect(changes[0].level).toBe(2);
+      expect(changes[0].metadata?.author).toBe('@ai:claude');
 
       // ct-2: settled insertion
-      assert.strictEqual(changes[1].id, 'ct-2');
-      assert.strictEqual(changes[1].type, ChangeType.Insertion);
-      assert.strictEqual(changes[1].status, ChangeStatus.Accepted);
-      assert.strictEqual(changes[1].settled, true);
+      expect(changes[1].id).toBe('ct-2');
+      expect(changes[1].type).toBe(ChangeType.Insertion);
+      expect(changes[1].status).toBe(ChangeStatus.Accepted);
+      expect(changes[1].settled).toBe(true);
     });
 
     it('does not double-count changes that have both inline markup and footnote refs', () => {
@@ -954,8 +954,8 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].settled, undefined); // NOT settled — has inline markup
+      expect(changes).toHaveLength(1);
+      expect(changes[0].settled).toBeUndefined(); // NOT settled — has inline markup
     });
 
     it('handles mixed settled and active changes in the same file', () => {
@@ -967,19 +967,19 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
+      expect(changes).toHaveLength(2);
 
       // ct-1 is settled (no inline markup)
       const settled = changes.find(c => c.id === 'ct-1');
-      assert.ok(settled);
-      assert.strictEqual(settled!.settled, true);
-      assert.strictEqual(settled!.type, ChangeType.Deletion);
+      expect(settled).toBeTruthy();
+      expect(settled!.settled).toBe(true);
+      expect(settled!.type).toBe(ChangeType.Deletion);
 
       // ct-2 is active (has inline markup)
       const active = changes.find(c => c.id === 'ct-2');
-      assert.ok(active);
-      assert.strictEqual(active!.settled, undefined);
-      assert.strictEqual(active!.type, ChangeType.Insertion);
+      expect(active).toBeTruthy();
+      expect(active!.settled).toBeUndefined();
+      expect(active!.type).toBe(ChangeType.Insertion);
     });
 
     it('does not treat footnote definition lines as CriticMarkup', () => {
@@ -990,7 +990,7 @@ describe('CriticMarkupParser', () => {
         '[^ct-1]: @alice | 2026-02-10 | ins | pending',
       ].join('\n');
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 1);
+      expect(doc.getChanges()).toHaveLength(1);
     });
 
     it('accepts 2-space indented field lines', () => {
@@ -1001,7 +1001,7 @@ describe('CriticMarkupParser', () => {
         '  reason: Two-space indent',
       ].join('\n');
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges()[0].metadata?.discussion?.[0].text, 'Two-space indent');
+      expect(doc.getChanges()[0].metadata?.discussion?.[0].text).toBe('Two-space indent');
     });
 
     it('accepts tab-indented field lines', () => {
@@ -1012,7 +1012,7 @@ describe('CriticMarkupParser', () => {
         '\treason: Tab indent',
       ].join('\n');
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges()[0].metadata?.discussion?.[0].text, 'Tab indent');
+      expect(doc.getChanges()[0].metadata?.discussion?.[0].text).toBe('Tab indent');
     });
 
     it('accepts 8-space indented field lines', () => {
@@ -1023,7 +1023,7 @@ describe('CriticMarkupParser', () => {
         '        reason: Deep indent',
       ].join('\n');
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges()[0].metadata?.discussion?.[0].text, 'Deep indent');
+      expect(doc.getChanges()[0].metadata?.discussion?.[0].text).toBe('Deep indent');
     });
 
     it('parses footnote definition without author', () => {
@@ -1034,9 +1034,9 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.id, 'ct-1');
-      assert.strictEqual(c.metadata?.author, undefined);
-      assert.strictEqual(c.metadata?.date, '2026-02-10');
+      expect(c.id).toBe('ct-1');
+      expect(c.metadata?.author).toBeUndefined();
+      expect(c.metadata?.date).toBe('2026-02-10');
     });
 
     it('preserves inline comment and maps reason to discussion', () => {
@@ -1048,9 +1048,9 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.author, '@alice');
-      assert.strictEqual(c.metadata?.comment, 'inline note');
-      assert.strictEqual(c.metadata?.discussion?.[0].text, 'Important section');
+      expect(c.metadata?.author).toBe('@alice');
+      expect(c.metadata?.comment).toBe('inline note');
+      expect(c.metadata?.discussion?.[0].text).toBe('Important section');
     });
   });
 
@@ -1070,9 +1070,9 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.approvals?.length, 2);
-      assert.deepStrictEqual(c.metadata?.approvals?.[0], { author: '@eve', date: '2024-01-20', timestamp: parseTimestamp('2024-01-20') });
-      assert.deepStrictEqual(c.metadata?.approvals?.[1], { author: '@carol', date: '2024-01-19', timestamp: parseTimestamp('2024-01-19'), reason: 'Benchmarks look good' });
+      expect(c.metadata?.approvals).toHaveLength(2);
+      expect(c.metadata?.approvals?.[0]).toStrictEqual({ author: '@eve', date: '2024-01-20', timestamp: parseTimestamp('2024-01-20') });
+      expect(c.metadata?.approvals?.[1]).toStrictEqual({ author: '@carol', date: '2024-01-19', timestamp: parseTimestamp('2024-01-19'), reason: 'Benchmarks look good' });
     });
 
     it('parses rejected: lines into metadata.rejections', () => {
@@ -1084,8 +1084,8 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.rejections?.length, 1);
-      assert.deepStrictEqual(c.metadata?.rejections?.[0], { author: '@carol', date: '2024-01-19', timestamp: parseTimestamp('2024-01-19'), reason: 'Needs more benchmarking' });
+      expect(c.metadata?.rejections).toHaveLength(1);
+      expect(c.metadata?.rejections?.[0]).toStrictEqual({ author: '@carol', date: '2024-01-19', timestamp: parseTimestamp('2024-01-19'), reason: 'Needs more benchmarking' });
     });
 
     it('parses request-changes: lines into metadata.requestChanges', () => {
@@ -1097,8 +1097,8 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.requestChanges?.length, 1);
-      assert.deepStrictEqual(c.metadata?.requestChanges?.[0], { author: '@eve', date: '2024-01-18', timestamp: parseTimestamp('2024-01-18'), reason: 'Pick one protocol' });
+      expect(c.metadata?.requestChanges).toHaveLength(1);
+      expect(c.metadata?.requestChanges?.[0]).toStrictEqual({ author: '@eve', date: '2024-01-18', timestamp: parseTimestamp('2024-01-18'), reason: 'Pick one protocol' });
     });
 
     // --- Context ---
@@ -1112,7 +1112,7 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.context, 'The API should use {REST} for the public interface');
+      expect(c.metadata?.context).toBe('The API should use {REST} for the public interface');
     });
 
     // --- Revisions ---
@@ -1128,11 +1128,11 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.revisions?.length, 2);
-      assert.deepStrictEqual(c.metadata?.revisions?.[0], {
+      expect(c.metadata?.revisions).toHaveLength(2);
+      expect(c.metadata?.revisions?.[0]).toStrictEqual({
         label: 'r1', author: '@bob', date: '2024-01-16', timestamp: parseTimestamp('2024-01-16'), text: 'OAuth 2.0',
       });
-      assert.deepStrictEqual(c.metadata?.revisions?.[1], {
+      expect(c.metadata?.revisions?.[1]).toStrictEqual({
         label: 'r2', author: '@bob', date: '2024-01-18', timestamp: parseTimestamp('2024-01-18'), text: 'OAuth 2.0 with JWT tokens',
       });
     });
@@ -1150,15 +1150,15 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.discussion?.length, 3);
-      assert.strictEqual(c.metadata?.discussion?.[0].author, '@carol');
-      assert.strictEqual(c.metadata?.discussion?.[0].date, '2024-01-17');
-      assert.strictEqual(c.metadata?.discussion?.[0].text, 'Why robust? Simple was intentional.');
-      assert.strictEqual(c.metadata?.discussion?.[0].depth, 0);
-      assert.strictEqual(c.metadata?.discussion?.[1].author, '@alice');
-      assert.strictEqual(c.metadata?.discussion?.[1].depth, 1);
-      assert.strictEqual(c.metadata?.discussion?.[2].author, '@dave');
-      assert.strictEqual(c.metadata?.discussion?.[2].depth, 2);
+      expect(c.metadata?.discussion).toHaveLength(3);
+      expect(c.metadata?.discussion?.[0].author).toBe('@carol');
+      expect(c.metadata?.discussion?.[0].date).toBe('2024-01-17');
+      expect(c.metadata?.discussion?.[0].text).toBe('Why robust? Simple was intentional.');
+      expect(c.metadata?.discussion?.[0].depth).toBe(0);
+      expect(c.metadata?.discussion?.[1].author).toBe('@alice');
+      expect(c.metadata?.discussion?.[1].depth).toBe(1);
+      expect(c.metadata?.discussion?.[2].author).toBe('@dave');
+      expect(c.metadata?.discussion?.[2].depth).toBe(2);
     });
 
     // --- Comment labels ---
@@ -1173,11 +1173,11 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.discussion?.length, 2);
-      assert.strictEqual(c.metadata?.discussion?.[0].label, 'question');
-      assert.strictEqual(c.metadata?.discussion?.[0].text, 'What about latency requirements for gRPC?');
-      assert.strictEqual(c.metadata?.discussion?.[1].label, 'issue/blocking');
-      assert.strictEqual(c.metadata?.discussion?.[1].text, '100/min feels low for production.');
+      expect(c.metadata?.discussion).toHaveLength(2);
+      expect(c.metadata?.discussion?.[0].label).toBe('question');
+      expect(c.metadata?.discussion?.[0].text).toBe('What about latency requirements for gRPC?');
+      expect(c.metadata?.discussion?.[1].label).toBe('issue/blocking');
+      expect(c.metadata?.discussion?.[1].text).toBe('100/min feels low for production.');
     });
 
     // --- Multi-line discussion comments ---
@@ -1193,12 +1193,9 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.discussion?.length, 1);
-      assert.strictEqual(c.metadata?.discussion?.[0].author, '@carol');
-      assert.strictEqual(
-        c.metadata?.discussion?.[0].text,
-        'This needs more thought. The current rate limit\nis based on our staging environment, not production. We need to\nmodel this against actual traffic patterns before committing.'
-      );
+      expect(c.metadata?.discussion).toHaveLength(1);
+      expect(c.metadata?.discussion?.[0].author).toBe('@carol');
+      expect(c.metadata?.discussion?.[0].text).toBe('This needs more thought. The current rate limit\nis based on our staging environment, not production. We need to\nmodel this against actual traffic patterns before committing.');
     });
 
     // --- Resolution: resolved ---
@@ -1212,7 +1209,7 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.deepStrictEqual(c.metadata?.resolution, {
+      expect(c.metadata?.resolution).toStrictEqual({
         type: 'resolved', author: '@dave', date: '2024-01-17', timestamp: parseTimestamp('2024-01-17'), reason: undefined,
       });
     });
@@ -1226,7 +1223,7 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.deepStrictEqual(c.metadata?.resolution, {
+      expect(c.metadata?.resolution).toStrictEqual({
         type: 'resolved', author: '@carol', date: '2024-01-18', timestamp: parseTimestamp('2024-01-18'), reason: 'Addressed by r2',
       });
     });
@@ -1242,7 +1239,7 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.deepStrictEqual(c.metadata?.resolution, {
+      expect(c.metadata?.resolution).toStrictEqual({
         type: 'open', reason: 'awaiting load test results from @dave',
       });
     });
@@ -1256,7 +1253,7 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.deepStrictEqual(c.metadata?.resolution, {
+      expect(c.metadata?.resolution).toStrictEqual({
         type: 'open', reason: undefined,
       });
     });
@@ -1272,13 +1269,13 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.discussion?.length, 1);
-      assert.strictEqual(c.metadata?.discussion?.[0].author, '@bob');
-      assert.strictEqual(c.metadata?.discussion?.[0].date, '2024-01-15');
-      assert.strictEqual(c.metadata?.discussion?.[0].text, 'This paragraph was redundant');
-      assert.strictEqual(c.metadata?.discussion?.[0].depth, 0);
+      expect(c.metadata?.discussion).toHaveLength(1);
+      expect(c.metadata?.discussion?.[0].author).toBe('@bob');
+      expect(c.metadata?.discussion?.[0].date).toBe('2024-01-15');
+      expect(c.metadata?.discussion?.[0].text).toBe('This paragraph was redundant');
+      expect(c.metadata?.discussion?.[0].depth).toBe(0);
       // Should NOT be in metadata.comment
-      assert.strictEqual(c.metadata?.comment, undefined);
+      expect(c.metadata?.comment).toBeUndefined();
     });
 
     // --- Complete spec example ---
@@ -1298,32 +1295,32 @@ describe('CriticMarkupParser', () => {
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
 
-      assert.strictEqual(c.id, 'ct-1');
-      assert.strictEqual(c.status, ChangeStatus.Accepted);
-      assert.strictEqual(c.metadata?.author, '@alice');
-      assert.strictEqual(c.metadata?.date, '2024-01-15');
+      expect(c.id).toBe('ct-1');
+      expect(c.status).toBe(ChangeStatus.Accepted);
+      expect(c.metadata?.author).toBe('@alice');
+      expect(c.metadata?.date).toBe('2024-01-15');
 
       // Approvals
-      assert.strictEqual(c.metadata?.approvals?.length, 1);
-      assert.deepStrictEqual(c.metadata?.approvals?.[0], { author: '@eve', date: '2024-01-20', timestamp: parseTimestamp('2024-01-20') });
+      expect(c.metadata?.approvals).toHaveLength(1);
+      expect(c.metadata?.approvals?.[0]).toStrictEqual({ author: '@eve', date: '2024-01-20', timestamp: parseTimestamp('2024-01-20') });
 
       // Context
-      assert.strictEqual(c.metadata?.context, 'The API should use {REST} for the public interface');
+      expect(c.metadata?.context).toBe('The API should use {REST} for the public interface');
 
       // Discussion
-      assert.strictEqual(c.metadata?.discussion?.length, 3);
-      assert.strictEqual(c.metadata?.discussion?.[0].author, '@alice');
-      assert.strictEqual(c.metadata?.discussion?.[0].text, 'GraphQL reduces over-fetching for dashboard clients.');
-      assert.strictEqual(c.metadata?.discussion?.[0].depth, 0);
-      assert.strictEqual(c.metadata?.discussion?.[1].author, '@dave');
-      assert.strictEqual(c.metadata?.discussion?.[1].text, 'GraphQL increases client complexity.');
-      assert.strictEqual(c.metadata?.discussion?.[1].depth, 0);
-      assert.strictEqual(c.metadata?.discussion?.[2].author, '@alice');
-      assert.strictEqual(c.metadata?.discussion?.[2].text, 'But reduces over-fetching. See PR #42.');
-      assert.strictEqual(c.metadata?.discussion?.[2].depth, 1);
+      expect(c.metadata?.discussion).toHaveLength(3);
+      expect(c.metadata?.discussion?.[0].author).toBe('@alice');
+      expect(c.metadata?.discussion?.[0].text).toBe('GraphQL reduces over-fetching for dashboard clients.');
+      expect(c.metadata?.discussion?.[0].depth).toBe(0);
+      expect(c.metadata?.discussion?.[1].author).toBe('@dave');
+      expect(c.metadata?.discussion?.[1].text).toBe('GraphQL increases client complexity.');
+      expect(c.metadata?.discussion?.[1].depth).toBe(0);
+      expect(c.metadata?.discussion?.[2].author).toBe('@alice');
+      expect(c.metadata?.discussion?.[2].text).toBe('But reduces over-fetching. See PR #42.');
+      expect(c.metadata?.discussion?.[2].depth).toBe(1);
 
       // Resolution
-      assert.deepStrictEqual(c.metadata?.resolution, {
+      expect(c.metadata?.resolution).toStrictEqual({
         type: 'resolved', author: '@dave', date: '2024-01-17', timestamp: parseTimestamp('2024-01-17'), reason: undefined,
       });
     });
@@ -1340,12 +1337,12 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.author, '@ai:claude-opus-4.6');
-      assert.strictEqual(c.metadata?.discussion?.length, 2);
-      assert.strictEqual(c.metadata?.discussion?.[0].author, '@ai:claude-opus-4.6');
-      assert.strictEqual(c.metadata?.discussion?.[0].depth, 0);
-      assert.strictEqual(c.metadata?.discussion?.[1].author, '@alice');
-      assert.strictEqual(c.metadata?.discussion?.[1].depth, 1);
+      expect(c.metadata?.author).toBe('@ai:claude-opus-4.6');
+      expect(c.metadata?.discussion).toHaveLength(2);
+      expect(c.metadata?.discussion?.[0].author).toBe('@ai:claude-opus-4.6');
+      expect(c.metadata?.discussion?.[0].depth).toBe(0);
+      expect(c.metadata?.discussion?.[1].author).toBe('@alice');
+      expect(c.metadata?.discussion?.[1].depth).toBe(1);
     });
 
     // --- Empty footnote body (Level 1 only) ---
@@ -1358,12 +1355,12 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.author, '@alice');
-      assert.strictEqual(c.metadata?.discussion, undefined);
-      assert.strictEqual(c.metadata?.approvals, undefined);
-      assert.strictEqual(c.metadata?.resolution, undefined);
-      assert.strictEqual(c.metadata?.context, undefined);
-      assert.strictEqual(c.metadata?.revisions, undefined);
+      expect(c.metadata?.author).toBe('@alice');
+      expect(c.metadata?.discussion).toBeUndefined();
+      expect(c.metadata?.approvals).toBeUndefined();
+      expect(c.metadata?.resolution).toBeUndefined();
+      expect(c.metadata?.context).toBeUndefined();
+      expect(c.metadata?.revisions).toBeUndefined();
     });
 
     // --- Blank lines within footnote body ---
@@ -1382,11 +1379,11 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.approvals?.length, 1);
-      assert.strictEqual(c.metadata?.discussion?.length, 2);
-      assert.strictEqual(c.metadata?.discussion?.[0].author, '@carol');
-      assert.strictEqual(c.metadata?.discussion?.[1].author, '@dave');
-      assert.deepStrictEqual(c.metadata?.resolution, {
+      expect(c.metadata?.approvals).toHaveLength(1);
+      expect(c.metadata?.discussion).toHaveLength(2);
+      expect(c.metadata?.discussion?.[0].author).toBe('@carol');
+      expect(c.metadata?.discussion?.[1].author).toBe('@dave');
+      expect(c.metadata?.resolution).toStrictEqual({
         type: 'resolved', author: '@dave', date: '2024-01-18', timestamp: parseTimestamp('2024-01-18'), reason: undefined,
       });
     });
@@ -1402,7 +1399,7 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.approvals?.[0].reason, undefined);
+      expect(c.metadata?.approvals?.[0].reason).toBeUndefined();
     });
 
     // --- Discussion with no text after colon ---
@@ -1416,8 +1413,8 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.discussion?.length, 1);
-      assert.strictEqual(c.metadata?.discussion?.[0].text, '');
+      expect(c.metadata?.discussion).toHaveLength(1);
+      expect(c.metadata?.discussion?.[0].text).toBe('');
     });
 
     // --- Mixed metadata and discussion ---
@@ -1440,19 +1437,19 @@ describe('CriticMarkupParser', () => {
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
 
-      assert.strictEqual(c.metadata?.context, 'Some {context} here');
-      assert.strictEqual(c.metadata?.approvals?.length, 1);
-      assert.strictEqual(c.metadata?.rejections?.length, 1);
-      assert.strictEqual(c.metadata?.rejections?.[0].reason, 'Not convinced');
-      assert.strictEqual(c.metadata?.requestChanges?.length, 1);
-      assert.strictEqual(c.metadata?.requestChanges?.[0].reason, 'Needs tests');
-      assert.strictEqual(c.metadata?.revisions?.length, 1);
-      assert.strictEqual(c.metadata?.revisions?.[0].label, 'r1');
-      assert.strictEqual(c.metadata?.discussion?.length, 2);
-      assert.strictEqual(c.metadata?.discussion?.[0].depth, 0);
-      assert.strictEqual(c.metadata?.discussion?.[1].depth, 1);
-      assert.strictEqual(c.metadata?.discussion?.[1].label, 'suggestion');
-      assert.deepStrictEqual(c.metadata?.resolution, {
+      expect(c.metadata?.context).toBe('Some {context} here');
+      expect(c.metadata?.approvals).toHaveLength(1);
+      expect(c.metadata?.rejections).toHaveLength(1);
+      expect(c.metadata?.rejections?.[0].reason).toBe('Not convinced');
+      expect(c.metadata?.requestChanges).toHaveLength(1);
+      expect(c.metadata?.requestChanges?.[0].reason).toBe('Needs tests');
+      expect(c.metadata?.revisions).toHaveLength(1);
+      expect(c.metadata?.revisions?.[0].label).toBe('r1');
+      expect(c.metadata?.discussion).toHaveLength(2);
+      expect(c.metadata?.discussion?.[0].depth).toBe(0);
+      expect(c.metadata?.discussion?.[1].depth).toBe(1);
+      expect(c.metadata?.discussion?.[1].label).toBe('suggestion');
+      expect(c.metadata?.resolution).toStrictEqual({
         type: 'resolved', author: '@alice', date: '2024-01-20', timestamp: parseTimestamp('2024-01-20'), reason: 'All feedback addressed',
       });
     });
@@ -1474,8 +1471,8 @@ describe('CriticMarkupParser', () => {
         level: 0,
         anchored: false,
       };
-      assert.strictEqual(node.moveRole, 'from');
-      assert.strictEqual(node.groupId, 'ct-1');
+      expect(node.moveRole).toBe('from');
+      expect(node.groupId).toBe('ct-1');
     });
 
     it('ChangeNode moveRole and groupId are optional (backward compat)', () => {
@@ -1488,8 +1485,8 @@ describe('CriticMarkupParser', () => {
         level: 0,
         anchored: false,
       };
-      assert.strictEqual(node.moveRole, undefined);
-      assert.strictEqual(node.groupId, undefined);
+      expect(node.moveRole).toBeUndefined();
+      expect(node.groupId).toBeUndefined();
     });
   });
 
@@ -1506,15 +1503,15 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
+      expect(changes).toHaveLength(2);
 
       const del = changes.find(c => c.id === 'ct-5.1')!;
-      assert.strictEqual(del.groupId, 'ct-5');
-      assert.strictEqual(del.moveRole, 'from');
+      expect(del.groupId).toBe('ct-5');
+      expect(del.moveRole).toBe('from');
 
       const ins = changes.find(c => c.id === 'ct-5.2')!;
-      assert.strictEqual(ins.groupId, 'ct-5');
-      assert.strictEqual(ins.moveRole, 'to');
+      expect(ins.groupId).toBe('ct-5');
+      expect(ins.moveRole).toBe('to');
     });
 
     it('does not set moveRole/groupId on non-move changes', () => {
@@ -1525,8 +1522,8 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.groupId, undefined);
-      assert.strictEqual(c.moveRole, undefined);
+      expect(c.groupId).toBeUndefined();
+      expect(c.moveRole).toBeUndefined();
     });
 
     it('handles multiple move groups independently', () => {
@@ -1544,12 +1541,12 @@ describe('CriticMarkupParser', () => {
       const changes = doc.getChanges();
 
       const g3del = changes.find(c => c.id === 'ct-3.1')!;
-      assert.strictEqual(g3del.groupId, 'ct-3');
-      assert.strictEqual(g3del.moveRole, 'from');
+      expect(g3del.groupId).toBe('ct-3');
+      expect(g3del.moveRole).toBe('from');
 
       const g4ins = changes.find(c => c.id === 'ct-4.2')!;
-      assert.strictEqual(g4ins.groupId, 'ct-4');
-      assert.strictEqual(g4ins.moveRole, 'to');
+      expect(g4ins.groupId).toBe('ct-4');
+      expect(g4ins.moveRole).toBe('to');
     });
 
     it('handles orphan move parent (no matching children)', () => {
@@ -1561,8 +1558,8 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.groupId, undefined);
-      assert.strictEqual(c.moveRole, undefined);
+      expect(c.groupId).toBeUndefined();
+      expect(c.moveRole).toBeUndefined();
     });
   });
 
@@ -1576,15 +1573,15 @@ describe('CriticMarkupParser', () => {
         type: 'insertion',
       });
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
-      assert.strictEqual(changes[0].status, ChangeStatus.Proposed);
-      assert.strictEqual(changes[0].range.start, 0);
-      assert.strictEqual(changes[0].range.end, 5);
-      assert.strictEqual(changes[0].contentRange.start, 0);
-      assert.strictEqual(changes[0].contentRange.end, 5);
-      assert.strictEqual(changes[0].level, 1);
-      assert.strictEqual(changes[0].id, 'ct-pending-0');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
+      expect(changes[0].status).toBe(ChangeStatus.Proposed);
+      expect(changes[0].range.start).toBe(0);
+      expect(changes[0].range.end).toBe(5);
+      expect(changes[0].contentRange.start).toBe(0);
+      expect(changes[0].contentRange.end).toBe(5);
+      expect(changes[0].level).toBe(1);
+      expect(changes[0].id).toBe('ct-pending-0');
     });
 
     it('uses scId when provided', () => {
@@ -1595,8 +1592,8 @@ describe('CriticMarkupParser', () => {
         scId: 'ct-17',
       });
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].id, 'ct-17');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].id).toBe('ct-17');
     });
 
     it('changeAtOffset finds overlay change', () => {
@@ -1605,17 +1602,17 @@ describe('CriticMarkupParser', () => {
         text: 'world',
         type: 'insertion',
       });
-      assert.ok(doc.changeAtOffset(7) !== null);
-      assert.strictEqual(doc.changeAtOffset(7)!.type, ChangeType.Insertion);
-      assert.strictEqual(doc.changeAtOffset(0), null);
+      expect(doc.changeAtOffset(7) !== null).toBeTruthy();
+      expect(doc.changeAtOffset(7)!.type).toBe(ChangeType.Insertion);
+      expect(doc.changeAtOffset(0)).toBeNull();
     });
   });
 
   describe('VirtualDocument integration', () => {
     it('returns a VirtualDocument with getChanges() method', () => {
       const doc = parser.parse('{++test++}');
-      assert.ok(typeof doc.getChanges === 'function');
-      assert.ok(Array.isArray(doc.getChanges()));
+      expect(typeof doc.getChanges === 'function').toBeTruthy();
+      expect(Array.isArray(doc.getChanges())).toBeTruthy();
     });
 
     it('changeAtOffset finds the correct node', () => {
@@ -1623,11 +1620,11 @@ describe('CriticMarkupParser', () => {
       // {++ at 3..6, content 'def' at 6..9, ++} at 9..12
       // changeAtOffset should find nodes where offset is within range [start, end]
       const node = doc.changeAtOffset(5);
-      assert.ok(node !== null);
-      assert.strictEqual(node!.type, ChangeType.Insertion);
+      expect(node !== null).toBeTruthy();
+      expect(node!.type).toBe(ChangeType.Insertion);
 
       const noNode = doc.changeAtOffset(0);
-      assert.strictEqual(noNode, null);
+      expect(noNode).toBeNull();
     });
   });
 
@@ -1638,67 +1635,67 @@ describe('CriticMarkupParser', () => {
       const text = '{~~REST~>GraphQL~~}{>>@alice<<}';
       const doc = parser.parse(text);
       const change = doc.getChanges()[0];
-      assert.strictEqual(change.level, 1);
-      assert.strictEqual(change.inlineMetadata?.author, '@alice');
+      expect(change.level).toBe(1);
+      expect(change.inlineMetadata?.author).toBe('@alice');
     });
 
     it('parses adjacent comment with pipe-separated fields', () => {
       const text = '{~~REST~>GraphQL~~}{>>@alice|2026-02-13|sub|proposed<<}';
       const doc = parser.parse(text);
       const change = doc.getChanges()[0];
-      assert.strictEqual(change.level, 1);
-      assert.strictEqual(change.inlineMetadata?.author, '@alice');
-      assert.strictEqual(change.inlineMetadata?.date, '2026-02-13');
-      assert.strictEqual(change.inlineMetadata?.type, 'sub');
-      assert.strictEqual(change.inlineMetadata?.status, 'proposed');
+      expect(change.level).toBe(1);
+      expect(change.inlineMetadata?.author).toBe('@alice');
+      expect(change.inlineMetadata?.date).toBe('2026-02-13');
+      expect(change.inlineMetadata?.type).toBe('sub');
+      expect(change.inlineMetadata?.status).toBe('proposed');
     });
 
     it('parses Level 1 with author and status only', () => {
       const text = '{++new text++}{>>@bob|approved<<}';
       const doc = parser.parse(text);
       const change = doc.getChanges()[0];
-      assert.strictEqual(change.level, 1);
-      assert.strictEqual(change.inlineMetadata?.author, '@bob');
-      assert.strictEqual(change.inlineMetadata?.status, 'approved');
+      expect(change.level).toBe(1);
+      expect(change.inlineMetadata?.author).toBe('@bob');
+      expect(change.inlineMetadata?.status).toBe('approved');
     });
 
     it('parses free-text reason in Level 1 comment', () => {
       const text = '{++rate limiting++}{>>performance concern<<}';
       const doc = parser.parse(text);
       const change = doc.getChanges()[0];
-      assert.strictEqual(change.level, 1);
-      assert.strictEqual(change.inlineMetadata?.freeText, 'performance concern');
+      expect(change.level).toBe(1);
+      expect(change.inlineMetadata?.freeText).toBe('performance concern');
     });
 
     it('distinguishes Level 0 (no adjacent comment)', () => {
       const text = '{~~REST~>GraphQL~~}';
       const doc = parser.parse(text);
       const change = doc.getChanges()[0];
-      assert.strictEqual(change.level, 0);
-      assert.strictEqual(change.inlineMetadata, undefined);
+      expect(change.level).toBe(0);
+      expect(change.inlineMetadata).toBeUndefined();
     });
 
     it('distinguishes Level 2 (footnote ref)', () => {
       const text = '{~~REST~>GraphQL~~}[^ct-1]\n\n[^ct-1]: @alice | 2026-02-13 | sub | proposed';
       const doc = parser.parse(text);
       const change = doc.getChanges()[0];
-      assert.strictEqual(change.level, 2);
+      expect(change.level).toBe(2);
     });
 
     it('handles whitespace around pipes in Level 1', () => {
       const text = '{~~old~>new~~}{>>@alice | approved<<}';
       const doc = parser.parse(text);
       const change = doc.getChanges()[0];
-      assert.strictEqual(change.inlineMetadata?.author, '@alice');
-      assert.strictEqual(change.inlineMetadata?.status, 'approved');
+      expect(change.inlineMetadata?.author).toBe('@alice');
+      expect(change.inlineMetadata?.status).toBe('approved');
     });
 
     it('handles empty fields between pipes', () => {
       const text = '{~~old~>new~~}{>>@alice||2026-02-13<<}';
       const doc = parser.parse(text);
       const change = doc.getChanges()[0];
-      assert.strictEqual(change.inlineMetadata?.author, '@alice');
-      assert.strictEqual(change.inlineMetadata?.date, '2026-02-13');
+      expect(change.inlineMetadata?.author).toBe('@alice');
+      expect(change.inlineMetadata?.date).toBe('2026-02-13');
     });
   });
 
@@ -1708,77 +1705,77 @@ describe('CriticMarkupParser', () => {
     it('ignores CriticMarkup inside backtick fence', () => {
       const text = '```\n{++not a change++}\n```\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('ignores CriticMarkup inside tilde fence', () => {
       const text = '~~~\n{++not a change++}\n~~~\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('ignores CriticMarkup in fence with info string', () => {
       const text = '```javascript\n{++not a change++}\n```\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('parses real change BEFORE fence, ignores CriticMarkup inside fence', () => {
       const text = 'Real {++change++}\n```\n{++not a change++}\n```\n';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].modifiedText, 'change');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].modifiedText).toBe('change');
     });
 
     it('parses real change AFTER fence', () => {
       const text = '```\n{++not a change++}\n```\n{++real++}\n';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].modifiedText, 'real');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].modifiedText).toBe('real');
     });
 
     it('treats unclosed fence as extending to end of document', () => {
       const text = '```\n{++everything after unclosed fence is code++}\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('does not close fence when closing fence is too short', () => {
       // 4-backtick fence opened, 3-backtick close attempt
       const text = '````\n{++still in fence++}\n```\n{++still in fence too++}\n````\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('handles nested backtick inside tilde fence (inner backticks are content)', () => {
       const text = '~~~\n```\n{++inside both fences++}\n```\n~~~\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('handles real changes before, between, and after fences', () => {
       const text = '{--deleted--}\n```\n{++code example++}\n```\n{++real insertion++}\n';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
-      assert.strictEqual(changes[0].type, ChangeType.Deletion);
-      assert.strictEqual(changes[0].originalText, 'deleted');
-      assert.strictEqual(changes[1].type, ChangeType.Insertion);
-      assert.strictEqual(changes[1].modifiedText, 'real insertion');
+      expect(changes).toHaveLength(2);
+      expect(changes[0].type).toBe(ChangeType.Deletion);
+      expect(changes[0].originalText).toBe('deleted');
+      expect(changes[1].type).toBe(ChangeType.Insertion);
+      expect(changes[1].modifiedText).toBe('real insertion');
     });
 
     it('ignores substitution syntax in tilde fence', () => {
       const text = '~~~\n{~~old~>new~~}\n~~~\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('handles fence with up to 3 leading spaces', () => {
       const text = '   ```\n{++indented fence++}\n   ```\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('does NOT treat 4-space indented backticks as a fence', () => {
@@ -1787,41 +1784,41 @@ describe('CriticMarkupParser', () => {
       // spans can cross lines), so the CriticMarkup inside is still skipped.
       const text = '    ```\n{++not a fence with 4 spaces++}\n    ```\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('4-space indented single backticks do not suppress CriticMarkup', () => {
       // A single backtick on a line that has no matching close means no inline code span
       const text = '    `\n{++real change++}\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 1);
-      assert.strictEqual(doc.getChanges()[0].modifiedText, 'real change');
+      expect(doc.getChanges()).toHaveLength(1);
+      expect(doc.getChanges()[0].modifiedText).toBe('real change');
     });
 
     it('does not close backtick fence with tildes', () => {
       const text = '```\n{++still in fence++}\n~~~\n{++still in fence too++}\n```\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('does not close tilde fence with backticks', () => {
       const text = '~~~\n{++still in fence++}\n```\n{++still in fence too++}\n~~~\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('handles fence closing with trailing whitespace', () => {
       const text = '```\n{++code++}\n```   \n{++real++}\n';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].modifiedText, 'real');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].modifiedText).toBe('real');
     });
 
     it('does not treat closing fence with trailing content as a close', () => {
       const text = '```\n{++still code++}\n``` not a close\n{++still code too++}\n```\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
   });
 
@@ -1829,19 +1826,19 @@ describe('CriticMarkupParser', () => {
     it('ignores CriticMarkup inside single-backtick inline code', () => {
       const text = 'The syntax `{++text++}` for additions.';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('ignores CriticMarkup inside double-backtick inline code', () => {
       const text = 'Use ``{++text++}`` for additions.';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('ignores CriticMarkup inside triple-backtick inline code', () => {
       const text = 'Use ```{++text++}``` for additions.';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('parses CriticMarkup after unmatched backtick (no code span)', () => {
@@ -1849,47 +1846,47 @@ describe('CriticMarkupParser', () => {
       const text = 'Some `unmatched backtick and {++real change++}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].modifiedText, 'real change');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].modifiedText).toBe('real change');
     });
 
     it('does not start inline code inside fenced block', () => {
       // Backticks inside a fence are content, not inline code delimiters
       const text = '```\n`{++inside fence++}`\n```\n';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('handles multiple inline code spans on one line', () => {
       const text = '`{++a++}` and `{--b--}` and {++real++}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].modifiedText, 'real');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].modifiedText).toBe('real');
     });
 
     it('handles deletion inside inline code', () => {
       const text = 'Use `{--deletion syntax--}` to remove text.';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('handles substitution inside inline code', () => {
       const text = 'Use `{~~old~>new~~}` for substitutions.';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('handles highlight inside inline code', () => {
       const text = 'Use `{==text==}` for highlights.';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('handles comment inside inline code', () => {
       const text = 'Use `{>>note<<}` for comments.';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
   });
 
@@ -1905,11 +1902,11 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
-      assert.strictEqual(changes[0].modifiedText, 'real insertion');
-      assert.strictEqual(changes[1].type, ChangeType.Deletion);
-      assert.strictEqual(changes[1].originalText, 'real deletion');
+      expect(changes).toHaveLength(2);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
+      expect(changes[0].modifiedText).toBe('real insertion');
+      expect(changes[1].type).toBe(ChangeType.Deletion);
+      expect(changes[1].originalText).toBe('real deletion');
     });
 
     it('footnote definitions NOT inside code blocks still parse correctly', () => {
@@ -1924,9 +1921,9 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].id, 'ct-1');
-      assert.strictEqual(changes[0].metadata?.author, '@alice');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].id).toBe('ct-1');
+      expect(changes[0].metadata?.author).toBe('@alice');
     });
 
     it('handles CriticMarkup cheatsheet document correctly', () => {
@@ -1945,8 +1942,8 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].modifiedText, 'real change');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].modifiedText).toBe('real change');
     });
 
     it('existing plain text tests still work (no code constructs = no zones)', () => {
@@ -1955,31 +1952,31 @@ describe('CriticMarkupParser', () => {
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       // highlight absorbs comment: 4 changes total
-      assert.strictEqual(changes.length, 4);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
-      assert.strictEqual(changes[1].type, ChangeType.Deletion);
-      assert.strictEqual(changes[2].type, ChangeType.Substitution);
-      assert.strictEqual(changes[3].type, ChangeType.Highlight);
+      expect(changes).toHaveLength(4);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
+      expect(changes[1].type).toBe(ChangeType.Deletion);
+      expect(changes[2].type).toBe(ChangeType.Substitution);
+      expect(changes[3].type).toBe(ChangeType.Highlight);
     });
 
     it('real change adjacent to code fence', () => {
       const text = '```\ncode\n```\n{++real++}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].modifiedText, 'real');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].modifiedText).toBe('real');
     });
 
     it('fence at very start of document', () => {
       const text = '```\n{++code++}\n```';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('inline code at very start of document', () => {
       const text = '`{++code++}` rest';
       const doc = parser.parse(text);
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
   });
 
@@ -1994,20 +1991,20 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-1');
-      assert.strictEqual(c.type, ChangeType.Substitution);
-      assert.strictEqual(c.status, ChangeStatus.Accepted);
-      assert.strictEqual(c.settled, true);
-      assert.strictEqual(c.level, 2);
-      assert.strictEqual(c.metadata?.author, '@ai:claude-opus-4.6');
-      assert.strictEqual(c.metadata?.status, 'accepted');
+      expect(c.id).toBe('ct-1');
+      expect(c.type).toBe(ChangeType.Substitution);
+      expect(c.status).toBe(ChangeStatus.Accepted);
+      expect(c.settled).toBe(true);
+      expect(c.level).toBe(2);
+      expect(c.metadata?.author).toBe('@ai:claude-opus-4.6');
+      expect(c.metadata?.status).toBe('accepted');
       // Range covers exactly the [^ct-1] ref
       const ref = '[^ct-1]';
-      assert.strictEqual(c.range.end - c.range.start, ref.length);
+      expect(c.range.end - c.range.start).toBe(ref.length);
       // contentRange is empty (no inline content)
-      assert.strictEqual(c.contentRange.start, c.contentRange.end);
+      expect(c.contentRange.start).toBe(c.contentRange.end);
     });
 
     it('does not synthesize when [^ct-N] is attached to CriticMarkup', () => {
@@ -2018,18 +2015,18 @@ describe('CriticMarkupParser', () => {
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-1');
-      assert.strictEqual(c.type, ChangeType.Insertion);
-      assert.strictEqual(c.settled, undefined); // NOT a settled ref
+      expect(c.id).toBe('ct-1');
+      expect(c.type).toBe(ChangeType.Insertion);
+      expect(c.settled).toBeUndefined(); // NOT a settled ref
     });
 
     it('ignores standalone [^ct-N] refs with no matching footnote definition', () => {
       const text = 'Some text[^ct-99] with an orphan ref.';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 0);
+      expect(changes).toHaveLength(0);
     });
   });
 
@@ -2040,10 +2037,10 @@ describe('CriticMarkupParser', () => {
       const parser2 = new CriticMarkupParser();
       const doc = parser2.parse('{++added++} and {--removed--}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes[0].id, 'ct-1');
-      assert.strictEqual(changes[1].id, 'ct-2');
-      assert.strictEqual(changes[0].anchored, false);
-      assert.strictEqual(changes[1].anchored, false);
+      expect(changes[0].id).toBe('ct-1');
+      expect(changes[1].id).toBe('ct-2');
+      expect(changes[0].anchored).toBe(false);
+      expect(changes[1].anchored).toBe(false);
     });
 
     it('assigns ct-N IDs starting after max existing ct-N in file', () => {
@@ -2053,17 +2050,17 @@ describe('CriticMarkupParser', () => {
       const changes = doc.getChanges();
       const anchored = changes.find(c => c.id === 'ct-5');
       const unanchored = changes.find(c => c.id === 'ct-6');
-      assert.ok(anchored, 'should find ct-5');
-      assert.ok(unanchored, 'should find ct-6 (next after max)');
-      assert.strictEqual(anchored!.anchored, true);
-      assert.strictEqual(unanchored!.anchored, false);
+      expect(anchored, 'should find ct-5').toBeTruthy();
+      expect(unanchored).toBeTruthy();
+      expect(anchored!.anchored).toBe(true);
+      expect(unanchored!.anchored).toBe(false);
     });
 
     it('does not produce positional IDs like ins-0 or sub-1', () => {
       const parser2 = new CriticMarkupParser();
       const doc = parser2.parse('{++a++} {--b--} {~~c~>d~~}');
       for (const c of doc.getChanges()) {
-        assert.ok(c.id.startsWith('ct-'), `expected ct- prefix, got ${c.id}`);
+        expect(c.id.startsWith('ct-')).toBeTruthy();
       }
     });
   });

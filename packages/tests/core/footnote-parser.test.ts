@@ -1,10 +1,10 @@
-import * as assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import { parseFootnotes, type FootnoteInfo } from '@changetracks/core/internals';
 
 describe('parseFootnotes', () => {
   it('returns empty map for content without footnotes', () => {
     const result = parseFootnotes('# Title\nSome text\n');
-    assert.strictEqual(result.size, 0);
+    expect(result.size).toBe(0);
   });
 
   it('parses a single footnote definition', () => {
@@ -15,18 +15,18 @@ describe('parseFootnotes', () => {
     ].join('\n');
 
     const result = parseFootnotes(content);
-    assert.strictEqual(result.size, 1);
+    expect(result.size).toBe(1);
 
     const fn = result.get('ct-1')!;
-    assert.strictEqual(fn.id, 'ct-1');
-    assert.strictEqual(fn.author, '@alice');
-    assert.strictEqual(fn.date, '2026-02-17');
-    assert.strictEqual(fn.type, 'ins');
-    assert.strictEqual(fn.status, 'proposed');
-    assert.strictEqual(fn.reason, '');
-    assert.strictEqual(fn.replyCount, 0);
-    assert.strictEqual(fn.startLine, 2);
-    assert.strictEqual(fn.endLine, 2);
+    expect(fn.id).toBe('ct-1');
+    expect(fn.author).toBe('@alice');
+    expect(fn.date).toBe('2026-02-17');
+    expect(fn.type).toBe('ins');
+    expect(fn.status).toBe('proposed');
+    expect(fn.reason).toBe('');
+    expect(fn.replyCount).toBe(0);
+    expect(fn.startLine).toBe(2);
+    expect(fn.endLine).toBe(2);
   });
 
   it('parses multiple footnotes', () => {
@@ -37,11 +37,11 @@ describe('parseFootnotes', () => {
     ].join('\n');
 
     const result = parseFootnotes(content);
-    assert.strictEqual(result.size, 3);
-    assert.strictEqual(result.get('ct-1')!.status, 'proposed');
-    assert.strictEqual(result.get('ct-2')!.status, 'accepted');
-    assert.strictEqual(result.get('ct-3')!.status, 'rejected');
-    assert.strictEqual(result.get('ct-3')!.author, '@ai:claude-opus-4.6');
+    expect(result.size).toBe(3);
+    expect(result.get('ct-1')!.status).toBe('proposed');
+    expect(result.get('ct-2')!.status).toBe('accepted');
+    expect(result.get('ct-3')!.status).toBe('rejected');
+    expect(result.get('ct-3')!.author).toBe('@ai:claude-opus-4.6');
   });
 
   it('parses reason from metadata line', () => {
@@ -52,8 +52,8 @@ describe('parseFootnotes', () => {
 
     const result = parseFootnotes(content);
     const fn = result.get('ct-1')!;
-    assert.strictEqual(fn.reason, 'spelling fix');
-    assert.strictEqual(fn.endLine, 1);
+    expect(fn.reason).toBe('spelling fix');
+    expect(fn.endLine).toBe(1);
   });
 
   it('counts thread replies', () => {
@@ -66,17 +66,17 @@ describe('parseFootnotes', () => {
 
     const result = parseFootnotes(content);
     const fn = result.get('ct-1')!;
-    assert.strictEqual(fn.replyCount, 2);
-    assert.strictEqual(fn.reason, 'clarity improvement');
-    assert.strictEqual(fn.startLine, 0);
-    assert.strictEqual(fn.endLine, 3);
+    expect(fn.replyCount).toBe(2);
+    expect(fn.reason).toBe('clarity improvement');
+    expect(fn.startLine).toBe(0);
+    expect(fn.endLine).toBe(3);
   });
 
   it('handles dotted IDs (ct-N.M)', () => {
     const content = '[^ct-5.2]: @alice | 2026-02-17 | del | proposed';
     const result = parseFootnotes(content);
-    assert.strictEqual(result.size, 1);
-    assert.strictEqual(result.get('ct-5.2')!.id, 'ct-5.2');
+    expect(result.size).toBe(1);
+    expect(result.get('ct-5.2')!.id).toBe('ct-5.2');
   });
 
   it('handles blank lines within footnote continuation', () => {
@@ -89,8 +89,8 @@ describe('parseFootnotes', () => {
 
     const result = parseFootnotes(content);
     const fn = result.get('ct-1')!;
-    assert.strictEqual(fn.replyCount, 1);
-    assert.strictEqual(fn.reason, 'complex change');
+    expect(fn.replyCount).toBe(1);
+    expect(fn.reason).toBe('complex change');
   });
 
   it('stops scanning at non-indented line after footnote', () => {
@@ -102,8 +102,8 @@ describe('parseFootnotes', () => {
     ].join('\n');
 
     const result = parseFootnotes(content);
-    assert.strictEqual(result.size, 2);
-    assert.strictEqual(result.get('ct-1')!.endLine, 1);
-    assert.strictEqual(result.get('ct-2')!.startLine, 3);
+    expect(result.size).toBe(2);
+    expect(result.get('ct-1')!.endLine).toBe(1);
+    expect(result.get('ct-2')!.startLine).toBe(3);
   });
 });

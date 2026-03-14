@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { SidecarParser, ChangeType, ChangeStatus } from '@changetracks/core/internals';
 
 describe('SidecarParser', () => {
@@ -19,12 +19,12 @@ describe('SidecarParser', () => {
         '',
       ];
       const doc = parser.parse(lines.join('\n'), 'python');
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('returns empty document for empty string', () => {
       const doc = parser.parse('', 'python');
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
   });
 
@@ -39,12 +39,12 @@ describe('SidecarParser', () => {
         '# ----------------------------------------------------------------',
       ];
       const doc = parser.parse(lines.join('\n'), 'markdown');
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
 
     it('returns empty document for unknown language', () => {
       const doc = parser.parse('some code', 'brainfuck');
-      assert.strictEqual(doc.getChanges().length, 0);
+      expect(doc.getChanges()).toHaveLength(0);
     });
   });
 
@@ -64,13 +64,13 @@ describe('SidecarParser', () => {
       const doc = parser.parse(text, 'python');
       const changes = doc.getChanges();
 
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-1');
-      assert.strictEqual(c.type, ChangeType.Deletion);
-      assert.strictEqual(c.status, ChangeStatus.Proposed);
-      assert.strictEqual(c.originalText, 'y = 2');
-      assert.strictEqual(c.modifiedText, undefined);
+      expect(c.id).toBe('ct-1');
+      expect(c.type).toBe(ChangeType.Deletion);
+      expect(c.status).toBe(ChangeStatus.Proposed);
+      expect(c.originalText).toBe('y = 2');
+      expect(c.modifiedText).toBeUndefined();
     });
   });
 
@@ -90,13 +90,13 @@ describe('SidecarParser', () => {
       const doc = parser.parse(text, 'python');
       const changes = doc.getChanges();
 
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-1');
-      assert.strictEqual(c.type, ChangeType.Insertion);
-      assert.strictEqual(c.status, ChangeStatus.Proposed);
-      assert.strictEqual(c.modifiedText, 'z = 3');
-      assert.strictEqual(c.originalText, undefined);
+      expect(c.id).toBe('ct-1');
+      expect(c.type).toBe(ChangeType.Insertion);
+      expect(c.status).toBe(ChangeStatus.Proposed);
+      expect(c.modifiedText).toBe('z = 3');
+      expect(c.originalText).toBeUndefined();
     });
   });
 
@@ -118,13 +118,13 @@ describe('SidecarParser', () => {
       const doc = parser.parse(text, 'python');
       const changes = doc.getChanges();
 
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-1');
-      assert.strictEqual(c.type, ChangeType.Substitution);
-      assert.strictEqual(c.status, ChangeStatus.Proposed);
-      assert.strictEqual(c.originalText, 'results = []');
-      assert.strictEqual(c.modifiedText, 'results = {}');
+      expect(c.id).toBe('ct-1');
+      expect(c.type).toBe(ChangeType.Substitution);
+      expect(c.status).toBe(ChangeStatus.Proposed);
+      expect(c.originalText).toBe('results = []');
+      expect(c.modifiedText).toBe('results = {}');
     });
   });
 
@@ -144,11 +144,11 @@ describe('SidecarParser', () => {
       const doc = parser.parse(text, 'typescript');
       const changes = doc.getChanges();
 
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
-      assert.strictEqual(c.id, 'ct-1');
-      assert.strictEqual(c.type, ChangeType.Insertion);
-      assert.strictEqual(c.modifiedText, 'const z = 3;');
+      expect(c.id).toBe('ct-1');
+      expect(c.type).toBe(ChangeType.Insertion);
+      expect(c.modifiedText).toBe('const z = 3;');
     });
   });
 
@@ -169,15 +169,15 @@ describe('SidecarParser', () => {
       const doc = parser.parse(text, 'python');
       const changes = doc.getChanges();
 
-      assert.strictEqual(changes.length, 2);
+      expect(changes).toHaveLength(2);
 
-      assert.strictEqual(changes[0].id, 'ct-1');
-      assert.strictEqual(changes[0].type, ChangeType.Deletion);
-      assert.strictEqual(changes[0].originalText, 'y = 2');
+      expect(changes[0].id).toBe('ct-1');
+      expect(changes[0].type).toBe(ChangeType.Deletion);
+      expect(changes[0].originalText).toBe('y = 2');
 
-      assert.strictEqual(changes[1].id, 'ct-2');
-      assert.strictEqual(changes[1].type, ChangeType.Insertion);
-      assert.strictEqual(changes[1].modifiedText, 'z = 3');
+      expect(changes[1].id).toBe('ct-2');
+      expect(changes[1].type).toBe(ChangeType.Insertion);
+      expect(changes[1].modifiedText).toBe('z = 3');
     });
   });
 
@@ -199,16 +199,16 @@ describe('SidecarParser', () => {
       const doc = parser.parse(text, 'python');
       const changes = doc.getChanges();
 
-      assert.strictEqual(changes.length, 2);
-      assert.strictEqual(changes[0].id, 'ct-1.1');
-      assert.strictEqual(changes[0].type, ChangeType.Substitution);
-      assert.strictEqual(changes[0].originalText, 'old_a');
-      assert.strictEqual(changes[0].modifiedText, 'new_a');
+      expect(changes).toHaveLength(2);
+      expect(changes[0].id).toBe('ct-1.1');
+      expect(changes[0].type).toBe(ChangeType.Substitution);
+      expect(changes[0].originalText).toBe('old_a');
+      expect(changes[0].modifiedText).toBe('new_a');
 
-      assert.strictEqual(changes[1].id, 'ct-1.2');
-      assert.strictEqual(changes[1].type, ChangeType.Substitution);
-      assert.strictEqual(changes[1].originalText, 'old_b');
-      assert.strictEqual(changes[1].modifiedText, 'new_b');
+      expect(changes[1].id).toBe('ct-1.2');
+      expect(changes[1].type).toBe(ChangeType.Substitution);
+      expect(changes[1].originalText).toBe('old_b');
+      expect(changes[1].modifiedText).toBe('new_b');
     });
   });
 
@@ -232,12 +232,12 @@ describe('SidecarParser', () => {
       const doc = parser.parse(text, 'python');
       const changes = doc.getChanges();
 
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
       // Line 1 starts at offset 6 (after "x = 1\n")
-      assert.strictEqual(c.range.start, 6);
+      expect(c.range.start).toBe(6);
       // Line 1 is "# - y = 2  # ct-1" = 17 chars + 1 for \n = 24
-      assert.strictEqual(c.range.end, 24);
+      expect(c.range.end).toBe(24);
     });
 
     it('range spans multiple lines for multi-line deletion', () => {
@@ -254,14 +254,14 @@ describe('SidecarParser', () => {
       const doc = parser.parse(text, 'python');
       const changes = doc.getChanges();
 
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
       const c = changes[0];
       // Line 1 starts at offset 6 (after "x = 1\n")
-      assert.strictEqual(c.range.start, 6);
+      expect(c.range.start).toBe(6);
       // Line 1: "# - a = 1  # ct-1" = 17 chars + \n = offset 6..24
       // Line 2: "# - b = 2  # ct-1" = 17 chars + \n = offset 24..42
-      assert.strictEqual(c.range.end, 42);
-      assert.strictEqual(c.originalText, 'a = 1\nb = 2');
+      expect(c.range.end).toBe(42);
+      expect(c.originalText).toBe('a = 1\nb = 2');
     });
 
     it('contentRange equals range', () => {
@@ -275,7 +275,7 @@ describe('SidecarParser', () => {
       const doc = parser.parse(text, 'python');
       const changes = doc.getChanges();
       const c = changes[0];
-      assert.deepStrictEqual(c.contentRange, c.range);
+      expect(c.contentRange).toStrictEqual(c.range);
     });
   });
 
@@ -293,7 +293,7 @@ describe('SidecarParser', () => {
       const text = lines.join('\n');
       const doc = parser.parse(text, 'python');
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.author, 'jane');
+      expect(c.metadata?.author).toBe('jane');
     });
 
     it('parses date as timestamp', () => {
@@ -307,7 +307,7 @@ describe('SidecarParser', () => {
       const text = lines.join('\n');
       const doc = parser.parse(text, 'python');
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.date, '2026-02-08');
+      expect(c.metadata?.date).toBe('2026-02-08');
     });
 
     it('parses reason as comment', () => {
@@ -321,7 +321,7 @@ describe('SidecarParser', () => {
       const text = lines.join('\n');
       const doc = parser.parse(text, 'python');
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.metadata?.comment, 'removed unused variable');
+      expect(c.metadata?.comment).toBe('removed unused variable');
     });
 
     it('parses original field for deletion originalText', () => {
@@ -337,7 +337,7 @@ describe('SidecarParser', () => {
       const c = doc.getChanges()[0];
       // originalText comes from the deletion line code, not the original field
       // But when there are no deletion lines, originalText comes from original field
-      assert.strictEqual(c.originalText, 'y = 2');
+      expect(c.originalText).toBe('y = 2');
     });
   });
 
@@ -353,7 +353,7 @@ describe('SidecarParser', () => {
       ];
       const text = lines.join('\n');
       const doc = parser.parse(text, 'python');
-      assert.strictEqual(doc.getChanges()[0].status, ChangeStatus.Accepted);
+      expect(doc.getChanges()[0].status).toBe(ChangeStatus.Accepted);
     });
 
     it('parses rejected status', () => {
@@ -365,7 +365,7 @@ describe('SidecarParser', () => {
       ];
       const text = lines.join('\n');
       const doc = parser.parse(text, 'python');
-      assert.strictEqual(doc.getChanges()[0].status, ChangeStatus.Rejected);
+      expect(doc.getChanges()[0].status).toBe(ChangeStatus.Rejected);
     });
   });
 
@@ -382,7 +382,7 @@ describe('SidecarParser', () => {
       ];
       const text = lines.join('\n');
       const doc = parser.parse(text, 'python');
-      assert.strictEqual(doc.getChanges()[0].type, ChangeType.Substitution);
+      expect(doc.getChanges()[0].type).toBe(ChangeType.Substitution);
     });
   });
 
@@ -402,9 +402,9 @@ describe('SidecarParser', () => {
       const text = lines.join('\n');
       const doc = parser.parse(text, 'python');
       const c = doc.getChanges()[0];
-      assert.strictEqual(c.type, ChangeType.Substitution);
-      assert.strictEqual(c.originalText, 'old_val');
-      assert.strictEqual(c.modifiedText, 'new_val');
+      expect(c.type).toBe(ChangeType.Substitution);
+      expect(c.originalText).toBe('old_val');
+      expect(c.modifiedText).toBe('new_val');
     });
   });
 });

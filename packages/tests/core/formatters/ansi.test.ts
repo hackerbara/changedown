@@ -1,4 +1,4 @@
-import assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import { formatAnsi, ThreeZoneDocument } from '@changetracks/core/internals';
 
 function stripAnsi(str: string): string {
@@ -30,8 +30,8 @@ describe('formatAnsi', () => {
     };
     const output = formatAnsi(doc);
     const plain = stripAnsi(output);
-    assert.ok(!plain.includes(':a3'), 'hash should not appear in ANSI output');
-    assert.ok(plain.includes('1'), 'line number should appear');
+    expect(!plain.includes(':a3')).toBeTruthy();
+    expect(plain.includes('1')).toBeTruthy();
   });
 
   it('shows colored gutter for P flag', () => {
@@ -46,7 +46,7 @@ describe('formatAnsi', () => {
       }],
     };
     const output = formatAnsi(doc);
-    assert.ok(output.includes('\x1b[31m'), 'P flag should use red');
+    expect(output.includes('\x1b[31m')).toBeTruthy();
   });
 
   it('colors insertion spans green', () => {
@@ -65,8 +65,8 @@ describe('formatAnsi', () => {
       }],
     };
     const output = formatAnsi(doc);
-    assert.ok(output.includes('\x1b[32m'), 'insertion should use green');
-    assert.ok(stripAnsi(output).includes('Hello world.'));
+    expect(output.includes('\x1b[32m')).toBeTruthy();
+    expect(stripAnsi(output).includes('Hello world.')).toBeTruthy();
   });
 
   it('colors deletion spans red with strikethrough', () => {
@@ -81,8 +81,8 @@ describe('formatAnsi', () => {
       }],
     };
     const output = formatAnsi(doc);
-    assert.ok(output.includes('\x1b[31m'), 'deletion should use red');
-    assert.ok(output.includes('\x1b[9m'), 'deletion should use strikethrough');
+    expect(output.includes('\x1b[31m')).toBeTruthy();
+    expect(output.includes('\x1b[9m')).toBeTruthy();
   });
 
   it('hides delimiters by default (visual cues mode)', () => {
@@ -104,10 +104,10 @@ describe('formatAnsi', () => {
     };
     const output = formatAnsi(doc, { showMarkup: false });
     const plain = stripAnsi(output);
-    assert.ok(!plain.includes('{~~'), 'delimiters should be hidden');
-    assert.ok(!plain.includes('~~}'), 'delimiters should be hidden');
-    assert.ok(plain.includes('REST'), 'old text should be visible');
-    assert.ok(plain.includes('GraphQL'), 'new text should be visible');
+    expect(!plain.includes('{~~')).toBeTruthy();
+    expect(!plain.includes('~~}')).toBeTruthy();
+    expect(plain.includes('REST')).toBeTruthy();
+    expect(plain.includes('GraphQL')).toBeTruthy();
   });
 
   it('shows delimiters when showMarkup=true', () => {
@@ -129,8 +129,8 @@ describe('formatAnsi', () => {
     };
     const output = formatAnsi(doc, { showMarkup: true });
     const plain = stripAnsi(output);
-    assert.ok(plain.includes('{~~'), 'delimiters should be visible');
-    assert.ok(plain.includes('~~}'), 'delimiters should be visible');
+    expect(plain.includes('{~~')).toBeTruthy();
+    expect(plain.includes('~~}')).toBeTruthy();
   });
 
   it('dims metadata in Zone 3', () => {
@@ -145,9 +145,9 @@ describe('formatAnsi', () => {
       }],
     };
     const output = formatAnsi(doc);
-    assert.ok(output.includes('\x1b[2m'), 'metadata should use dim');
-    assert.ok(stripAnsi(output).includes('@alice'));
-    assert.ok(stripAnsi(output).includes('2 replies'));
+    expect(output.includes('\x1b[2m')).toBeTruthy();
+    expect(stripAnsi(output).includes('@alice')).toBeTruthy();
+    expect(stripAnsi(output).includes('2 replies')).toBeTruthy();
   });
 
   it('shows green gutter for A flag', () => {
@@ -162,7 +162,7 @@ describe('formatAnsi', () => {
       }],
     };
     const output = formatAnsi(doc);
-    assert.ok(output.includes('\x1b[32m'), 'A flag should use green');
+    expect(output.includes('\x1b[32m')).toBeTruthy();
   });
 
   it('shows dim gutter for clean lines (no flags)', () => {
@@ -178,7 +178,7 @@ describe('formatAnsi', () => {
     };
     const output = formatAnsi(doc);
     // Dim gutter character should be present
-    assert.ok(output.includes('\x1b[2m'), 'clean gutter should use dim');
+    expect(output.includes('\x1b[2m')).toBeTruthy();
   });
 
   it('renders sub_old with red strikethrough and sub_new with green', () => {
@@ -198,10 +198,10 @@ describe('formatAnsi', () => {
     };
     const output = formatAnsi(doc);
     // sub_old uses red+strikethrough
-    assert.ok(output.includes('\x1b[31m'), 'sub_old should use red');
-    assert.ok(output.includes('\x1b[9m'), 'sub_old should use strikethrough');
+    expect(output.includes('\x1b[31m')).toBeTruthy();
+    expect(output.includes('\x1b[9m')).toBeTruthy();
     // sub_new uses green
-    assert.ok(output.includes('\x1b[32m'), 'sub_new should use green');
+    expect(output.includes('\x1b[32m')).toBeTruthy();
   });
 
   it('renders highlight with yellow background', () => {
@@ -216,7 +216,7 @@ describe('formatAnsi', () => {
       }],
     };
     const output = formatAnsi(doc);
-    assert.ok(output.includes('\x1b[43m'), 'highlight should use yellow background');
+    expect(output.includes('\x1b[43m')).toBeTruthy();
   });
 
   it('renders comment as dim italic', () => {
@@ -231,8 +231,8 @@ describe('formatAnsi', () => {
       }],
     };
     const output = formatAnsi(doc);
-    assert.ok(output.includes('\x1b[2m'), 'comment should use dim');
-    assert.ok(output.includes('\x1b[3m'), 'comment should use italic');
+    expect(output.includes('\x1b[2m')).toBeTruthy();
+    expect(output.includes('\x1b[3m')).toBeTruthy();
   });
 
   it('hides anchor spans (agent-facing only)', () => {
@@ -252,8 +252,8 @@ describe('formatAnsi', () => {
     };
     const output = formatAnsi(doc);
     const plain = stripAnsi(output);
-    assert.ok(!plain.includes('[^ct-1]'), 'anchor should be hidden');
-    assert.ok(plain.includes('Hello world.'), 'surrounding text should be intact');
+    expect(!plain.includes('[^ct-1]')).toBeTruthy();
+    expect(plain.includes('Hello world.')).toBeTruthy();
   });
 
   it('renders header with file path and counts', () => {
@@ -272,9 +272,9 @@ describe('formatAnsi', () => {
     };
     const output = formatAnsi(doc);
     const plain = stripAnsi(output);
-    assert.ok(plain.includes('test.md'), 'header should show file path');
-    assert.ok(plain.includes('2 proposed'), 'header should show proposed count');
-    assert.ok(plain.includes('1 accepted'), 'header should show accepted count');
+    expect(plain.includes('test.md')).toBeTruthy();
+    expect(plain.includes('2 proposed')).toBeTruthy();
+    expect(plain.includes('1 accepted')).toBeTruthy();
   });
 
   it('renders metadata with singular reply count', () => {
@@ -290,8 +290,8 @@ describe('formatAnsi', () => {
     };
     const output = formatAnsi(doc);
     const plain = stripAnsi(output);
-    assert.ok(plain.includes('1 reply'), 'singular reply count');
-    assert.ok(!plain.includes('1 replies'), 'should not say "1 replies"');
+    expect(plain.includes('1 reply')).toBeTruthy();
+    expect(!plain.includes('1 replies')).toBeTruthy();
   });
 
   it('renders sub_arrow as dim arrow symbol', () => {
@@ -312,7 +312,7 @@ describe('formatAnsi', () => {
     const output = formatAnsi(doc);
     const plain = stripAnsi(output);
     // sub_arrow renders as a visual arrow, not the raw ~>
-    assert.ok(plain.includes('\u2192') || plain.includes('→'), 'sub_arrow should render as arrow');
+    expect(plain.includes('\u2192') || plain.includes('→')).toBeTruthy();
   });
 
   it('pads line numbers to consistent width', () => {
@@ -340,11 +340,11 @@ describe('formatAnsi', () => {
     const lines = plain.split('\n');
     const line1 = lines.find(l => l.includes('Line one.'));
     const line10 = lines.find(l => l.includes('Line ten.'));
-    assert.ok(line1, 'line 1 should exist');
-    assert.ok(line10, 'line 10 should exist');
+    expect(line1).toBeTruthy();
+    expect(line10).toBeTruthy();
     // Both gutter-to-content distances should be equal
     const gutterEnd1 = line1!.indexOf('│') !== -1 ? line1!.indexOf('│') : line1!.indexOf('┃');
     const gutterEnd10 = line10!.indexOf('│') !== -1 ? line10!.indexOf('│') : line10!.indexOf('┃');
-    assert.strictEqual(gutterEnd1, gutterEnd10, 'gutter alignment should be consistent');
+    expect(gutterEnd1).toBe(gutterEnd10);
   });
 });

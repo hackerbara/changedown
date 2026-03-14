@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect, beforeAll } from 'vitest';
 import {
   initHashline,
   computeLineHash,
@@ -9,7 +9,7 @@ import {
 } from '@changetracks/core/internals';
 
 describe('hashline', () => {
-  before(async () => {
+  beforeAll(async () => {
     await initHashline();
   });
 
@@ -18,28 +18,28 @@ describe('hashline', () => {
   describe('computeLineHash', () => {
     it('returns a 2-char lowercase hex string', () => {
       const hash = computeLineHash(0, 'hello');
-      assert.match(hash, /^[0-9a-f]{2}$/);
+      expect(hash).toMatch(/^[0-9a-f]{2}$/);
     });
 
     it('hashes empty line to a consistent value', () => {
       const h1 = computeLineHash(0, '');
       const h2 = computeLineHash(1, '');
-      assert.strictEqual(h1, h2, 'empty line hash should be consistent regardless of idx');
-      assert.match(h1, /^[0-9a-f]{2}$/);
+      expect(h1).toBe(h2);
+      expect(h1).toMatch(/^[0-9a-f]{2}$/);
     });
 
     it('idx does not affect the hash (API compat param only)', () => {
       const h0 = computeLineHash(0, 'hello world');
       const h5 = computeLineHash(5, 'hello world');
       const h999 = computeLineHash(999, 'hello world');
-      assert.strictEqual(h0, h5);
-      assert.strictEqual(h0, h999);
+      expect(h0).toBe(h5);
+      expect(h0).toBe(h999);
     });
 
     it('strips trailing \\r before hashing', () => {
       const withCR = computeLineHash(0, 'hello\r');
       const withoutCR = computeLineHash(0, 'hello');
-      assert.strictEqual(withCR, withoutCR);
+      expect(withCR).toBe(withoutCR);
     });
 
     it('strips ALL whitespace before hashing', () => {
@@ -47,9 +47,9 @@ describe('hashline', () => {
       const spaced = computeLineHash(0, 'hello world');
       const tabbed = computeLineHash(0, 'hello\tworld');
       const mixed = computeLineHash(0, '  hello  world  ');
-      assert.strictEqual(plain, spaced);
-      assert.strictEqual(plain, tabbed);
-      assert.strictEqual(plain, mixed);
+      expect(plain).toBe(spaced);
+      expect(plain).toBe(tabbed);
+      expect(plain).toBe(mixed);
     });
 
     it('different content produces different hashes (usually)', () => {
@@ -57,38 +57,38 @@ describe('hashline', () => {
       const h2 = computeLineHash(0, 'goodbye');
       // With 256 buckets, collisions happen, but these two specific strings should differ
       // If by chance they collide, just pick different test strings
-      assert.notStrictEqual(h1, h2);
+      expect(h1).not.toBe(h2);
     });
 
     it('handles lines with only whitespace (same as empty)', () => {
       const empty = computeLineHash(0, '');
       const spaces = computeLineHash(0, '   ');
       const tabs = computeLineHash(0, '\t\t');
-      assert.strictEqual(empty, spaces);
-      assert.strictEqual(empty, tabs);
+      expect(empty).toBe(spaces);
+      expect(empty).toBe(tabs);
     });
 
     it('handles unicode content', () => {
-      const hash = computeLineHash(0, 'こんにちは');
-      assert.match(hash, /^[0-9a-f]{2}$/);
+      const hash = computeLineHash(0, '\u3053\u3093\u306B\u3061\u306F');
+      expect(hash).toMatch(/^[0-9a-f]{2}$/);
     });
 
     it('strips footnote refs [^ct-N] before hashing (whitespace-class)', () => {
       const plain = computeLineHash(0, 'some text here');
       const withRef = computeLineHash(0, 'some text[^ct-1] here');
-      assert.strictEqual(withRef, plain);
+      expect(withRef).toBe(plain);
     });
 
     it('strips dotted footnote refs [^ct-N.M] before hashing', () => {
       const plain = computeLineHash(0, 'some text here');
       const withRef = computeLineHash(0, 'some text[^ct-2.3] here');
-      assert.strictEqual(withRef, plain);
+      expect(withRef).toBe(plain);
     });
 
     it('strips multiple footnote refs before hashing', () => {
       const plain = computeLineHash(0, 'text more');
       const withRefs = computeLineHash(0, 'text[^ct-1][^ct-2.1] more');
-      assert.strictEqual(withRefs, plain);
+      expect(withRefs).toBe(plain);
     });
   });
 
@@ -98,37 +98,37 @@ describe('hashline', () => {
     it('formats a single line', () => {
       const result = formatHashLines('hello');
       const hash = computeLineHash(0, 'hello');
-      assert.strictEqual(result, `1:${hash}|hello`);
+      expect(result).toBe(`1:${hash}|hello`);
     });
 
     it('formats multiple lines', () => {
       const result = formatHashLines('aaa\nbbb\nccc');
       const lines = result.split('\n');
-      assert.strictEqual(lines.length, 3);
-      assert.match(lines[0], /^1:[0-9a-f]{2}\|aaa$/);
-      assert.match(lines[1], /^2:[0-9a-f]{2}\|bbb$/);
-      assert.match(lines[2], /^3:[0-9a-f]{2}\|ccc$/);
+      expect(lines).toHaveLength(3);
+      expect(lines[0]).toMatch(/^1:[0-9a-f]{2}\|aaa$/);
+      expect(lines[1]).toMatch(/^2:[0-9a-f]{2}\|bbb$/);
+      expect(lines[2]).toMatch(/^3:[0-9a-f]{2}\|ccc$/);
     });
 
     it('uses custom startLine', () => {
       const result = formatHashLines('aaa\nbbb', 10);
       const lines = result.split('\n');
-      assert.match(lines[0], /^10:[0-9a-f]{2}\|aaa$/);
-      assert.match(lines[1], /^11:[0-9a-f]{2}\|bbb$/);
+      expect(lines[0]).toMatch(/^10:[0-9a-f]{2}\|aaa$/);
+      expect(lines[1]).toMatch(/^11:[0-9a-f]{2}\|bbb$/);
     });
 
     it('handles empty content (single empty line)', () => {
       const result = formatHashLines('');
       const hash = computeLineHash(0, '');
-      assert.strictEqual(result, `1:${hash}|`);
+      expect(result).toBe(`1:${hash}|`);
     });
 
     it('preserves trailing empty lines from split', () => {
       const result = formatHashLines('aaa\n');
       const lines = result.split('\n');
-      assert.strictEqual(lines.length, 2);
-      assert.match(lines[0], /^1:[0-9a-f]{2}\|aaa$/);
-      assert.match(lines[1], /^2:[0-9a-f]{2}\|$/);
+      expect(lines).toHaveLength(2);
+      expect(lines[0]).toMatch(/^1:[0-9a-f]{2}\|aaa$/);
+      expect(lines[1]).toMatch(/^2:[0-9a-f]{2}\|$/);
     });
   });
 
@@ -137,73 +137,73 @@ describe('hashline', () => {
   describe('parseLineRef', () => {
     it('parses simple ref "5:a3"', () => {
       const ref = parseLineRef('5:a3');
-      assert.deepStrictEqual(ref, { line: 5, hash: 'a3' });
+      expect(ref).toStrictEqual({ line: 5, hash: 'a3' });
     });
 
     it('parses ref with content suffix (pipe format) "5:a3|content here"', () => {
       const ref = parseLineRef('5:a3|content here');
-      assert.deepStrictEqual(ref, { line: 5, hash: 'a3' });
+      expect(ref).toStrictEqual({ line: 5, hash: 'a3' });
     });
 
     it('parses ref with double-space suffix "5:a3  content here"', () => {
       const ref = parseLineRef('5:a3  content here');
-      assert.deepStrictEqual(ref, { line: 5, hash: 'a3' });
+      expect(ref).toStrictEqual({ line: 5, hash: 'a3' });
     });
 
     it('normalizes whitespace around colon "5 : a3"', () => {
       const ref = parseLineRef('5 : a3');
-      assert.deepStrictEqual(ref, { line: 5, hash: 'a3' });
+      expect(ref).toStrictEqual({ line: 5, hash: 'a3' });
     });
 
     it('handles single-digit line and hash', () => {
       const ref = parseLineRef('1:ff');
-      assert.deepStrictEqual(ref, { line: 1, hash: 'ff' });
+      expect(ref).toStrictEqual({ line: 1, hash: 'ff' });
     });
 
     it('handles large line numbers', () => {
       const ref = parseLineRef('9999:00');
-      assert.deepStrictEqual(ref, { line: 9999, hash: '00' });
+      expect(ref).toStrictEqual({ line: 9999, hash: '00' });
     });
 
     it('handles uppercase hex in hash', () => {
       const ref = parseLineRef('3:AB');
-      assert.deepStrictEqual(ref, { line: 3, hash: 'AB' });
+      expect(ref).toStrictEqual({ line: 3, hash: 'AB' });
     });
 
     it('handles longer hash (up to 16 chars)', () => {
       const ref = parseLineRef('1:abcdef01234567ff');
       // Strict match allows up to 16 hex chars
-      assert.deepStrictEqual(ref, { line: 1, hash: 'abcdef01234567ff' });
+      expect(ref).toStrictEqual({ line: 1, hash: 'abcdef01234567ff' });
     });
 
     it('uses prefix match fallback for 2-char hash prefix followed by non-hex', () => {
       // "5:a3xyz" fails strict but prefix match extracts "a3"
       const ref = parseLineRef('5:a3xyz');
-      assert.deepStrictEqual(ref, { line: 5, hash: 'a3' });
+      expect(ref).toStrictEqual({ line: 5, hash: 'a3' });
     });
 
     it('throws on completely invalid format', () => {
-      assert.throws(() => parseLineRef('not a ref'), /invalid.*ref/i);
+      expect(() => parseLineRef('not a ref')).toThrow(/invalid.*ref/i);
     });
 
     it('throws on missing colon', () => {
-      assert.throws(() => parseLineRef('5a3'), /invalid.*ref/i);
+      expect(() => parseLineRef('5a3')).toThrow(/invalid.*ref/i);
     });
 
     it('throws on line number < 1', () => {
-      assert.throws(() => parseLineRef('0:a3'), /line.*must be >= 1/i);
+      expect(() => parseLineRef('0:a3')).toThrow(/line.*must be >= 1/i);
     });
 
     it('throws on negative line number', () => {
-      assert.throws(() => parseLineRef('-1:a3'), /invalid.*ref/i);
+      expect(() => parseLineRef('-1:a3')).toThrow(/invalid.*ref/i);
     });
 
     it('throws on empty hash after colon', () => {
-      assert.throws(() => parseLineRef('5:'), /invalid.*ref/i);
+      expect(() => parseLineRef('5:')).toThrow(/invalid.*ref/i);
     });
 
     it('throws on single-char hash (need at least 2)', () => {
-      assert.throws(() => parseLineRef('5:a'), /invalid.*ref/i);
+      expect(() => parseLineRef('5:a')).toThrow(/invalid.*ref/i);
     });
   });
 
@@ -225,29 +225,29 @@ describe('hashline', () => {
 
     it('throws Error when line is out of range', () => {
       const fileLines = ['hello', 'world'];
-      assert.throws(
+      expect(
         () => validateLineRef({ line: 3, hash: 'ff' }, fileLines),
-        (err: unknown) => {
-          assert.ok(err instanceof Error);
-          assert.ok(!(err instanceof HashlineMismatchError));
-          return true;
-        }
-      );
+      ).toThrow();
+      try {
+        validateLineRef({ line: 3, hash: 'ff' }, fileLines);
+      } catch (err: unknown) {
+        expect(err instanceof Error).toBeTruthy();
+        expect(err instanceof HashlineMismatchError).toBe(false);
+      }
     });
 
     it('throws HashlineMismatchError when hash does not match', () => {
       const fileLines = ['hello', 'world'];
-      const wrongHash = 'zz'; // Will never match a real xxhash hex output
-      // Use a valid hex that won't match
       const actualHash = computeLineHash(0, 'hello');
       const badHash = actualHash === 'ff' ? '00' : 'ff';
-      assert.throws(
+      expect(
         () => validateLineRef({ line: 1, hash: badHash }, fileLines),
-        (err: unknown) => {
-          assert.ok(err instanceof HashlineMismatchError);
-          return true;
-        }
-      );
+      ).toThrow();
+      try {
+        validateLineRef({ line: 1, hash: badHash }, fileLines);
+      } catch (err: unknown) {
+        expect(err instanceof HashlineMismatchError).toBeTruthy();
+      }
     });
   });
 
@@ -259,7 +259,7 @@ describe('hashline', () => {
         [{ line: 1, expected: 'aa', actual: 'bb' }],
         ['hello']
       );
-      assert.strictEqual(err.name, 'HashlineMismatchError');
+      expect(err.name).toBe('HashlineMismatchError');
     });
 
     it('is an instance of Error', () => {
@@ -267,7 +267,7 @@ describe('hashline', () => {
         [{ line: 1, expected: 'aa', actual: 'bb' }],
         ['hello']
       );
-      assert.ok(err instanceof Error);
+      expect(err instanceof Error).toBeTruthy();
     });
 
     it('contains >>> marker on mismatched line', () => {
@@ -275,8 +275,8 @@ describe('hashline', () => {
         [{ line: 2, expected: 'aa', actual: 'bb' }],
         ['first', 'second', 'third', 'fourth']
       );
-      assert.ok(err.message.includes('>>>'), 'message should contain >>> marker');
-      assert.ok(err.message.includes('second'), 'message should include the mismatched line content');
+      expect(err.message.includes('>>>')).toBeTruthy();
+      expect(err.message.includes('second')).toBeTruthy();
     });
 
     it('shows context lines around mismatch', () => {
@@ -287,11 +287,11 @@ describe('hashline', () => {
       );
       // 2 lines of context above and below line 4
       // Should show lines 2-6 (2 above, mismatch at 4, 2 below)
-      assert.ok(err.message.includes('line2'), 'should show 2 lines of context above');
-      assert.ok(err.message.includes('line3'), 'should show 1 line of context above');
-      assert.ok(err.message.includes('line4'), 'should show the mismatched line');
-      assert.ok(err.message.includes('line5'), 'should show 1 line of context below');
-      assert.ok(err.message.includes('line6'), 'should show 2 lines of context below');
+      expect(err.message.includes('line2')).toBeTruthy();
+      expect(err.message.includes('line3')).toBeTruthy();
+      expect(err.message.includes('line4')).toBeTruthy();
+      expect(err.message.includes('line5')).toBeTruthy();
+      expect(err.message.includes('line6')).toBeTruthy();
     });
 
     it('shows gap separator between non-contiguous regions', () => {
@@ -303,7 +303,7 @@ describe('hashline', () => {
         ],
         fileLines
       );
-      assert.ok(err.message.includes('...'), 'should contain gap separator');
+      expect(err.message.includes('...')).toBeTruthy();
     });
 
     it('does NOT show gap when regions are contiguous', () => {
@@ -316,7 +316,7 @@ describe('hashline', () => {
         fileLines
       );
       // Lines 3 and 4 are adjacent — context regions overlap, no gap needed
-      assert.ok(!err.message.includes('\n...\n'), 'should not contain gap separator for contiguous regions');
+      expect(!err.message.includes('\n...\n')).toBeTruthy();
     });
 
     it('has remaps property with old→new mappings', () => {
@@ -324,8 +324,8 @@ describe('hashline', () => {
         [{ line: 5, expected: 'd4', actual: 'f1' }],
         Array.from({ length: 10 }, (_, i) => `line${i + 1}`)
       );
-      assert.ok(err.remaps instanceof Map);
-      assert.strictEqual(err.remaps.get('5:d4'), '5:f1');
+      expect(err.remaps instanceof Map).toBeTruthy();
+      expect(err.remaps.get('5:d4')).toBe('5:f1');
     });
 
     it('shows quick-fix remap section in message', () => {
@@ -333,13 +333,12 @@ describe('hashline', () => {
         [{ line: 5, expected: 'd4', actual: 'f1' }],
         Array.from({ length: 10 }, (_, i) => `line${i + 1}`)
       );
-      assert.ok(err.message.includes('5:d4'), 'remap section should show old ref');
-      assert.ok(err.message.includes('5:f1'), 'remap section should show new ref');
+      expect(err.message.includes('5:d4')).toBeTruthy();
+      expect(err.message.includes('5:f1')).toBeTruthy();
       // Arrow between old and new
-      assert.ok(
-        err.message.includes('→') || err.message.includes('->'),
-        'remap section should show arrow between old and new'
-      );
+      expect(
+        err.message.includes('\u2192') || err.message.includes('->'),
+      ).toBeTruthy();
     });
 
     it('handles mismatch at first line (no context above)', () => {
@@ -347,8 +346,8 @@ describe('hashline', () => {
         [{ line: 1, expected: 'aa', actual: 'bb' }],
         ['first', 'second', 'third']
       );
-      assert.ok(err.message.includes('>>>'));
-      assert.ok(err.message.includes('first'));
+      expect(err.message.includes('>>>')).toBeTruthy();
+      expect(err.message.includes('first')).toBeTruthy();
     });
 
     it('handles mismatch at last line (no context below)', () => {
@@ -357,8 +356,8 @@ describe('hashline', () => {
         [{ line: 3, expected: 'aa', actual: 'bb' }],
         fileLines
       );
-      assert.ok(err.message.includes('>>>'));
-      assert.ok(err.message.includes('third'));
+      expect(err.message.includes('>>>')).toBeTruthy();
+      expect(err.message.includes('third')).toBeTruthy();
     });
 
     it('handles multiple mismatches with correct remaps', () => {
@@ -370,9 +369,9 @@ describe('hashline', () => {
         ],
         fileLines
       );
-      assert.strictEqual(err.remaps.size, 2);
-      assert.strictEqual(err.remaps.get('3:aa'), '3:bb');
-      assert.strictEqual(err.remaps.get('7:cc'), '7:dd');
+      expect(err.remaps.size).toBe(2);
+      expect(err.remaps.get('3:aa')).toBe('3:bb');
+      expect(err.remaps.get('7:cc')).toBe('7:dd');
     });
   });
 
@@ -384,7 +383,7 @@ describe('hashline', () => {
       await initHashline();
       // Should not throw or change behavior
       const hash = computeLineHash(0, 'test');
-      assert.match(hash, /^[0-9a-f]{2}$/);
+      expect(hash).toMatch(/^[0-9a-f]{2}$/);
     });
   });
 
@@ -396,9 +395,9 @@ describe('hashline', () => {
       const h1 = computeLineHash(1, lines[1], lines);
       const h3 = computeLineHash(3, lines[3], lines);
       const h5 = computeLineHash(5, lines[5], lines);
-      assert.notStrictEqual(h1, h3, 'blank at idx 1 vs idx 3 should differ');
-      assert.notStrictEqual(h1, h5, 'blank at idx 1 vs idx 5 should differ');
-      assert.notStrictEqual(h3, h5, 'blank at idx 3 vs idx 5 should differ');
+      expect(h1).not.toBe(h3);
+      expect(h1).not.toBe(h5);
+      expect(h3).not.toBe(h5);
     });
 
     it('consecutive blank lines get different hashes', () => {
@@ -406,16 +405,16 @@ describe('hashline', () => {
       const h1 = computeLineHash(1, lines[1], lines);
       const h2 = computeLineHash(2, lines[2], lines);
       const h3 = computeLineHash(3, lines[3], lines);
-      assert.notStrictEqual(h1, h2, 'consecutive blank 1 vs 2 should differ');
-      assert.notStrictEqual(h1, h3, 'consecutive blank 1 vs 3 should differ');
-      assert.notStrictEqual(h2, h3, 'consecutive blank 2 vs 3 should differ');
+      expect(h1).not.toBe(h2);
+      expect(h1).not.toBe(h3);
+      expect(h2).not.toBe(h3);
     });
 
     it('non-blank lines ignore the allLines context parameter', () => {
       const lines = ['# Heading', 'Content here', 'More content'];
       const withoutContext = computeLineHash(1, lines[1]);
       const withContext = computeLineHash(1, lines[1], lines);
-      assert.strictEqual(withoutContext, withContext, 'non-blank hash should be the same with or without allLines');
+      expect(withoutContext).toBe(withContext);
     });
 
     it('blank line at start of file gets unique hash', () => {
@@ -423,19 +422,19 @@ describe('hashline', () => {
       const linesMiddleBlank = ['# Heading', '', 'Content'];
       const hStart = computeLineHash(0, linesStartBlank[0], linesStartBlank);
       const hMiddle = computeLineHash(1, linesMiddleBlank[1], linesMiddleBlank);
-      assert.notStrictEqual(hStart, hMiddle, 'blank at start should differ from blank in middle');
+      expect(hStart).not.toBe(hMiddle);
     });
 
     it('blank line at end of file gets unique hash', () => {
       const lines = ['# Heading', 'Content', ''];
       const hash = computeLineHash(2, lines[2], lines);
-      assert.match(hash, /^[0-9a-f]{2}$/, 'should produce a valid 2-char hex hash');
+      expect(hash).toMatch(/^[0-9a-f]{2}$/);
     });
 
     it('without allLines param, blank lines still hash to same value (backward compat)', () => {
       const h1 = computeLineHash(0, '');
       const h2 = computeLineHash(5, '');
-      assert.strictEqual(h1, h2, 'without allLines, blank lines hash the same (legacy behavior)');
+      expect(h1).toBe(h2);
     });
 
     it('formatHashLines produces unique hashes for blank lines', () => {
@@ -446,9 +445,9 @@ describe('hashline', () => {
         return match ? match[1] : null;
       });
       // Blank lines are at indices 1, 3, 5 (0-based in the array)
-      assert.notStrictEqual(hashes[1], hashes[3], 'formatHashLines: blank at line 2 vs 4 should differ');
-      assert.notStrictEqual(hashes[1], hashes[5], 'formatHashLines: blank at line 2 vs 6 should differ');
-      assert.notStrictEqual(hashes[3], hashes[5], 'formatHashLines: blank at line 4 vs 6 should differ');
+      expect(hashes[1]).not.toBe(hashes[3]);
+      expect(hashes[1]).not.toBe(hashes[5]);
+      expect(hashes[3]).not.toBe(hashes[5]);
     });
   });
 
@@ -456,13 +455,13 @@ describe('hashline', () => {
 
   describe('computeLineHash without init', () => {
     // This test verifies the error message, but since we already called init
-    // in the before() hook, we can't truly test uninit state here.
+    // in the beforeAll() hook, we can't truly test uninit state here.
     // We trust the implementation checks for null and throws.
-    // The before() hook ensures init for all other tests.
+    // The beforeAll() hook ensures init for all other tests.
     it('documents that initHashline() must be called first', () => {
       // Documented behavior: calling computeLineHash before initHashline
       // throws "Call initHashline() before using hashline functions"
-      assert.ok(true, 'documented requirement');
+      expect(true).toBeTruthy();
     });
   });
 });

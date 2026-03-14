@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import { annotateSidecar, AnnotationMetadata } from '@changetracks/core/internals';
 
 describe('Sidecar Annotator - annotateSidecar', () => {
@@ -8,11 +8,11 @@ describe('Sidecar Annotator - annotateSidecar', () => {
   describe('no differences', () => {
     it('returns unchanged text when old and new are identical', () => {
       const text = 'x = 1\ny = 2\n';
-      assert.strictEqual(annotateSidecar(text, text, 'python'), text);
+      expect(annotateSidecar(text, text, 'python')).toBe(text);
     });
 
     it('returns unchanged text for identical empty strings', () => {
-      assert.strictEqual(annotateSidecar('', '', 'typescript'), '');
+      expect(annotateSidecar('', '', 'typescript')).toBe('');
     });
   });
 
@@ -20,11 +20,11 @@ describe('Sidecar Annotator - annotateSidecar', () => {
 
   describe('unsupported language', () => {
     it('returns undefined for markdown', () => {
-      assert.strictEqual(annotateSidecar('old', 'new', 'markdown'), undefined);
+      expect(annotateSidecar('old', 'new', 'markdown')).toBeUndefined();
     });
 
     it('returns undefined for unknown language', () => {
-      assert.strictEqual(annotateSidecar('old', 'new', 'brainfuck'), undefined);
+      expect(annotateSidecar('old', 'new', 'brainfuck')).toBeUndefined();
     });
   });
 
@@ -35,13 +35,13 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const old = 'x = 1\ny = 2\n';
       const now = 'x = 1\nz = 3\ny = 2\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
       // The inserted line gets an insertion tag
-      assert.ok(result!.includes('z = 3  # ct-1'), `Expected insertion tag in: ${result}`);
+      expect(result!.includes('z = 3  # ct-1')).toBeTruthy();
       // Sidecar block exists with ins entry
-      assert.ok(result!.includes('# -- ChangeTracks'), `Expected sidecar header in: ${result}`);
-      assert.ok(result!.includes('# [^ct-1]: ins | pending'), `Expected sidecar entry in: ${result}`);
+      expect(result!.includes('# -- ChangeTracks')).toBeTruthy();
+      expect(result!.includes('# [^ct-1]: ins | pending')).toBeTruthy();
     });
   });
 
@@ -52,12 +52,12 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const old = 'x = 1\ny = 2\nz = 3\n';
       const now = 'x = 1\nz = 3\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
       // The deleted line becomes a commented deletion marker
-      assert.ok(result!.includes('# - y = 2  # ct-1'), `Expected deletion marker in: ${result}`);
+      expect(result!.includes('# - y = 2  # ct-1')).toBeTruthy();
       // Sidecar block has del entry
-      assert.ok(result!.includes('# [^ct-1]: del | pending'), `Expected sidecar entry in: ${result}`);
+      expect(result!.includes('# [^ct-1]: del | pending')).toBeTruthy();
     });
   });
 
@@ -68,13 +68,13 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const old = 'x = 1\nresults = []\nz = 3\n';
       const now = 'x = 1\nresults = {}\nz = 3\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
       // Deletion line for old value + insertion line for new value, same tag
-      assert.ok(result!.includes('# - results = []  # ct-1'), `Expected deletion marker in: ${result}`);
-      assert.ok(result!.includes('results = {}  # ct-1'), `Expected insertion tag in: ${result}`);
+      expect(result!.includes('# - results = []  # ct-1')).toBeTruthy();
+      expect(result!.includes('results = {}  # ct-1')).toBeTruthy();
       // Sidecar block has sub entry
-      assert.ok(result!.includes('# [^ct-1]: sub | pending'), `Expected sidecar entry in: ${result}`);
+      expect(result!.includes('# [^ct-1]: sub | pending')).toBeTruthy();
     });
   });
 
@@ -85,12 +85,12 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const old = 'const x = 1;\nconst y = 2;\n';
       const now = 'const x = 1;\nconst z = 3;\nconst y = 2;\n';
       const result = annotateSidecar(old, now, 'typescript');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
       // Uses // comment syntax
-      assert.ok(result!.includes('const z = 3;  // ct-1'), `Expected TS insertion tag in: ${result}`);
-      assert.ok(result!.includes('// -- ChangeTracks'), `Expected TS sidecar header in: ${result}`);
-      assert.ok(result!.includes('// [^ct-1]: ins | pending'), `Expected TS sidecar entry in: ${result}`);
+      expect(result!.includes('const z = 3;  // ct-1')).toBeTruthy();
+      expect(result!.includes('// -- ChangeTracks')).toBeTruthy();
+      expect(result!.includes('// [^ct-1]: ins | pending')).toBeTruthy();
     });
   });
 
@@ -101,15 +101,15 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const old = 'a = 1\nb = 2\nc = 3\nd = 4\n';
       const now = 'a = 1\nx = 10\ny = 20\nd = 4\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
       // Both old lines become deletion markers, both new lines get insertion tags
-      assert.ok(result!.includes('# - b = 2  # ct-1'), `Expected first deletion in: ${result}`);
-      assert.ok(result!.includes('# - c = 3  # ct-1'), `Expected second deletion in: ${result}`);
-      assert.ok(result!.includes('x = 10  # ct-1'), `Expected first insertion in: ${result}`);
-      assert.ok(result!.includes('y = 20  # ct-1'), `Expected second insertion in: ${result}`);
+      expect(result!.includes('# - b = 2  # ct-1')).toBeTruthy();
+      expect(result!.includes('# - c = 3  # ct-1')).toBeTruthy();
+      expect(result!.includes('x = 10  # ct-1')).toBeTruthy();
+      expect(result!.includes('y = 20  # ct-1')).toBeTruthy();
       // Single sub entry in sidecar
-      assert.ok(result!.includes('# [^ct-1]: sub | pending'), `Expected sidecar sub entry in: ${result}`);
+      expect(result!.includes('# [^ct-1]: sub | pending')).toBeTruthy();
     });
   });
 
@@ -120,10 +120,10 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const old = 'def foo():\n    x = 1\n    y = 2\n';
       const now = 'def foo():\n    y = 2\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
       // Indentation preserved: "    # - x = 1  # ct-1"
-      assert.ok(result!.includes('    # - x = 1  # ct-1'), `Expected indented deletion in: ${result}`);
+      expect(result!.includes('    # - x = 1  # ct-1')).toBeTruthy();
     });
   });
 
@@ -135,20 +135,20 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const now = 'y = 2\n';
       const metadata: AnnotationMetadata = { author: 'jane', date: '2026-02-08' };
       const result = annotateSidecar(old, now, 'python', metadata);
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
-      assert.ok(result!.includes('#     author: jane'), `Expected author in: ${result}`);
-      assert.ok(result!.includes('#     date: 2026-02-08'), `Expected date in: ${result}`);
+      expect(result!.includes('#     author: jane')).toBeTruthy();
+      expect(result!.includes('#     date: 2026-02-08')).toBeTruthy();
     });
 
     it('omits metadata fields when not provided', () => {
       const old = 'x = 1\n';
       const now = 'y = 2\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
-      assert.ok(!result!.includes('author:'), `Should not contain author in: ${result}`);
-      assert.ok(!result!.includes('date:'), `Should not contain date in: ${result}`);
+      expect(result!.includes('author:')).toBe(false);
+      expect(result!.includes('date:')).toBe(false);
     });
   });
 
@@ -159,15 +159,15 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const old = 'a = 1\nb = 2\nc = 3\nd = 4\n';
       const now = 'a = 1\nc = 3\ne = 5\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
       // First change: deletion of "b = 2" -> ct-1
-      assert.ok(result!.includes('# - b = 2  # ct-1'), `Expected ct-1 deletion in: ${result}`);
+      expect(result!.includes('# - b = 2  # ct-1')).toBeTruthy();
       // Second change: substitution of "d = 4" -> "e = 5" -> ct-2
-      assert.ok(result!.includes('ct-2'), `Expected ct-2 in: ${result}`);
+      expect(result!.includes('ct-2')).toBeTruthy();
       // Sidecar should have both entries
-      assert.ok(result!.includes('# [^ct-1]: del | pending'), `Expected ct-1 sidecar entry in: ${result}`);
-      assert.ok(result!.includes('# [^ct-2]:'), `Expected ct-2 sidecar entry in: ${result}`);
+      expect(result!.includes('# [^ct-1]: del | pending')).toBeTruthy();
+      expect(result!.includes('# [^ct-2]:')).toBeTruthy();
     });
   });
 
@@ -178,33 +178,33 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const old = 'x = 1\n';
       const now = 'y = 2\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
       const lines = result!.split('\n');
       // Find the sidecar delimiters
       const openIdx = lines.findIndex((l: string) => l.startsWith('# -- ChangeTracks'));
       const closeIdx = lines.findIndex((l: string) => l.startsWith('# -----'));
-      assert.ok(openIdx >= 0, `Expected opening delimiter in: ${result}`);
-      assert.ok(closeIdx > openIdx, `Expected closing delimiter after opening in: ${result}`);
+      expect(openIdx >= 0).toBeTruthy();
+      expect(closeIdx > openIdx).toBeTruthy();
     });
 
     it('includes original text for deletions and substitutions', () => {
       const old = 'results = []\n';
       const now = 'results = {}\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
       // Sub entry should include original text
-      assert.ok(result!.includes('original:'), `Expected original field in sidecar: ${result}`);
-      assert.ok(result!.includes('results = []'), `Expected original value in sidecar: ${result}`);
+      expect(result!.includes('original:')).toBeTruthy();
+      expect(result!.includes('results = []')).toBeTruthy();
     });
 
     it('ends with a trailing newline', () => {
       const old = 'x = 1\n';
       const now = 'y = 2\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
-      assert.ok(result!.endsWith('\n'), 'Expected trailing newline');
+      expect(result !== undefined).toBeTruthy();
+      expect(result!.endsWith('\n')).toBeTruthy();
     });
   });
 
@@ -215,12 +215,12 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const old = 'x = 1\ny = 2\nz = 3\n';
       const now = 'x = 1\nz = 3\n';
       const result = annotateSidecar(old, now, 'python');
-      assert.ok(result !== undefined);
+      expect(result !== undefined).toBeTruthy();
 
       const lines = result!.split('\n');
       // x = 1 and z = 3 should appear as plain lines (no sc tag)
-      assert.ok(lines.some((l: string) => l === 'x = 1'), `Expected unchanged line x=1 in: ${result}`);
-      assert.ok(lines.some((l: string) => l === 'z = 3'), `Expected unchanged line z=3 in: ${result}`);
+      expect(lines.some((l: string) => l === 'x = 1')).toBeTruthy();
+      expect(lines.some((l: string) => l === 'z = 3')).toBeTruthy();
     });
   });
 });

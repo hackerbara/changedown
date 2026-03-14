@@ -1,8 +1,8 @@
-import * as assert from 'node:assert';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { initHashline, buildRawDocument } from '@changetracks/core/internals';
 
 describe('buildRawDocument', () => {
-  before(async () => { await initHashline(); });
+  beforeAll(async () => { await initHashline(); });
 
   it('includes all lines including footnotes', () => {
     const content = 'Hello {++world++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
@@ -10,10 +10,10 @@ describe('buildRawDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.strictEqual(doc.view, 'raw');
-    assert.strictEqual(doc.lines.length, 3);
-    assert.strictEqual(doc.lines[0].content[0].text, 'Hello {++world++}[^ct-1].');
-    assert.ok(doc.lines[0].content[0].type === 'plain');
+    expect(doc.view).toBe('raw');
+    expect(doc.lines).toHaveLength(3);
+    expect(doc.lines[0].content[0].text).toBe('Hello {++world++}[^ct-1].');
+    expect(doc.lines[0].content[0].type === 'plain').toBeTruthy();
   });
 
   it('has no flags or metadata', () => {
@@ -23,8 +23,8 @@ describe('buildRawDocument', () => {
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
     for (const line of doc.lines) {
-      assert.deepStrictEqual(line.margin.flags, []);
-      assert.deepStrictEqual(line.metadata, []);
+      expect(line.margin.flags).toStrictEqual([]);
+      expect(line.metadata).toStrictEqual([]);
     }
   });
 
@@ -35,7 +35,7 @@ describe('buildRawDocument', () => {
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
     for (const line of doc.lines) {
-      assert.strictEqual(line.margin.lineNumber, line.rawLineNumber);
+      expect(line.margin.lineNumber).toBe(line.rawLineNumber);
     }
   });
 });

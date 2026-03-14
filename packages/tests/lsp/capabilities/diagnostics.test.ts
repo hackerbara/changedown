@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import { createDiagnostics, DiagnosticSeverity } from '@changetracks/lsp-server/internals';
 import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
 
@@ -19,20 +19,20 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 1);
+      expect(diagnostics).toHaveLength(1);
       const diag = diagnostics[0];
 
-      assert.strictEqual(diag.severity, DiagnosticSeverity.Hint);
-      assert.strictEqual(diag.source, 'changetracks');
-      assert.strictEqual(diag.code, 'change-1');
-      assert.strictEqual(diag.message, 'Insertion: world');
-      assert.deepStrictEqual(diag.data, { changeId: 'change-1', changeType: ChangeType.Insertion });
+      expect(diag.severity).toBe(DiagnosticSeverity.Hint);
+      expect(diag.source).toBe('changetracks');
+      expect(diag.code).toBe('change-1');
+      expect(diag.message).toBe('Insertion: world');
+      expect(diag.data).toStrictEqual({ changeId: 'change-1', changeType: ChangeType.Insertion });
 
       // Verify range conversion
-      assert.strictEqual(diag.range.start.line, 0);
-      assert.strictEqual(diag.range.start.character, 6);
-      assert.strictEqual(diag.range.end.line, 0);
-      assert.strictEqual(diag.range.end.character, 17);
+      expect(diag.range.start.line).toBe(0);
+      expect(diag.range.start.character).toBe(6);
+      expect(diag.range.end.line).toBe(0);
+      expect(diag.range.end.character).toBe(17);
     });
 
     it('should create diagnostic for deletion', () => {
@@ -50,11 +50,11 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 1);
+      expect(diagnostics).toHaveLength(1);
       const diag = diagnostics[0];
 
-      assert.strictEqual(diag.message, 'Deletion: world');
-      assert.deepStrictEqual(diag.data, { changeId: 'change-2', changeType: ChangeType.Deletion });
+      expect(diag.message).toBe('Deletion: world');
+      expect(diag.data).toStrictEqual({ changeId: 'change-2', changeType: ChangeType.Deletion });
     });
 
     it('should create diagnostic for substitution', () => {
@@ -76,11 +76,11 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 1);
+      expect(diagnostics).toHaveLength(1);
       const diag = diagnostics[0];
 
-      assert.strictEqual(diag.message, 'Substitution: world → universe');
-      assert.deepStrictEqual(diag.data, { changeId: 'change-3', changeType: ChangeType.Substitution });
+      expect(diag.message).toBe('Substitution: world → universe');
+      expect(diag.data).toStrictEqual({ changeId: 'change-3', changeType: ChangeType.Substitution });
     });
 
     it('should create diagnostic for highlight', () => {
@@ -98,11 +98,11 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 1);
+      expect(diagnostics).toHaveLength(1);
       const diag = diagnostics[0];
 
-      assert.strictEqual(diag.message, 'Highlight: world');
-      assert.deepStrictEqual(diag.data, { changeId: 'change-4', changeType: ChangeType.Highlight });
+      expect(diag.message).toBe('Highlight: world');
+      expect(diag.data).toStrictEqual({ changeId: 'change-4', changeType: ChangeType.Highlight });
     });
 
     it('should create diagnostic for comment', () => {
@@ -120,11 +120,11 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 1);
+      expect(diagnostics).toHaveLength(1);
       const diag = diagnostics[0];
 
-      assert.strictEqual(diag.message, 'Comment: this is a note');
-      assert.deepStrictEqual(diag.data, { changeId: 'change-5', changeType: ChangeType.Comment });
+      expect(diag.message).toBe('Comment: this is a note');
+      expect(diag.data).toStrictEqual({ changeId: 'change-5', changeType: ChangeType.Comment });
     });
 
     it('should handle highlight with attached comment', () => {
@@ -145,10 +145,10 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 1);
+      expect(diagnostics).toHaveLength(1);
       const diag = diagnostics[0];
 
-      assert.strictEqual(diag.message, 'Highlight: world (note)');
+      expect(diag.message).toBe('Highlight: world (note)');
     });
 
     it('should handle multi-line changes', () => {
@@ -166,16 +166,16 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 1);
+      expect(diagnostics).toHaveLength(1);
       const diag = diagnostics[0];
 
       // Verify multi-line range
-      assert.strictEqual(diag.range.start.line, 1);
-      assert.strictEqual(diag.range.start.character, 0);
-      assert.strictEqual(diag.range.end.line, 2);
-      assert.strictEqual(diag.range.end.character, 9);
+      expect(diag.range.start.line).toBe(1);
+      expect(diag.range.start.character).toBe(0);
+      expect(diag.range.end.line).toBe(2);
+      expect(diag.range.end.character).toBe(9);
 
-      assert.strictEqual(diag.message, 'Insertion: Line 2\nLine 3');
+      expect(diag.message).toBe('Insertion: Line 2\nLine 3');
     });
 
     it('should create diagnostics for multiple changes', () => {
@@ -201,9 +201,9 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 2);
-      assert.strictEqual(diagnostics[0].message, 'Insertion: insert');
-      assert.strictEqual(diagnostics[1].message, 'Deletion: delete');
+      expect(diagnostics).toHaveLength(2);
+      expect(diagnostics[0].message).toBe('Insertion: insert');
+      expect(diagnostics[1].message).toBe('Deletion: delete');
     });
 
     it('should handle empty changes array', () => {
@@ -212,7 +212,7 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 0);
+      expect(diagnostics).toHaveLength(0);
     });
 
     it('should truncate long content in message', () => {
@@ -231,12 +231,12 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 1);
+      expect(diagnostics).toHaveLength(1);
       const diag = diagnostics[0];
 
       // Message should be truncated to reasonable length
-      assert.ok(diag.message.length < 150);
-      assert.ok(diag.message.endsWith('...'));
+      expect(diag.message.length < 150).toBeTruthy();
+      expect(diag.message.endsWith('...')).toBeTruthy();
     });
 
     it('should handle CRLF line endings', () => {
@@ -254,12 +254,12 @@ describe('Diagnostics', () => {
 
       const diagnostics = createDiagnostics(changes, text);
 
-      assert.strictEqual(diagnostics.length, 1);
+      expect(diagnostics).toHaveLength(1);
       const diag = diagnostics[0];
 
       // Verify CRLF handling
-      assert.strictEqual(diag.range.start.line, 1);
-      assert.strictEqual(diag.range.start.character, 0);
+      expect(diag.range.start.line).toBe(1);
+      expect(diag.range.start.character).toBe(0);
     });
   });
 });

@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import {
   computeAccept,
   computeReject,
@@ -51,7 +51,7 @@ describe('computeAccept', () => {
     });
 
     const edit = computeAccept(change);
-    assert.deepStrictEqual(edit, { offset: 0, length: 12, newText: 'hello' });
+    expect(edit).toStrictEqual({ offset: 0, length: 12, newText: 'hello' });
   });
 
   it('Deletion: removes the deleted text entirely', () => {
@@ -64,7 +64,7 @@ describe('computeAccept', () => {
     });
 
     const edit = computeAccept(change);
-    assert.deepStrictEqual(edit, { offset: 0, length: 12, newText: '' });
+    expect(edit).toStrictEqual({ offset: 0, length: 12, newText: '' });
   });
 
   it('Substitution: keeps the modified (new) text', () => {
@@ -80,7 +80,7 @@ describe('computeAccept', () => {
     });
 
     const edit = computeAccept(change);
-    assert.deepStrictEqual(edit, { offset: 0, length: 15, newText: 'new' });
+    expect(edit).toStrictEqual({ offset: 0, length: 15, newText: 'new' });
   });
 
   it('Highlight: keeps the highlighted text', () => {
@@ -93,7 +93,7 @@ describe('computeAccept', () => {
     });
 
     const edit = computeAccept(change);
-    assert.deepStrictEqual(edit, { offset: 0, length: 10, newText: 'text' });
+    expect(edit).toStrictEqual({ offset: 0, length: 10, newText: 'text' });
   });
 
   it('Comment: removes the comment entirely', () => {
@@ -106,7 +106,7 @@ describe('computeAccept', () => {
     });
 
     const edit = computeAccept(change);
-    assert.deepStrictEqual(edit, { offset: 0, length: 10, newText: '' });
+    expect(edit).toStrictEqual({ offset: 0, length: 10, newText: '' });
   });
 });
 
@@ -123,7 +123,7 @@ describe('computeReject', () => {
     });
 
     const edit = computeReject(change);
-    assert.deepStrictEqual(edit, { offset: 0, length: 12, newText: '' });
+    expect(edit).toStrictEqual({ offset: 0, length: 12, newText: '' });
   });
 
   it('Deletion: restores the deleted text', () => {
@@ -135,7 +135,7 @@ describe('computeReject', () => {
     });
 
     const edit = computeReject(change);
-    assert.deepStrictEqual(edit, { offset: 0, length: 12, newText: 'world' });
+    expect(edit).toStrictEqual({ offset: 0, length: 12, newText: 'world' });
   });
 
   it('Substitution: keeps the original (old) text', () => {
@@ -150,7 +150,7 @@ describe('computeReject', () => {
     });
 
     const edit = computeReject(change);
-    assert.deepStrictEqual(edit, { offset: 0, length: 15, newText: 'old' });
+    expect(edit).toStrictEqual({ offset: 0, length: 15, newText: 'old' });
   });
 
   it('Highlight: keeps the highlighted text', () => {
@@ -162,7 +162,7 @@ describe('computeReject', () => {
     });
 
     const edit = computeReject(change);
-    assert.deepStrictEqual(edit, { offset: 0, length: 10, newText: 'text' });
+    expect(edit).toStrictEqual({ offset: 0, length: 10, newText: 'text' });
   });
 
   it('Comment: removes the comment entirely', () => {
@@ -174,7 +174,7 @@ describe('computeReject', () => {
     });
 
     const edit = computeReject(change);
-    assert.deepStrictEqual(edit, { offset: 0, length: 10, newText: '' });
+    expect(edit).toStrictEqual({ offset: 0, length: 10, newText: '' });
   });
 });
 
@@ -192,8 +192,8 @@ describe('Edge cases', () => {
         modifiedText: '',
       });
       const edit = computeAccept(change);
-      assert.strictEqual(edit.newText, '');
-      assert.strictEqual(edit.length, 6);
+      expect(edit.newText).toBe('');
+      expect(edit).toHaveLength(6);
     });
 
     it('reject deletion with empty originalText', () => {
@@ -205,8 +205,8 @@ describe('Edge cases', () => {
         originalText: '',
       });
       const edit = computeReject(change);
-      assert.strictEqual(edit.newText, '');
-      assert.strictEqual(edit.length, 6);
+      expect(edit.newText).toBe('');
+      expect(edit).toHaveLength(6);
     });
 
     it('accept highlight with empty originalText', () => {
@@ -218,7 +218,7 @@ describe('Edge cases', () => {
         originalText: '',
       });
       const edit = computeAccept(change);
-      assert.strictEqual(edit.newText, '');
+      expect(edit.newText).toBe('');
     });
 
     it('accept substitution with empty modifiedText', () => {
@@ -231,7 +231,7 @@ describe('Edge cases', () => {
         modifiedText: '',
       });
       const edit = computeAccept(change);
-      assert.strictEqual(edit.newText, '');
+      expect(edit.newText).toBe('');
     });
 
     it('reject substitution with empty originalText', () => {
@@ -244,7 +244,7 @@ describe('Edge cases', () => {
         modifiedText: 'new',
       });
       const edit = computeReject(change);
-      assert.strictEqual(edit.newText, '');
+      expect(edit.newText).toBe('');
     });
   });
 
@@ -257,7 +257,7 @@ describe('Edge cases', () => {
         // modifiedText intentionally omitted (undefined)
       });
       const edit = computeAccept(change);
-      assert.strictEqual(edit.newText, '');
+      expect(edit.newText).toBe('');
     });
 
     it('reject deletion with undefined originalText returns empty string', () => {
@@ -268,7 +268,7 @@ describe('Edge cases', () => {
         // originalText intentionally omitted (undefined)
       });
       const edit = computeReject(change);
-      assert.strictEqual(edit.newText, '');
+      expect(edit.newText).toBe('');
     });
 
     it('accept highlight with undefined originalText returns empty string', () => {
@@ -279,7 +279,7 @@ describe('Edge cases', () => {
         // originalText intentionally omitted (undefined)
       });
       const edit = computeAccept(change);
-      assert.strictEqual(edit.newText, '');
+      expect(edit.newText).toBe('');
     });
 
     it('reject highlight with undefined originalText returns empty string', () => {
@@ -290,7 +290,7 @@ describe('Edge cases', () => {
         // originalText intentionally omitted (undefined)
       });
       const edit = computeReject(change);
-      assert.strictEqual(edit.newText, '');
+      expect(edit.newText).toBe('');
     });
 
     it('accept substitution with undefined modifiedText returns empty string', () => {
@@ -302,7 +302,7 @@ describe('Edge cases', () => {
         // modifiedText intentionally omitted
       });
       const edit = computeAccept(change);
-      assert.strictEqual(edit.newText, '');
+      expect(edit.newText).toBe('');
     });
 
     it('reject substitution with undefined originalText returns empty string', () => {
@@ -314,7 +314,7 @@ describe('Edge cases', () => {
         // originalText intentionally omitted
       });
       const edit = computeReject(change);
-      assert.strictEqual(edit.newText, '');
+      expect(edit.newText).toBe('');
     });
   });
 });
@@ -334,8 +334,8 @@ describe('Offset and length consistency', () => {
     const acceptEdit = computeAccept(change);
     const rejectEdit = computeReject(change);
 
-    assert.strictEqual(acceptEdit.offset, 42);
-    assert.strictEqual(rejectEdit.offset, 42);
+    expect(acceptEdit.offset).toBe(42);
+    expect(rejectEdit.offset).toBe(42);
   });
 
   it('edit length equals range.end - range.start', () => {
@@ -349,8 +349,8 @@ describe('Offset and length consistency', () => {
     const acceptEdit = computeAccept(change);
     const rejectEdit = computeReject(change);
 
-    assert.strictEqual(acceptEdit.length, 15);
-    assert.strictEqual(rejectEdit.length, 15);
+    expect(acceptEdit).toHaveLength(15);
+    expect(rejectEdit).toHaveLength(15);
   });
 
   it('length is consistent across all change types for same range', () => {
@@ -376,10 +376,10 @@ describe('Offset and length consistency', () => {
       const acceptEdit = computeAccept(change);
       const rejectEdit = computeReject(change);
 
-      assert.strictEqual(acceptEdit.offset, range.start, `accept offset for ${type}`);
-      assert.strictEqual(acceptEdit.length, expectedLength, `accept length for ${type}`);
-      assert.strictEqual(rejectEdit.offset, range.start, `reject offset for ${type}`);
-      assert.strictEqual(rejectEdit.length, expectedLength, `reject length for ${type}`);
+      expect(acceptEdit.offset).toBe(range.start);
+      expect(acceptEdit.length).toBe(expectedLength);
+      expect(rejectEdit.offset).toBe(range.start);
+      expect(rejectEdit.length).toBe(expectedLength);
     }
   });
 
@@ -395,9 +395,9 @@ describe('Offset and length consistency', () => {
     });
 
     const edit = computeAccept(change);
-    assert.strictEqual(edit.offset, 7);
-    assert.strictEqual(edit.length, 11);
-    assert.strictEqual(edit.newText, 'added');
+    expect(edit.offset).toBe(7);
+    expect(edit).toHaveLength(11);
+    expect(edit.newText).toBe('added');
   });
 });
 
@@ -412,12 +412,12 @@ describe('Integration: parser + accept/reject', () => {
       const input = 'Hello {++beautiful ++}world';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Insertion);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Insertion);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Hello beautiful world');
+      expect(result).toBe('Hello beautiful world');
     });
 
     it('reject insertion produces clean text with content removed', () => {
@@ -427,7 +427,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeReject(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Hello world');
+      expect(result).toBe('Hello world');
     });
   });
 
@@ -436,12 +436,12 @@ describe('Integration: parser + accept/reject', () => {
       const input = 'Hello {--ugly --}world';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Deletion);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Deletion);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Hello world');
+      expect(result).toBe('Hello world');
     });
 
     it('reject deletion restores the text', () => {
@@ -451,7 +451,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeReject(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Hello ugly world');
+      expect(result).toBe('Hello ugly world');
     });
   });
 
@@ -460,12 +460,12 @@ describe('Integration: parser + accept/reject', () => {
       const input = 'I like {~~cats~>dogs~~}';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Substitution);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Substitution);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'I like dogs');
+      expect(result).toBe('I like dogs');
     });
 
     it('reject substitution keeps the old text', () => {
@@ -475,7 +475,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeReject(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'I like cats');
+      expect(result).toBe('I like cats');
     });
   });
 
@@ -484,12 +484,12 @@ describe('Integration: parser + accept/reject', () => {
       const input = 'This is {==important==} info';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Highlight);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Highlight);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'This is important info');
+      expect(result).toBe('This is important info');
     });
 
     it('reject highlight keeps the highlighted text without markup', () => {
@@ -499,7 +499,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeReject(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'This is important info');
+      expect(result).toBe('This is important info');
     });
   });
 
@@ -508,12 +508,12 @@ describe('Integration: parser + accept/reject', () => {
       const input = 'Some text{>>this is a note<<} more text';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Comment);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Comment);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Some text more text');
+      expect(result).toBe('Some text more text');
     });
 
     it('reject standalone comment removes it entirely', () => {
@@ -523,7 +523,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeReject(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Some text more text');
+      expect(result).toBe('Some text more text');
     });
   });
 
@@ -533,12 +533,12 @@ describe('Integration: parser + accept/reject', () => {
       const doc = parser.parse(input);
       const changes = doc.getChanges();
       // The parser absorbs the attached comment into the highlight node
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].type, ChangeType.Highlight);
+      expect(changes).toHaveLength(1);
+      expect(changes[0].type).toBe(ChangeType.Highlight);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Read this part carefully');
+      expect(result).toBe('Read this part carefully');
     });
 
     it('reject highlight+comment keeps the highlighted text, removes all markup and comment', () => {
@@ -548,7 +548,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeReject(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Read this part carefully');
+      expect(result).toBe('Read this part carefully');
     });
   });
 
@@ -557,7 +557,7 @@ describe('Integration: parser + accept/reject', () => {
       const input = 'Hello {++beautiful ++}{--ugly --}world';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 2);
+      expect(changes).toHaveLength(2);
 
       // Accept both: keep "beautiful ", remove "ugly "
       // Process in reverse document order to preserve offsets
@@ -568,7 +568,7 @@ describe('Integration: parser + accept/reject', () => {
       for (let i = edits.length - 1; i >= 0; i--) {
         result = applyEdit(result, edits[i]);
       }
-      assert.strictEqual(result, 'Hello beautiful world');
+      expect(result).toBe('Hello beautiful world');
     });
 
     it('reject all changes in reverse order', () => {
@@ -582,7 +582,7 @@ describe('Integration: parser + accept/reject', () => {
       for (let i = edits.length - 1; i >= 0; i--) {
         result = applyEdit(result, edits[i]);
       }
-      assert.strictEqual(result, 'Hello ugly world');
+      expect(result).toBe('Hello ugly world');
     });
   });
 
@@ -591,33 +591,33 @@ describe('Integration: parser + accept/reject', () => {
       const input = 'Start\n{++line one\nline two\n++}End';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Start\nline one\nline two\nEnd');
+      expect(result).toBe('Start\nline one\nline two\nEnd');
     });
 
     it('accept multi-line deletion removes all lines', () => {
       const input = 'Start\n{--line one\nline two\n--}End';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Start\nEnd');
+      expect(result).toBe('Start\nEnd');
     });
 
     it('accept multi-line substitution replaces with new text', () => {
       const input = 'Before {~~old line\nold line 2~>new line\nnew line 2~~} After';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Before new line\nnew line 2 After');
+      expect(result).toBe('Before new line\nnew line 2 After');
     });
   });
 
@@ -629,7 +629,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'First rest of text');
+      expect(result).toBe('First rest of text');
     });
 
     it('accept insertion at end of document', () => {
@@ -639,7 +639,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Some text last');
+      expect(result).toBe('Some text last');
     });
 
     it('accept deletion that is the entire document', () => {
@@ -649,7 +649,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, '');
+      expect(result).toBe('');
     });
 
     it('reject insertion that is the entire document', () => {
@@ -659,7 +659,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeReject(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, '');
+      expect(result).toBe('');
     });
   });
 
@@ -668,22 +668,22 @@ describe('Integration: parser + accept/reject', () => {
       const input = '{++function() { return true; }++}';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'function() { return true; }');
+      expect(result).toBe('function() { return true; }');
     });
 
     it('handles content with unicode', () => {
       const input = '{++Hello World++}';
       const doc = parser.parse(input);
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
+      expect(changes).toHaveLength(1);
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Hello World');
+      expect(result).toBe('Hello World');
     });
 
     it('handles content with markdown formatting', () => {
@@ -693,7 +693,7 @@ describe('Integration: parser + accept/reject', () => {
 
       const edit = computeAccept(changes[0]);
       const result = applyEdit(input, edit);
-      assert.strictEqual(result, 'Text **bold** and _italic_ end');
+      expect(result).toBe('Text **bold** and _italic_ end');
     });
   });
 });
@@ -722,14 +722,14 @@ describe('VirtualDocument.getGroupMembers', () => {
     ];
     const doc = new VirtualDocument(changes);
     const members = doc.getGroupMembers('ct-5');
-    assert.strictEqual(members.length, 2);
-    assert.strictEqual(members[0].id, 'ct-5.1');
-    assert.strictEqual(members[1].id, 'ct-5.2');
+    expect(members).toHaveLength(2);
+    expect(members[0].id).toBe('ct-5.1');
+    expect(members[1].id).toBe('ct-5.2');
   });
 
   it('returns empty array for unknown groupId', () => {
     const doc = new VirtualDocument([]);
-    assert.deepStrictEqual(doc.getGroupMembers('ct-99'), []);
+    expect(doc.getGroupMembers('ct-99')).toStrictEqual([]);
   });
 
   it('does not return changes without groupId', () => {
@@ -741,7 +741,7 @@ describe('VirtualDocument.getGroupMembers', () => {
       },
     ];
     const doc = new VirtualDocument(changes);
-    assert.deepStrictEqual(doc.getGroupMembers('ct-1'), []);
+    expect(doc.getGroupMembers('ct-1')).toStrictEqual([]);
   });
 });
 
@@ -777,13 +777,13 @@ describe('Workspace grouped accept/reject', () => {
       // Verify parser resolved the group
       const changes = doc.getChanges();
       const groupMembers = changes.filter(c => c.groupId === 'ct-5');
-      assert.strictEqual(groupMembers.length, 2, 'Parser should resolve 2 group members');
+      expect(groupMembers).toHaveLength(2);
 
       const edits = workspace.acceptGroup(doc, 'ct-5');
-      assert.strictEqual(edits.length, 2, 'Should produce 2 edits');
+      expect(edits).toHaveLength(2);
 
       // Edits should be in reverse document order (higher offset first)
-      assert.ok(edits[0].offset > edits[1].offset, 'First edit should have higher offset (reverse order)');
+      expect(edits[0].offset > edits[1].offset).toBeTruthy();
     });
 
     it('accept move group: deletion removed, insertion kept', () => {
@@ -805,14 +805,14 @@ describe('Workspace grouped accept/reject', () => {
 
       // Accept deletion = remove text, keep footnote ref (anchors footnote in document)
       // Accept insertion = keep the content ("moved") + footnote ref
-      assert.strictEqual(result, 'Hello [^ct-5.1] and moved[^ct-5.2] end');
+      expect(result).toBe('Hello [^ct-5.1] and moved[^ct-5.2] end');
     });
 
     it('returns empty array when group has no members', () => {
       const workspace = new Workspace();
       const doc = workspace.parse('Hello {++world++}');
       const edits = workspace.acceptGroup(doc, 'ct-nonexistent');
-      assert.deepStrictEqual(edits, []);
+      expect(edits).toStrictEqual([]);
     });
   });
 
@@ -830,8 +830,8 @@ describe('Workspace grouped accept/reject', () => {
       const doc = workspace.parse(text);
       const edits = workspace.rejectGroup(doc, 'ct-5');
 
-      assert.strictEqual(edits.length, 2);
-      assert.ok(edits[0].offset > edits[1].offset, 'First edit should have higher offset (reverse order)');
+      expect(edits).toHaveLength(2);
+      expect(edits[0].offset > edits[1].offset).toBeTruthy();
     });
 
     it('reject move group: deletion restored, insertion removed', () => {
@@ -852,14 +852,14 @@ describe('Workspace grouped accept/reject', () => {
 
       // Reject deletion = restore original text ("moved") + footnote ref
       // Reject insertion = remove text, keep footnote ref (anchors footnote in document)
-      assert.strictEqual(result, 'Hello moved[^ct-5.1] and [^ct-5.2] end');
+      expect(result).toBe('Hello moved[^ct-5.1] and [^ct-5.2] end');
     });
 
     it('returns empty array when group has no members', () => {
       const workspace = new Workspace();
       const doc = workspace.parse('Hello {++world++}');
       const edits = workspace.rejectGroup(doc, 'ct-nonexistent');
-      assert.deepStrictEqual(edits, []);
+      expect(edits).toStrictEqual([]);
     });
   });
 });
@@ -877,11 +877,11 @@ describe('computeFootnoteStatusEdits', () => {
     ].join('\n');
 
     const edits = computeFootnoteStatusEdits(text, ['ct-1'], 'accepted');
-    assert.strictEqual(edits.length, 1);
+    expect(edits).toHaveLength(1);
 
     const result = applyEdit(text, edits[0]);
-    assert.ok(result.includes('| accepted'), 'Status should be updated to accepted');
-    assert.ok(!result.includes('| proposed'), 'proposed should be replaced');
+    expect(result.includes('| accepted')).toBeTruthy();
+    expect(result.includes('| proposed')).toBeFalsy();
   });
 
   it('updates status from proposed to rejected', () => {
@@ -892,16 +892,16 @@ describe('computeFootnoteStatusEdits', () => {
     ].join('\n');
 
     const edits = computeFootnoteStatusEdits(text, ['ct-2'], 'rejected');
-    assert.strictEqual(edits.length, 1);
+    expect(edits).toHaveLength(1);
 
     const result = applyEdit(text, edits[0]);
-    assert.ok(result.includes('| rejected'));
+    expect(result.includes('| rejected')).toBeTruthy();
   });
 
   it('returns empty array for Level 0 changes (no footnote)', () => {
     const text = 'Hello {++world++} end';
     const edits = computeFootnoteStatusEdits(text, [''], 'accepted');
-    assert.deepStrictEqual(edits, []);
+    expect(edits).toStrictEqual([]);
   });
 
   it('returns empty array when footnote definition not found', () => {
@@ -912,7 +912,7 @@ describe('computeFootnoteStatusEdits', () => {
     ].join('\n');
 
     const edits = computeFootnoteStatusEdits(text, ['ct-99'], 'accepted');
-    assert.deepStrictEqual(edits, []);
+    expect(edits).toStrictEqual([]);
   });
 
   it('handles multiple change IDs (move group)', () => {
@@ -925,7 +925,7 @@ describe('computeFootnoteStatusEdits', () => {
     ].join('\n');
 
     const edits = computeFootnoteStatusEdits(text, ['ct-5', 'ct-5.1', 'ct-5.2'], 'accepted');
-    assert.strictEqual(edits.length, 3);
+    expect(edits).toHaveLength(3);
 
     // Apply all edits — since all are same-length replacements, apply in reverse offset order
     let result = text;
@@ -933,8 +933,8 @@ describe('computeFootnoteStatusEdits', () => {
     for (const edit of sorted) {
       result = applyEdit(result, edit);
     }
-    assert.ok(!result.includes('| proposed'), 'No proposed statuses should remain');
-    assert.strictEqual((result.match(/\| accepted/g) || []).length, 3, 'All three should be accepted');
+    expect(result.includes('| proposed')).toBeFalsy();
+    expect((result.match(/\| accepted/g) || [])).toHaveLength(3);
   });
 
   it('skips IDs whose footnote is already at the target status', () => {
@@ -945,7 +945,7 @@ describe('computeFootnoteStatusEdits', () => {
     ].join('\n');
 
     const edits = computeFootnoteStatusEdits(text, ['ct-1'], 'accepted');
-    assert.deepStrictEqual(edits, [], 'No edit needed when already at target status');
+    expect(edits).toStrictEqual([]);
   });
 
   it('preserves footnote body content (discussion, approvals)', () => {
@@ -961,14 +961,14 @@ describe('computeFootnoteStatusEdits', () => {
     ].join('\n');
 
     const edits = computeFootnoteStatusEdits(text, ['ct-1'], 'accepted');
-    assert.strictEqual(edits.length, 1);
+    expect(edits).toHaveLength(1);
 
     const result = applyEdit(text, edits[0]);
-    assert.ok(result.includes('| accepted'));
-    assert.ok(result.includes('approved: @eve'));
-    assert.ok(result.includes('@alice 2026-02-10: Better wording'));
-    assert.ok(result.includes('@dave 2026-02-10: Looks good to me.'));
-    assert.ok(result.includes('resolved @dave'));
+    expect(result.includes('| accepted')).toBeTruthy();
+    expect(result.includes('approved: @eve')).toBeTruthy();
+    expect(result.includes('@alice 2026-02-10: Better wording')).toBeTruthy();
+    expect(result.includes('@dave 2026-02-10: Looks good to me.')).toBeTruthy();
+    expect(result.includes('resolved @dave')).toBeTruthy();
   });
 
   it('handles footnotes with AI authors', () => {
@@ -979,11 +979,11 @@ describe('computeFootnoteStatusEdits', () => {
     ].join('\n');
 
     const edits = computeFootnoteStatusEdits(text, ['ct-1'], 'accepted');
-    assert.strictEqual(edits.length, 1);
+    expect(edits).toHaveLength(1);
 
     const result = applyEdit(text, edits[0]);
-    assert.ok(result.includes('| accepted'));
-    assert.ok(result.includes('@ai:claude-opus-4.6'));
+    expect(result.includes('| accepted')).toBeTruthy();
+    expect(result.includes('@ai:claude-opus-4.6')).toBeTruthy();
   });
 });
 
@@ -1000,7 +1000,7 @@ describe('computeApprovalLineEdit', () => {
     ].join('\n');
 
     const edit = computeApprovalLineEdit(text, 'ct-99', 'accepted', { author: 'alice', date: '2026-02-12' });
-    assert.strictEqual(edit, null);
+    expect(edit).toBeNull();
   });
 
   it('returns an edit that inserts approved: line after header when footnote has no body', () => {
@@ -1011,10 +1011,10 @@ describe('computeApprovalLineEdit', () => {
     ].join('\n');
 
     const edit = computeApprovalLineEdit(text, 'ct-1', 'accepted', { author: 'carol', date: '2026-02-12' });
-    assert.ok(edit !== null);
+    expect(edit !== null).toBeTruthy();
     const result = applyEdit(text, edit!);
-    assert.ok(result.includes('| proposed'), 'header unchanged by this edit');
-    assert.ok(result.includes('    approved: @carol 2026-02-12'), 'approval line inserted');
+    expect(result.includes('| proposed')).toBeTruthy();
+    expect(result.includes('    approved: @carol 2026-02-12')).toBeTruthy();
   });
 
   it('inserts rejected: line for reject decision', () => {
@@ -1025,9 +1025,9 @@ describe('computeApprovalLineEdit', () => {
     ].join('\n');
 
     const edit = computeApprovalLineEdit(text, 'ct-2', 'rejected', { author: 'bob', date: '2026-02-12' });
-    assert.ok(edit !== null);
+    expect(edit !== null).toBeTruthy();
     const result = applyEdit(text, edit!);
-    assert.ok(result.includes('    rejected: @bob 2026-02-12'));
+    expect(result.includes('    rejected: @bob 2026-02-12')).toBeTruthy();
   });
 
   it('includes optional reason in quoted form', () => {
@@ -1042,9 +1042,9 @@ describe('computeApprovalLineEdit', () => {
       date: '2026-02-12',
       reason: 'Looks good',
     });
-    assert.ok(edit !== null);
+    expect(edit !== null).toBeTruthy();
     const result = applyEdit(text, edit!);
-    assert.ok(result.includes('    approved: @carol 2026-02-12 "Looks good"'));
+    expect(result.includes('    approved: @carol 2026-02-12 "Looks good"')).toBeTruthy();
   });
 
   it('inserts after existing approved/rejected lines and before resolution', () => {
@@ -1055,15 +1055,15 @@ describe('computeApprovalLineEdit', () => {
     ].join('\n');
 
     const edit = computeApprovalLineEdit(text, 'ct-1', 'accepted', { author: 'carol', date: '2026-02-12' });
-    assert.ok(edit !== null);
+    expect(edit !== null).toBeTruthy();
     const result = applyEdit(text, edit!);
     const approvedLines = result.split('\n').filter((l) => l.includes('approved:'));
-    assert.strictEqual(approvedLines.length, 2);
-    assert.ok(approvedLines.some((l) => l.includes('@eve 2026-02-11')));
-    assert.ok(approvedLines.some((l) => l.includes('@carol 2026-02-12')));
+    expect(approvedLines).toHaveLength(2);
+    expect(approvedLines.some((l) => l.includes('@eve 2026-02-11'))).toBeTruthy();
+    expect(approvedLines.some((l) => l.includes('@carol 2026-02-12'))).toBeTruthy();
     const carolIdx = result.split('\n').findIndex((l) => l.includes('@carol 2026-02-12'));
     const resolvedIdx = result.split('\n').findIndex((l) => l.includes('resolved'));
-    assert.ok(carolIdx < resolvedIdx, 'new approval must appear before resolution line');
+    expect(carolIdx < resolvedIdx, 'new approval must appear before resolution line').toBeTruthy();
   });
 
   it('inserts approval before bare "open" resolution (no reason)', () => {
@@ -1074,14 +1074,14 @@ describe('computeApprovalLineEdit', () => {
     ].join('\n');
 
     const edit = computeApprovalLineEdit(text, 'ct-1', 'accepted', { author: 'carol', date: '2026-02-12' });
-    assert.ok(edit !== null);
+    expect(edit !== null).toBeTruthy();
     const result = applyEdit(text, edit!);
     const lines = result.split('\n');
     const approvedIdx = lines.findIndex((l) => l.includes('approved:'));
     const openIdx = lines.findIndex((l) => l.trim() === 'open');
-    assert.ok(approvedIdx > -1, 'approved line must exist');
-    assert.ok(openIdx > -1, 'open resolution line must exist');
-    assert.ok(approvedIdx < openIdx, 'approval must appear before bare "open" resolution line');
+    expect(approvedIdx > -1, 'approved line must exist').toBeTruthy();
+    expect(openIdx > -1, 'open resolution line must exist').toBeTruthy();
+    expect(approvedIdx < openIdx, 'approval must appear before bare "open" resolution line').toBeTruthy();
   });
 });
 
@@ -1110,11 +1110,11 @@ describe('Workspace accept/reject updates footnote status', () => {
     const change = doc.getChanges()[0];
 
     const edits = workspace.acceptChange(change, text);
-    assert.strictEqual(edits.length, 2);
+    expect(edits).toHaveLength(2);
 
     const result = applyEdits(text, edits);
-    assert.ok(result.includes('Hello world[^ct-1] end'), 'Inline markup resolved with footnote ref preserved');
-    assert.ok(result.includes('| accepted'), 'Footnote status updated');
+    expect(result.includes('Hello world[^ct-1] end')).toBeTruthy();
+    expect(result.includes('| accepted')).toBeTruthy();
   });
 
   it('rejectChange includes footnote status edit when text is provided', () => {
@@ -1129,11 +1129,11 @@ describe('Workspace accept/reject updates footnote status', () => {
     const change = doc.getChanges()[0];
 
     const edits = workspace.rejectChange(change, text);
-    assert.strictEqual(edits.length, 2);
+    expect(edits).toHaveLength(2);
 
     const result = applyEdits(text, edits);
-    assert.ok(result.includes('Hello [^ct-1] end'), 'Inline markup resolved (insertion rejected, ref anchored)');
-    assert.ok(result.includes('| rejected'), 'Footnote status updated');
+    expect(result.includes('Hello [^ct-1] end')).toBeTruthy();
+    expect(result.includes('| rejected')).toBeTruthy();
   });
 
   it('acceptChange without text returns only inline edit (backward compat)', () => {
@@ -1143,7 +1143,7 @@ describe('Workspace accept/reject updates footnote status', () => {
     const change = doc.getChanges()[0];
 
     const edits = workspace.acceptChange(change);
-    assert.strictEqual(edits.length, 1, 'Only inline edit when text not provided');
+    expect(edits).toHaveLength(1);
   });
 
   it('acceptAll updates all footnote statuses', () => {
@@ -1160,8 +1160,8 @@ describe('Workspace accept/reject updates footnote status', () => {
     const edits = workspace.acceptAll(doc, text);
     const result = applyEdits(text, edits);
 
-    assert.ok(!result.includes('| proposed'), 'No proposed statuses remain');
-    assert.strictEqual((result.match(/\| accepted/g) || []).length, 2);
+    expect(result.includes('| proposed')).toBeFalsy();
+    expect((result.match(/\| accepted/g) || [])).toHaveLength(2);
   });
 
   it('rejectAll updates all footnote statuses to rejected', () => {
@@ -1177,7 +1177,7 @@ describe('Workspace accept/reject updates footnote status', () => {
     const edits = workspace.rejectAll(doc, text);
     const result = applyEdits(text, edits);
 
-    assert.ok(result.includes('| rejected'));
+    expect(result.includes('| rejected')).toBeTruthy();
   });
 
   it('acceptGroup updates parent + children footnote statuses', () => {
@@ -1195,8 +1195,8 @@ describe('Workspace accept/reject updates footnote status', () => {
     const edits = workspace.acceptGroup(doc, 'ct-5', text);
     const result = applyEdits(text, edits);
 
-    assert.ok(!result.includes('| proposed'), 'No proposed statuses remain');
-    assert.strictEqual((result.match(/\| accepted/g) || []).length, 3, 'Parent + 2 children accepted');
+    expect(result.includes('| proposed')).toBeFalsy();
+    expect((result.match(/\| accepted/g) || [])).toHaveLength(3);
   });
 
   it('rejectGroup updates parent + children footnote statuses', () => {
@@ -1214,8 +1214,8 @@ describe('Workspace accept/reject updates footnote status', () => {
     const edits = workspace.rejectGroup(doc, 'ct-5', text);
     const result = applyEdits(text, edits);
 
-    assert.ok(!result.includes('| proposed'));
-    assert.strictEqual((result.match(/\| rejected/g) || []).length, 3);
+    expect(result.includes('| proposed')).toBeFalsy();
+    expect((result.match(/\| rejected/g) || [])).toHaveLength(3);
   });
 
   it('Level 0 change (no footnote) accepted without error', () => {
@@ -1225,10 +1225,10 @@ describe('Workspace accept/reject updates footnote status', () => {
     const change = doc.getChanges()[0];
 
     const edits = workspace.acceptChange(change, text);
-    assert.strictEqual(edits.length, 1, 'Only inline edit for Level 0');
+    expect(edits).toHaveLength(1);
 
     const result = applyEdits(text, edits);
-    assert.strictEqual(result, 'Hello world end');
+    expect(result).toBe('Hello world end');
   });
 });
 
@@ -1271,7 +1271,7 @@ describe('Full document round-trip', () => {
       '    @alice 2026-02-10: Better client ergonomics',
     ].join('\n');
 
-    assert.strictEqual(result, expected);
+    expect(result).toBe(expected);
   });
 
   it('reject deletion: text restored, footnote kept with rejected status', () => {
@@ -1294,7 +1294,7 @@ describe('Full document round-trip', () => {
       '[^ct-3]: @bob | 2026-02-10 | del | rejected',
     ].join('\n');
 
-    assert.strictEqual(result, expected);
+    expect(result).toBe(expected);
   });
 
   it('acceptAll: multiple changes resolved, all footnotes accepted', () => {
@@ -1318,7 +1318,7 @@ describe('Full document round-trip', () => {
       '[^ct-2]: @alice | 2026-02-10 | sub | accepted',
     ].join('\n');
 
-    assert.strictEqual(result, expected);
+    expect(result).toBe(expected);
   });
 
   it('accept move group: deletion removed, insertion kept, all footnotes accepted', () => {
@@ -1336,9 +1336,9 @@ describe('Full document round-trip', () => {
 
     const result = applyAllEdits(input, edits);
 
-    assert.ok(result.startsWith('A [^ct-5.1] B moved[^ct-5.2] C'), 'Inline resolved correctly with footnote refs preserved');
-    assert.ok(!result.includes('| proposed'), 'No proposed status remains');
-    assert.strictEqual((result.match(/\| accepted/g) || []).length, 3);
+    expect(result.startsWith('A [^ct-5.1] B moved[^ct-5.2] C')).toBeTruthy();
+    expect(result.includes('| proposed')).toBeFalsy();
+    expect((result.match(/\| accepted/g) || [])).toHaveLength(3);
   });
 });
 
@@ -1359,7 +1359,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 18, newText: 'text[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: 'text[^ct-1]' });
     });
 
     it('Deletion: preserves footnote ref when accepting (anchors footnote in document)', () => {
@@ -1374,7 +1374,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 18, newText: '[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: '[^ct-1]' });
     });
 
     it('Substitution: preserves footnote ref when accepting', () => {
@@ -1392,7 +1392,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 24, newText: 'new[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 24, newText: 'new[^ct-1]' });
     });
 
     it('Highlight: preserves footnote ref when accepting', () => {
@@ -1407,7 +1407,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 19, newText: 'text[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 19, newText: 'text[^ct-1]' });
     });
 
     it('Comment: does not preserve footnote ref when accepting (comment removed)', () => {
@@ -1421,7 +1421,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 19, newText: '' });
+      expect(edit).toStrictEqual({ offset: 0, length: 19, newText: '' });
     });
 
     it('Dotted ID: preserves footnote ref for child change (ct-5.2)', () => {
@@ -1436,7 +1436,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 20, newText: 'text[^ct-5.2]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 20, newText: 'text[^ct-5.2]' });
     });
 
     it('Unanchored ct-N ID: does NOT preserve footnote ref (Level 0)', () => {
@@ -1450,7 +1450,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 10, newText: 'text' });
+      expect(edit).toStrictEqual({ offset: 0, length: 10, newText: 'text' });
     });
   });
 
@@ -1467,7 +1467,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeReject(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 18, newText: '[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: '[^ct-1]' });
     });
 
     it('Deletion: preserves footnote ref when rejecting', () => {
@@ -1482,7 +1482,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeReject(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 18, newText: 'text[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: 'text[^ct-1]' });
     });
 
     it('Substitution: preserves footnote ref when rejecting', () => {
@@ -1500,7 +1500,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeReject(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 24, newText: 'old[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 24, newText: 'old[^ct-1]' });
     });
 
     it('Highlight: preserves footnote ref when rejecting', () => {
@@ -1515,7 +1515,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeReject(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 19, newText: 'text[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 19, newText: 'text[^ct-1]' });
     });
 
     it('Comment: does not preserve footnote ref when rejecting (comment removed)', () => {
@@ -1529,7 +1529,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeReject(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 19, newText: '' });
+      expect(edit).toStrictEqual({ offset: 0, length: 19, newText: '' });
     });
 
     it('Unanchored ct-N ID: does NOT preserve footnote ref (Level 0)', () => {
@@ -1543,7 +1543,7 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeReject(change);
-      assert.deepStrictEqual(edit, { offset: 0, length: 10, newText: 'text' });
+      expect(edit).toStrictEqual({ offset: 0, length: 10, newText: 'text' });
     });
   });
 
@@ -1558,8 +1558,8 @@ describe('footnote reference preservation', () => {
 
       const result = applyAllEdits(input, edits);
 
-      assert.ok(result.includes('Before text[^ct-1] after.'), 'Footnote ref preserved in text');
-      assert.ok(result.includes('| accepted'), 'Footnote status updated');
+      expect(result.includes('Before text[^ct-1] after.')).toBeTruthy();
+      expect(result.includes('| accepted')).toBeTruthy();
     });
 
     it('rejectChange: preserves footnote ref when rejecting deletion', () => {
@@ -1572,8 +1572,8 @@ describe('footnote reference preservation', () => {
 
       const result = applyAllEdits(input, edits);
 
-      assert.ok(result.includes('Before text[^ct-1] after.'), 'Footnote ref preserved in text');
-      assert.ok(result.includes('| rejected'), 'Footnote status updated');
+      expect(result.includes('Before text[^ct-1] after.')).toBeTruthy();
+      expect(result.includes('| rejected')).toBeTruthy();
     });
 
     it('acceptChange: substitution preserves footnote ref', () => {
@@ -1586,8 +1586,8 @@ describe('footnote reference preservation', () => {
 
       const result = applyAllEdits(input, edits);
 
-      assert.ok(result.includes('Use new[^ct-1] method.'), 'Footnote ref preserved with new text');
-      assert.ok(result.includes('| accepted'), 'Footnote status updated');
+      expect(result.includes('Use new[^ct-1] method.')).toBeTruthy();
+      expect(result.includes('| accepted')).toBeTruthy();
     });
 
     it('acceptAll: preserves footnote refs for multiple changes', () => {
@@ -1604,8 +1604,8 @@ describe('footnote reference preservation', () => {
 
       const result = applyAllEdits(input, edits);
 
-      assert.ok(result.includes('New intro.[^ct-1] Updated[^ct-2] content.'), 'Both footnote refs preserved');
-      assert.strictEqual((result.match(/\| accepted/g) || []).length, 2, 'Both footnotes accepted');
+      expect(result.includes('New intro.[^ct-1] Updated[^ct-2] content.')).toBeTruthy();
+      expect((result.match(/\| accepted/g) || [])).toHaveLength(2);
     });
 
     it('acceptChange: auto-generated ID does not add footnote ref', () => {
@@ -1618,7 +1618,7 @@ describe('footnote reference preservation', () => {
 
       const result = applyAllEdits(input, edits);
 
-      assert.strictEqual(result, 'Before text after.', 'No footnote ref added for auto-generated ID');
+      expect(result).toBe('Before text after.');
     });
   });
 });
@@ -1637,10 +1637,10 @@ describe('computeAcceptParts', () => {
       modifiedText: 'hello',
     });
     const parts = computeAcceptParts(change);
-    assert.strictEqual(parts.text, 'hello');
-    assert.strictEqual(parts.refId, 'ct-1');
-    assert.strictEqual(parts.offset, 0);
-    assert.strictEqual(parts.length, 12);
+    expect(parts.text).toBe('hello');
+    expect(parts.refId).toBe('ct-1');
+    expect(parts.offset).toBe(0);
+    expect(parts).toHaveLength(12);
   });
 
   it('returns empty refId for non-sc id', () => {
@@ -1652,8 +1652,8 @@ describe('computeAcceptParts', () => {
       modifiedText: 'hello',
     });
     const parts = computeAcceptParts(change);
-    assert.strictEqual(parts.text, 'hello');
-    assert.strictEqual(parts.refId, '');
+    expect(parts.text).toBe('hello');
+    expect(parts.refId).toBe('');
   });
 
   it('returns empty text for deletion with refId', () => {
@@ -1666,8 +1666,8 @@ describe('computeAcceptParts', () => {
       originalText: 'deleted',
     });
     const parts = computeAcceptParts(change);
-    assert.strictEqual(parts.text, '');
-    assert.strictEqual(parts.refId, 'ct-2');
+    expect(parts.text).toBe('');
+    expect(parts.refId).toBe('ct-2');
   });
 
   it('returns modifiedText for substitution with refId', () => {
@@ -1681,8 +1681,8 @@ describe('computeAcceptParts', () => {
       modifiedText: 'new',
     });
     const parts = computeAcceptParts(change);
-    assert.strictEqual(parts.text, 'new');
-    assert.strictEqual(parts.refId, 'ct-3');
+    expect(parts.text).toBe('new');
+    expect(parts.refId).toBe('ct-3');
   });
 
   it('is consistent with computeAccept (text + ref = newText)', () => {
@@ -1697,7 +1697,7 @@ describe('computeAcceptParts', () => {
     const parts = computeAcceptParts(change);
     const edit = computeAccept(change);
     const reconstructed = parts.text + (parts.refId ? `[^${parts.refId}]` : '');
-    assert.strictEqual(reconstructed, edit.newText);
+    expect(reconstructed).toBe(edit.newText);
   });
 });
 
@@ -1712,8 +1712,8 @@ describe('computeRejectParts', () => {
       modifiedText: 'hello',
     });
     const parts = computeRejectParts(change);
-    assert.strictEqual(parts.text, '');
-    assert.strictEqual(parts.refId, 'ct-1');
+    expect(parts.text).toBe('');
+    expect(parts.refId).toBe('ct-1');
   });
 
   it('returns originalText for rejected deletion with refId', () => {
@@ -1726,8 +1726,8 @@ describe('computeRejectParts', () => {
       originalText: 'deleted',
     });
     const parts = computeRejectParts(change);
-    assert.strictEqual(parts.text, 'deleted');
-    assert.strictEqual(parts.refId, 'ct-2');
+    expect(parts.text).toBe('deleted');
+    expect(parts.refId).toBe('ct-2');
   });
 
   it('returns originalText for rejected substitution with refId', () => {
@@ -1741,8 +1741,8 @@ describe('computeRejectParts', () => {
       modifiedText: 'new',
     });
     const parts = computeRejectParts(change);
-    assert.strictEqual(parts.text, 'old');
-    assert.strictEqual(parts.refId, 'ct-3');
+    expect(parts.text).toBe('old');
+    expect(parts.refId).toBe('ct-3');
   });
 
   it('is consistent with computeReject (text + ref = newText)', () => {
@@ -1758,7 +1758,7 @@ describe('computeRejectParts', () => {
     const parts = computeRejectParts(change);
     const edit = computeReject(change);
     const reconstructed = parts.text + (parts.refId ? `[^${parts.refId}]` : '');
-    assert.strictEqual(reconstructed, edit.newText);
+    expect(reconstructed).toBe(edit.newText);
   });
 });
 

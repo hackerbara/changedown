@@ -1,15 +1,15 @@
-import * as assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import { annotateMarkdown } from '@changetracks/core/internals';
 
 describe('Markdown Annotator - annotateMarkdown', () => {
   describe('no differences', () => {
     it('returns unchanged text when old and new are identical', () => {
       const text = 'Hello world\nSecond line\n';
-      assert.strictEqual(annotateMarkdown(text, text), text);
+      expect(annotateMarkdown(text, text)).toBe(text);
     });
 
     it('returns empty string when both are empty', () => {
-      assert.strictEqual(annotateMarkdown('', ''), '');
+      expect(annotateMarkdown('', '')).toBe('');
     });
   });
 
@@ -18,21 +18,21 @@ describe('Markdown Annotator - annotateMarkdown', () => {
       const old = 'Hello world';
       const now = 'Hello beautiful world';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'Hello {++beautiful ++}world');
+      expect(result).toBe('Hello {++beautiful ++}world');
     });
 
     it('marks insertion at beginning', () => {
       const old = 'world';
       const now = 'Hello world';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, '{++Hello ++}world');
+      expect(result).toBe('{++Hello ++}world');
     });
 
     it('marks insertion at end', () => {
       const old = 'Hello';
       const now = 'Hello world';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'Hello{++ world++}');
+      expect(result).toBe('Hello{++ world++}');
     });
   });
 
@@ -41,21 +41,21 @@ describe('Markdown Annotator - annotateMarkdown', () => {
       const old = 'Hello beautiful world';
       const now = 'Hello world';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'Hello {--beautiful --}world');
+      expect(result).toBe('Hello {--beautiful --}world');
     });
 
     it('marks deletion at beginning', () => {
       const old = 'Hello world';
       const now = 'world';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, '{--Hello --}world');
+      expect(result).toBe('{--Hello --}world');
     });
 
     it('marks deletion at end', () => {
       const old = 'Hello world';
       const now = 'Hello';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'Hello{-- world--}');
+      expect(result).toBe('Hello{-- world--}');
     });
   });
 
@@ -64,7 +64,7 @@ describe('Markdown Annotator - annotateMarkdown', () => {
       const old = 'The cat sat';
       const now = 'The dog sat';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'The {~~cat~>dog~~} sat');
+      expect(result).toBe('The {~~cat~>dog~~} sat');
     });
 
     it('marks substitution of a single character', () => {
@@ -72,7 +72,7 @@ describe('Markdown Annotator - annotateMarkdown', () => {
       const now = 'colour';
       const result = annotateMarkdown(old, now);
       // diff algorithm: "colo" unchanged, inserts "u", "r" unchanged
-      assert.strictEqual(result, 'colo{++u++}r');
+      expect(result).toBe('colo{++u++}r');
     });
   });
 
@@ -83,7 +83,7 @@ describe('Markdown Annotator - annotateMarkdown', () => {
       const result = annotateMarkdown(old, now);
       // "The " unchanged, "quick" -> "slow", " brown " unchanged, then char-level on "fox" vs "dog"
       // diff algorithm splits "fox"->"dog" as f->d, o, x->g (shares the 'o')
-      assert.strictEqual(result, 'The {~~quick~>slow~~} brown {~~f~>d~~}o{~~x~>g~~}');
+      expect(result).toBe('The {~~quick~>slow~~} brown {~~f~>d~~}o{~~x~>g~~}');
     });
   });
 
@@ -92,14 +92,14 @@ describe('Markdown Annotator - annotateMarkdown', () => {
       const old = 'Line 1\nLine 3\n';
       const now = 'Line 1\nLine 2\nLine 3\n';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'Line 1\n{++Line 2\n++}Line 3\n');
+      expect(result).toBe('Line 1\n{++Line 2\n++}Line 3\n');
     });
 
     it('marks insertion of multiple new lines', () => {
       const old = 'A\nD\n';
       const now = 'A\nB\nC\nD\n';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'A\n{++B\nC\n++}D\n');
+      expect(result).toBe('A\n{++B\nC\n++}D\n');
     });
   });
 
@@ -108,14 +108,14 @@ describe('Markdown Annotator - annotateMarkdown', () => {
       const old = 'Line 1\nLine 2\nLine 3\n';
       const now = 'Line 1\nLine 3\n';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'Line 1\n{--Line 2\n--}Line 3\n');
+      expect(result).toBe('Line 1\n{--Line 2\n--}Line 3\n');
     });
 
     it('marks deletion of multiple lines', () => {
       const old = 'A\nB\nC\nD\n';
       const now = 'A\nD\n';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'A\n{--B\nC\n--}D\n');
+      expect(result).toBe('A\n{--B\nC\n--}D\n');
     });
   });
 
@@ -124,14 +124,14 @@ describe('Markdown Annotator - annotateMarkdown', () => {
       const old = 'The old line\n';
       const now = 'The new line\n';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'The {~~old~>new~~} line\n');
+      expect(result).toBe('The {~~old~>new~~} line\n');
     });
 
     it('handles replaced line among unchanged lines', () => {
       const old = 'Before\nThe old line\nAfter\n';
       const now = 'Before\nThe new line\nAfter\n';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, 'Before\nThe {~~old~>new~~} line\nAfter\n');
+      expect(result).toBe('Before\nThe {~~old~>new~~} line\nAfter\n');
     });
   });
 
@@ -140,14 +140,14 @@ describe('Markdown Annotator - annotateMarkdown', () => {
       const old = '';
       const now = 'Hello world\nSecond line\n';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, '{++Hello world\nSecond line\n++}');
+      expect(result).toBe('{++Hello world\nSecond line\n++}');
     });
 
     it('wraps single line as insertion', () => {
       const old = '';
       const now = 'Hello';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, '{++Hello++}');
+      expect(result).toBe('{++Hello++}');
     });
   });
 
@@ -156,14 +156,14 @@ describe('Markdown Annotator - annotateMarkdown', () => {
       const old = 'Hello world\nSecond line\n';
       const now = '';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, '{--Hello world\nSecond line\n--}');
+      expect(result).toBe('{--Hello world\nSecond line\n--}');
     });
 
     it('wraps single line as deletion', () => {
       const old = 'Hello';
       const now = '';
       const result = annotateMarkdown(old, now);
-      assert.strictEqual(result, '{--Hello--}');
+      expect(result).toBe('{--Hello--}');
     });
   });
 
@@ -178,7 +178,7 @@ describe('Markdown Annotator - annotateMarkdown', () => {
         .replace(/\{--[^]*?--\}/g, '')
         .replace(/\{\+\+([^]*?)\+\+\}/g, '$1')
         .replace(/\{~~[^]*?~>([^]*?)~~\}/g, '$1');
-      assert.strictEqual(accepted, now);
+      expect(accepted).toBe(now);
     });
 
     it('rejecting all changes in output produces oldText', () => {
@@ -191,7 +191,7 @@ describe('Markdown Annotator - annotateMarkdown', () => {
         .replace(/\{\+\+[^]*?\+\+\}/g, '')
         .replace(/\{--([^]*?)--\}/g, '$1')
         .replace(/\{~~([^]*?)~>[^]*?~~\}/g, '$1');
-      assert.strictEqual(rejected, old);
+      expect(rejected).toBe(old);
     });
 
     it('accept invariant holds for multi-line changes', () => {
@@ -203,7 +203,7 @@ describe('Markdown Annotator - annotateMarkdown', () => {
         .replace(/\{--[^]*?--\}/g, '')
         .replace(/\{\+\+([^]*?)\+\+\}/g, '$1')
         .replace(/\{~~[^]*?~>([^]*?)~~\}/g, '$1');
-      assert.strictEqual(accepted, now);
+      expect(accepted).toBe(now);
     });
 
     it('reject invariant holds for multi-line changes', () => {
@@ -215,7 +215,7 @@ describe('Markdown Annotator - annotateMarkdown', () => {
         .replace(/\{\+\+[^]*?\+\+\}/g, '')
         .replace(/\{--([^]*?)--\}/g, '$1')
         .replace(/\{~~([^]*?)~>[^]*?~~\}/g, '$1');
-      assert.strictEqual(rejected, old);
+      expect(rejected).toBe(old);
     });
   });
 });

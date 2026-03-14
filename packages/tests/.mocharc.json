@@ -1,4 +1,0 @@
-{
-  "spec": ["dist/core/**/*.test.js", "dist/lsp/**/*.test.js"],
-  "timeout": 5000
-}

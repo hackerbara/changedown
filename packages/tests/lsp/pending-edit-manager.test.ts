@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import { PendingEditManager, CrystallizedEdit, sendPendingEditFlushed } from '@changetracks/lsp-server/internals';
 import { Workspace } from '@changetracks/core';
 
@@ -59,8 +59,8 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', '', 'h', 0);
 
       // No crystallized edit yet — still pending
-      assert.strictEqual(emittedEdits.length, 0);
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(emittedEdits).toHaveLength(0);
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
     });
 
     it('should accumulate consecutive insertions at adjacent offsets', () => {
@@ -73,8 +73,8 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', '', 'o', 4);
 
       // Still pending, not crystallized
-      assert.strictEqual(emittedEdits.length, 0);
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(emittedEdits).toHaveLength(0);
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
     });
 
     it('should flush pending insertion on explicit flush call', () => {
@@ -85,12 +85,12 @@ describe('PendingEditManager', () => {
 
       manager.flush('file:///test.md');
 
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].uri, 'file:///test.md');
-      assert.strictEqual(emittedEdits[0].newText, '{++hi++}');
-      assert.strictEqual(emittedEdits[0].offset, 0);
-      assert.strictEqual(emittedEdits[0].length, 2); // replaces the 2 chars "hi"
-      assert.ok(!manager.hasPendingEdit('file:///test.md'));
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].uri).toBe('file:///test.md');
+      expect(emittedEdits[0].newText).toBe('{++hi++}');
+      expect(emittedEdits[0].offset).toBe(0);
+      expect(emittedEdits[0].length).toBe(2); // replaces the 2 chars "hi"
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
     });
 
     it('should flush pending insertion on hard break (non-adjacent offset)', () => {
@@ -103,18 +103,18 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', '', 'b', 10);
 
       // First edit should have been flushed
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{++a++}');
-      assert.strictEqual(emittedEdits[0].offset, 0);
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{++a++}');
+      expect(emittedEdits[0].offset).toBe(0);
 
       // Second edit is now pending
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
 
       // Flush the second one
       manager.flush('file:///test.md');
-      assert.strictEqual(emittedEdits.length, 2);
-      assert.strictEqual(emittedEdits[1].newText, '{++b++}');
-      assert.strictEqual(emittedEdits[1].offset, 10);
+      expect(emittedEdits).toHaveLength(2);
+      expect(emittedEdits[1].newText).toBe('{++b++}');
+      expect(emittedEdits[1].offset).toBe(10);
     });
 
     it('should keep per-URI pending edits independent', () => {
@@ -127,13 +127,13 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///doc2.md', '', 'b', 0);
 
       // Neither document has been flushed yet
-      assert.strictEqual(emittedEdits.length, 0);
-      assert.ok(manager.hasPendingEdit('file:///doc1.md'));
-      assert.ok(manager.hasPendingEdit('file:///doc2.md'));
+      expect(emittedEdits).toHaveLength(0);
+      expect(manager.hasPendingEdit('file:///doc1.md')).toBeTruthy();
+      expect(manager.hasPendingEdit('file:///doc2.md')).toBeTruthy();
 
       // Explicit flushAll crystallizes both
       manager.flushAll();
-      assert.strictEqual(emittedEdits.length, 2);
+      expect(emittedEdits).toHaveLength(2);
     });
   });
 
@@ -145,8 +145,8 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'x', '', 5);
 
       // No crystallized edit yet — deletion is now buffered
-      assert.strictEqual(emittedEdits.length, 0);
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(emittedEdits).toHaveLength(0);
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
     });
 
     it('should crystallize deletion on flush', () => {
@@ -155,10 +155,10 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'x', '', 5);
       manager.flush('file:///test.md');
 
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{--x--}');
-      assert.strictEqual(emittedEdits[0].offset, 5);
-      assert.strictEqual(emittedEdits[0].length, 0); // deletion inserts markup at a point
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{--x--}');
+      expect(emittedEdits[0].offset).toBe(5);
+      expect(emittedEdits[0].length).toBe(0); // deletion inserts markup at a point
     });
 
     it('should flush pending insertion before creating deletion buffer', () => {
@@ -172,16 +172,16 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'z', '', 10);
 
       // Should have flushed the insertion only; deletion is now pending
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{++a++}');
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{++a++}');
 
       // Deletion is still pending
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
 
       // Flush to crystallize the deletion
       manager.flush('file:///test.md');
-      assert.strictEqual(emittedEdits.length, 2);
-      assert.strictEqual(emittedEdits[1].newText, '{--z--}');
+      expect(emittedEdits).toHaveLength(2);
+      expect(emittedEdits[1].newText).toBe('{--z--}');
     });
 
     it('should handle multi-character deletion', () => {
@@ -190,8 +190,8 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'hello', '', 0);
       manager.flush('file:///test.md');
 
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{--hello--}');
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{--hello--}');
     });
 
     it('should coalesce rapid backspaces into one deletion', () => {
@@ -204,14 +204,14 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'a', '', 0);
 
       // All three are coalesced in the buffer — no crystallized edits yet
-      assert.strictEqual(emittedEdits.length, 0);
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(emittedEdits).toHaveLength(0);
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
 
       // Flush produces a single coalesced deletion
       manager.flush('file:///test.md');
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{--abc--}');
-      assert.strictEqual(emittedEdits[0].offset, 0);
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{--abc--}');
+      expect(emittedEdits[0].offset).toBe(0);
     });
   });
 
@@ -223,8 +223,8 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'old', 'new', 5);
 
       // No crystallized edit yet — substitution is now buffered
-      assert.strictEqual(emittedEdits.length, 0);
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(emittedEdits).toHaveLength(0);
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
     });
 
     it('should crystallize substitution on flush', () => {
@@ -233,10 +233,10 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'old', 'new', 5);
       manager.flush('file:///test.md');
 
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{~~old~>new~~}');
-      assert.strictEqual(emittedEdits[0].offset, 5);
-      assert.strictEqual(emittedEdits[0].length, 3); // originalText length
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{~~old~>new~~}');
+      expect(emittedEdits[0].offset).toBe(5);
+      expect(emittedEdits[0].length).toBe(3); // originalText length
     });
 
     it('should flush pending insertion before creating substitution buffer', () => {
@@ -246,14 +246,14 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'old', 'new', 10);
 
       // Insertion flushed, substitution pending
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{++a++}');
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{++a++}');
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
 
       // Flush to crystallize the substitution
       manager.flush('file:///test.md');
-      assert.strictEqual(emittedEdits.length, 2);
-      assert.strictEqual(emittedEdits[1].newText, '{~~old~>new~~}');
+      expect(emittedEdits).toHaveLength(2);
+      expect(emittedEdits[1].newText).toBe('{~~old~>new~~}');
     });
 
     it('should handle substitution with different lengths', () => {
@@ -262,41 +262,41 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'ab', 'xyz', 0);
       manager.flush('file:///test.md');
 
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{~~ab~>xyz~~}');
-      assert.strictEqual(emittedEdits[0].offset, 0);
-      assert.strictEqual(emittedEdits[0].length, 3); // replaces the 3 chars of new text "xyz"
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{~~ab~>xyz~~}');
+      expect(emittedEdits[0].offset).toBe(0);
+      expect(emittedEdits[0].length).toBe(3); // replaces the 3 chars of new text "xyz"
     });
   });
 
   describe('Pause threshold', () => {
     it('should default to 2000ms pause threshold', () => {
       const { manager } = createTestHarness();
-      assert.strictEqual(manager.getPauseThreshold(), 2000);
+      expect(manager.getPauseThreshold()).toBe(2000);
     });
 
     it('should set 500ms at sensitivity 1.0', () => {
       const { manager } = createTestHarness();
       manager.setPauseThreshold(1.0);
-      assert.strictEqual(manager.getPauseThreshold(), 500);
+      expect(manager.getPauseThreshold()).toBe(500);
     });
 
     it('should set 1000ms at sensitivity 0.75', () => {
       const { manager } = createTestHarness();
       manager.setPauseThreshold(0.75);
-      assert.strictEqual(manager.getPauseThreshold(), 1000);
+      expect(manager.getPauseThreshold()).toBe(1000);
     });
 
     it('should set Infinity at sensitivity 0', () => {
       const { manager } = createTestHarness();
       manager.setPauseThreshold(0);
-      assert.strictEqual(manager.getPauseThreshold(), Infinity);
+      expect(manager.getPauseThreshold()).toBe(Infinity);
     });
 
     it('should set 4000ms at sensitivity 0.25', () => {
       const { manager } = createTestHarness();
       manager.setPauseThreshold(0.25);
-      assert.strictEqual(manager.getPauseThreshold(), 4000);
+      expect(manager.getPauseThreshold()).toBe(4000);
     });
   });
 
@@ -311,9 +311,9 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', '', 'a', 0);
       manager.flush('file:///test.md');
 
-      assert.strictEqual(emittedEdits.length, 1);
+      expect(emittedEdits).toHaveLength(1);
       // The emitted edit includes the anchor offset for the caller to check merging
-      assert.strictEqual(emittedEdits[0].anchorOffset, 0);
+      expect(emittedEdits[0].anchorOffset).toBe(0);
     });
   });
 
@@ -322,13 +322,13 @@ describe('PendingEditManager', () => {
       const { manager, emittedEdits } = createTestHarness();
 
       manager.handleChange('file:///test.md', '', 'a', 0);
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
 
       manager.dispose();
 
-      assert.ok(!manager.hasPendingEdit('file:///test.md'));
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
       // Dispose should NOT flush — just discard
-      assert.strictEqual(emittedEdits.length, 0);
+      expect(emittedEdits).toHaveLength(0);
     });
   });
 
@@ -348,11 +348,11 @@ describe('PendingEditManager', () => {
         '{++hello++}'
       );
 
-      assert.strictEqual(notifications.length, 1);
-      assert.strictEqual(notifications[0].method, 'changetracks/pendingEditFlushed');
-      assert.strictEqual(notifications[0].params.uri, 'file:///test.md');
-      assert.strictEqual(notifications[0].params.newText, '{++hello++}');
-      assert.deepStrictEqual(notifications[0].params.range, {
+      expect(notifications).toHaveLength(1);
+      expect(notifications[0].method).toBe('changetracks/pendingEditFlushed');
+      expect(notifications[0].params.uri).toBe('file:///test.md');
+      expect(notifications[0].params.newText).toBe('{++hello++}');
+      expect(notifications[0].params.range).toStrictEqual({
         start: { line: 0, character: 0 },
         end: { line: 0, character: 5 }
       });
@@ -367,18 +367,18 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///doc2.md', '', 'b', 0);
 
       // Per-URI states are independent — both are still pending
-      assert.strictEqual(emittedEdits.length, 0);
-      assert.ok(manager.hasPendingEdit('file:///doc1.md'));
-      assert.ok(manager.hasPendingEdit('file:///doc2.md'));
+      expect(emittedEdits).toHaveLength(0);
+      expect(manager.hasPendingEdit('file:///doc1.md')).toBeTruthy();
+      expect(manager.hasPendingEdit('file:///doc2.md')).toBeTruthy();
 
       // Flush doc1 only
       manager.flush('file:///doc1.md');
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].uri, 'file:///doc1.md');
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].uri).toBe('file:///doc1.md');
 
       // doc2 is still pending
-      assert.ok(manager.hasPendingEdit('file:///doc2.md'));
-      assert.ok(!manager.hasPendingEdit('file:///doc1.md'));
+      expect(manager.hasPendingEdit('file:///doc2.md')).toBeTruthy();
+      expect(manager.hasPendingEdit('file:///doc1.md')).toBeTruthy();
     });
 
     it('should flush only the specified document', () => {
@@ -388,11 +388,11 @@ describe('PendingEditManager', () => {
 
       // Flush a different URI — nothing should happen
       manager.flush('file:///other.md');
-      assert.strictEqual(emittedEdits.length, 0);
+      expect(emittedEdits).toHaveLength(0);
 
       // Flush the correct URI
       manager.flush('file:///test.md');
-      assert.strictEqual(emittedEdits.length, 1);
+      expect(emittedEdits).toHaveLength(1);
     });
   });
 
@@ -407,9 +407,9 @@ describe('PendingEditManager', () => {
       manager.flush('file:///test.md');
 
       // After first flush: doc = "{++a++}", emittedEdits has 1 edit
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{++a++}');
-      assert.strictEqual(docs['file:///test.md'], '{++a++}');
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{++a++}');
+      expect(docs['file:///test.md']).toBe('{++a++}');
 
       // Second edit session: type "b" at offset 7 (right after {++a++})
       manager.handleChange('file:///test.md', '', 'b', 7);
@@ -418,12 +418,12 @@ describe('PendingEditManager', () => {
       // After second flush:
       // Edit #2: crystallize {++b++} at offset 7 -> doc becomes "{++a++}{++b++}"
       // Edit #3: merge detects adjacent insertions -> replaces {++a++}{++b++} with {++ab++}
-      assert.strictEqual(emittedEdits.length, 3);
-      assert.strictEqual(emittedEdits[1].newText, '{++b++}');
-      assert.strictEqual(emittedEdits[2].newText, '{++ab++}');
-      assert.strictEqual(emittedEdits[2].offset, 0); // starts at the first change
-      assert.strictEqual(emittedEdits[2].length, 14); // replaces "{++a++}{++b++}" (14 chars)
-      assert.strictEqual(docs['file:///test.md'], '{++ab++}');
+      expect(emittedEdits).toHaveLength(3);
+      expect(emittedEdits[1].newText).toBe('{++b++}');
+      expect(emittedEdits[2].newText).toBe('{++ab++}');
+      expect(emittedEdits[2].offset).toBe(0); // starts at the first change
+      expect(emittedEdits[2].length).toBe(14); // replaces "{++a++}{++b++}" (14 chars)
+      expect(docs['file:///test.md']).toBe('{++ab++}');
     });
 
     it('should merge with preceding insertion when flushed before existing', () => {
@@ -436,10 +436,10 @@ describe('PendingEditManager', () => {
 
       // Edit #1: crystallize {++ world++} at offset 11
       // Edit #2: merge {++hello++}{++ world++} -> {++hello world++}
-      assert.strictEqual(emittedEdits.length, 2);
-      assert.strictEqual(emittedEdits[0].newText, '{++ world++}');
-      assert.strictEqual(emittedEdits[1].newText, '{++hello world++}');
-      assert.strictEqual(docs['file:///test.md'], '{++hello world++}');
+      expect(emittedEdits).toHaveLength(2);
+      expect(emittedEdits[0].newText).toBe('{++ world++}');
+      expect(emittedEdits[1].newText).toBe('{++hello world++}');
+      expect(docs['file:///test.md']).toBe('{++hello world++}');
     });
 
     it('should NOT merge non-adjacent insertions', () => {
@@ -450,9 +450,9 @@ describe('PendingEditManager', () => {
       manager.flush('file:///test.md');
 
       // Only 1 edit emitted (the crystallized insertion), no merge
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{++b++}');
-      assert.strictEqual(docs['file:///test.md'], '{++a++} gap {++b++}');
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{++b++}');
+      expect(docs['file:///test.md']).toBe('{++a++} gap {++b++}');
     });
 
     it('should NOT merge different change types', () => {
@@ -463,9 +463,9 @@ describe('PendingEditManager', () => {
       manager.flush('file:///test.md');
 
       // Only 1 edit: the crystallized insertion. No merge (different types).
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{++x++}');
-      assert.strictEqual(docs['file:///test.md'], '{--deleted--}{++x++}');
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{++x++}');
+      expect(docs['file:///test.md']).toBe('{--deleted--}{++x++}');
     });
 
     it('should skip merge when getDocumentText is not provided', () => {
@@ -476,8 +476,8 @@ describe('PendingEditManager', () => {
       manager.flush('file:///test.md');
 
       // Only 1 edit, no merge attempt
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{++a++}');
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{++a++}');
     });
   });
 
@@ -491,14 +491,14 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'a', '', 0); // backspace 'a' at offset 0
 
       // All coalesced in buffer — nothing emitted yet
-      assert.strictEqual(emittedEdits.length, 0);
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(emittedEdits).toHaveLength(0);
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
 
       // Flush produces single coalesced deletion
       manager.flush('file:///test.md');
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{--abc--}');
-      assert.strictEqual(emittedEdits[0].offset, 0);
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{--abc--}');
+      expect(emittedEdits[0].offset).toBe(0);
     });
 
     it('should coalesce forward deletes via buffer', () => {
@@ -511,13 +511,13 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'y', '', 5);
       manager.handleChange('file:///test.md', 'z', '', 5);
 
-      assert.strictEqual(emittedEdits.length, 0);
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(emittedEdits).toHaveLength(0);
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
 
       manager.flush('file:///test.md');
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{--xyz--}');
-      assert.strictEqual(emittedEdits[0].offset, 5);
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{--xyz--}');
+      expect(emittedEdits[0].offset).toBe(5);
     });
 
     it('should create new deletion buffer when no existing pending edit', () => {
@@ -526,13 +526,13 @@ describe('PendingEditManager', () => {
       manager.handleChange('file:///test.md', 'x', '', 5);
 
       // Deletion creates a pending buffer, not an immediate edit
-      assert.strictEqual(emittedEdits.length, 0);
-      assert.ok(manager.hasPendingEdit('file:///test.md'));
+      expect(emittedEdits).toHaveLength(0);
+      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
 
       manager.flush('file:///test.md');
-      assert.strictEqual(emittedEdits.length, 1);
-      assert.strictEqual(emittedEdits[0].newText, '{--x--}');
-      assert.strictEqual(emittedEdits[0].length, 0); // deletion inserts markup at a point
+      expect(emittedEdits).toHaveLength(1);
+      expect(emittedEdits[0].newText).toBe('{--x--}');
+      expect(emittedEdits[0].length).toBe(0); // deletion inserts markup at a point
     });
   });
 });

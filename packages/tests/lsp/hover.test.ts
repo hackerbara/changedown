@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import { ChangeNode, ChangeType, ChangeStatus, VirtualDocument } from '@changetracks/core';
 import { createHover, Position } from '@changetracks/lsp-server/internals';
 
@@ -21,7 +21,7 @@ describe('Hover Capability', () => {
       const position = Position.create(0, 0);
       const hover = createHover(position, changes, text);
 
-      assert.strictEqual(hover, null);
+      expect(hover).toBeNull();
     });
 
     it('should return null for position in insertion', () => {
@@ -41,7 +41,7 @@ describe('Hover Capability', () => {
       const position = Position.create(0, 10);
       const hover = createHover(position, changes, text);
 
-      assert.strictEqual(hover, null);
+      expect(hover).toBeNull();
     });
 
     it('should return null for position in deletion', () => {
@@ -61,7 +61,7 @@ describe('Hover Capability', () => {
       const position = Position.create(0, 10);
       const hover = createHover(position, changes, text);
 
-      assert.strictEqual(hover, null);
+      expect(hover).toBeNull();
     });
 
     it('should return null for position in substitution', () => {
@@ -83,7 +83,7 @@ describe('Hover Capability', () => {
       const position = Position.create(0, 10);
       const hover = createHover(position, changes, text);
 
-      assert.strictEqual(hover, null);
+      expect(hover).toBeNull();
     });
 
     it('should return hover for standalone comment', () => {
@@ -106,11 +106,11 @@ describe('Hover Capability', () => {
       const position = Position.create(0, 15);
       const hover = createHover(position, changes, text);
 
-      assert.ok(hover);
-      assert.ok(hover.contents);
-      assert.ok(typeof hover.contents === 'object' && 'value' in hover.contents);
-      assert.ok(hover.contents.value.includes('This is a comment'));
-      assert.ok(hover.contents.value.includes('**Comment:**'));
+      expect(hover).toBeTruthy();
+      expect(hover.contents).toBeTruthy();
+      expect(typeof hover.contents === 'object' && 'value' in hover.contents).toBeTruthy();
+      expect(hover.contents.value.includes('This is a comment')).toBeTruthy();
+      expect(hover.contents.value.includes('**Comment:**')).toBeTruthy();
     });
 
     it('should return hover for highlight with attached comment', () => {
@@ -144,11 +144,11 @@ describe('Hover Capability', () => {
       const position = Position.create(0, 10);
       const hover = createHover(position, changes, text);
 
-      assert.ok(hover);
-      assert.ok(hover.contents);
-      assert.ok(typeof hover.contents === 'object' && 'value' in hover.contents);
-      assert.ok(hover.contents.value.includes('note'));
-      assert.ok(hover.contents.value.includes('**Comment:**'));
+      expect(hover).toBeTruthy();
+      expect(hover.contents).toBeTruthy();
+      expect(typeof hover.contents === 'object' && 'value' in hover.contents).toBeTruthy();
+      expect(hover.contents.value.includes('note')).toBeTruthy();
+      expect(hover.contents.value.includes('**Comment:**')).toBeTruthy();
     });
 
     it('should return hover for highlight without attached comment', () => {
@@ -169,7 +169,7 @@ describe('Hover Capability', () => {
       const hover = createHover(position, changes, text);
 
       // No comment metadata, so should return null
-      assert.strictEqual(hover, null);
+      expect(hover).toBeNull();
     });
 
     it('should handle multi-line comment', () => {
@@ -192,12 +192,12 @@ describe('Hover Capability', () => {
       const position = Position.create(1, 0);
       const hover = createHover(position, changes, text);
 
-      assert.ok(hover);
-      assert.ok(hover.contents);
-      assert.ok(typeof hover.contents === 'object' && 'value' in hover.contents);
-      assert.ok(hover.contents.value.includes('This is a'));
-      assert.ok(hover.contents.value.includes('multi-line'));
-      assert.ok(hover.contents.value.includes('comment'));
+      expect(hover).toBeTruthy();
+      expect(hover.contents).toBeTruthy();
+      expect(typeof hover.contents === 'object' && 'value' in hover.contents).toBeTruthy();
+      expect(hover.contents.value.includes('This is a')).toBeTruthy();
+      expect(hover.contents.value.includes('multi-line')).toBeTruthy();
+      expect(hover.contents.value.includes('comment')).toBeTruthy();
     });
 
     it('should handle position at delimiter edges', () => {
@@ -219,22 +219,22 @@ describe('Hover Capability', () => {
       // Position at opening delimiter
       let position = Position.create(0, 6);
       let hover = createHover(position, changes, text);
-      assert.ok(hover);
+      expect(hover).toBeTruthy();
 
       // Position at closing delimiter
       position = Position.create(0, 18);
       hover = createHover(position, changes, text);
-      assert.ok(hover);
+      expect(hover).toBeTruthy();
 
       // Position just before range
       position = Position.create(0, 5);
       hover = createHover(position, changes, text);
-      assert.strictEqual(hover, null);
+      expect(hover).toBeNull();
 
       // Position just after range
       position = Position.create(0, 19);
       hover = createHover(position, changes, text);
-      assert.strictEqual(hover, null);
+      expect(hover).toBeNull();
     });
 
     it('should return null for empty comment text', () => {
@@ -257,7 +257,7 @@ describe('Hover Capability', () => {
       const hover = createHover(position, changes, text);
 
       // Empty comment should not show hover
-      assert.strictEqual(hover, null);
+      expect(hover).toBeNull();
     });
   });
 });

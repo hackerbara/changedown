@@ -24,8 +24,7 @@
     "test": "npm test -w @changetracks/tests",
     "test:all": "npm test -w @changetracks/tests && npm run test:cursor-preview",
     "test:vitest": "npm run test:vitest -w @changetracks/tests",
-    "test:mocha": "npm run test:mocha -w @changetracks/tests",
-    "test:core": "npm run test:mocha -w @changetracks/tests",
+    "test:core": "cd packages/tests && npx vitest run core/",
     "test:ext": "cd packages/vscode-extension && npm run test:features",
     "test:cursor-preview": "cd packages/cursor-preview && npm test",
     "lint": "cd packages/core && npm run lint 2>/dev/null; cd ../../packages/vscode-extension && npm run lint",
@@ -44,10 +43,7 @@
     "docx": "^9.5.1"
   },
   "overrides": {
-    "serialize-javascript": "7.0.4",
-    "mocha": {
-      "diff": "8.0.3"
-    }
+    "serialize-javascript": "7.0.4"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",

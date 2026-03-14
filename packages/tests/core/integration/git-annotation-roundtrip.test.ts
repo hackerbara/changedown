@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
   annotateMarkdown,
   annotateSidecar,
@@ -44,22 +44,22 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
 
       // Step 1: Annotate
       const annotated = annotateMarkdown(oldText, newText);
-      assert.ok(annotated.includes('{++'), 'Expected CriticMarkup annotations');
+      expect(annotated.includes('{++')).toBeTruthy();
 
       // Step 2: Parse
       const doc = ws.parse(annotated, 'markdown');
       const changes = doc.getChanges();
-      assert.ok(changes.length > 0, 'Expected at least one change');
+      expect(changes.length > 0).toBeTruthy();
 
       // Step 3: Accept all
       const edits = ws.acceptAll(doc);
-      assert.ok(edits.length > 0, 'Expected at least one edit');
+      expect(edits.length > 0).toBeTruthy();
 
       // Step 4: Apply edits
       const result = applyEdits(annotated, edits);
 
       // Step 5: Verify result matches new text
-      assert.strictEqual(result, newText);
+      expect(result).toBe(newText);
     });
 
     it('annotate → parse → reject all = old text', () => {
@@ -68,22 +68,22 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
 
       // Step 1: Annotate
       const annotated = annotateMarkdown(oldText, newText);
-      assert.ok(annotated.includes('{++'), 'Expected CriticMarkup annotations');
+      expect(annotated.includes('{++')).toBeTruthy();
 
       // Step 2: Parse
       const doc = ws.parse(annotated, 'markdown');
       const changes = doc.getChanges();
-      assert.ok(changes.length > 0, 'Expected at least one change');
+      expect(changes.length > 0).toBeTruthy();
 
       // Step 3: Reject all
       const edits = ws.rejectAll(doc);
-      assert.ok(edits.length > 0, 'Expected at least one edit');
+      expect(edits.length > 0).toBeTruthy();
 
       // Step 4: Apply edits
       const result = applyEdits(annotated, edits);
 
       // Step 5: Verify result matches old text
-      assert.strictEqual(result, oldText);
+      expect(result).toBe(oldText);
     });
   });
 
@@ -96,25 +96,25 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
 
       // Step 1: Annotate
       const annotated = annotateSidecar(oldText, newText, 'python');
-      assert.ok(annotated !== undefined, 'Expected sidecar annotation result');
-      assert.ok(annotated!.includes('# ct-'), 'Expected sidecar tags');
-      assert.ok(annotated!.includes('# -- ChangeTracks'), 'Expected sidecar block');
+      expect(annotated !== undefined).toBeTruthy();
+      expect(annotated!.includes('# ct-')).toBeTruthy();
+      expect(annotated!.includes('# -- ChangeTracks')).toBeTruthy();
 
       // Step 2: Parse
       const doc = ws.parse(annotated!, 'python');
       const changes = doc.getChanges();
-      assert.ok(changes.length > 0, 'Expected at least one change');
+      expect(changes.length > 0).toBeTruthy();
 
       // Step 3: Accept all
       const edits = ws.acceptAll(doc, annotated!, 'python');
-      assert.ok(edits.length > 0, 'Expected at least one edit');
+      expect(edits.length > 0).toBeTruthy();
 
       // Step 4: Apply edits (reverse order for sidecar)
       const result = applyEdits(annotated!, edits);
 
       // Step 5: Verify result matches new text
       // Trim for whitespace differences in sidecar block handling
-      assert.strictEqual(result.trim(), newText.trim());
+      expect(result.trim()).toBe(newText.trim());
     });
 
     it('annotate → parse → reject all = old text', () => {
@@ -123,25 +123,25 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
 
       // Step 1: Annotate
       const annotated = annotateSidecar(oldText, newText, 'python');
-      assert.ok(annotated !== undefined, 'Expected sidecar annotation result');
-      assert.ok(annotated!.includes('# ct-'), 'Expected sidecar tags');
-      assert.ok(annotated!.includes('# -- ChangeTracks'), 'Expected sidecar block');
+      expect(annotated !== undefined).toBeTruthy();
+      expect(annotated!.includes('# ct-')).toBeTruthy();
+      expect(annotated!.includes('# -- ChangeTracks')).toBeTruthy();
 
       // Step 2: Parse
       const doc = ws.parse(annotated!, 'python');
       const changes = doc.getChanges();
-      assert.ok(changes.length > 0, 'Expected at least one change');
+      expect(changes.length > 0).toBeTruthy();
 
       // Step 3: Reject all
       const edits = ws.rejectAll(doc, annotated!, 'python');
-      assert.ok(edits.length > 0, 'Expected at least one edit');
+      expect(edits.length > 0).toBeTruthy();
 
       // Step 4: Apply edits (reverse order for sidecar)
       const result = applyEdits(annotated!, edits);
 
       // Step 5: Verify result matches old text
       // Trim for whitespace differences in sidecar block handling
-      assert.strictEqual(result.trim(), oldText.trim());
+      expect(result.trim()).toBe(oldText.trim());
     });
   });
 
@@ -157,7 +157,7 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       const edits = ws.acceptAll(doc);
       const result = applyEdits(annotated, edits);
 
-      assert.strictEqual(result, newText);
+      expect(result).toBe(newText);
     });
 
     it('markdown with deletions: reject all = old text', () => {
@@ -169,7 +169,7 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       const edits = ws.rejectAll(doc);
       const result = applyEdits(annotated, edits);
 
-      assert.strictEqual(result, oldText);
+      expect(result).toBe(oldText);
     });
 
     it('sidecar with substitution: accept all = new text', () => {
@@ -177,13 +177,13 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       const newText = 'x = 1\nresults = {}\nz = 3\n';
 
       const annotated = annotateSidecar(oldText, newText, 'python');
-      assert.ok(annotated !== undefined);
+      expect(annotated !== undefined).toBeTruthy();
 
       const doc = ws.parse(annotated!, 'python');
       const edits = ws.acceptAll(doc, annotated!, 'python');
       const result = applyEdits(annotated!, edits);
 
-      assert.strictEqual(result.trim(), newText.trim());
+      expect(result.trim()).toBe(newText.trim());
     });
 
     it('sidecar with substitution: reject all = old text', () => {
@@ -191,13 +191,13 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       const newText = 'x = 1\nresults = {}\nz = 3\n';
 
       const annotated = annotateSidecar(oldText, newText, 'python');
-      assert.ok(annotated !== undefined);
+      expect(annotated !== undefined).toBeTruthy();
 
       const doc = ws.parse(annotated!, 'python');
       const edits = ws.rejectAll(doc, annotated!, 'python');
       const result = applyEdits(annotated!, edits);
 
-      assert.strictEqual(result.trim(), oldText.trim());
+      expect(result.trim()).toBe(oldText.trim());
     });
 
     it('sidecar with deletion: accept all = new text', () => {
@@ -205,13 +205,13 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       const newText = 'x = 1\nz = 3\n';
 
       const annotated = annotateSidecar(oldText, newText, 'python');
-      assert.ok(annotated !== undefined);
+      expect(annotated !== undefined).toBeTruthy();
 
       const doc = ws.parse(annotated!, 'python');
       const edits = ws.acceptAll(doc, annotated!, 'python');
       const result = applyEdits(annotated!, edits);
 
-      assert.strictEqual(result.trim(), newText.trim());
+      expect(result.trim()).toBe(newText.trim());
     });
 
     it('sidecar with deletion: reject all = old text', () => {
@@ -219,13 +219,13 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       const newText = 'x = 1\nz = 3\n';
 
       const annotated = annotateSidecar(oldText, newText, 'python');
-      assert.ok(annotated !== undefined);
+      expect(annotated !== undefined).toBeTruthy();
 
       const doc = ws.parse(annotated!, 'python');
       const edits = ws.rejectAll(doc, annotated!, 'python');
       const result = applyEdits(annotated!, edits);
 
-      assert.strictEqual(result.trim(), oldText.trim());
+      expect(result.trim()).toBe(oldText.trim());
     });
   });
 
@@ -237,14 +237,14 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       const newText = 'const x = 1;\nconst z = 3;\nconst y = 2;\n';
 
       const annotated = annotateSidecar(oldText, newText, 'typescript');
-      assert.ok(annotated !== undefined);
-      assert.ok(annotated!.includes('// ct-'), 'Expected TypeScript sidecar tags');
+      expect(annotated !== undefined).toBeTruthy();
+      expect(annotated!.includes('// ct-')).toBeTruthy();
 
       const doc = ws.parse(annotated!, 'typescript');
       const edits = ws.acceptAll(doc, annotated!, 'typescript');
       const result = applyEdits(annotated!, edits);
 
-      assert.strictEqual(result.trim(), newText.trim());
+      expect(result.trim()).toBe(newText.trim());
     });
 
     it('typescript: reject all = old text', () => {
@@ -252,13 +252,13 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       const newText = 'const x = 1;\nconst z = 3;\nconst y = 2;\n';
 
       const annotated = annotateSidecar(oldText, newText, 'typescript');
-      assert.ok(annotated !== undefined);
+      expect(annotated !== undefined).toBeTruthy();
 
       const doc = ws.parse(annotated!, 'typescript');
       const edits = ws.rejectAll(doc, annotated!, 'typescript');
       const result = applyEdits(annotated!, edits);
 
-      assert.strictEqual(result.trim(), oldText.trim());
+      expect(result.trim()).toBe(oldText.trim());
     });
 
     it('javascript: roundtrip preserves text', () => {
@@ -266,19 +266,19 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       const newText = 'function foo() {\n  console.log("debug");\n  return 42;\n}\n';
 
       const annotated = annotateSidecar(oldText, newText, 'javascript');
-      assert.ok(annotated !== undefined);
+      expect(annotated !== undefined).toBeTruthy();
 
       // Accept path
       const docAccept = ws.parse(annotated!, 'javascript');
       const editsAccept = ws.acceptAll(docAccept, annotated!, 'javascript');
       const resultAccept = applyEdits(annotated!, editsAccept);
-      assert.strictEqual(resultAccept.trim(), newText.trim());
+      expect(resultAccept.trim()).toBe(newText.trim());
 
       // Reject path
       const docReject = ws.parse(annotated!, 'javascript');
       const editsReject = ws.rejectAll(docReject, annotated!, 'javascript');
       const resultReject = applyEdits(annotated!, editsReject);
-      assert.strictEqual(resultReject.trim(), oldText.trim());
+      expect(resultReject.trim()).toBe(oldText.trim());
     });
   });
 });

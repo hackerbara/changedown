@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import { createCodeLenses, Position, Range } from '@changetracks/lsp-server/internals';
 import type { CodeLens, Command } from '@changetracks/lsp-server/internals';
 import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
@@ -9,7 +9,7 @@ describe('Code Lens', () => {
       const changes: ChangeNode[] = [];
       const text = 'Some text without changes';
       const result = createCodeLenses(changes, text);
-      assert.strictEqual(result.length, 0);
+      expect(result).toHaveLength(0);
     });
 
     it('should create per-change lenses for single insertion', () => {
@@ -27,30 +27,30 @@ describe('Code Lens', () => {
       const result = createCodeLenses(changes, text);
 
       // Should have 2 document-level lenses + 2 per-change lenses = 4 total
-      assert.strictEqual(result.length, 4);
+      expect(result).toHaveLength(4);
 
       // Find per-change lenses
       const perChangeLenses = result.filter(lens =>
         lens.command?.command === 'changetracks.acceptChange' ||
         lens.command?.command === 'changetracks.rejectChange'
       );
-      assert.strictEqual(perChangeLenses.length, 2);
+      expect(perChangeLenses).toHaveLength(2);
 
       // Both per-change lenses should be positioned at line 0 (where the change is)
-      assert.strictEqual(perChangeLenses[0].range.start.line, 0);
-      assert.strictEqual(perChangeLenses[0].range.start.character, 0);
-      assert.strictEqual(perChangeLenses[1].range.start.line, 0);
-      assert.strictEqual(perChangeLenses[1].range.start.character, 0);
+      expect(perChangeLenses[0].range.start.line).toBe(0);
+      expect(perChangeLenses[0].range.start.character).toBe(0);
+      expect(perChangeLenses[1].range.start.line).toBe(0);
+      expect(perChangeLenses[1].range.start.character).toBe(0);
 
       // Check commands
       const acceptLens = perChangeLenses.find(l => l.command?.title === 'Accept');
       const rejectLens = perChangeLenses.find(l => l.command?.title === 'Reject');
 
-      assert.strictEqual(acceptLens?.command?.command, 'changetracks.acceptChange');
-      assert.deepStrictEqual(acceptLens?.command?.arguments, ['change-1']);
+      expect(acceptLens?.command?.command).toBe('changetracks.acceptChange');
+      expect(acceptLens?.command?.arguments).toStrictEqual(['change-1']);
 
-      assert.strictEqual(rejectLens?.command?.command, 'changetracks.rejectChange');
-      assert.deepStrictEqual(rejectLens?.command?.arguments, ['change-1']);
+      expect(rejectLens?.command?.command).toBe('changetracks.rejectChange');
+      expect(rejectLens?.command?.arguments).toStrictEqual(['change-1']);
     });
 
     it('should create per-change lenses for deletion', () => {
@@ -68,15 +68,15 @@ describe('Code Lens', () => {
       const result = createCodeLenses(changes, text);
 
       // Should have 2 document-level lenses + 2 per-change lenses = 4 total
-      assert.strictEqual(result.length, 4);
+      expect(result).toHaveLength(4);
 
       // Find per-change lenses
       const perChangeLenses = result.filter(lens =>
         lens.command?.arguments?.[0] === 'change-2'
       );
-      assert.strictEqual(perChangeLenses.length, 2);
-      assert.strictEqual(perChangeLenses[0].command?.title, 'Accept');
-      assert.strictEqual(perChangeLenses[1].command?.title, 'Reject');
+      expect(perChangeLenses).toHaveLength(2);
+      expect(perChangeLenses[0].command?.title).toBe('Accept');
+      expect(perChangeLenses[1].command?.title).toBe('Reject');
     });
 
     it('should position lenses on line before multi-line change', () => {
@@ -99,8 +99,8 @@ describe('Code Lens', () => {
       );
 
       // Per-change lens should be at line 1 (where change starts), char 0
-      assert.strictEqual(perChangeLenses[0].range.start.line, 1);
-      assert.strictEqual(perChangeLenses[0].range.start.character, 0);
+      expect(perChangeLenses[0].range.start.line).toBe(1);
+      expect(perChangeLenses[0].range.start.character).toBe(0);
     });
 
     it('should create document-level lenses when changes exist', () => {
@@ -126,30 +126,30 @@ describe('Code Lens', () => {
       const result = createCodeLenses(changes, text);
 
       // Should have 4 per-change lenses + 2 document-level lenses
-      assert.strictEqual(result.length, 6);
+      expect(result).toHaveLength(6);
 
       // Find document-level lenses (should be at line 0)
       const docLenses = result.filter(lens =>
         lens.command?.title.startsWith('Accept All') ||
         lens.command?.title.startsWith('Reject All')
       );
-      assert.strictEqual(docLenses.length, 2);
+      expect(docLenses).toHaveLength(2);
 
       // Check document-level lens positions (both at line 0, char 0)
-      assert.strictEqual(docLenses[0].range.start.line, 0);
-      assert.strictEqual(docLenses[0].range.start.character, 0);
-      assert.strictEqual(docLenses[1].range.start.line, 0);
-      assert.strictEqual(docLenses[1].range.start.character, 0);
+      expect(docLenses[0].range.start.line).toBe(0);
+      expect(docLenses[0].range.start.character).toBe(0);
+      expect(docLenses[1].range.start.line).toBe(0);
+      expect(docLenses[1].range.start.character).toBe(0);
 
       // Check titles include count
-      assert.ok(docLenses[0].command?.title.includes('(2 changes)'));
-      assert.ok(docLenses[1].command?.title.includes('(2 changes)'));
+      expect(docLenses[0].command?.title.includes('(2 changes)')).toBeTruthy();
+      expect(docLenses[1].command?.title.includes('(2 changes)')).toBeTruthy();
 
       // Check commands
       const acceptAllLens = docLenses.find(l => l.command?.title.startsWith('Accept All'));
       const rejectAllLens = docLenses.find(l => l.command?.title.startsWith('Reject All'));
-      assert.strictEqual(acceptAllLens?.command?.command, 'changetracks.acceptAll');
-      assert.strictEqual(rejectAllLens?.command?.command, 'changetracks.rejectAll');
+      expect(acceptAllLens?.command?.command).toBe('changetracks.acceptAll');
+      expect(rejectAllLens?.command?.command).toBe('changetracks.rejectAll');
     });
 
     it('should not create document-level lenses when no changes exist', () => {
@@ -161,7 +161,7 @@ describe('Code Lens', () => {
         lens.command?.title.startsWith('Accept All') ||
         lens.command?.title.startsWith('Reject All')
       );
-      assert.strictEqual(docLenses.length, 0);
+      expect(docLenses).toHaveLength(0);
     });
 
     it('should handle multiple changes at different lines', () => {
@@ -197,26 +197,26 @@ describe('Code Lens', () => {
       const result = createCodeLenses(changes, text);
 
       // 3 changes × 2 lenses per change + 2 document lenses = 8 total
-      assert.strictEqual(result.length, 8);
+      expect(result).toHaveLength(8);
 
       // Check that per-change lenses are at correct lines
       const change1Lenses = result.filter(l =>
         l.command?.arguments?.[0] === 'change-1'
       );
-      assert.strictEqual(change1Lenses.length, 2);
-      assert.strictEqual(change1Lenses[0].range.start.line, 0);
+      expect(change1Lenses).toHaveLength(2);
+      expect(change1Lenses[0].range.start.line).toBe(0);
 
       const change2Lenses = result.filter(l =>
         l.command?.arguments?.[0] === 'change-2'
       );
-      assert.strictEqual(change2Lenses.length, 2);
-      assert.strictEqual(change2Lenses[0].range.start.line, 1);
+      expect(change2Lenses).toHaveLength(2);
+      expect(change2Lenses[0].range.start.line).toBe(1);
 
       const change3Lenses = result.filter(l =>
         l.command?.arguments?.[0] === 'change-3'
       );
-      assert.strictEqual(change3Lenses.length, 2);
-      assert.strictEqual(change3Lenses[0].range.start.line, 2);
+      expect(change3Lenses).toHaveLength(2);
+      expect(change3Lenses[0].range.start.line).toBe(2);
     });
 
     it('should create lenses with singular change count', () => {
@@ -238,8 +238,8 @@ describe('Code Lens', () => {
         lens.command?.title.startsWith('Reject All')
       );
 
-      assert.ok(docLenses[0].command?.title.includes('(1 change)'));
-      assert.ok(docLenses[1].command?.title.includes('(1 change)'));
+      expect(docLenses[0].command?.title.includes('(1 change)')).toBeTruthy();
+      expect(docLenses[1].command?.title.includes('(1 change)')).toBeTruthy();
     });
 
     it('should handle change at offset 0 correctly', () => {
@@ -261,8 +261,8 @@ describe('Code Lens', () => {
         l.command?.command === 'changetracks.acceptChange' ||
         l.command?.command === 'changetracks.rejectChange'
       );
-      assert.strictEqual(perChangeLenses[0].range.start.line, 0);
-      assert.strictEqual(perChangeLenses[0].range.start.character, 0);
+      expect(perChangeLenses[0].range.start.line).toBe(0);
+      expect(perChangeLenses[0].range.start.character).toBe(0);
     });
   });
 });

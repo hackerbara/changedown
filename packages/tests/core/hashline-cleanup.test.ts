@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import {
   stripHashlinePrefixes,
   detectNoOp,
@@ -17,7 +17,7 @@ describe('hashline-cleanup', () => {
         '3:f0|Another line',
       ];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'Hello world',
         'This is a test',
         'Another line',
@@ -31,7 +31,7 @@ describe('hashline-cleanup', () => {
         '102:ef|Line one hundred and two',
       ];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'Line one hundred',
         'Line one hundred and one',
         'Line one hundred and two',
@@ -44,7 +44,7 @@ describe('hashline-cleanup', () => {
         '6:1234567890abcdef|Another long hash',
       ];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'Long hash line',
         'Another long hash',
       ]);
@@ -58,7 +58,7 @@ describe('hashline-cleanup', () => {
         'Even more normal text',
       ];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, lines, 'should return unchanged');
+      expect(result).toStrictEqual(lines);
     });
 
     it('skips empty lines when computing majority threshold', () => {
@@ -70,7 +70,7 @@ describe('hashline-cleanup', () => {
       ];
       // 2 non-empty, both have prefix => 100% majority => strip
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'Hello',
         '',
         'World',
@@ -84,7 +84,7 @@ describe('hashline-cleanup', () => {
         '2:b7|Some content',
       ];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         '',
         'Some content',
       ]);
@@ -96,12 +96,12 @@ describe('hashline-cleanup', () => {
         'Nothing special here',
       ];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, lines);
+      expect(result).toStrictEqual(lines);
     });
 
     it('returns unchanged for empty input', () => {
       const result = stripHashlinePrefixes([]);
-      assert.deepStrictEqual(result, []);
+      expect(result).toStrictEqual([]);
     });
 
     it('handles exactly 50% threshold (strips)', () => {
@@ -111,7 +111,7 @@ describe('hashline-cleanup', () => {
         'Normal line',
       ];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'Prefixed line',
         'Normal line',
       ]);
@@ -125,7 +125,7 @@ describe('hashline-cleanup', () => {
         'Another normal line',
       ];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, lines);
+      expect(result).toStrictEqual(lines);
     });
 
     // ─── Diff prefix stripping ──────────────────────────────────────
@@ -137,7 +137,7 @@ describe('hashline-cleanup', () => {
         '+Added line three',
       ];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'Added line one',
         'Added line two',
         'Added line three',
@@ -154,7 +154,7 @@ describe('hashline-cleanup', () => {
       // Only 2 of 3 non-empty lines have + prefix => 66% => strip
       // But ++ line doesn't match ^+(?!\+)
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         '++ b/file.ts',
         'Added line',
         'Another add',
@@ -169,7 +169,7 @@ describe('hashline-cleanup', () => {
         'Normal line four',
       ];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, lines);
+      expect(result).toStrictEqual(lines);
     });
 
     it('prioritizes hashline prefix over diff prefix', () => {
@@ -180,7 +180,7 @@ describe('hashline-cleanup', () => {
       ];
       const result = stripHashlinePrefixes(lines);
       // Should strip hashline prefix, leaving +Added...
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         '+Added with hashline',
         '+More added with hashline',
       ]);
@@ -189,7 +189,7 @@ describe('hashline-cleanup', () => {
     it('handles single non-empty line with prefix', () => {
       const lines = ['5:ff|Only line'];
       const result = stripHashlinePrefixes(lines);
-      assert.deepStrictEqual(result, ['Only line']);
+      expect(result).toStrictEqual(['Only line']);
     });
   });
 
@@ -197,64 +197,57 @@ describe('hashline-cleanup', () => {
 
   describe('detectNoOp', () => {
     it('returns true for identical content', () => {
-      assert.strictEqual(detectNoOp('hello world', 'hello world'), true);
+      expect(detectNoOp('hello world', 'hello world')).toBe(true);
     });
 
     it('returns true when only whitespace differs', () => {
-      assert.strictEqual(
+      expect(
         detectNoOp('hello   world', 'hello world'),
-        true,
-      );
+      ).toBe(true);
     });
 
     it('returns true when leading/trailing whitespace differs', () => {
-      assert.strictEqual(
+      expect(
         detectNoOp('  hello world  ', 'hello world'),
-        true,
-      );
+      ).toBe(true);
     });
 
     it('returns true when newlines vs spaces differ', () => {
-      assert.strictEqual(
+      expect(
         detectNoOp('hello\nworld', 'hello world'),
-        true,
-      );
+      ).toBe(true);
     });
 
     it('returns true when tabs vs spaces differ', () => {
-      assert.strictEqual(
+      expect(
         detectNoOp('hello\tworld', 'hello world'),
-        true,
-      );
+      ).toBe(true);
     });
 
     it('returns false for genuinely different content', () => {
-      assert.strictEqual(
+      expect(
         detectNoOp('hello world', 'goodbye world'),
-        false,
-      );
+      ).toBe(false);
     });
 
     it('returns false for content with added words', () => {
-      assert.strictEqual(
+      expect(
         detectNoOp('hello world', 'hello beautiful world'),
-        false,
-      );
+      ).toBe(false);
     });
 
     it('returns true for empty strings', () => {
-      assert.strictEqual(detectNoOp('', ''), true);
+      expect(detectNoOp('', '')).toBe(true);
     });
 
     it('returns true for whitespace-only vs empty', () => {
-      assert.strictEqual(detectNoOp('   \n\t  ', ''), true);
+      expect(detectNoOp('   \n\t  ', '')).toBe(true);
     });
 
     it('handles mixed whitespace normalization', () => {
-      assert.strictEqual(
+      expect(
         detectNoOp('  hello  \n  world  \t', 'hello world'),
-        true,
-      );
+      ).toBe(true);
     });
   });
 
@@ -283,7 +276,7 @@ describe('hashline-cleanup', () => {
         testHash,
       );
       // Hash matches at line 2, no relocation needed
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('relocates when line moved to a different position', () => {
@@ -295,9 +288,9 @@ describe('hashline-cleanup', () => {
         fileLines,
         testHash,
       );
-      assert.ok(result !== null, 'should find relocated line');
-      assert.strictEqual(result!.relocated, true);
-      assert.strictEqual(result!.newLine, 4); // 1-indexed
+      expect(result !== null).toBeTruthy();
+      expect(result!.relocated).toBe(true);
+      expect(result!.newLine).toBe(4); // 1-indexed
     });
 
     it('returns null when hash not found anywhere', () => {
@@ -309,7 +302,7 @@ describe('hashline-cleanup', () => {
         fileLines,
         testHash,
       );
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('returns null when hash is ambiguous (multiple matches)', () => {
@@ -322,7 +315,7 @@ describe('hashline-cleanup', () => {
         testHash,
       );
       // beta appears at lines 2 and 3 => ambiguous
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('handles ref.line out of bounds', () => {
@@ -334,9 +327,9 @@ describe('hashline-cleanup', () => {
         testHash,
       );
       // Line 10 doesn't exist, but beta is uniquely at line 2
-      assert.ok(result !== null);
-      assert.strictEqual(result!.relocated, true);
-      assert.strictEqual(result!.newLine, 2);
+      expect(result !== null).toBeTruthy();
+      expect(result!.relocated).toBe(true);
+      expect(result!.newLine).toBe(2);
     });
 
     it('handles empty file', () => {
@@ -345,7 +338,7 @@ describe('hashline-cleanup', () => {
         [],
         testHash,
       );
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('handles single-line file with matching hash', () => {
@@ -356,9 +349,9 @@ describe('hashline-cleanup', () => {
         fileLines,
         testHash,
       );
-      assert.ok(result !== null);
-      assert.strictEqual(result!.relocated, true);
-      assert.strictEqual(result!.newLine, 1);
+      expect(result !== null).toBeTruthy();
+      expect(result!.relocated).toBe(true);
+      expect(result!.newLine).toBe(1);
     });
   });
 
@@ -380,7 +373,7 @@ describe('hashline-cleanup', () => {
       ];
       // startLine=2, endLine=3 (1-indexed), original span = 2 lines, newLines = 4 => grew
       const result = stripBoundaryEcho(fileLines, 2, 3, newLines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'replaced start',
         'replaced end',
         'new extra line',
@@ -401,7 +394,7 @@ describe('hashline-cleanup', () => {
         'line after',      // echoed context (matches fileLines[3])
       ];
       const result = stripBoundaryEcho(fileLines, 2, 3, newLines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'replaced start',
         'replaced end',
         'new extra line',
@@ -421,7 +414,7 @@ describe('hashline-cleanup', () => {
         'context below',   // echo of line after
       ];
       const result = stripBoundaryEcho(fileLines, 2, 2, newLines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'modified target',
         'new extra',
       ]);
@@ -438,7 +431,7 @@ describe('hashline-cleanup', () => {
       ];
       // startLine=2, endLine=2, original span = 1, newLines.length = 1 => no growth
       const result = stripBoundaryEcho(fileLines, 2, 2, newLines);
-      assert.deepStrictEqual(result, newLines, 'should not strip when not grown');
+      expect(result).toStrictEqual(newLines);
     });
 
     it('matches ignoring whitespace differences', () => {
@@ -453,7 +446,7 @@ describe('hashline-cleanup', () => {
         'new line',
       ];
       const result = stripBoundaryEcho(fileLines, 2, 2, newLines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'modified target',
         'new line',
       ]);
@@ -473,7 +466,7 @@ describe('hashline-cleanup', () => {
       ];
       // startLine=1, no line before => only check trailing echo
       const result = stripBoundaryEcho(fileLines, 1, 2, newLines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'new first',
         'new second',
         'extra line',
@@ -492,7 +485,7 @@ describe('hashline-cleanup', () => {
       ];
       // endLine=2, no line after => only check leading echo
       const result = stripBoundaryEcho(fileLines, 2, 2, newLines);
-      assert.deepStrictEqual(result, [
+      expect(result).toStrictEqual([
         'modified last',
         'extra line',
       ]);
@@ -511,13 +504,13 @@ describe('hashline-cleanup', () => {
       ];
       // Grew (3 > 1), but no echo at boundaries
       const result = stripBoundaryEcho(fileLines, 2, 2, newLines);
-      assert.deepStrictEqual(result, newLines);
+      expect(result).toStrictEqual(newLines);
     });
 
     it('returns unchanged for empty newLines', () => {
       const fileLines = ['before', 'target', 'after'];
       const result = stripBoundaryEcho(fileLines, 2, 2, []);
-      assert.deepStrictEqual(result, []);
+      expect(result).toStrictEqual([]);
     });
   });
 

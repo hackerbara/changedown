@@ -1105,9 +1105,6 @@ describe('session hash mismatch falls through to Stage 3 auto-relocation', () =>
       resolver, state,
     );
 
-    if (secondResult.isError) {
-      console.error('SECOND PROPOSE ERROR:', secondResult.content[0].text);
-    }
     expect(secondResult.isError).toBeFalsy();
     const finalContent = await fs.readFile(filePath, 'utf-8');
     expect(finalContent).toContain('Modified target');

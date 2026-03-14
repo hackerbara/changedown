@@ -5,7 +5,7 @@
  * getPreviousVersion, fileHasUncommittedChanges, and getWorkspaceRoot.
  */
 
-import * as assert from 'assert';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -55,7 +55,7 @@ describe('Git Integration', () => {
 
             const root = await getWorkspaceRoot(filePath);
             // Resolve both to handle symlinks (macOS /tmp -> /private/tmp)
-            assert.strictEqual(fs.realpathSync(root!), fs.realpathSync(tempDir));
+            expect(fs.realpathSync(root!)).toBe(fs.realpathSync(tempDir));
         });
 
         it('returns git root for a file in a subdirectory', async () => {
@@ -66,7 +66,7 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'hello');
 
             const root = await getWorkspaceRoot(filePath);
-            assert.strictEqual(fs.realpathSync(root!), fs.realpathSync(tempDir));
+            expect(fs.realpathSync(root!)).toBe(fs.realpathSync(tempDir));
         });
 
         it('returns undefined for a file not in a git repo', async () => {
@@ -75,12 +75,12 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'hello');
 
             const root = await getWorkspaceRoot(filePath);
-            assert.strictEqual(root, undefined);
+            expect(root).toBeUndefined();
         });
 
         it('returns undefined for a nonexistent path', async () => {
             const root = await getWorkspaceRoot('/nonexistent/path/that/does/not/exist');
-            assert.strictEqual(root, undefined);
+            expect(root).toBeUndefined();
         });
     });
 
@@ -92,7 +92,7 @@ describe('Git Integration', () => {
             execSync('git add test.md && git commit -m "initial"', { cwd: tempDir, stdio: 'pipe' });
 
             const result = await fileHasUncommittedChanges(filePath, tempDir);
-            assert.strictEqual(result, false);
+            expect(result).toBe(false);
         });
 
         it('returns true for a file with working tree changes', async () => {
@@ -105,7 +105,7 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'modified content');
 
             const result = await fileHasUncommittedChanges(filePath, tempDir);
-            assert.strictEqual(result, true);
+            expect(result).toBe(true);
         });
 
         it('returns true for a staged file', async () => {
@@ -119,7 +119,7 @@ describe('Git Integration', () => {
             execSync('git add test.md', { cwd: tempDir, stdio: 'pipe' });
 
             const result = await fileHasUncommittedChanges(filePath, tempDir);
-            assert.strictEqual(result, true);
+            expect(result).toBe(true);
         });
 
         it('returns true for a new untracked file (no commits reference it)', async () => {
@@ -133,7 +133,7 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'brand new');
 
             const result = await fileHasUncommittedChanges(filePath, tempDir);
-            assert.strictEqual(result, true);
+            expect(result).toBe(true);
         });
 
         it('returns false for a file not in a git repo', async () => {
@@ -142,7 +142,7 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'hello');
 
             const result = await fileHasUncommittedChanges(filePath, tempDir);
-            assert.strictEqual(result, false);
+            expect(result).toBe(false);
         });
     });
 
@@ -157,8 +157,8 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'version 2 (uncommitted)');
 
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.ok(result, 'should return a result');
-            assert.strictEqual(result!.oldText, 'version 1');
+            expect(result).toBeTruthy();
+            expect(result!.oldText).toBe('version 1');
         });
 
         it('returns parent commit content for a clean committed file', async () => {
@@ -174,8 +174,8 @@ describe('Git Integration', () => {
             execSync('git add test.md && git commit -m "v2"', { cwd: tempDir, stdio: 'pipe' });
 
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.ok(result, 'should return a result');
-            assert.strictEqual(result!.oldText, 'version 1');
+            expect(result).toBeTruthy();
+            expect(result!.oldText).toBe('version 1');
         });
 
         it('returns empty string for a file created in the first commit (no parent)', async () => {
@@ -186,8 +186,8 @@ describe('Git Integration', () => {
             execSync('git add test.md && git commit -m "initial"', { cwd: tempDir, stdio: 'pipe' });
 
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.ok(result, 'should return a result');
-            assert.strictEqual(result!.oldText, '');
+            expect(result).toBeTruthy();
+            expect(result!.oldText).toBe('');
         });
 
         it('returns empty string for an untracked new file', async () => {
@@ -201,8 +201,8 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'new content');
 
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.ok(result, 'should return a result');
-            assert.strictEqual(result!.oldText, '');
+            expect(result).toBeTruthy();
+            expect(result!.oldText).toBe('');
         });
 
         it('includes author and date for committed files', async () => {
@@ -218,11 +218,11 @@ describe('Git Integration', () => {
             execSync('git add test.md && git commit -m "v2"', { cwd: tempDir, stdio: 'pipe' });
 
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.ok(result, 'should return a result');
-            assert.strictEqual(result!.author, 'Test User');
-            assert.ok(result!.date, 'should have a date');
+            expect(result).toBeTruthy();
+            expect(result!.author).toBe('Test User');
+            expect(result!.date).toBeTruthy();
             // Date should be full ISO timestamp (YYYY-MM-DDTHH:MM:SSZ) from git
-            assert.match(result!.date!, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+            expect(result!.date!).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
         });
 
         it('returns undefined for a file not in a git repo', async () => {
@@ -231,7 +231,7 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'hello');
 
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.strictEqual(result, undefined);
+            expect(result).toBeUndefined();
         });
 
         it('handles file in subdirectory correctly', async () => {
@@ -246,8 +246,8 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'v2 content');
 
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.ok(result, 'should return a result');
-            assert.strictEqual(result!.oldText, 'v1 content');
+            expect(result).toBeTruthy();
+            expect(result!.oldText).toBe('v1 content');
         });
 
         it('returns undefined for a nonexistent file path', async () => {
@@ -255,7 +255,7 @@ describe('Git Integration', () => {
             const filePath = path.join(tempDir, 'nonexistent.md');
 
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.strictEqual(result, undefined);
+            expect(result).toBeUndefined();
         });
     });
 
@@ -269,8 +269,8 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'content v2');
 
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.ok(result, 'should return a result');
-            assert.strictEqual(result!.oldText, 'content v1');
+            expect(result).toBeTruthy();
+            expect(result!.oldText).toBe('content v1');
         });
 
         it('handles empty git repo (no commits yet)', async () => {
@@ -281,11 +281,11 @@ describe('Git Integration', () => {
             // No commits exist, but git status --porcelain still shows untracked files
             // as uncommitted changes (which they are -- they're new files in the working tree)
             const hasChanges = await fileHasUncommittedChanges(filePath, tempDir);
-            assert.strictEqual(hasChanges, true);
+            expect(hasChanges).toBe(true);
 
             // getPreviousVersion returns undefined because HEAD doesn't exist
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.strictEqual(result, undefined);
+            expect(result).toBeUndefined();
         });
 
         it('handles binary-like file content gracefully', async () => {
@@ -300,9 +300,9 @@ describe('Git Integration', () => {
 
             // Should return the previous version (git show works on binary too)
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.ok(result, 'should return a result');
+            expect(result).toBeTruthy();
             // The content will be a string representation of the binary
-            assert.ok(result!.oldText.length > 0, 'should have non-empty content');
+            expect(result!.oldText.length > 0).toBeTruthy();
         });
 
         it('multi-line content is preserved exactly', async () => {
@@ -315,8 +315,8 @@ describe('Git Integration', () => {
             fs.writeFileSync(filePath, 'changed');
 
             const result = await getPreviousVersion(filePath, tempDir);
-            assert.ok(result, 'should return a result');
-            assert.strictEqual(result!.oldText, originalContent);
+            expect(result).toBeTruthy();
+            expect(result!.oldText).toBe(originalContent);
         });
     });
 });

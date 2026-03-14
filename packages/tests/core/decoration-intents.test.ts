@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import {
   ChangeType,
   ChangeStatus,
@@ -99,7 +99,7 @@ describe('buildDecorationIntents', () => {
     it('returns empty array for any nodes', () => {
       const nodes = [insertionNode(0, 'hello'), deletionNode(20, 'world')];
       const result = buildDecorationIntents(nodes, 'raw');
-      assert.deepStrictEqual(result, []);
+      expect(result).toStrictEqual([]);
     });
 
     it('returns empty array with pending overlay', () => {
@@ -111,12 +111,12 @@ describe('buildDecorationIntents', () => {
         cursorOffset: 3,
       };
       const result = buildDecorationIntents([], 'raw', overlay);
-      assert.deepStrictEqual(result, []);
+      expect(result).toStrictEqual([]);
     });
 
     it('returns empty array with no nodes', () => {
       const result = buildDecorationIntents([], 'raw');
-      assert.deepStrictEqual(result, []);
+      expect(result).toStrictEqual([]);
     });
   });
 
@@ -125,7 +125,7 @@ describe('buildDecorationIntents', () => {
   describe('empty input', () => {
     for (const view of ['review', 'changes', 'settled'] as ViewName[]) {
       it(`returns empty array for ${view} with no nodes`, () => {
-        assert.deepStrictEqual(buildDecorationIntents([], view), []);
+        expect(buildDecorationIntents([], view)).toStrictEqual([]);
       });
     }
   });
@@ -142,20 +142,20 @@ describe('buildDecorationIntents', () => {
         const delimiters = byKind(intents, 'delimiter');
         const content = byKind(intents, 'insertion');
 
-        assert.strictEqual(delimiters.length, 2, 'two delimiters (open + close)');
-        assert.strictEqual(content.length, 1, 'one content intent');
+        expect(delimiters).toHaveLength(2);
+        expect(content).toHaveLength(1);
 
         // Open delimiter {++ at [0,3)
-        assert.deepStrictEqual(delimiters[0].range, { start: 0, end: 3 });
-        assert.strictEqual(delimiters[0].visibility, 'visible');
+        expect(delimiters[0].range).toStrictEqual({ start: 0, end: 3 });
+        expect(delimiters[0].visibility).toBe('visible');
 
         // Content at [3,8)
-        assert.deepStrictEqual(content[0].range, { start: 3, end: 8 });
-        assert.strictEqual(content[0].visibility, 'visible');
+        expect(content[0].range).toStrictEqual({ start: 3, end: 8 });
+        expect(content[0].visibility).toBe('visible');
 
         // Close delimiter ++} at [8,11)
-        assert.deepStrictEqual(delimiters[1].range, { start: 8, end: 11 });
-        assert.strictEqual(delimiters[1].visibility, 'visible');
+        expect(delimiters[1].range).toStrictEqual({ start: 8, end: 11 });
+        expect(delimiters[1].visibility).toBe('visible');
       });
 
       it('includes metadata', () => {
@@ -164,8 +164,8 @@ describe('buildDecorationIntents', () => {
         n.id = 'ct-42';
         const intents = buildDecorationIntents([n], 'review');
         const content = byKind(intents, 'insertion')[0];
-        assert.strictEqual(content.metadata?.author, 'alice');
-        assert.strictEqual(content.metadata?.scId, 'ct-42');
+        expect(content.metadata?.author).toBe('alice');
+        expect(content.metadata?.scId).toBe('ct-42');
       });
     });
 
@@ -175,11 +175,11 @@ describe('buildDecorationIntents', () => {
         const delimiters = byKind(intents, 'delimiter');
         const content = byKind(intents, 'insertion');
 
-        assert.strictEqual(delimiters.length, 2);
-        assert.ok(delimiters.every(d => d.visibility === 'hidden'), 'all delimiters hidden');
+        expect(delimiters).toHaveLength(2);
+        expect(delimiters.every(d => d.visibility === 'hidden')).toBeTruthy();
 
-        assert.strictEqual(content.length, 1);
-        assert.strictEqual(content[0].visibility, 'visible');
+        expect(content).toHaveLength(1);
+        expect(content[0].visibility).toBe('visible');
       });
     });
 
@@ -189,11 +189,11 @@ describe('buildDecorationIntents', () => {
         const delimiters = byKind(intents, 'delimiter');
         const content = byKind(intents, 'insertion');
 
-        assert.strictEqual(delimiters.length, 2);
-        assert.ok(delimiters.every(d => d.visibility === 'hidden'));
+        expect(delimiters).toHaveLength(2);
+        expect(delimiters.every(d => d.visibility === 'hidden')).toBeTruthy();
 
         // No insertion content intent — the text renders as plain
-        assert.strictEqual(content.length, 0);
+        expect(content).toHaveLength(0);
       });
     });
   });
@@ -210,10 +210,10 @@ describe('buildDecorationIntents', () => {
         const delimiters = byKind(intents, 'delimiter');
         const content = byKind(intents, 'deletion');
 
-        assert.strictEqual(delimiters.length, 2);
-        assert.strictEqual(content.length, 1);
-        assert.strictEqual(content[0].visibility, 'visible');
-        assert.deepStrictEqual(content[0].range, { start: 3, end: 10 });
+        expect(delimiters).toHaveLength(2);
+        expect(content).toHaveLength(1);
+        expect(content[0].visibility).toBe('visible');
+        expect(content[0].range).toStrictEqual({ start: 3, end: 10 });
       });
     });
 
@@ -223,9 +223,9 @@ describe('buildDecorationIntents', () => {
         const delimiters = byKind(intents, 'delimiter');
         const content = byKind(intents, 'deletion');
 
-        assert.ok(delimiters.every(d => d.visibility === 'hidden'));
-        assert.strictEqual(content.length, 1);
-        assert.strictEqual(content[0].visibility, 'visible');
+        expect(delimiters.every(d => d.visibility === 'hidden')).toBeTruthy();
+        expect(content).toHaveLength(1);
+        expect(content[0].visibility).toBe('visible');
       });
     });
 
@@ -233,10 +233,10 @@ describe('buildDecorationIntents', () => {
       it('hides entire deletion range', () => {
         const intents = buildDecorationIntents([node], 'settled');
         // Entire range [0,14) is hidden
-        assert.strictEqual(intents.length, 1);
-        assert.strictEqual(intents[0].kind, 'deletion');
-        assert.strictEqual(intents[0].visibility, 'hidden');
-        assert.deepStrictEqual(intents[0].range, { start: 0, end: 13 });
+        expect(intents).toHaveLength(1);
+        expect(intents[0].kind).toBe('deletion');
+        expect(intents[0].visibility).toBe('hidden');
+        expect(intents[0].range).toStrictEqual({ start: 0, end: 13 });
       });
     });
   });
@@ -257,23 +257,23 @@ describe('buildDecorationIntents', () => {
         const newParts = byKind(intents, 'substitution-new');
 
         // 3 delimiters: {~~, ~>, ~~}
-        assert.strictEqual(delimiters.length, 3);
-        assert.ok(delimiters.every(d => d.visibility === 'visible'));
+        expect(delimiters).toHaveLength(3);
+        expect(delimiters.every(d => d.visibility === 'visible')).toBeTruthy();
 
         // Open delimiter {~~ at [0,3)
-        assert.deepStrictEqual(delimiters[0].range, { start: 0, end: 3 });
+        expect(delimiters[0].range).toStrictEqual({ start: 0, end: 3 });
         // Separator ~> at [6,8)
-        assert.deepStrictEqual(delimiters[1].range, { start: 6, end: 8 });
+        expect(delimiters[1].range).toStrictEqual({ start: 6, end: 8 });
         // Close delimiter ~~} at [11,14)
-        assert.deepStrictEqual(delimiters[2].range, { start: 11, end: 14 });
+        expect(delimiters[2].range).toStrictEqual({ start: 11, end: 14 });
 
-        assert.strictEqual(oldParts.length, 1);
-        assert.deepStrictEqual(oldParts[0].range, { start: 3, end: 6 });
-        assert.strictEqual(oldParts[0].visibility, 'visible');
+        expect(oldParts).toHaveLength(1);
+        expect(oldParts[0].range).toStrictEqual({ start: 3, end: 6 });
+        expect(oldParts[0].visibility).toBe('visible');
 
-        assert.strictEqual(newParts.length, 1);
-        assert.deepStrictEqual(newParts[0].range, { start: 8, end: 11 });
-        assert.strictEqual(newParts[0].visibility, 'visible');
+        expect(newParts).toHaveLength(1);
+        expect(newParts[0].range).toStrictEqual({ start: 8, end: 11 });
+        expect(newParts[0].visibility).toBe('visible');
       });
     });
 
@@ -284,14 +284,14 @@ describe('buildDecorationIntents', () => {
         const oldParts = byKind(intents, 'substitution-old');
         const newParts = byKind(intents, 'substitution-new');
 
-        assert.strictEqual(delimiters.length, 3);
-        assert.ok(delimiters.every(d => d.visibility === 'hidden'));
+        expect(delimiters).toHaveLength(3);
+        expect(delimiters.every(d => d.visibility === 'hidden')).toBeTruthy();
 
-        assert.strictEqual(oldParts.length, 1);
-        assert.strictEqual(oldParts[0].visibility, 'visible');
+        expect(oldParts).toHaveLength(1);
+        expect(oldParts[0].visibility).toBe('visible');
 
-        assert.strictEqual(newParts.length, 1);
-        assert.strictEqual(newParts[0].visibility, 'visible');
+        expect(newParts).toHaveLength(1);
+        expect(newParts[0].visibility).toBe('visible');
       });
     });
 
@@ -301,19 +301,19 @@ describe('buildDecorationIntents', () => {
 
         // The range [0, 8) (open delimiter + old text + separator) is hidden as substitution-old
         const oldParts = byKind(intents, 'substitution-old');
-        assert.strictEqual(oldParts.length, 1);
-        assert.deepStrictEqual(oldParts[0].range, { start: 0, end: 8 });
-        assert.strictEqual(oldParts[0].visibility, 'hidden');
+        expect(oldParts).toHaveLength(1);
+        expect(oldParts[0].range).toStrictEqual({ start: 0, end: 8 });
+        expect(oldParts[0].visibility).toBe('hidden');
 
         // Close delimiter ~~} at [11,14) is hidden
         const delimiters = byKind(intents, 'delimiter');
-        assert.strictEqual(delimiters.length, 1);
-        assert.deepStrictEqual(delimiters[0].range, { start: 11, end: 14 });
-        assert.strictEqual(delimiters[0].visibility, 'hidden');
+        expect(delimiters).toHaveLength(1);
+        expect(delimiters[0].range).toStrictEqual({ start: 11, end: 14 });
+        expect(delimiters[0].visibility).toBe('hidden');
 
         // No substitution-new intent — new text renders as plain
         const newParts = byKind(intents, 'substitution-new');
-        assert.strictEqual(newParts.length, 0);
+        expect(newParts).toHaveLength(0);
       });
     });
 
@@ -326,8 +326,8 @@ describe('buildDecorationIntents', () => {
       });
       const intents = buildDecorationIntents([broken], 'review');
       // Should produce nothing since the ranges are needed
-      assert.strictEqual(byKind(intents, 'substitution-old').length, 0);
-      assert.strictEqual(byKind(intents, 'substitution-new').length, 0);
+      expect(byKind(intents, 'substitution-old')).toHaveLength(0);
+      expect(byKind(intents, 'substitution-new')).toHaveLength(0);
     });
   });
 
@@ -343,10 +343,10 @@ describe('buildDecorationIntents', () => {
         const content = byKind(intents, 'highlight');
         const delimiters = byKind(intents, 'delimiter');
 
-        assert.strictEqual(delimiters.length, 2);
-        assert.ok(delimiters.every(d => d.visibility === 'visible'));
-        assert.strictEqual(content.length, 1);
-        assert.strictEqual(content[0].visibility, 'visible');
+        expect(delimiters).toHaveLength(2);
+        expect(delimiters.every(d => d.visibility === 'visible')).toBeTruthy();
+        expect(content).toHaveLength(1);
+        expect(content[0].visibility).toBe('visible');
       });
     });
 
@@ -356,9 +356,9 @@ describe('buildDecorationIntents', () => {
         const delimiters = byKind(intents, 'delimiter');
         const content = byKind(intents, 'highlight');
 
-        assert.ok(delimiters.every(d => d.visibility === 'hidden'));
-        assert.strictEqual(content.length, 1);
-        assert.strictEqual(content[0].visibility, 'visible');
+        expect(delimiters.every(d => d.visibility === 'hidden')).toBeTruthy();
+        expect(content).toHaveLength(1);
+        expect(content[0].visibility).toBe('visible');
       });
     });
 
@@ -368,9 +368,9 @@ describe('buildDecorationIntents', () => {
         const delimiters = byKind(intents, 'delimiter');
         const content = byKind(intents, 'highlight');
 
-        assert.strictEqual(delimiters.length, 2);
-        assert.ok(delimiters.every(d => d.visibility === 'hidden'));
-        assert.strictEqual(content.length, 0);
+        expect(delimiters).toHaveLength(2);
+        expect(delimiters.every(d => d.visibility === 'hidden')).toBeTruthy();
+        expect(content).toHaveLength(0);
       });
     });
   });
@@ -387,10 +387,10 @@ describe('buildDecorationIntents', () => {
         const content = byKind(intents, 'comment');
         const delimiters = byKind(intents, 'delimiter');
 
-        assert.strictEqual(delimiters.length, 2);
-        assert.ok(delimiters.every(d => d.visibility === 'visible'));
-        assert.strictEqual(content.length, 1);
-        assert.strictEqual(content[0].visibility, 'visible');
+        expect(delimiters).toHaveLength(2);
+        expect(delimiters.every(d => d.visibility === 'visible')).toBeTruthy();
+        expect(content).toHaveLength(1);
+        expect(content[0].visibility).toBe('visible');
       });
     });
 
@@ -400,19 +400,19 @@ describe('buildDecorationIntents', () => {
         const delimiters = byKind(intents, 'delimiter');
         const content = byKind(intents, 'comment');
 
-        assert.ok(delimiters.every(d => d.visibility === 'hidden'));
-        assert.strictEqual(content.length, 1);
-        assert.strictEqual(content[0].visibility, 'visible');
+        expect(delimiters.every(d => d.visibility === 'hidden')).toBeTruthy();
+        expect(content).toHaveLength(1);
+        expect(content[0].visibility).toBe('visible');
       });
     });
 
     describe('settled mode', () => {
       it('hides entire comment range', () => {
         const intents = buildDecorationIntents([node], 'settled');
-        assert.strictEqual(intents.length, 1);
-        assert.strictEqual(intents[0].kind, 'comment');
-        assert.strictEqual(intents[0].visibility, 'hidden');
-        assert.deepStrictEqual(intents[0].range, { start: 0, end: 10 });
+        expect(intents).toHaveLength(1);
+        expect(intents[0].kind).toBe('comment');
+        expect(intents[0].visibility).toBe('hidden');
+        expect(intents[0].range).toStrictEqual({ start: 0, end: 10 });
       });
     });
   });
@@ -430,10 +430,10 @@ describe('buildDecorationIntents', () => {
         const content = byKind(intents, 'move-source');
         const delimiters = byKind(intents, 'delimiter');
 
-        assert.strictEqual(content.length, 1);
-        assert.strictEqual(content[0].visibility, 'visible');
-        assert.strictEqual(delimiters.length, 2);
-        assert.ok(delimiters.every(d => d.visibility === 'visible'));
+        expect(content).toHaveLength(1);
+        expect(content[0].visibility).toBe('visible');
+        expect(delimiters).toHaveLength(2);
+        expect(delimiters.every(d => d.visibility === 'visible')).toBeTruthy();
       });
     });
 
@@ -443,17 +443,17 @@ describe('buildDecorationIntents', () => {
         const delimiters = byKind(intents, 'delimiter');
         const content = byKind(intents, 'move-source');
 
-        assert.ok(delimiters.every(d => d.visibility === 'hidden'));
-        assert.strictEqual(content[0].visibility, 'visible');
+        expect(delimiters.every(d => d.visibility === 'hidden')).toBeTruthy();
+        expect(content[0].visibility).toBe('visible');
       });
     });
 
     describe('settled mode', () => {
       it('hides entire move source (deleted side disappears)', () => {
         const intents = buildDecorationIntents([node], 'settled');
-        assert.strictEqual(intents.length, 1);
-        assert.strictEqual(intents[0].kind, 'move-source');
-        assert.strictEqual(intents[0].visibility, 'hidden');
+        expect(intents).toHaveLength(1);
+        expect(intents[0].kind).toBe('move-source');
+        expect(intents[0].visibility).toBe('hidden');
       });
     });
   });
@@ -469,9 +469,9 @@ describe('buildDecorationIntents', () => {
         const content = byKind(intents, 'move-target');
         const delimiters = byKind(intents, 'delimiter');
 
-        assert.strictEqual(content.length, 1);
-        assert.strictEqual(content[0].visibility, 'visible');
-        assert.strictEqual(delimiters.length, 2);
+        expect(content).toHaveLength(1);
+        expect(content[0].visibility).toBe('visible');
+        expect(delimiters).toHaveLength(2);
       });
     });
 
@@ -481,9 +481,9 @@ describe('buildDecorationIntents', () => {
         const delimiters = byKind(intents, 'delimiter');
         const content = byKind(intents, 'move-target');
 
-        assert.strictEqual(delimiters.length, 2);
-        assert.ok(delimiters.every(d => d.visibility === 'hidden'));
-        assert.strictEqual(content.length, 0);
+        expect(delimiters).toHaveLength(2);
+        expect(delimiters.every(d => d.visibility === 'hidden')).toBeTruthy();
+        expect(content).toHaveLength(0);
       });
     });
   });
@@ -505,15 +505,15 @@ describe('buildDecorationIntents', () => {
         const pending = byKind(intents, 'pending');
         const delimiters = byKind(intents, 'delimiter');
 
-        assert.strictEqual(pending.length, 1);
-        assert.strictEqual(pending[0].visibility, 'faded');
-        assert.deepStrictEqual(pending[0].range, { start: 10, end: 15 });
+        expect(pending).toHaveLength(1);
+        expect(pending[0].visibility).toBe('faded');
+        expect(pending[0].range).toStrictEqual({ start: 10, end: 15 });
 
-        assert.strictEqual(delimiters.length, 2);
-        assert.ok(delimiters.every(d => d.visibility === 'faded'));
+        expect(delimiters).toHaveLength(2);
+        expect(delimiters.every(d => d.visibility === 'faded')).toBeTruthy();
         // Synthetic delimiters are zero-width markers at start/end
-        assert.deepStrictEqual(delimiters[0].range, { start: 10, end: 10 });
-        assert.deepStrictEqual(delimiters[1].range, { start: 15, end: 15 });
+        expect(delimiters[0].range).toStrictEqual({ start: 10, end: 10 });
+        expect(delimiters[1].range).toStrictEqual({ start: 15, end: 15 });
       });
     });
 
@@ -523,9 +523,9 @@ describe('buildDecorationIntents', () => {
         const pending = byKind(intents, 'pending');
         const delimiters = byKind(intents, 'delimiter');
 
-        assert.strictEqual(pending.length, 1);
-        assert.strictEqual(pending[0].visibility, 'faded');
-        assert.strictEqual(delimiters.length, 0);
+        expect(pending).toHaveLength(1);
+        expect(pending[0].visibility).toBe('faded');
+        expect(delimiters).toHaveLength(0);
       });
     });
 
@@ -535,27 +535,27 @@ describe('buildDecorationIntents', () => {
         const pending = byKind(intents, 'pending');
         const delimiters = byKind(intents, 'delimiter');
 
-        assert.strictEqual(pending.length, 1);
-        assert.strictEqual(pending[0].visibility, 'faded');
-        assert.strictEqual(delimiters.length, 0);
+        expect(pending).toHaveLength(1);
+        expect(pending[0].visibility).toBe('faded');
+        expect(delimiters).toHaveLength(0);
       });
     });
 
     describe('raw mode', () => {
       it('returns nothing', () => {
         const intents = buildDecorationIntents([], 'raw', overlay);
-        assert.deepStrictEqual(intents, []);
+        expect(intents).toStrictEqual([]);
       });
     });
 
     it('handles null overlay gracefully', () => {
       const intents = buildDecorationIntents([], 'review', null);
-      assert.deepStrictEqual(intents, []);
+      expect(intents).toStrictEqual([]);
     });
 
     it('handles undefined overlay gracefully', () => {
       const intents = buildDecorationIntents([], 'review', undefined);
-      assert.deepStrictEqual(intents, []);
+      expect(intents).toStrictEqual([]);
     });
   });
 
@@ -570,14 +570,13 @@ describe('buildDecorationIntents', () => {
       ];
       const intents = buildDecorationIntents(nodes, 'review');
       // First intent should be from insertion (offset 0)
-      assert.ok(intents[0].range.start < intents[intents.length - 1].range.start,
-        'sorted by range.start');
+      expect(intents[0].range.start < intents[intents.length - 1].range.start).toBeTruthy();
 
       // Check that both types are present
       const insertions = byKind(intents, 'insertion');
       const deletions = byKind(intents, 'deletion');
-      assert.strictEqual(insertions.length, 1);
-      assert.strictEqual(deletions.length, 1);
+      expect(insertions).toHaveLength(1);
+      expect(deletions).toHaveLength(1);
     });
 
     it('includes pending overlay interleaved with committed nodes', () => {
@@ -593,10 +592,10 @@ describe('buildDecorationIntents', () => {
       const pending = byKind(intents, 'pending');
       const insertion = byKind(intents, 'insertion');
 
-      assert.strictEqual(pending.length, 1);
-      assert.strictEqual(insertion.length, 1);
+      expect(pending).toHaveLength(1);
+      expect(insertion).toHaveLength(1);
       // Pending comes after insertion in sorted order
-      assert.ok(pending[0].range.start > insertion[0].range.start);
+      expect(pending[0].range.start > insertion[0].range.start).toBeTruthy();
     });
   });
 
@@ -610,9 +609,9 @@ describe('buildDecorationIntents', () => {
 
       const intents = buildDecorationIntents([node], 'review');
       const content = byKind(intents, 'insertion')[0];
-      assert.strictEqual(content.metadata?.author, 'alice');
-      assert.strictEqual(content.metadata?.status, 'proposed');
-      assert.strictEqual(content.metadata?.scId, 'ct-7');
+      expect(content.metadata?.author).toBe('alice');
+      expect(content.metadata?.status).toBe('proposed');
+      expect(content.metadata?.scId).toBe('ct-7');
     });
 
     it('falls back to inlineMetadata when metadata is absent', () => {
@@ -622,8 +621,8 @@ describe('buildDecorationIntents', () => {
 
       const intents = buildDecorationIntents([node], 'review');
       const content = byKind(intents, 'insertion')[0];
-      assert.strictEqual(content.metadata?.author, 'bob');
-      assert.strictEqual(content.metadata?.scId, 'ct-3');
+      expect(content.metadata?.author).toBe('bob');
+      expect(content.metadata?.scId).toBe('ct-3');
     });
 
     it('uses node.status as fallback for metadata.status', () => {
@@ -633,7 +632,7 @@ describe('buildDecorationIntents', () => {
 
       const intents = buildDecorationIntents([node], 'review');
       const content = byKind(intents, 'insertion')[0];
-      assert.strictEqual(content.metadata?.status, 'Accepted');
+      expect(content.metadata?.status).toBe('Accepted');
     });
 
     it('delimiter intents also carry metadata', () => {
@@ -643,9 +642,9 @@ describe('buildDecorationIntents', () => {
 
       const intents = buildDecorationIntents([node], 'review');
       const delimiters = byKind(intents, 'delimiter');
-      assert.ok(delimiters.length > 0);
-      assert.strictEqual(delimiters[0].metadata?.scId, 'ct-9');
-      assert.strictEqual(delimiters[0].metadata?.author, 'charlie');
+      expect(delimiters.length > 0).toBeTruthy();
+      expect(delimiters[0].metadata?.scId).toBe('ct-9');
+      expect(delimiters[0].metadata?.author).toBe('charlie');
     });
   });
 
@@ -663,16 +662,14 @@ describe('buildDecorationIntents', () => {
     it('review produces no hidden content intents (only delimiters hidden in other modes)', () => {
       const intents = buildDecorationIntents(allNodes, 'review');
       const nonDelimiter = intents.filter(i => i.kind !== 'delimiter');
-      assert.ok(nonDelimiter.every(i => i.visibility === 'visible'),
-        'all content intents are visible in review mode');
+      expect(nonDelimiter.every(i => i.visibility === 'visible')).toBeTruthy();
     });
 
     it('changes hides all delimiters', () => {
       const intents = buildDecorationIntents(allNodes, 'changes');
       const delimiters = byKind(intents, 'delimiter');
-      assert.ok(delimiters.length > 0, 'has delimiters');
-      assert.ok(delimiters.every(d => d.visibility === 'hidden'),
-        'all delimiters hidden in changes mode');
+      expect(delimiters.length > 0).toBeTruthy();
+      expect(delimiters.every(d => d.visibility === 'hidden')).toBeTruthy();
     });
 
     it('settled hides deletions and comments entirely', () => {
@@ -680,17 +677,16 @@ describe('buildDecorationIntents', () => {
       const deletions = byKind(intents, 'deletion');
       const comments = byKind(intents, 'comment');
 
-      assert.ok(deletions.length > 0);
-      assert.ok(deletions.every(d => d.visibility === 'hidden'));
-      assert.ok(comments.length > 0);
-      assert.ok(comments.every(c => c.visibility === 'hidden'));
+      expect(deletions.length > 0).toBeTruthy();
+      expect(deletions.every(d => d.visibility === 'hidden')).toBeTruthy();
+      expect(comments.length > 0).toBeTruthy();
+      expect(comments.every(c => c.visibility === 'hidden')).toBeTruthy();
     });
 
     it('settled has no visible content intents (everything is either hidden or plain text)', () => {
       const intents = buildDecorationIntents(allNodes, 'settled');
       const visible = byVis(intents, 'visible');
-      assert.strictEqual(visible.length, 0,
-        'no visible intents in settled mode — content renders as plain text');
+      expect(visible).toHaveLength(0);
     });
   });
 
@@ -705,8 +701,7 @@ describe('buildDecorationIntents', () => {
       ];
       const intents = buildDecorationIntents(nodes, 'review');
       for (let i = 1; i < intents.length; i++) {
-        assert.ok(intents[i].range.start >= intents[i - 1].range.start,
-          `intent ${i} starts at ${intents[i].range.start} >= ${intents[i - 1].range.start}`);
+        expect(intents[i].range.start >= intents[i - 1].range.start).toBeTruthy();
       }
     });
   });

@@ -1,4 +1,4 @@
-import assert from 'node:assert';
+import { describe, it, expect } from 'vitest';
 import { formatPlainText, ThreeZoneDocument } from '@changetracks/core/internals';
 
 describe('formatPlainText', () => {
@@ -34,10 +34,10 @@ describe('formatPlainText', () => {
       }],
     };
     const output = formatPlainText(doc);
-    assert.ok(output.includes('1:a3 P|'));
-    assert.ok(output.includes('{~~REST~>GraphQL~~}'));
-    assert.ok(output.includes('[^ct-1]'));
-    assert.ok(output.includes('{>>ct-1 @alice: paradigm<<}'));
+    expect(output.includes('1:a3 P|')).toBeTruthy();
+    expect(output.includes('{~~REST~>GraphQL~~}')).toBeTruthy();
+    expect(output.includes('[^ct-1]')).toBeTruthy();
+    expect(output.includes('{>>ct-1 @alice: paradigm<<}')).toBeTruthy();
   });
 
   it('formats changes view with committed text + change IDs only', () => {
@@ -52,9 +52,9 @@ describe('formatPlainText', () => {
       }],
     };
     const output = formatPlainText(doc);
-    assert.ok(output.includes('1:a3 P|'));
-    assert.ok(output.includes('Use REST.'));
-    assert.ok(output.includes('{>>ct-1<<}'));
+    expect(output.includes('1:a3 P|')).toBeTruthy();
+    expect(output.includes('Use REST.')).toBeTruthy();
+    expect(output.includes('{>>ct-1<<}')).toBeTruthy();
   });
 
   it('formats settled view with clean text and no metadata', () => {
@@ -69,9 +69,9 @@ describe('formatPlainText', () => {
       }],
     };
     const output = formatPlainText(doc);
-    assert.ok(output.includes('1:a3  |'));
-    assert.ok(output.includes('Use GraphQL.'));
-    assert.ok(!output.includes('{>>'));
+    expect(output.includes('1:a3  |')).toBeTruthy();
+    expect(output.includes('Use GraphQL.')).toBeTruthy();
+    expect(!output.includes('{>>')).toBeTruthy();
   });
 
   it('formats header with status counts and authors', () => {
@@ -81,10 +81,10 @@ describe('formatPlainText', () => {
       lines: [],
     };
     const output = formatPlainText(doc);
-    assert.ok(output.includes('test.md'));
-    assert.ok(output.includes('proposed: 2'));
-    assert.ok(output.includes('accepted: 1'));
-    assert.ok(output.includes('@alice'));
+    expect(output.includes('test.md')).toBeTruthy();
+    expect(output.includes('proposed: 2')).toBeTruthy();
+    expect(output.includes('accepted: 1')).toBeTruthy();
+    expect(output.includes('@alice')).toBeTruthy();
   });
 
   it('formats multiple metadata entries on one line', () => {
@@ -113,8 +113,8 @@ describe('formatPlainText', () => {
       }],
     };
     const output = formatPlainText(doc);
-    assert.ok(output.includes('{>>ct-1 @alice: add greeting<<}'));
-    assert.ok(output.includes('{>>ct-2 @bob: remove cruft<<}'));
+    expect(output.includes('{>>ct-1 @alice: add greeting<<}')).toBeTruthy();
+    expect(output.includes('{>>ct-2 @bob: remove cruft<<}')).toBeTruthy();
   });
 
   it('includes reply count in review view metadata', () => {
@@ -129,7 +129,7 @@ describe('formatPlainText', () => {
       }],
     };
     const output = formatPlainText(doc);
-    assert.ok(output.includes('3 replies'));
+    expect(output.includes('3 replies')).toBeTruthy();
   });
 
   it('includes line range in header when present', () => {
@@ -139,7 +139,7 @@ describe('formatPlainText', () => {
       lines: [],
     };
     const output = formatPlainText(doc);
-    assert.ok(output.includes('lines: 10-20 of 100'));
+    expect(output.includes('lines: 10-20 of 100')).toBeTruthy();
   });
 
   it('includes thread count in header when nonzero', () => {
@@ -149,7 +149,7 @@ describe('formatPlainText', () => {
       lines: [],
     };
     const output = formatPlainText(doc);
-    assert.ok(output.includes('threads: 5'));
+    expect(output.includes('threads: 5')).toBeTruthy();
   });
 
   it('pads line numbers for multi-digit documents', () => {
@@ -173,8 +173,8 @@ describe('formatPlainText', () => {
     };
     const output = formatPlainText(doc);
     // Line 1 should be padded to 3 digits to match line 100
-    assert.ok(output.includes('  1:aa  |'));
-    assert.ok(output.includes('100:bb  |'));
+    expect(output.includes('  1:aa  |')).toBeTruthy();
+    expect(output.includes('100:bb  |')).toBeTruthy();
   });
 
   it('handles empty document with no lines', () => {
@@ -185,8 +185,8 @@ describe('formatPlainText', () => {
     };
     const output = formatPlainText(doc);
     // Should have header but no line content
-    assert.ok(output.includes('test.md'));
-    assert.ok(output.includes('---'));
+    expect(output.includes('test.md')).toBeTruthy();
+    expect(output.includes('---')).toBeTruthy();
   });
 
   it('singular reply for count of 1', () => {
@@ -201,7 +201,7 @@ describe('formatPlainText', () => {
       }],
     };
     const output = formatPlainText(doc);
-    assert.ok(output.includes('1 reply'));
-    assert.ok(!output.includes('1 replies'));
+    expect(output.includes('1 reply')).toBeTruthy();
+    expect(!output.includes('1 replies')).toBeTruthy();
   });
 });

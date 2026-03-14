@@ -1,4 +1,4 @@
-import * as assert from 'node:assert';
+import { describe, it, expect, beforeAll } from 'vitest';
 import {
   computeSettledText,
   settledLine,
@@ -7,7 +7,7 @@ import {
 } from '@changetracks/core/internals';
 
 describe('Settlement with ~> in content (Bug 5)', () => {
-  before(async () => {
+  beforeAll(async () => {
     await initHashline();
   });
 
@@ -17,32 +17,32 @@ describe('Settlement with ~> in content (Bug 5)', () => {
     it('preserves literal ~> in new text of substitution', () => {
       const input = 'Use {~~old syntax~>new arrow ~> function~~}[^ct-1] here.\n\n[^ct-1]: @ai:test | 2026-02-25 | sub | proposed';
       const result = computeSettledText(input);
-      assert.ok(result.includes('new arrow ~> function'), `settled text should contain "new arrow ~> function", got: ${result}`);
+      expect(result.includes('new arrow ~> function')).toBeTruthy();
     });
 
     it('handles ~> in code backticks inside substitution new text', () => {
       const input = 'The operator {~~is `=>`~>is `~>`~~}[^ct-1] for substitution.\n\n[^ct-1]: @ai:test | 2026-02-25 | sub | proposed';
       const result = computeSettledText(input);
-      assert.ok(result.includes('is `~>`'), 'settled text should contain "is `~>`", got: ' + result);
+      expect(result.includes('is `~>`')).toBeTruthy();
     });
 
     it('handles multiple ~> in new text', () => {
       const input = '{~~A~>B ~> C ~> D~~} end.\n';
       const result = computeSettledText(input);
-      assert.ok(result.includes('B ~> C ~> D'), `settled text should contain "B ~> C ~> D", got: ${result}`);
+      expect(result.includes('B ~> C ~> D')).toBeTruthy();
     });
 
     it('handles ~> as the entire new text', () => {
       const input = '{~~old~>~>~~} done';
       const result = computeSettledText(input);
-      assert.ok(result.includes('~>'), `settled text should contain "~>", got: ${result}`);
-      assert.ok(result.includes('done'), `settled text should contain "done", got: ${result}`);
+      expect(result.includes('~>')).toBeTruthy();
+      expect(result.includes('done')).toBeTruthy();
     });
 
     it('handles ~> immediately after separator (no space)', () => {
       const input = '{~~before~>~>after~~}';
       const result = computeSettledText(input);
-      assert.strictEqual(result, '~>after');
+      expect(result).toBe('~>after');
     });
   });
 
@@ -53,27 +53,27 @@ describe('Settlement with ~> in content (Bug 5)', () => {
       const parser = new CriticMarkupParser();
       const doc = parser.parse('{~~old~>new ~> more~~}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].originalText, 'old');
-      assert.strictEqual(changes[0].modifiedText, 'new ~> more');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].originalText).toBe('old');
+      expect(changes[0].modifiedText).toBe('new ~> more');
     });
 
     it('handles ~> at start of new text', () => {
       const parser = new CriticMarkupParser();
       const doc = parser.parse('{~~old~>~> new~~}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].originalText, 'old');
-      assert.strictEqual(changes[0].modifiedText, '~> new');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].originalText).toBe('old');
+      expect(changes[0].modifiedText).toBe('~> new');
     });
 
     it('handles multiple ~> in new text', () => {
       const parser = new CriticMarkupParser();
       const doc = parser.parse('{~~A~>B ~> C ~> D~~}');
       const changes = doc.getChanges();
-      assert.strictEqual(changes.length, 1);
-      assert.strictEqual(changes[0].originalText, 'A');
-      assert.strictEqual(changes[0].modifiedText, 'B ~> C ~> D');
+      expect(changes).toHaveLength(1);
+      expect(changes[0].originalText).toBe('A');
+      expect(changes[0].modifiedText).toBe('B ~> C ~> D');
     });
   });
 
@@ -82,27 +82,27 @@ describe('Settlement with ~> in content (Bug 5)', () => {
   describe('settledLine handles ~> in substitution new text', () => {
     it('preserves literal ~> in new text of substitution', () => {
       const result = settledLine('Use {~~old syntax~>new arrow ~> function~~} here.');
-      assert.strictEqual(result, 'Use new arrow ~> function here.');
+      expect(result).toBe('Use new arrow ~> function here.');
     });
 
     it('handles ~> in code backticks inside substitution new text', () => {
       const result = settledLine('The operator {~~is `=>`~>is `~>`~~} for substitution.');
-      assert.strictEqual(result, 'The operator is `~>` for substitution.');
+      expect(result).toBe('The operator is `~>` for substitution.');
     });
 
     it('handles multiple ~> in new text', () => {
       const result = settledLine('{~~A~>B ~> C ~> D~~} end.');
-      assert.strictEqual(result, 'B ~> C ~> D end.');
+      expect(result).toBe('B ~> C ~> D end.');
     });
 
     it('handles ~> as the entire new text', () => {
       const result = settledLine('{~~old~>~>~~} done');
-      assert.strictEqual(result, '~> done');
+      expect(result).toBe('~> done');
     });
 
     it('handles ~> immediately after separator', () => {
       const result = settledLine('{~~before~>~>after~~}');
-      assert.strictEqual(result, '~>after');
+      expect(result).toBe('~>after');
     });
   });
 });

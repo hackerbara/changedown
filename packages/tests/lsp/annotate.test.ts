@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { createServer, ChangetracksServer, PreviousVersionResult } from '@changetracks/lsp-server/internals';
 import type { WorkspaceEdit } from '@changetracks/lsp-server/internals';
 
@@ -96,8 +96,7 @@ describe('changetracks/annotate handler', () => {
   // -----------------------------------------------------------------------
 
   it('should register changetracks/annotate as a request handler', () => {
-    assert.ok(mockConnection._requestHandlers['changetracks/annotate'],
-      'Expected changetracks/annotate to be registered via connection.onRequest');
+    expect(mockConnection._requestHandlers['changetracks/annotate']).toBeTruthy();
   });
 
   // -----------------------------------------------------------------------
@@ -124,23 +123,22 @@ describe('changetracks/annotate handler', () => {
         textDocument: { uri }
       });
 
-      assert.ok(result, 'Expected a WorkspaceEdit result');
-      assert.ok(result!.changes, 'Expected changes in WorkspaceEdit');
-      assert.ok(result!.changes![uri], 'Expected changes for the document URI');
+      expect(result).toBeTruthy();
+      expect(result!.changes).toBeTruthy();
+      expect(result!.changes![uri]).toBeTruthy();
 
       const edits = result!.changes![uri];
-      assert.strictEqual(edits.length, 1, 'Expected exactly one text edit (full replacement)');
+      expect(edits).toHaveLength(1);
 
       const edit = edits[0];
       // Should start at beginning of document
-      assert.strictEqual(edit.range.start.line, 0);
-      assert.strictEqual(edit.range.start.character, 0);
+      expect(edit.range.start.line).toBe(0);
+      expect(edit.range.start.character).toBe(0);
 
       // The annotated text should contain CriticMarkup
-      assert.ok(
-        edit.newText.includes('{~~') || edit.newText.includes('{++') || edit.newText.includes('{--'),
-        `Expected CriticMarkup in annotated text, got: ${edit.newText}`
-      );
+      expect(
+        edit.newText.includes('{~~') || edit.newText.includes('{++') || edit.newText.includes('{--')
+      ).toBeTruthy();
     });
 
     it('should produce character-level substitution for markdown', async () => {
@@ -156,12 +154,12 @@ describe('changetracks/annotate handler', () => {
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
 
-      assert.ok(result);
+      expect(result).toBeTruthy();
       const newText = result!.changes![uri][0].newText;
       // "quick" → "slow" should produce a substitution
-      assert.ok(newText.includes('{~~'), `Expected substitution markup, got: ${newText}`);
-      assert.ok(newText.includes('quick'), 'Expected old text in substitution');
-      assert.ok(newText.includes('slow'), 'Expected new text in substitution');
+      expect(newText.includes('{~~')).toBeTruthy();
+      expect(newText.includes('quick')).toBeTruthy();
+      expect(newText.includes('slow')).toBeTruthy();
     });
   });
 
@@ -184,14 +182,14 @@ describe('changetracks/annotate handler', () => {
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
 
-      assert.ok(result, 'Expected a WorkspaceEdit result');
+      expect(result).toBeTruthy();
       const edits = result!.changes![uri];
-      assert.strictEqual(edits.length, 1);
+      expect(edits).toHaveLength(1);
 
       const newText = edits[0].newText;
       // Sidecar annotations use `# ct-N` tags and a sidecar block
-      assert.ok(newText.includes('# ct-'), `Expected sidecar tags, got: ${newText}`);
-      assert.ok(newText.includes('-- ChangeTracks'), `Expected sidecar block, got: ${newText}`);
+      expect(newText.includes('# ct-')).toBeTruthy();
+      expect(newText.includes('-- ChangeTracks')).toBeTruthy();
     });
 
     it('should include author and date metadata in sidecar annotations', async () => {
@@ -206,11 +204,11 @@ describe('changetracks/annotate handler', () => {
       });
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
-      assert.ok(result);
+      expect(result).toBeTruthy();
 
       const newText = result!.changes![uri][0].newText;
-      assert.ok(newText.includes('Bob'), 'Expected author in sidecar metadata');
-      assert.ok(newText.includes('2026-01-15'), 'Expected date in sidecar metadata');
+      expect(newText.includes('Bob')).toBeTruthy();
+      expect(newText.includes('2026-01-15')).toBeTruthy();
     });
 
     it('should return a WorkspaceEdit with sidecar annotations for JavaScript', async () => {
@@ -226,11 +224,11 @@ describe('changetracks/annotate handler', () => {
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
 
-      assert.ok(result);
+      expect(result).toBeTruthy();
       const newText = result!.changes![uri][0].newText;
       // JavaScript uses // for comments
-      assert.ok(newText.includes('// ct-'), `Expected JS comment tags, got: ${newText}`);
-      assert.ok(newText.includes('// -- ChangeTracks'), `Expected sidecar block, got: ${newText}`);
+      expect(newText.includes('// ct-')).toBeTruthy();
+      expect(newText.includes('// -- ChangeTracks')).toBeTruthy();
     });
   });
 
@@ -250,7 +248,7 @@ describe('changetracks/annotate handler', () => {
       });
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('should return null when file is not in a git repo', async () => {
@@ -263,7 +261,7 @@ describe('changetracks/annotate handler', () => {
       });
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('should return null when no previous version exists', async () => {
@@ -276,7 +274,7 @@ describe('changetracks/annotate handler', () => {
       });
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('should return null when file already contains CriticMarkup annotations', async () => {
@@ -290,7 +288,7 @@ describe('changetracks/annotate handler', () => {
       });
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('should return null when file already contains sidecar annotations', async () => {
@@ -304,7 +302,7 @@ describe('changetracks/annotate handler', () => {
       });
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('should return null when no changes detected (old === current)', async () => {
@@ -318,7 +316,7 @@ describe('changetracks/annotate handler', () => {
       });
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
 
     it('should return null for unsupported language (no comment syntax)', async () => {
@@ -335,7 +333,7 @@ describe('changetracks/annotate handler', () => {
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
       // plaintext is not markdown and has no comment syntax for sidecar
-      assert.strictEqual(result, null);
+      expect(result).toBeNull();
     });
   });
 
@@ -357,19 +355,19 @@ describe('changetracks/annotate handler', () => {
       });
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
-      assert.ok(result);
+      expect(result).toBeTruthy();
 
       const edit = result!.changes![uri][0];
       // Range should start at (0,0)
-      assert.strictEqual(edit.range.start.line, 0);
-      assert.strictEqual(edit.range.start.character, 0);
+      expect(edit.range.start.line).toBe(0);
+      expect(edit.range.start.character).toBe(0);
 
       // Range end should cover the entire document
       const lines = currentText.split('\n');
       const lastLineIndex = lines.length - 1;
       const lastLineLength = lines[lastLineIndex].length;
-      assert.strictEqual(edit.range.end.line, lastLineIndex);
-      assert.strictEqual(edit.range.end.character, lastLineLength);
+      expect(edit.range.end.line).toBe(lastLineIndex);
+      expect(edit.range.end.character).toBe(lastLineLength);
     });
 
     it('should handle single-line document', async () => {
@@ -384,13 +382,13 @@ describe('changetracks/annotate handler', () => {
       });
 
       const result = await server.handleAnnotate({ textDocument: { uri } });
-      assert.ok(result);
+      expect(result).toBeTruthy();
 
       const edit = result!.changes![uri][0];
-      assert.strictEqual(edit.range.start.line, 0);
-      assert.strictEqual(edit.range.start.character, 0);
-      assert.strictEqual(edit.range.end.line, 0);
-      assert.strictEqual(edit.range.end.character, 5); // length of "world"
+      expect(edit.range.start.line).toBe(0);
+      expect(edit.range.start.character).toBe(0);
+      expect(edit.range.end.line).toBe(0);
+      expect(edit.range.end.character).toBe(5); // length of "world"
     });
   });
 });

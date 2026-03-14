@@ -1,7 +1,7 @@
-import assert from 'node:assert';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { initHashline, buildSettledDocument } from '@changetracks/core/internals';
 
-before(async () => { await initHashline(); });
+beforeAll(async () => { await initHashline(); });
 
 describe('buildSettledDocument', () => {
   it('produces settled text with all changes applied', () => {
@@ -13,11 +13,11 @@ describe('buildSettledDocument', () => {
       defaultView: 'review',
       viewPolicy: 'suggest',
     });
-    assert.strictEqual(doc.view, 'settled');
-    assert.strictEqual(doc.lines.length, 1);
-    assert.deepStrictEqual(doc.lines[0].content, [{ type: 'plain', text: 'Hello world.' }]);
-    assert.deepStrictEqual(doc.lines[0].margin.flags, []);
-    assert.deepStrictEqual(doc.lines[0].metadata, []);
+    expect(doc.view).toBe('settled');
+    expect(doc.lines).toHaveLength(1);
+    expect(doc.lines[0].content).toStrictEqual([{ type: 'plain', text: 'Hello world.' }]);
+    expect(doc.lines[0].margin.flags).toStrictEqual([]);
+    expect(doc.lines[0].metadata).toStrictEqual([]);
   });
 
   it('resolves substitutions to new text', () => {
@@ -26,7 +26,7 @@ describe('buildSettledDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.strictEqual(doc.lines[0].content[0].text, 'Use GraphQL.');
+    expect(doc.lines[0].content[0].text).toBe('Use GraphQL.');
   });
 
   it('removes deletions', () => {
@@ -35,7 +35,7 @@ describe('buildSettledDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.strictEqual(doc.lines[0].content[0].text, 'Hello world.');
+    expect(doc.lines[0].content[0].text).toBe('Hello world.');
   });
 
   it('carries rawLineNumber for session binding', () => {
@@ -44,10 +44,10 @@ describe('buildSettledDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.strictEqual(doc.lines.length, 3);
-    assert.strictEqual(doc.lines[0].rawLineNumber, 1);
-    assert.strictEqual(doc.lines[1].rawLineNumber, 2);
-    assert.strictEqual(doc.lines[2].rawLineNumber, 3);
+    expect(doc.lines).toHaveLength(3);
+    expect(doc.lines[0].rawLineNumber).toBe(1);
+    expect(doc.lines[1].rawLineNumber).toBe(2);
+    expect(doc.lines[2].rawLineNumber).toBe(3);
   });
 
   it('populates sessionHashes for CLI state recording', () => {
@@ -56,7 +56,7 @@ describe('buildSettledDocument', () => {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
-    assert.ok(doc.lines[0].sessionHashes);
-    assert.ok(doc.lines[0].sessionHashes!.settledView);
+    expect(doc.lines[0].sessionHashes).toBeTruthy();
+    expect(doc.lines[0].sessionHashes!.settledView).toBeTruthy();
   });
 });

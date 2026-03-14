@@ -1,4 +1,4 @@
-import * as assert from 'assert';
+import { describe, it, expect } from 'vitest';
 import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
 import { sendDecorationData, sendChangeCount } from '@changetracks/lsp-server/internals';
 import type { Connection } from '@changetracks/lsp-server/internals';
@@ -35,9 +35,9 @@ describe('Notifications', () => {
 
       sendDecorationData(connection, uri, changes);
 
-      assert.strictEqual(connection.notifications.length, 1);
-      assert.strictEqual(connection.notifications[0].method, 'changetracks/decorationData');
-      assert.deepStrictEqual(connection.notifications[0].params, {
+      expect(connection.notifications).toHaveLength(1);
+      expect(connection.notifications[0].method).toBe('changetracks/decorationData');
+      expect(connection.notifications[0].params).toStrictEqual({
         uri,
         changes
       });
@@ -50,9 +50,9 @@ describe('Notifications', () => {
 
       sendDecorationData(connection, uri, changes);
 
-      assert.strictEqual(connection.notifications.length, 1);
-      assert.strictEqual(connection.notifications[0].method, 'changetracks/decorationData');
-      assert.deepStrictEqual(connection.notifications[0].params, {
+      expect(connection.notifications).toHaveLength(1);
+      expect(connection.notifications[0].method).toBe('changetracks/decorationData');
+      expect(connection.notifications[0].params).toStrictEqual({
         uri,
         changes: []
       });
@@ -83,8 +83,8 @@ describe('Notifications', () => {
 
       sendDecorationData(connection, uri, changes);
 
-      assert.strictEqual(connection.notifications.length, 1);
-      assert.deepStrictEqual(connection.notifications[0].params.changes[0], changes[0]);
+      expect(connection.notifications).toHaveLength(1);
+      expect(connection.notifications[0].params.changes[0]).toStrictEqual(changes[0]);
     });
   });
 
@@ -139,10 +139,10 @@ describe('Notifications', () => {
 
       sendChangeCount(connection, uri, changes);
 
-      assert.strictEqual(connection.notifications.length, 1);
+      expect(connection.notifications).toHaveLength(1);
       const notification = connection.notifications[0];
-      assert.strictEqual(notification.method, 'changetracks/changeCount');
-      assert.deepStrictEqual(notification.params, {
+      expect(notification.method).toBe('changetracks/changeCount');
+      expect(notification.params).toStrictEqual({
         uri,
         counts: {
           insertions: 1,
@@ -163,12 +163,12 @@ describe('Notifications', () => {
       sendChangeCount(connection, uri, changes);
 
       // Should send both changeCount and allChangesResolved when total is 0
-      assert.strictEqual(connection.notifications.length, 2);
+      expect(connection.notifications).toHaveLength(2);
 
       // First notification: changeCount
       const changeCountNotif = connection.notifications[0];
-      assert.strictEqual(changeCountNotif.method, 'changetracks/changeCount');
-      assert.deepStrictEqual(changeCountNotif.params, {
+      expect(changeCountNotif.method).toBe('changetracks/changeCount');
+      expect(changeCountNotif.params).toStrictEqual({
         uri,
         counts: {
           insertions: 0,
@@ -182,8 +182,8 @@ describe('Notifications', () => {
 
       // Second notification: allChangesResolved
       const resolvedNotif = connection.notifications[1];
-      assert.strictEqual(resolvedNotif.method, 'changetracks/allChangesResolved');
-      assert.deepStrictEqual(resolvedNotif.params, { uri });
+      expect(resolvedNotif.method).toBe('changetracks/allChangesResolved');
+      expect(resolvedNotif.params).toStrictEqual({ uri });
     });
 
     it('should send allChangesResolved notification when total is zero', () => {
@@ -193,14 +193,14 @@ describe('Notifications', () => {
 
       sendChangeCount(connection, uri, changes);
 
-      assert.strictEqual(connection.notifications.length, 2);
+      expect(connection.notifications).toHaveLength(2);
 
       // First notification: changeCount
-      assert.strictEqual(connection.notifications[0].method, 'changetracks/changeCount');
+      expect(connection.notifications[0].method).toBe('changetracks/changeCount');
 
       // Second notification: allChangesResolved
-      assert.strictEqual(connection.notifications[1].method, 'changetracks/allChangesResolved');
-      assert.deepStrictEqual(connection.notifications[1].params, { uri });
+      expect(connection.notifications[1].method).toBe('changetracks/allChangesResolved');
+      expect(connection.notifications[1].params).toStrictEqual({ uri });
     });
 
     it('should not send allChangesResolved when changes exist', () => {
@@ -219,8 +219,8 @@ describe('Notifications', () => {
 
       sendChangeCount(connection, uri, changes);
 
-      assert.strictEqual(connection.notifications.length, 1);
-      assert.strictEqual(connection.notifications[0].method, 'changetracks/changeCount');
+      expect(connection.notifications).toHaveLength(1);
+      expect(connection.notifications[0].method).toBe('changetracks/changeCount');
     });
 
     it('should count multiple changes of same type', () => {
@@ -255,9 +255,9 @@ describe('Notifications', () => {
 
       sendChangeCount(connection, uri, changes);
 
-      assert.strictEqual(connection.notifications.length, 1);
+      expect(connection.notifications).toHaveLength(1);
       const notification = connection.notifications[0];
-      assert.deepStrictEqual(notification.params.counts, {
+      expect(notification.params.counts).toStrictEqual({
         insertions: 3,
         deletions: 0,
         substitutions: 0,
