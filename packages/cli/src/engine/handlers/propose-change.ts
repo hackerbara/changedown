@@ -608,18 +608,9 @@ export async function handleProposeChange(
         if (resolved?.match === true) {
           startLine = resolved.rawLineNum;
           viewResolved = resolved.view;
-        } else if (resolved !== undefined && !resolved.match) {
-          return errorResult(
-            `Hash mismatch at line ${startLine} (${resolved.view} view): ` +
-            `expected ${resolved.expectedHash}, got ${startHash}. Re-read the file.`,
-            'HASHLINE_REFERENCE_UNRESOLVED',
-            {
-              file: relativePath,
-              quick_fix: buildQuickFix(filePath, startLine),
-            },
-          );
         }
-        // undefined = no session state, proceed with raw coordinates
+        // If view resolution failed (match: false) or no session state (undefined),
+        // fall through to downstream validateOrRelocate which scans the actual file.
       }
 
       if (endLine !== undefined && endHash !== undefined) {
@@ -627,18 +618,8 @@ export async function handleProposeChange(
         if (resolved?.match === true) {
           endLine = resolved.rawLineNum;
           viewResolved = viewResolved ?? resolved.view;
-        } else if (resolved !== undefined && !resolved.match) {
-          return errorResult(
-            `Hash mismatch at end line ${endLine} (${resolved.view} view): ` +
-            `expected ${resolved.expectedHash}, got ${endHash}. Re-read the file.`,
-            'HASHLINE_REFERENCE_UNRESOLVED',
-            {
-              file: relativePath,
-              quick_fix: buildQuickFix(filePath, endLine),
-            },
-          );
         }
-        // undefined = no session state, proceed with raw coordinates
+        // Same: fall through on mismatch — let file-based relocation handle it.
       }
 
       if (afterLine !== undefined && afterHash !== undefined) {
@@ -646,18 +627,8 @@ export async function handleProposeChange(
         if (resolved?.match === true) {
           afterLine = resolved.rawLineNum;
           viewResolved = viewResolved ?? resolved.view;
-        } else if (resolved !== undefined && !resolved.match) {
-          return errorResult(
-            `Hash mismatch at after_line ${afterLine} (${resolved.view} view): ` +
-            `expected ${resolved.expectedHash}, got ${afterHash}. Re-read the file.`,
-            'HASHLINE_REFERENCE_UNRESOLVED',
-            {
-              file: relativePath,
-              quick_fix: buildQuickFix(filePath, afterLine),
-            },
-          );
         }
-        // undefined = no session state, proceed with raw coordinates
+        // Same: fall through on mismatch.
       }
     }
 

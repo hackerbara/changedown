@@ -76,13 +76,10 @@ export function resolveCoordinates(
 
   // Stage 2: View-aware translation
   const startResolution = state.resolveHash(filePath, startLine, startHash);
-  if (startResolution && !startResolution.match) {
-    throw new Error(
-      `Hash mismatch at line ${startLine} (${startResolution.view} view): ` +
-      `expected ${startResolution.expectedHash}, got ${startHash}. ` +
-      `Re-read the file to get fresh coordinates.`,
-    );
-  }
+  // If view resolution matched, translate to raw coordinates.
+  // If view resolution failed (match: false), DON'T throw — fall through to Stage 3
+  // which will try file-based relocation via validateOrAutoRemap.
+  // If no session state (undefined), also fall through (existing behavior).
   if (startResolution?.match) {
     viewResolved = startResolution.view;
     const rawStart = startResolution.rawLineNum;
@@ -95,13 +92,7 @@ export function resolveCoordinates(
 
   if (parsed.startLine !== parsed.endLine) {
     const endResolution = state.resolveHash(filePath, endLine, endHash);
-    if (endResolution && !endResolution.match) {
-      throw new Error(
-        `Hash mismatch at end line ${endLine} (${endResolution.view} view): ` +
-        `expected ${endResolution.expectedHash}, got ${endHash}. ` +
-        `Re-read the file to get fresh coordinates.`,
-      );
-    }
+    // Same pattern as start line: don't throw on mismatch, let Stage 3 try relocation.
     if (endResolution?.match) {
       viewResolved = viewResolved ?? endResolution.view;
       const rawEnd = endResolution.rawLineNum;

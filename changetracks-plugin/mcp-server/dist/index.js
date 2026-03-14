@@ -32667,9 +32667,6 @@ function resolveCoordinates(op, fileContent, fileLines, state, filePath, config2
   let endHash = parsed.endHash;
   let viewResolved;
   const startResolution = state.resolveHash(filePath, startLine, startHash);
-  if (startResolution && !startResolution.match) {
-    throw new Error(`Hash mismatch at line ${startLine} (${startResolution.view} view): expected ${startResolution.expectedHash}, got ${startHash}. Re-read the file to get fresh coordinates.`);
-  }
   if (startResolution?.match) {
     viewResolved = startResolution.view;
     const rawStart = startResolution.rawLineNum;
@@ -32681,9 +32678,6 @@ function resolveCoordinates(op, fileContent, fileLines, state, filePath, config2
   }
   if (parsed.startLine !== parsed.endLine) {
     const endResolution = state.resolveHash(filePath, endLine, endHash);
-    if (endResolution && !endResolution.match) {
-      throw new Error(`Hash mismatch at end line ${endLine} (${endResolution.view} view): expected ${endResolution.expectedHash}, got ${endHash}. Re-read the file to get fresh coordinates.`);
-    }
     if (endResolution?.match) {
       viewResolved = viewResolved ?? endResolution.view;
       const rawEnd = endResolution.rawLineNum;
@@ -33697,11 +33691,6 @@ async function handleProposeChange(args, resolver, state) {
         if (resolved?.match === true) {
           startLine = resolved.rawLineNum;
           viewResolved = resolved.view;
-        } else if (resolved !== void 0 && !resolved.match) {
-          return errorResult3(`Hash mismatch at line ${startLine} (${resolved.view} view): expected ${resolved.expectedHash}, got ${startHash}. Re-read the file.`, "HASHLINE_REFERENCE_UNRESOLVED", {
-            file: relativePath,
-            quick_fix: buildQuickFix(filePath, startLine)
-          });
         }
       }
       if (endLine !== void 0 && endHash !== void 0) {
@@ -33709,11 +33698,6 @@ async function handleProposeChange(args, resolver, state) {
         if (resolved?.match === true) {
           endLine = resolved.rawLineNum;
           viewResolved = viewResolved ?? resolved.view;
-        } else if (resolved !== void 0 && !resolved.match) {
-          return errorResult3(`Hash mismatch at end line ${endLine} (${resolved.view} view): expected ${resolved.expectedHash}, got ${endHash}. Re-read the file.`, "HASHLINE_REFERENCE_UNRESOLVED", {
-            file: relativePath,
-            quick_fix: buildQuickFix(filePath, endLine)
-          });
         }
       }
       if (afterLine !== void 0 && afterHash !== void 0) {
@@ -33721,11 +33705,6 @@ async function handleProposeChange(args, resolver, state) {
         if (resolved?.match === true) {
           afterLine = resolved.rawLineNum;
           viewResolved = viewResolved ?? resolved.view;
-        } else if (resolved !== void 0 && !resolved.match) {
-          return errorResult3(`Hash mismatch at after_line ${afterLine} (${resolved.view} view): expected ${resolved.expectedHash}, got ${afterHash}. Re-read the file.`, "HASHLINE_REFERENCE_UNRESOLVED", {
-            file: relativePath,
-            quick_fix: buildQuickFix(filePath, afterLine)
-          });
         }
       }
     }

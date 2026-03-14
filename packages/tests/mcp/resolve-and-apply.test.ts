@@ -1022,3 +1022,94 @@ describe('change grouping regression (spec regression 3)', () => {
     expect(finalContent).toContain('Edited second.');
   });
 });
+
+// ── Stage 2→3 fallthrough: session hash mismatch triggers auto-relocation ────
+
+describe('session hash mismatch falls through to Stage 3 auto-relocation', () => {
+  let tmpDir: string;
+  let resolver: ConfigResolver;
+  let state: SessionState;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-stage2-fallthrough-'));
+    resolver = await createTestResolver(tmpDir, integrationConfig);
+    state = new SessionState();
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('stale session coordinates auto-relocate instead of throwing hash mismatch', async () => {
+    // Step 1: Create a tracked file with 3 content lines
+    const filePath = path.join(tmpDir, 'test.md');
+    await fs.writeFile(
+      filePath,
+      '<!-- ctrcks.com/v1: tracked -->\n# Title\n\nLine A\n\nLine B\n\nTarget line',
+      'utf-8',
+    );
+
+    // Step 2: Agent reads the file — seeds session state with hashes
+    const readResult1 = await handleReadTrackedFile(
+      { file: filePath, view: 'raw' },
+      resolver, state,
+    );
+    expect(readResult1.isError).toBeFalsy();
+
+    // Extract the hash for "Target line" from the read output (last content line)
+    const readText1 = readResult1.content[0].text;
+    const targetEntry = readText1.split('\n').find((l: string) => l.includes('Target line'));
+    expect(targetEntry).toBeDefined();
+    const targetMatch = targetEntry!.match(/(\d+):([0-9a-f]{2})/);
+    expect(targetMatch).toBeDefined();
+    const staleLineNum = parseInt(targetMatch![1], 10);
+    const staleHash = targetMatch![2];
+
+    // Step 3: Agent proposes a change that INSERTS lines before "Target line",
+    // shifting it to a later line number. This makes the session hash table stale:
+    // the session says line N has hash X, but after the insertion, line N has
+    // different content and "Target line" (hash X) is now at line N+1.
+    const initialContent = await fs.readFile(filePath, 'utf-8');
+    const lines = initialContent.split('\n');
+    const lineAIdx = lines.findIndex(l => l === 'Line A');
+    const hLineA = computeLineHash(lineAIdx, 'Line A', lines);
+
+    const insertResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: `${lineAIdx + 1}:${hLineA}`,
+        op: '{++Inserted paragraph that shifts everything below++}{>>shifting insert',
+        author: 'ai:test',
+      },
+      resolver, state,
+    );
+    expect(insertResult.isError).toBeFalsy();
+
+    // Step 4: Agent proposes ANOTHER change using the STALE coordinates from Step 2.
+    // The session hash table from Step 2 still has the old mapping for staleLineNum,
+    // but the file has changed. Stage 2's resolveHash() returns { match: false }
+    // because the supplied staleHash doesn't match the session table entry for
+    // staleLineNum (that line now has different content after the insertion).
+    //
+    // Before the fix: Stage 2 throws "Hash mismatch ... Re-read the file".
+    // After the fix: Stage 2 falls through to Stage 3, which scans the whole file
+    // and finds "Target line" (with hash staleHash) at a new line number via
+    // auto-relocation.
+    const secondResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: `${staleLineNum}:${staleHash}`,
+        op: '{~~Target line~>Modified target~~}{>>should auto-relocate',
+        author: 'ai:test',
+      },
+      resolver, state,
+    );
+
+    if (secondResult.isError) {
+      console.error('SECOND PROPOSE ERROR:', secondResult.content[0].text);
+    }
+    expect(secondResult.isError).toBeFalsy();
+    const finalContent = await fs.readFile(filePath, 'utf-8');
+    expect(finalContent).toContain('Modified target');
+  });
+});
