@@ -1048,6 +1048,7 @@ var init_parser = __esm({
         const match = remaining.match(_CriticMarkupParser.FOOTNOTE_REF);
         if (match) {
           node.id = match[1];
+          node.footnoteRefStart = node.range.end;
           node.range = { start: node.range.start, end: node.range.end + match[0].length };
           node.level = 2;
           node.anchored = true;
@@ -1863,6 +1864,24 @@ function computeSettledText(text, options) {
     return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones2), zones2);
   }
   const edits = [...changes].sort((a, b) => b.range.start - a.range.start).map(computeSettledReplace);
+  let result = text;
+  for (const edit of edits) {
+    result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
+  }
+  const zones = findCodeZones(result);
+  result = stripFootnoteDefinitions(result, zones);
+  result = stripInlineFootnoteRefs(result, zones);
+  return result;
+}
+function computeOriginalText(text, options) {
+  const parser = new CriticMarkupParser();
+  const doc = parser.parse(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
+  const changes = doc.getChanges();
+  if (changes.length === 0) {
+    const zones2 = findCodeZones(text);
+    return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones2), zones2);
+  }
+  const edits = [...changes].sort((a, b) => b.range.start - a.range.start).map(computeReject);
   let result = text;
   for (const edit of edits) {
     result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
@@ -6845,6 +6864,7 @@ __export(dist_esm_exports, {
   computeFootnoteArchiveLineEdit: () => computeFootnoteArchiveLineEdit,
   computeFootnoteStatusEdits: () => computeFootnoteStatusEdits,
   computeLineHash: () => computeLineHash,
+  computeOriginalText: () => computeOriginalText,
   computeReject: () => computeReject,
   computeRejectParts: () => computeRejectParts,
   computeReplyEdit: () => computeReplyEdit,

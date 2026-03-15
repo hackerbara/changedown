@@ -103,7 +103,7 @@ Feature: PNL2 — Settings panel HTML generation and form parsing
 
   Scenario: parseEditorPreferences extracts editor settings from payload
     When I parse editor preferences with commentsExpanded true and format "inline" and groupBy "author"
-    Then parsed commentsExpandedByDefault is true
+    Then parsed clickToShowComments is true
     And parsed commentInsertFormat is "inline"
     And parsed changeExplorerGroupBy is "author"
 
@@ -111,7 +111,7 @@ Feature: PNL2 — Settings panel HTML generation and form parsing
 
   Scenario: parseEditorPreferences uses defaults for missing fields
     When I parse editor preferences with empty payload
-    Then parsed commentsExpandedByDefault is false
+    Then parsed clickToShowComments is false
     And parsed commentInsertFormat is "footnote"
     And parsed changeExplorerGroupBy is "flat"
 

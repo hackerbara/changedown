@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeSettledText,
+  computeOriginalText,
   settleAcceptedChangesOnly,
   settleRejectedChangesOnly,
   computeSettledReplace,
@@ -416,6 +417,48 @@ describe('sequential settlement stability', () => {
     expect(r3.includes('delta[^ct-3][^ct-2][^ct-1]')).toBeTruthy();
     // Exactly one occurrence
     expect(r3.match(/delta/g)?.length).toBe(1);
+  });
+});
+
+describe('computeOriginalText', () => {
+  it('removes insertions entirely', () => {
+    const input = 'Hello {++beautiful ++}world';
+    expect(computeOriginalText(input)).toBe('Hello world');
+  });
+
+  it('keeps deletion content without delimiters', () => {
+    const input = 'Hello {--cruel --}world';
+    expect(computeOriginalText(input)).toBe('Hello cruel world');
+  });
+
+  it('shows original side of substitutions', () => {
+    const input = 'Hello {~~cruel~>beautiful~~} world';
+    expect(computeOriginalText(input)).toBe('Hello cruel world');
+  });
+
+  it('strips footnote refs and definitions', () => {
+    const input = 'Hello {++world++}[^ct-1]\n\n[^ct-1]: @author | 2026-03-14 | ins | proposed';
+    expect(computeOriginalText(input)).toBe('Hello ');
+  });
+
+  it('handles multiple changes', () => {
+    const input = 'A {++B ++}C {--D --}E';
+    expect(computeOriginalText(input)).toBe('A C D E');
+  });
+
+  it('handles highlights by keeping content', () => {
+    const input = 'Some {==highlighted==} text';
+    expect(computeOriginalText(input)).toBe('Some highlighted text');
+  });
+
+  it('handles comments by removing them', () => {
+    const input = 'Some text{>>a comment<<}';
+    expect(computeOriginalText(input)).toBe('Some text');
+  });
+
+  it('handles document with no changes', () => {
+    const input = 'Plain text with no markup';
+    expect(computeOriginalText(input)).toBe('Plain text with no markup');
   });
 });
 

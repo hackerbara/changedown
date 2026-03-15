@@ -23,6 +23,8 @@ import { changetracksPlugin } from './preview/plugin';
 import { setOutputChannel } from './output-channel';
 import { registerChangeCommands, registerScmCommands, registerCommentCommands, registerTestCommands, registerSetupCommands, type ChangeCommandsContext } from './commands';
 import { DocxEditorProvider } from './docx/docx-editor-provider';
+import { ChangeTracksFoldingProvider } from './folding-provider';
+import { ProjectedView } from './projected-view';
 
 let controller: ExtensionController;
 let scmInstance: ChangetracksSCM | null = null;
@@ -92,6 +94,19 @@ export function activate(context: vscode.ExtensionContext) {
     // Section 11: Create controller first so decorationDataHandler is wired before LSP sync.
     // If handler is set after client.start(), we can miss decorationData sent during sync.
     controller = new ExtensionController(context);
+
+    // Recover any orphaned swap files from a previous crash while in projected view
+    ProjectedView.recoverCrashBackups();
+
+    // Register folding provider for hidden deletion regions in Simple mode
+    const foldingProvider = new ChangeTracksFoldingProvider();
+    context.subscriptions.push(
+        vscode.languages.registerFoldingRangeProvider(
+            { language: 'markdown' },
+            foldingProvider
+        )
+    );
+    controller.setFoldingProvider(foldingProvider);
 
     // Wire LSP decoration data to controller refresh (fixes LSP push never triggering refresh)
     setDecorationDataHandler((uri, changes) => {

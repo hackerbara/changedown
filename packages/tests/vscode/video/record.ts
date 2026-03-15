@@ -183,12 +183,12 @@ const VIDEO_SETTINGS: Record<string, unknown> = {
     'editor.codeLens': true,
     'changetracks.authorColors': 'auto',
     'changetracks.author': 'you',
-    'changetracks.commentsExpandedByDefault': true,
+    'changetracks.clickToShowComments': true,
     'changetracks.trackingMode': true,
     'changetracks.editBoundary.pauseThresholdMs': 2000,
     'changetracks.showWalkthroughOnStartup': 'never',
     'changetracks.confirmBulkThreshold': 0,
-    'changetracks.showCriticMarkup': true,
+    'changetracks.showDelimiters': true,
 };
 
 /**

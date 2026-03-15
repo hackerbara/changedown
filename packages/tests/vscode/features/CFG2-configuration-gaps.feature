@@ -45,10 +45,10 @@ Feature: CFG2 — Configuration Setting Coverage Gaps
     Then deletions are rendered with background tinting
 
   @slow @fixture(tracking-mode-test)
-  Scenario: CFG2-07 commentsExpandedByDefault true expands comments on open
-    Given the setting "changetracks.commentsExpandedByDefault" is true
-    When I open a markdown file with comments
-    Then comment threads are expanded by default
+  Scenario: CFG2-07 clickToShowComments controls click-to-expand behavior
+    Given the setting "changetracks.clickToShowComments" is true
+    When I click inside a tracked change
+    Then comment thread for that change is expanded
 
   @slow @fixture(tracking-mode-test)
   Scenario: CFG2-08 preferGutter prompts to disable Git SCM

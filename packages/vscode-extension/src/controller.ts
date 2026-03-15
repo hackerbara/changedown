@@ -1,21 +1,25 @@
 import * as vscode from 'vscode';
 import type { PendingOverlay } from '@changetracks/core';
-import { Workspace, VirtualDocument, ChangeNode, ChangeType, ChangeStatus, scanMaxCtId, generateFootnoteDefinition, SIDECAR_BLOCK_MARKER, appendFootnote } from '@changetracks/core';
+import { Workspace, VirtualDocument, ChangeNode, ChangeStatus, scanMaxCtId, generateFootnoteDefinition, SIDECAR_BLOCK_MARKER, appendFootnote } from '@changetracks/core';
 import { EditorDecorator } from './decorator';
 import { ViewMode, VIEW_MODE_LABELS, nextViewMode, resolveViewName, isChangeVisibleInMode } from './view-mode';
 import { positionToOffset, coreEditToVscode, coreRangeToVscode } from './converters';
 import { formatReply } from './footnote-writer';
 import { getCachedDecorationData, invalidateDecorationCache, setCachedDecorationData, transformCachedDecorations, migrateDecorationCache } from './lsp-client';
 import { PendingEditManager } from './PendingEditManager';
+import { findContainingHiddenRange } from './hidden-range-search';
 import { getOutputChannel } from './output-channel';
 import { resolveAuthorIdentity } from './author-identity';
+import { ProjectedView } from './projected-view';
 
 export class ExtensionController {
     private _trackingMode: boolean = false;
     private _viewMode: ViewMode;
-    private _showCriticMarkup: boolean;
+    private _showDelimiters: boolean;
     private isApplyingTrackedEdit: boolean = false;
     private isSnappingCursor = false;
+    /** Per-document last cursor offset for direction detection in cursor snap. */
+    private lastCursorOffsets: Map<string, number> = new Map();
     private pendingEditManager: PendingEditManager;
     private documentShadow: Map<string, string> = new Map(); // Track previous document state for deletions
     private nextScIdMap: Map<string, number> = new Map(); // Per-document ct-ID counter for Level 1 tracking
@@ -24,6 +28,7 @@ export class ExtensionController {
     private userTrackingOverrides = new Map<string, boolean>(); // Per-document user toggle override
     private localParseHotPath: boolean = false;
     private lastActiveEditorUri: string | undefined;
+    private projectedView = new ProjectedView();
     private changeComments: { isAnyThreadExpandedAtCursor(): boolean; disposeThreadsForUri?(uri: vscode.Uri): void } | null = null;
     /**
      * Selection-confirmation gate: edits are stored as "unconfirmed" until
@@ -67,6 +72,9 @@ export class ExtensionController {
     private cursorPositionSender?: (uri: string, line: number, changeId?: string) => void;
     private lastCursorLine: number = -1;
     private lastCursorChangeId: string | undefined = undefined;
+
+    /** Folding provider for hidden deletion regions in Simple mode. Set by extension after controller creation. */
+    private foldingProvider: import('./folding-provider').ChangeTracksFoldingProvider | null = null;
 
     /** LSP client for getChanges bootstrap (Section 11). Set by extension after controller creation. */
     private getChangesClient: { sendRequest: (method: string, params: any) => Promise<any> } | null = null;
@@ -143,7 +151,7 @@ export class ExtensionController {
         // Read default view mode from configuration (supports both legacy and canonical names)
         const rawViewMode = config0.get<string>('defaultViewMode', 'review');
         this._viewMode = resolveViewName(rawViewMode) ?? 'review';
-        this._showCriticMarkup = config0.get<boolean>('showCriticMarkup', false);
+        this._showDelimiters = config0.get<boolean>('showDelimiters', false);
 
         // Listen for decoration style / author colors configuration changes
         vscode.workspace.onDidChangeConfiguration(event => {
@@ -175,8 +183,8 @@ export class ExtensionController {
                     const cfg = vscode.workspace.getConfiguration('changetracks');
                     this.applyEditBoundaryConfig(cfg);
                 }
-                if (event.affectsConfiguration('changetracks.showCriticMarkup')) {
-                    this._showCriticMarkup = vscode.workspace.getConfiguration('changetracks').get<boolean>('showCriticMarkup', false);
+                if (event.affectsConfiguration('changetracks.showDelimiters')) {
+                    this._showDelimiters = vscode.workspace.getConfiguration('changetracks').get<boolean>('showDelimiters', false);
                     vscode.window.visibleTextEditors.forEach(editor => {
                         if (this.isSupported(editor.document)) {
                             this.updateDecorations(editor);
@@ -293,6 +301,18 @@ export class ExtensionController {
                 if (docUri === this.lastActiveEditorUri) {
                     return; // Same editor re-fired (sidebar toggle) — skip
                 }
+
+                // If in projected view and user switched to a different file, exit projected view
+                if (this.projectedView.active &&
+                    editor.document.uri.toString() !== this.projectedView.originalUri?.toString()) {
+                    this.projectedView.exit(editor).then(() => {
+                        this._viewMode = 'review';
+                        this.setContextKey('changetracks:viewMode', 'review');
+                        this.updateStatusBar();
+                        this.scheduleNotifyChanges();
+                    });
+                }
+
                 this.lastActiveEditorUri = docUri;
                 try {
                     this.updateChangeAtCursorContext(editor);
@@ -370,6 +390,9 @@ export class ExtensionController {
                 if (!editor || event.document !== editor.document) {
                     return;
                 }
+
+                // Don't intercept edits while in projected view — buffer content is projected text
+                if (this.projectedView.active) return;
 
                 const docUri = editor.document.uri.toString();
 
@@ -556,7 +579,13 @@ export class ExtensionController {
                         this.scheduleOverlaySend();
                     }
 
-                    this.snapCursorPastHiddenDelimiters(editor, event);
+                    this.snapCursorPastHiddenRanges(editor, event);
+
+                    // Update folding provider cursor position in Simple mode
+                    if (this._viewMode === 'changes' && this.foldingProvider) {
+                        const changes = this.getChangesForDocument(editor.document);
+                        this.foldingProvider.updateState(this._viewMode, event.selections[0].active.line, changes);
+                    }
                 }
             } catch (err: any) {
                 getOutputChannel()?.appendLine(`[onDidChangeTextEditorSelection] ${err.message}\n${err.stack}`);
@@ -598,6 +627,7 @@ export class ExtensionController {
                 this.nextScIdMap.delete(uri);
                 this.documentStates.delete(uri);
                 this.userTrackingOverrides.delete(uri);
+                this.lastCursorOffsets.delete(uri);
                 invalidateDecorationCache(uri);
                 this.changeComments?.disposeThreadsForUri?.(doc.uri);
             } catch (err: any) {
@@ -706,6 +736,14 @@ export class ExtensionController {
      */
     public setGetChangesClient(client: { sendRequest: (method: string, params: any) => Promise<any> } | null): void {
         this.getChangesClient = client;
+    }
+
+    /**
+     * Set the folding provider for hidden deletion regions in Simple mode.
+     * Called by extension.ts after creating both the controller and the provider.
+     */
+    public setFoldingProvider(provider: import('./folding-provider').ChangeTracksFoldingProvider): void {
+        this.foldingProvider = provider;
     }
 
     /**
@@ -827,6 +865,7 @@ export class ExtensionController {
         if (!this.isSupported(editor.document)) {
             return;
         }
+        if (this.projectedView.active) return;
 
         try {
             const text = editor.document.getText();
@@ -853,13 +892,13 @@ export class ExtensionController {
             // If hot path enabled, always parse locally for instant decoration
             if (this.localParseHotPath) {
                 const virtualDoc = this.workspace.parse(text, languageId);
-                this.decorator.decorate(editor, virtualDoc, this._viewMode, text, this._showCriticMarkup);
+                this.decorator.decorate(editor, virtualDoc, this._viewMode, text, this._showDelimiters);
                 return;
             }
 
             const virtualDoc = this.getVirtualDocumentFor(uri, text, languageId, true);
 
-            this.decorator.decorate(editor, virtualDoc, this._viewMode, text, this._showCriticMarkup);
+            this.decorator.decorate(editor, virtualDoc, this._viewMode, text, this._showDelimiters);
             // Do not notify here: notify only from handleDecorationDataUpdate and getChanges bootstrap.
             // Notifying on every decoration run (including selection-driven runs) caused comment
             // threads to collapse when clicking into the reply input.
@@ -997,29 +1036,57 @@ export class ExtensionController {
         return this._trackingMode;
     }
 
-    public setViewMode(mode: ViewMode) {
+    public async setViewMode(mode: ViewMode) {
+        const previousMode = this._viewMode;
         this._viewMode = mode;
         this.setContextKey('changetracks:viewMode', mode);
+
+        const editor = vscode.window.activeTextEditor;
+
+        // Handle projected view transitions
+        if (editor && this.isSupported(editor.document)) {
+            const wasProjected = previousMode === 'settled' || previousMode === 'raw';
+            const isProjected = mode === 'settled' || mode === 'raw';
+
+            if (isProjected && !wasProjected) {
+                await this.projectedView.enter(editor, mode as 'settled' | 'raw');
+            } else if (!isProjected && wasProjected) {
+                await this.projectedView.exit(editor);
+            } else if (isProjected && wasProjected && mode !== previousMode) {
+                await this.projectedView.exit(editor);
+                await this.projectedView.enter(editor, mode as 'settled' | 'raw');
+            }
+        }
 
         // Notify LSP server of view mode change (for semantic token filtering).
         // Send for all visible supported documents so the server updates its per-URI state.
         if (this.viewModeSender) {
-            for (const editor of vscode.window.visibleTextEditors) {
-                if (this.isSupported(editor.document)) {
-                    this.viewModeSender(editor.document.uri.toString(), mode);
+            for (const e of vscode.window.visibleTextEditors) {
+                if (this.isSupported(e.document)) {
+                    this.viewModeSender(e.document.uri.toString(), mode);
                 }
             }
         }
 
-        // Update decorations for all visible editors
-        vscode.window.visibleTextEditors.forEach(editor => {
-            if (this.isSupported(editor.document)) {
-                this.updateDecorations(editor);
-            }
-        });
+        // Update decorations for all visible editors (skip for projected view — no markup to decorate)
+        if (mode !== 'settled' && mode !== 'raw') {
+            vscode.window.visibleTextEditors.forEach(e => {
+                if (this.isSupported(e.document)) {
+                    this.updateDecorations(e);
+                }
+            });
+        }
 
         // Phase 5: Fire change event so panel refreshes when view mode changes
         this.scheduleNotifyChanges();
+
+        // Update folding provider so hidden deletion regions are (un)folded on mode change
+        if (this.foldingProvider) {
+            const editor = vscode.window.activeTextEditor;
+            const changes = editor && this.isSupported(editor.document)
+                ? this.getChangesForDocument(editor.document) : [];
+            this.foldingProvider.updateState(mode, editor?.selection.active.line ?? -1, changes);
+        }
 
         vscode.window.showInformationMessage(`ChangeTracks View: ${VIEW_MODE_LABELS[mode]}`);
         this.updateViewModeStatusBar();
@@ -1044,13 +1111,13 @@ export class ExtensionController {
         this.updateStatusBar();
     }
 
-    public cycleViewMode() {
-        this.setViewMode(nextViewMode(this._viewMode));
+    public async cycleViewMode() {
+        await this.setViewMode(nextViewMode(this._viewMode));
     }
 
     /** @deprecated Use cycleViewMode() instead. Kept for backward compatibility with tests. */
-    public toggleView() {
-        this.cycleViewMode();
+    public async toggleView() {
+        await this.cycleViewMode();
     }
 
     public get trackingMode(): boolean {
@@ -1104,7 +1171,7 @@ export class ExtensionController {
         const uri = editor.document.uri.toString();
         const virtualDoc = this.getVirtualDocumentFor(uri, text, languageId, true);
         const changes = virtualDoc.getChanges()
-            .filter(c => isChangeVisibleInMode(c, this._viewMode, this._showCriticMarkup));
+            .filter(c => isChangeVisibleInMode(c, this._viewMode, this._showDelimiters));
 
         if (changes.length === 0) {
             vscode.window.showInformationMessage('No visible changes in this view');
@@ -1120,7 +1187,7 @@ export class ExtensionController {
             vscode.window.showInformationMessage('Wrapped to first change');
         }
 
-        const pos = editor.document.positionAt(target.range.start);
+        const pos = editor.document.positionAt(target.contentRange.start);
         editor.selection = new vscode.Selection(pos, pos);
         editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
     }
@@ -1137,7 +1204,7 @@ export class ExtensionController {
         const uri = editor.document.uri.toString();
         const virtualDoc = this.getVirtualDocumentFor(uri, text, languageId, true);
         const changes = virtualDoc.getChanges()
-            .filter(c => isChangeVisibleInMode(c, this._viewMode, this._showCriticMarkup));
+            .filter(c => isChangeVisibleInMode(c, this._viewMode, this._showDelimiters));
 
         if (changes.length === 0) {
             vscode.window.showInformationMessage('No visible changes in this view');
@@ -1159,7 +1226,7 @@ export class ExtensionController {
             vscode.window.showInformationMessage('Wrapped to last change');
         }
 
-        const pos = editor.document.positionAt(target.range.start);
+        const pos = editor.document.positionAt(target.contentRange.start);
         editor.selection = new vscode.Selection(pos, pos);
         editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenterIfOutsideViewport);
     }
@@ -2166,81 +2233,75 @@ export class ExtensionController {
         }, 100);
     }
 
-    private snapCursorPastHiddenDelimiters(
+    /**
+     * Snap cursor out of hidden ranges using the decorator's own hidden offset data.
+     * Handles all event types (mouse, keyboard, command), all hidden region shapes,
+     * direction-aware snapping, multi-cursor, and adjacent hidden range chains.
+     *
+     * KNOWN LIMITATION: Copy/paste across hidden ranges.
+     * When the user selects text spanning a hidden range (delimiter, footnote ref,
+     * or entirely-hidden change) and copies, the clipboard will contain the hidden
+     * CriticMarkup markup. VS Code has no clipboard interception API for extensions.
+     */
+    private snapCursorPastHiddenRanges(
         editor: vscode.TextEditor,
         event: vscode.TextEditorSelectionChangeEvent
     ): void {
-        // Guard: only keyboard-driven, empty selections
         if (this.isSnappingCursor) return;
-        if (event.kind !== vscode.TextEditorSelectionChangeKind.Keyboard) return;
-        if (!event.selections[0].isEmpty) return;
 
-        // Guard: only when delimiters are hidden
-        const delimitersHidden = this._viewMode !== 'review' || !this._showCriticMarkup;
-        if (!delimitersHidden) return;
+        const hiddenRanges = this.decorator.getHiddenOffsets();
+        if (hiddenRanges.length === 0) return;
 
-        const text = editor.document.getText();
-        const uri = editor.document.uri.toString();
-        const virtualDoc = this.getVirtualDocumentFor(uri, text, editor.document.languageId, true);
-        const changes = virtualDoc.getChanges();
-        if (changes.length === 0) return;
+        const docUri = editor.document.uri.toString();
+        const prevOffset = this.lastCursorOffsets.get(docUri) ?? 0;
 
-        const cursorOffset = editor.document.offsetAt(event.selections[0].active);
+        let anySnapped = false;
+        const newSelections: vscode.Selection[] = [];
 
-        for (const change of changes) {
-            const fullStart = change.range.start;
-            const fullEnd = change.range.end;
-            const contentStart = change.contentRange.start;
-            const contentEnd = change.contentRange.end;
-
-            if (cursorOffset >= fullStart && cursorOffset < contentStart) {
-                // In opening delimiter — snap to content start
-                const snapPos = editor.document.positionAt(contentStart);
-                this.isSnappingCursor = true;
-                editor.selection = new vscode.Selection(snapPos, snapPos);
-                setTimeout(() => { this.isSnappingCursor = false; }, 0);
-                return;
-            }
-            if (cursorOffset > contentEnd && cursorOffset <= fullEnd) {
-                // In closing delimiter — snap to content end
-                const snapPos = editor.document.positionAt(contentEnd);
-                this.isSnappingCursor = true;
-                editor.selection = new vscode.Selection(snapPos, snapPos);
-                setTimeout(() => { this.isSnappingCursor = false; }, 0);
-                return;
+        for (const sel of event.selections) {
+            if (!sel.isEmpty) {
+                newSelections.push(sel);
+                continue;
             }
 
-            // Substitution-internal hidden regions (Final/Original modes)
-            if (change.type === ChangeType.Substitution) {
-                const modStart = change.modifiedRange?.start;
-                const origEnd = change.originalRange?.end;
-                if (this._viewMode === 'settled' && modStart !== undefined) {
-                    // Final mode: original text + separator hidden
-                    if (cursorOffset >= contentStart && cursorOffset < modStart) {
-                        const snapPos = editor.document.positionAt(modStart);
-                        this.isSnappingCursor = true;
-                        editor.selection = new vscode.Selection(snapPos, snapPos);
-                        setTimeout(() => { this.isSnappingCursor = false; }, 0);
-                        return;
-                    }
-                }
-                if (this._viewMode === 'raw' && origEnd !== undefined) {
-                    // Original mode: separator + modified text hidden
-                    if (cursorOffset > origEnd && cursorOffset <= contentEnd) {
-                        const snapPos = editor.document.positionAt(origEnd);
-                        this.isSnappingCursor = true;
-                        editor.selection = new vscode.Selection(snapPos, snapPos);
-                        setTimeout(() => { this.isSnappingCursor = false; }, 0);
-                        return;
-                    }
-                }
+            const cursorOffset = editor.document.offsetAt(sel.active);
+            const forward = cursorOffset >= prevOffset;
+
+            let target = cursorOffset;
+            for (let i = 0; i < 10; i++) {
+                const range = findContainingHiddenRange(hiddenRanges, target);
+                if (!range) break;
+                // Forward: snap to exclusive end (first visible char after range).
+                // Backward: snap to one before range start (last visible char before range).
+                // This avoids the infinite-loop trap where range.start is inside [start, end).
+                // Edge case: if range starts at offset 0, there's nothing before it — snap forward.
+                target = forward || range.start === 0 ? range.end : range.start - 1;
             }
+
+            if (target !== cursorOffset) {
+                anySnapped = true;
+                const snapPos = editor.document.positionAt(target);
+                newSelections.push(new vscode.Selection(snapPos, snapPos));
+            } else {
+                newSelections.push(sel);
+            }
+        }
+
+        // Track direction from primary cursor, per document
+        this.lastCursorOffsets.set(docUri, anySnapped
+            ? editor.document.offsetAt(newSelections[0].active)
+            : editor.document.offsetAt(event.selections[0].active));
+
+        if (anySnapped) {
+            this.isSnappingCursor = true;
+            editor.selections = newSelections;
+            setTimeout(() => { this.isSnappingCursor = false; }, 0);
         }
     }
 
     public handleFileRename(oldUri: string, newUri: string): void {
         // Migrate per-document state maps
-        for (const map of [this.documentShadow, this.documentStates, this.userTrackingOverrides] as Map<string, any>[]) {
+        for (const map of [this.documentShadow, this.documentStates, this.userTrackingOverrides, this.lastCursorOffsets] as Map<string, any>[]) {
             if (map.has(oldUri)) {
                 if (!map.has(newUri)) {
                     map.set(newUri, map.get(oldUri)!);
@@ -2288,6 +2349,7 @@ export class ExtensionController {
         this.decorator.dispose();
         this.pendingEditManager.dispose();
         this.viewModeStatusBar.dispose();
+        this.projectedView.dispose();
 
         // Clean up Maps/Sets to prevent memory leaks on extension restart
         this.documentShadow.clear();

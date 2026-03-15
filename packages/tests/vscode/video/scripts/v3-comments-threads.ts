@@ -31,4 +31,4 @@ registerVideoScript('v3-comments-threads', 'v3-comments-threads.md', async ({ pa
 
     // 4. Final beat — thread visible with alice/bob conversation + sidebar
     await beat(page, 1500);
-}, { 'changetracks.commentsExpandedByDefault': false });
+}, { 'changetracks.clickToShowComments': false });

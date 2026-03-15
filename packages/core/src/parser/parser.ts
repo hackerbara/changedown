@@ -710,6 +710,7 @@ export class CriticMarkupParser {
     const match = remaining.match(CriticMarkupParser.FOOTNOTE_REF);
     if (match) {
       node.id = match[1];
+      node.footnoteRefStart = node.range.end; // boundary before [^ct-N]
       node.range = { start: node.range.start, end: node.range.end + match[0].length };
       node.level = 2;
       node.anchored = true;

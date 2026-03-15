@@ -9,6 +9,9 @@
 // Decorator
 export { EditorDecorator } from './decorator';
 
+// Hidden range search (cursor snap)
+export { findContainingHiddenRange } from './hidden-range-search';
+
 // View port interface (for SpyEditor)
 export { EditorPort } from './view/EditorPort';
 

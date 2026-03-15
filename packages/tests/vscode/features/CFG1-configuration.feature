@@ -32,9 +32,9 @@ Feature: CFG1 -- Configuration keys and defaults
     Given I open "tracking-mode-test.md" in VS Code
     Then scmIntegrationMode is one of "scm-first", "hybrid", "legacy"
 
-  # ── commentsExpandedByDefault ──────────────────────────────────────
+  # ── clickToShowComments ──────────────────────────────────────
 
-  Scenario: changetracks.commentsExpandedByDefault defaults to false
+  Scenario: changetracks.clickToShowComments defaults to true
     Given I open "tracking-mode-test.md" in VS Code
-    Then configuration key "changetracks.commentsExpandedByDefault" exists
-    And configuration key "changetracks.commentsExpandedByDefault" has boolean value false
+    Then configuration key "changetracks.clickToShowComments" exists
+    And configuration key "changetracks.clickToShowComments" has boolean value true

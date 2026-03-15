@@ -25,7 +25,7 @@ export interface ReviewPanelState {
     viewMode: ViewMode;
     changes: ChangeCardData[];
     hasActiveMarkdownEditor: boolean;
-    activeFilter: 'all' | 'proposed' | 'unresolved' | 'accepted' | 'rejected';
+    activeFilter: 'all' | 'proposed' | 'accepted' | 'rejected';
     activeGrouping: 'flat' | 'by-author' | 'by-type' | 'by-status';
     activeSorting: 'document-order' | 'date' | 'status';
 }
@@ -151,11 +151,10 @@ export function buildCardData(changes: ChangeNode[], text: string, currentAuthor
 
 function filterCards(
     cards: ChangeCardData[],
-    filter: 'all' | 'proposed' | 'unresolved' | 'accepted' | 'rejected',
+    filter: 'all' | 'proposed' | 'accepted' | 'rejected',
 ): ChangeCardData[] {
     switch (filter) {
         case 'proposed':    return cards.filter(c => c.status === 'proposed');
-        case 'unresolved':  return cards.filter(c => !c.isResolved && c.hasDiscussion);
         case 'accepted':    return cards.filter(c => c.status === 'accepted');
         case 'rejected':    return cards.filter(c => c.status === 'rejected');
         default:            return cards;
@@ -206,7 +205,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider, vscode.D
     private refreshTimeout: ReturnType<typeof setTimeout> | null = null;
     private lastState: ReviewPanelState | null = null;
 
-    private activeFilter: 'all' | 'proposed' | 'unresolved' | 'accepted' | 'rejected' = 'all';
+    private activeFilter: 'all' | 'proposed' | 'accepted' | 'rejected' = 'all';
     private activeGrouping: 'flat' | 'by-author' | 'by-type' | 'by-status' = 'flat';
     private activeSorting: 'document-order' | 'date' | 'status' = 'document-order';
 
@@ -290,9 +289,6 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider, vscode.D
             case 'rejectAll':
                 vscode.commands.executeCommand('changetracks.rejectAll');
                 break;
-            case 'compactAllResolved':
-                vscode.commands.executeCommand('changetracks.compactAllResolved');
-                break;
             case 'revealChange':
                 if (msg.value) {
                     vscode.commands.executeCommand('changetracks.revealChange', msg.value);
@@ -337,6 +333,9 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider, vscode.D
                 if (msg.id) {
                     vscode.commands.executeCommand('changetracks.supersedeChange', msg.id);
                 }
+                break;
+            case 'openMarkdownPreview':
+                vscode.commands.executeCommand('markdown.showPreviewToSide');
                 break;
             case 'exportToDocx':
                 vscode.commands.executeCommand('changetracks.exportToDocx');
@@ -473,6 +472,8 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider, vscode.D
                             id: u.card.id,
                             html: u.html,
                         })),
+                        trackingEnabled: diff.trackingEnabled,
+                        viewMode: diff.viewMode,
                     },
                 });
                 this.lastState = newState;
@@ -566,7 +567,6 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
     const filterLabels: Array<{ value: string; label: string }> = [
         { value: 'all', label: 'All' },
         { value: 'proposed', label: 'Proposed' },
-        { value: 'unresolved', label: 'Unresolved' },
         { value: 'accepted', label: 'Accepted' },
         { value: 'rejected', label: 'Rejected' },
     ];
@@ -1005,33 +1005,56 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             word-wrap: break-word;
         }
 
+        /* Controls disclosure */
+        .controls-disclosure { margin: 6px 0; }
+        .controls-toggle {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            color: var(--vscode-descriptionForeground);
+            user-select: none;
+            padding: 2px 0;
+        }
+        .controls-toggle:hover { color: var(--vscode-foreground); }
+        .controls-body.collapsed { display: none; }
+        .controls-body { padding: 6px 0 0 16px; }
+        .controls-row { display: flex; gap: 6px; }
+
         /* Export footer */
         .export-footer {
             margin-top: auto;
             padding: 12px;
             border-top: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, rgba(128,128,128,0.2)));
         }
-        .export-btn {
+        .utility-btn {
             width: 100%;
             padding: 7px 12px;
-            border: none;
+            border: 1px solid transparent;
             border-radius: 4px;
             background: var(--vscode-button-secondaryBackground, rgba(128,128,128,0.2));
             color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
             cursor: pointer;
             font-size: 12px;
+            font-weight: 500;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 6px;
+            margin-bottom: 6px;
         }
-        .export-btn:hover {
+        .utility-btn:hover {
             background: var(--vscode-button-hoverBackground, rgba(128,128,128,0.35));
         }
-        .export-btn:active {
+        .utility-btn:active {
             opacity: 0.7;
             transform: scale(0.98);
         }
+        .preview-btn {
+            border-color: var(--vscode-textLink-foreground, #3794ff);
+        }
+
     </style>
 </head>
 <body>
@@ -1069,14 +1092,13 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             <div class="action-row">
                 <button class="action-btn primary" id="acceptAllBtn">Accept All</button>
                 <button class="action-btn danger" id="rejectAllBtn">Reject All</button>
-                <button class="icon-btn compact-resolved-btn" id="compactResolvedBtn" title="Compact All Resolved">$(archive) Compact Resolved</button>
             </div>
         </div>
 
-        <!-- Zone 4: Changes (collapsed by default) -->
+        <!-- Zone 4: Changes (open by default) -->
         <div class="zone" style="border-bottom: none; padding-bottom: 0;">
-            <div class="changes-header" id="changesToggle" role="button" aria-expanded="false" tabindex="0">
-                <span class="collapse-icon" id="collapseIcon">\u25B6</span>
+            <div class="changes-header" id="changesToggle" role="button" aria-expanded="true" tabindex="0">
+                <span class="collapse-icon open" id="collapseIcon">\u25B6</span>
                 <span class="zone-label" style="margin-bottom: 0;">Changes</span>
             </div>
             <div class="summary-line">${escapeHtml(summaryText)}</div>
@@ -1085,18 +1107,29 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
                 ${filterBtnsHtml}
             </div>
             <!-- Grouping + Sorting controls -->
-            <div class="controls-row">
-                ${groupingSelectHtml}
-                ${sortingSelectHtml}
+            <div class="controls-disclosure">
+                <div class="controls-toggle" id="controlsToggle" role="button" tabindex="0">
+                    <span class="collapse-icon" id="controlsCollapseIcon">&#9658;</span>
+                    Grouping &amp; Sort
+                </div>
+                <div class="controls-body collapsed" id="controlsBody">
+                    <div class="controls-row">
+                        ${groupingSelectHtml}
+                        ${sortingSelectHtml}
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="changes-scroll collapsed" id="changesList">
+        <div class="changes-scroll" id="changesList">
             ${cardsHtml}
         </div>
 
         <!-- Export footer -->
         <div class="export-footer">
-            <button class="export-btn" id="exportDocxBtn" title="Export current document to Word (.docx)">
+            <button class="utility-btn preview-btn" id="previewBtn" title="Open Markdown Preview to the Side">
+                Open Markdown Preview
+            </button>
+            <button class="utility-btn export-btn" id="exportDocxBtn" title="Export current document to Word (.docx)">
                 \u2B07 Export to DOCX
             </button>
         </div>
@@ -1162,9 +1195,6 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
         document.getElementById('rejectAllBtn')?.addEventListener('click', () => {
             send('rejectAll');
         });
-        document.getElementById('compactResolvedBtn')?.addEventListener('click', () => {
-            send('compactAllResolved');
-        });
 
         // Filter buttons
         document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
@@ -1173,6 +1203,24 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
                 if (filter) send('setFilter', { filter });
             });
         });
+
+        // Controls disclosure toggle
+        const controlsToggle = document.getElementById('controlsToggle');
+        const controlsBody = document.getElementById('controlsBody');
+        const controlsIcon = document.getElementById('controlsCollapseIcon');
+        if (controlsToggle && controlsBody && controlsIcon) {
+            controlsToggle.addEventListener('click', () => {
+                const isCollapsed = controlsBody.classList.toggle('collapsed');
+                controlsIcon.classList.toggle('open', !isCollapsed);
+                controlsToggle.setAttribute('aria-expanded', String(!isCollapsed));
+            });
+            controlsToggle.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    controlsToggle.click();
+                }
+            });
+        }
 
         // Grouping dropdown
         document.getElementById('groupingSelect')?.addEventListener('change', (e) => {
@@ -1194,6 +1242,11 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
                 const id = card.getAttribute('data-id');
                 if (id) send('revealChange', { value: id });
             });
+        });
+
+        // Open Markdown Preview
+        document.getElementById('previewBtn')?.addEventListener('click', () => {
+            send('openMarkdownPreview');
         });
 
         // Export to DOCX
@@ -1281,6 +1334,32 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
                             container.appendChild(newEl);
                             attachCardListeners(newEl);
                         }
+                    }
+                }
+
+                // Update view mode buttons if viewMode changed
+                if (message.diff.viewMode) {
+                    document.querySelectorAll('.vm-btn').forEach(btn => {
+                        const mode = btn.getAttribute('data-mode');
+                        if (mode === message.diff.viewMode) {
+                            btn.classList.add('vm-active');
+                        } else {
+                            btn.classList.remove('vm-active');
+                        }
+                    });
+                }
+
+                // Update tracking toggle if trackingEnabled changed
+                if (message.diff.trackingEnabled !== undefined) {
+                    const btn = document.getElementById('trackingToggle');
+                    if (btn) {
+                        btn.classList.remove('toggle-on', 'toggle-off');
+                        btn.classList.add(message.diff.trackingEnabled ? 'toggle-on' : 'toggle-off');
+                        const dot = btn.querySelector('.toggle-dot');
+                        if (dot) dot.textContent = message.diff.trackingEnabled ? '\u25CF' : '\u25CB';
+                        const textNodes = Array.from(btn.childNodes).filter(n => n.nodeType === 3);
+                        const last = textNodes[textNodes.length - 1];
+                        if (last) last.textContent = ' Track Changes: ' + (message.diff.trackingEnabled ? 'ON' : 'OFF');
                     }
                 }
             }

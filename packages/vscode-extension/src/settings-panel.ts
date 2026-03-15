@@ -40,8 +40,8 @@ export interface SettingsConfig {
 }
 
 export interface EditorPreferencesConfig {
-    showCriticMarkup: boolean;
-    commentsExpandedByDefault: boolean;
+    showDelimiters: boolean;
+    clickToShowComments: boolean;
     commentInsertFormat: 'inline' | 'footnote';
     changeExplorerGroupBy: 'flat' | 'author' | 'type';
 }
@@ -60,8 +60,8 @@ export const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
 };
 
 export const DEFAULT_EDITOR_PREFS: EditorPreferencesConfig = {
-    showCriticMarkup: false,
-    commentsExpandedByDefault: false,
+    showDelimiters: false,
+    clickToShowComments: false,
     commentInsertFormat: 'footnote',
     changeExplorerGroupBy: 'flat',
 };
@@ -384,23 +384,23 @@ export function generateSettingsHtml(config: SettingsConfig, editorPrefs: Editor
             <div class="accordion" data-section="editor-prefs">
                 <button type="button" class="accordion-trigger" aria-expanded="false">
                     <span>Display &amp; Comments</span>
-                    <span class="accordion-subtitle" data-summary="editor-prefs">${editorPrefs.showCriticMarkup ? 'CM on' : 'CM off'} / ${escapeHtml(editorPrefs.commentInsertFormat)} / group by ${escapeHtml(editorPrefs.changeExplorerGroupBy)}</span>
+                    <span class="accordion-subtitle" data-summary="editor-prefs">${editorPrefs.showDelimiters ? 'delimiters on' : 'delimiters off'} / ${escapeHtml(editorPrefs.commentInsertFormat)} / group by ${escapeHtml(editorPrefs.changeExplorerGroupBy)}</span>
                     <span class="accordion-chevron">&#9654;</span>
                 </button>
                 <div class="accordion-body">
                     <div class="field">
                         <label class="inline">
-                            <input type="checkbox" id="editor-show-criticmarkup" name="editor-show-criticmarkup" ${checked(editorPrefs.showCriticMarkup)}>
-                            Show CriticMarkup
+                            <input type="checkbox" id="editor-show-delimiters" name="editor-show-delimiters" ${checked(editorPrefs.showDelimiters)}>
+                            Show Delimiters
                         </label>
                         <div class="hint">Show delimiters and footnote references. Review: static display. Simple: cursor-reveal.</div>
                     </div>
                     <div class="field">
                         <label class="inline">
-                            <input type="checkbox" id="editor-comments-expanded" name="editor-comments-expanded" ${checked(editorPrefs.commentsExpandedByDefault)}>
-                            Expand comments by default
+                            <input type="checkbox" id="editor-comments-expanded" name="editor-comments-expanded" ${checked(editorPrefs.clickToShowComments)}>
+                            Click to show comments
                         </label>
-                        <div class="hint">Comment threads start expanded when opening a file</div>
+                        <div class="hint">Clicking inside a change opens its comment peek</div>
                     </div>
                     <div class="field">
                         <label for="editor-comment-format">Comment insert format</label>
@@ -716,8 +716,8 @@ export function generateSettingsHtml(config: SettingsConfig, editorPrefs: Editor
             }
 
             function populateEditorPrefs(prefs) {
-                setChecked('editor-show-criticmarkup', prefs.showCriticMarkup);
-                setChecked('editor-comments-expanded', prefs.commentsExpandedByDefault);
+                setChecked('editor-show-delimiters', prefs.showDelimiters);
+                setChecked('editor-comments-expanded', prefs.clickToShowComments);
                 setVal('editor-comment-format', prefs.commentInsertFormat);
                 setVal('editor-group-by', prefs.changeExplorerGroupBy);
             }
@@ -831,8 +831,8 @@ export function parseEditorPreferences(data: Record<string, unknown>): EditorPre
     };
 
     return {
-        showCriticMarkup: bool('editor-show-criticmarkup', DEFAULT_EDITOR_PREFS.showCriticMarkup),
-        commentsExpandedByDefault: bool('editor-comments-expanded', DEFAULT_EDITOR_PREFS.commentsExpandedByDefault),
+        showDelimiters: bool('editor-show-delimiters', DEFAULT_EDITOR_PREFS.showDelimiters),
+        clickToShowComments: bool('editor-comments-expanded', DEFAULT_EDITOR_PREFS.clickToShowComments),
         commentInsertFormat: str('editor-comment-format', DEFAULT_EDITOR_PREFS.commentInsertFormat) as 'inline' | 'footnote',
         changeExplorerGroupBy: str('editor-group-by', DEFAULT_EDITOR_PREFS.changeExplorerGroupBy) as 'flat' | 'author' | 'type',
     };
@@ -958,8 +958,8 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider, vscode
     private readEditorPreferences(): EditorPreferencesConfig {
         const cfg = vscode.workspace.getConfiguration('changetracks');
         return {
-            showCriticMarkup: cfg.get<boolean>('showCriticMarkup', DEFAULT_EDITOR_PREFS.showCriticMarkup),
-            commentsExpandedByDefault: cfg.get<boolean>('commentsExpandedByDefault', DEFAULT_EDITOR_PREFS.commentsExpandedByDefault),
+            showDelimiters: cfg.get<boolean>('showDelimiters', DEFAULT_EDITOR_PREFS.showDelimiters),
+            clickToShowComments: cfg.get<boolean>('clickToShowComments', DEFAULT_EDITOR_PREFS.clickToShowComments),
             commentInsertFormat: cfg.get<string>('commentInsertFormat', DEFAULT_EDITOR_PREFS.commentInsertFormat) as 'inline' | 'footnote',
             changeExplorerGroupBy: cfg.get<string>('changeExplorer.groupBy', DEFAULT_EDITOR_PREFS.changeExplorerGroupBy) as 'flat' | 'author' | 'type',
         };
@@ -967,8 +967,8 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider, vscode
 
     private async writeEditorPreferences(prefs: EditorPreferencesConfig): Promise<void> {
         const cfg = vscode.workspace.getConfiguration('changetracks');
-        await cfg.update('showCriticMarkup', prefs.showCriticMarkup, vscode.ConfigurationTarget.Workspace);
-        await cfg.update('commentsExpandedByDefault', prefs.commentsExpandedByDefault, vscode.ConfigurationTarget.Workspace);
+        await cfg.update('showDelimiters', prefs.showDelimiters, vscode.ConfigurationTarget.Workspace);
+        await cfg.update('clickToShowComments', prefs.clickToShowComments, vscode.ConfigurationTarget.Workspace);
         await cfg.update('commentInsertFormat', prefs.commentInsertFormat, vscode.ConfigurationTarget.Workspace);
         await cfg.update('changeExplorer.groupBy', prefs.changeExplorerGroupBy, vscode.ConfigurationTarget.Workspace);
     }

@@ -55,4 +55,4 @@ registerVideoScript('v1-track-changes', 'v1-track-changes.md', async ({ page }) 
 
     // 9. Final pause to show both tracked changes (green + red)
     await beat(page, 1000);
-}, { 'changetracks.commentsExpandedByDefault': false, 'changetracks.editBoundary.pauseThresholdMs': 800 });
+}, { 'changetracks.clickToShowComments': false, 'changetracks.editBoundary.pauseThresholdMs': 800 });

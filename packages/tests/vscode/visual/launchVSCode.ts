@@ -77,7 +77,7 @@ async function launchVSCodeInternal(
         "problems.decorations.enabled": false,
         "editor.codeLens": false,
         // Show CriticMarkup delimiters so D1/D2 decoration tests can distinguish view modes
-        "changetracks.showCriticMarkup": true,
+        "changetracks.showDelimiters": true,
     };
 
     // Apply theme if specified

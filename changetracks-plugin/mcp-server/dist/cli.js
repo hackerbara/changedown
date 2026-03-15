@@ -1019,6 +1019,7 @@ var init_parser = __esm({
         const match = remaining.match(_CriticMarkupParser.FOOTNOTE_REF);
         if (match) {
           node.id = match[1];
+          node.footnoteRefStart = node.range.end;
           node.range = { start: node.range.start, end: node.range.end + match[0].length };
           node.level = 2;
           node.anchored = true;

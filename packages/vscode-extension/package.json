@@ -179,11 +179,6 @@
                 "category": "ChangeTracks"
             },
             {
-                "command": "changetracks.compactAllResolved",
-                "title": "Compact All Resolved",
-                "category": "ChangeTracks"
-            },
-            {
                 "command": "changetracks.revealPanel",
                 "title": "ChangeTracks: Open Panel"
             },
@@ -626,10 +621,10 @@
                     ],
                     "description": "Default view mode when opening markdown files."
                 },
-                "changetracks.showCriticMarkup": {
+                "changetracks.showDelimiters": {
                     "type": "boolean",
                     "default": false,
-                    "description": "Show CriticMarkup syntax (delimiters and footnote references). When off: semantic styling only. In Review mode with this on: full markup visible, static display. In Simple mode with this on: markup hidden but revealed when cursor enters change content."
+                    "description": "Show CriticMarkup delimiter characters (, , , etc.). When off, delimiters are hidden but type decorations (colors, strikethrough) still apply. In Simple mode with this on, delimiters are revealed when cursor enters a change."
                 },
                 "changetracks.persistAnnotations": {
                     "type": "boolean",
@@ -693,10 +688,10 @@
                     "default": false,
                     "description": "When true, prompts to disable Git SCM for the workspace so ChangeTracks's gutter diff indicators are used instead."
                 },
-                "changetracks.commentsExpandedByDefault": {
+                "changetracks.clickToShowComments": {
                     "type": "boolean",
-                    "default": false,
-                    "description": "When true, comment threads for tracked changes start expanded (comment peek visible) when you open a file. When false, they start collapsed."
+                    "default": true,
+                    "description": "When true, clicking inside a tracked change opens its comment thread peek widget. Other open peeks are automatically closed."
                 },
                 "changetracks.commentInsertFormat": {
                     "type": "string",

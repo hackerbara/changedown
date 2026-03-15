@@ -48,12 +48,12 @@ export function registerChangeCommands(
         vscode.commands.registerCommand('changetracks.addComment', async () => {
             await controller.addComment();
         }),
-        vscode.commands.registerCommand('changetracks.toggleView', () => {
-            controller.cycleViewMode();
+        vscode.commands.registerCommand('changetracks.toggleView', async () => {
+            await controller.cycleViewMode();
         }),
-        vscode.commands.registerCommand('changetracks.setViewMode', (mode: string) => {
+        vscode.commands.registerCommand('changetracks.setViewMode', async (mode: string) => {
             if ((VIEW_MODES as readonly string[]).includes(mode)) {
-                controller.setViewMode(mode as ViewMode);
+                await controller.setViewMode(mode as ViewMode);
             }
         }),
         vscode.commands.registerCommand('changetracks.annotateFromGit', async () => {
@@ -152,9 +152,6 @@ export function registerChangeCommands(
             }
             controller.revealChangeById(change.id);
             changeComments.expandThreadForChangeId(change.id);
-        }),
-        vscode.commands.registerCommand('changetracks.compactAllResolved', async () => {
-            await controller.compactAllResolved();
         }),
     );
 }

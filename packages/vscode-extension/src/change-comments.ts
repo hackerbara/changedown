@@ -51,21 +51,13 @@ export class ChangeComments implements vscode.Disposable {
       vscode.window.onDidChangeActiveTextEditor(() => this.refreshThreads())
     );
 
-    // Apply comment peek setting when it changes
+    // When user CLICKS into a change that has a comment thread, expand it.
+    // Only fires on Mouse selection changes — keyboard navigation (arrow keys,
+    // Home/End, find-next) does not trigger expansion, preventing peek flash.
+    // Gated by clickToShowComments setting (default true).
     this.disposables.push(
-      vscode.workspace.onDidChangeConfiguration(e => {
-        if (e.affectsConfiguration('changetracks.commentsExpandedByDefault')) {
-          this.refreshThreads();
-        }
-      })
-    );
-
-    // When cursor moves into a change that has a comment thread, expand that thread — but only when
-    // commentsExpandedByDefault is true. Without this gate, scrolling through documents with many
-    // commented changes causes peek widgets to flash open on every selection change event.
-    this.disposables.push(
-      vscode.window.onDidChangeTextEditorSelection(() => {
-        if (this.getCommentsExpandedByDefault()) {
+      vscode.window.onDidChangeTextEditorSelection((e) => {
+        if (e.kind === vscode.TextEditorSelectionChangeKind.Mouse && this.getClickToShowComments()) {
           this.expandThreadForChangeAtCursor();
         }
       })
@@ -87,12 +79,24 @@ export class ChangeComments implements vscode.Disposable {
       (c) => cursorOffset >= c.contentRange.start && cursorOffset < c.contentRange.end
     );
     if (!change || change.level < 1) {
+      // Cursor outside any change — collapse all open threads
+      for (const thread of this.threads.values()) {
+        if (thread.collapsibleState === vscode.CommentThreadCollapsibleState.Expanded) {
+          thread.collapsibleState = vscode.CommentThreadCollapsibleState.Collapsed;
+        }
+      }
       return;
     }
 
-    const thread = this.threads.get(change.id);
-    if (thread && thread.collapsibleState !== vscode.CommentThreadCollapsibleState.Expanded) {
-      thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+    // Collapse all other threads, expand the target
+    for (const [id, thread] of this.threads) {
+      if (id === change.id) {
+        if (thread.collapsibleState !== vscode.CommentThreadCollapsibleState.Expanded) {
+          thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+        }
+      } else if (thread.collapsibleState === vscode.CommentThreadCollapsibleState.Expanded) {
+        thread.collapsibleState = vscode.CommentThreadCollapsibleState.Collapsed;
+      }
     }
   }
 
@@ -136,8 +140,15 @@ export class ChangeComments implements vscode.Disposable {
     }
   }
 
-  private getCommentsExpandedByDefault(): boolean {
-    return vscode.workspace.getConfiguration('changetracks').get<boolean>('commentsExpandedByDefault', false);
+  private commentFingerprint(comments: vscode.Comment[]): string {
+    return comments.map(c => {
+      const body = typeof c.body === 'string' ? c.body : (c.body as vscode.MarkdownString).value;
+      return `${(c.author as any).name}|${body}`;
+    }).join('\n');
+  }
+
+  private getClickToShowComments(): boolean {
+    return vscode.workspace.getConfiguration('changetracks').get<boolean>('clickToShowComments', true);
   }
 
   private scheduleRefreshThreads(): void {
@@ -236,9 +247,6 @@ export class ChangeComments implements vscode.Disposable {
       const range = this.contentRangeToPeekRange(doc, change.contentRange);
 
       const existing = this.threads.get(change.id);
-      const defaultCollapsibleState = this.getCommentsExpandedByDefault()
-        ? vscode.CommentThreadCollapsibleState.Expanded
-        : vscode.CommentThreadCollapsibleState.Collapsed;
 
       // Compute thread state from resolution metadata: threads with an explicit
       // "resolved" resolution marker use CommentThreadState.Resolved (VS Code
@@ -249,23 +257,38 @@ export class ChangeComments implements vscode.Disposable {
         : vscode.CommentThreadState.Unresolved;
 
       if (existing) {
-        // Preserve expansion so that replying does not auto-close the thread
-        const wasExpanded = existing.collapsibleState === vscode.CommentThreadCollapsibleState.Expanded;
-        existing.range = range;
-        existing.comments = this.buildComments(change);
-        existing.state = threadState;
-        if (wasExpanded) {
-          existing.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+        // Guard ALL property assignments — each one triggers VS Code's internal
+        // $updateCommentThread which rebuilds comment widgets and leaks listeners
+        const rangeChanged = !existing.range?.isEqual(range);
+        const stateChanged = existing.state !== threadState;
+        const newComments = this.buildComments(change);
+        const fingerprint = this.commentFingerprint(newComments);
+        const existingFingerprint = (existing as any)._ctFingerprint as string | undefined;
+        const commentsChanged = fingerprint !== existingFingerprint;
+
+        if (rangeChanged || commentsChanged || stateChanged) {
+          const wasExpanded = existing.collapsibleState === vscode.CommentThreadCollapsibleState.Expanded;
+          if (rangeChanged) existing.range = range;
+          if (commentsChanged) {
+            existing.comments = newComments;
+            (existing as any)._ctFingerprint = fingerprint;
+          }
+          if (stateChanged) existing.state = threadState;
+          if (wasExpanded) {
+            existing.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+          }
         }
       } else {
         // Create new thread
-        const thread = this.commentController.createCommentThread(doc.uri, range, this.buildComments(change));
+        const newComments = this.buildComments(change);
+        const thread = this.commentController.createCommentThread(doc.uri, range, newComments);
         thread.contextValue = 'changetracksThread';
         const author = change.metadata?.author ?? change.inlineMetadata?.author ?? 'unknown';
         thread.label = `${typeLabelCapitalized(change.type)} by ${author}`;
         thread.canReply = true;
         thread.state = threadState;
-        thread.collapsibleState = defaultCollapsibleState;
+        thread.collapsibleState = vscode.CommentThreadCollapsibleState.Collapsed;
+        (thread as any)._ctFingerprint = this.commentFingerprint(newComments);
         this.threads.set(change.id, thread);
       }
     }

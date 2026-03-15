@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ChangeNode, ChangeStatus, ChangeType, VirtualDocument } from '@changetracks/core';
 import { ViewMode } from './view-mode';
 import { EditorPort } from './view/EditorPort';
-import { offsetToPosition } from './converters';
+import { offsetToPosition, positionToOffset } from './converters';
 import { diffChars } from 'diff';
 import { AUTHOR_PALETTE } from './visual-semantics';
 
@@ -65,6 +65,13 @@ export class EditorDecorator {
     private authorColorMap: AuthorColorMap = new AuthorColorMap();
     private authorDecorationTypes: Map<string, vscode.TextEditorDecorationType> = new Map();
     private hadHiddenRanges = false;
+    /** UTF-16 offset ranges hidden by the last decorate() call, sorted by start. Half-open: [start, end). */
+    private lastHiddenOffsets: Array<{start: number; end: number}> = [];
+
+    /** Returns the hidden offset ranges from the most recent decorate() call. */
+    public getHiddenOffsets(): ReadonlyArray<{start: number; end: number}> {
+        return this.lastHiddenOffsets;
+    }
 
     constructor(style: 'foreground' | 'background' = 'foreground', authorColors: 'auto' | 'always' | 'never' = 'auto') {
         this.style = style;
@@ -285,24 +292,24 @@ export class EditorDecorator {
      *   and shows only original content. Also accepts boolean for backward compat (true = review, false = changes).
      * @param text The document text, needed to convert offset ranges to line:char positions
      */
-    public decorate(editor: EditorPort, doc: VirtualDocument, viewMode: ViewMode | boolean, text?: string, showCriticMarkup?: boolean) {
+    public decorate(editor: EditorPort, doc: VirtualDocument, viewMode: ViewMode | boolean, text?: string, showDelimiters?: boolean) {
         // Backward compatibility: boolean true = 'review', false = 'changes'
         const mode: ViewMode = typeof viewMode === 'boolean'
             ? (viewMode ? 'review' : 'changes')
             : viewMode;
 
-        // showCriticMarkup behavior matrix:
-        // - Review + CM ON: full static markup (showMarkup=true), no cursor tricks
-        // - Review + CM OFF: semantic styling only, no unfolding
-        // - Simple + CM ON: hidden by default, cursor-in-content reveals (cursorRevealMode)
-        // - Simple + CM OFF: always hidden, no unfolding
-        // - Settled/Raw: CM setting ignored
-        showCriticMarkup = showCriticMarkup ?? vscode.workspace.getConfiguration('changetracks').get<boolean>('showCriticMarkup', false);
+        // showDelimiters behavior matrix:
+        // - Review + Delimiters ON: full static markup, no cursor tricks
+        // - Review + Delimiters OFF: type decorations on contentRange, delimiters hidden
+        // - Simple + Delimiters ON: hidden by default, cursor-in-content reveals
+        // - Simple + Delimiters OFF: always hidden, no unfolding
+        // - Settled/Raw: setting ignored
+        showDelimiters = showDelimiters ?? vscode.workspace.getConfiguration('changetracks').get<boolean>('showDelimiters', false);
         const isFinalMode = mode === 'settled';
         const isOriginalMode = mode === 'raw';
         const isReviewMode = mode === 'review';
-        const showMarkup = showCriticMarkup && isReviewMode;
-        const cursorRevealMode = showCriticMarkup && !isReviewMode && !isFinalMode && !isOriginalMode;
+        const showDelimitersInMarkup = showDelimiters && isReviewMode;
+        const cursorRevealMode = showDelimiters && !isReviewMode && !isFinalMode && !isOriginalMode;
 
         const changes = doc.getChanges();
 
@@ -509,9 +516,9 @@ export class EditorDecorator {
             }
 
             // Settled refs: accepted/rejected changes preserved as [^ct-N] references
-            // Visible only when showCriticMarkup is enabled, styled as neutral metadata
+            // Visible only when showDelimiters is enabled, styled as neutral metadata
             if (change.settled) {
-                if (!showCriticMarkup) {
+                if (!showDelimiters) {
                     hiddens.push({ range: fullRange });
                     return;
                 }
@@ -530,8 +537,11 @@ export class EditorDecorator {
             // Move-first check: when a change has moveRole, use purple move decoration
             // instead of the normal type-based coloring. This skips the type switch below.
             if (change.moveRole === 'from') {
-                if (showMarkup) {
+                if (showDelimitersInMarkup) {
                     pushMoveFrom({ range: fullRange });
+                } else if (isReviewMode) {
+                    this.hideDelimiters(fullRange, contentRange, hiddens);
+                    pushMoveFrom({ range: contentRange });
                 } else if (isCursorOnChangeLine) {
                     if (cursorRevealMode && isCursorInChange) {
                         this.revealDelimiters(fullRange, contentRange, unfoldedDelimiters);
@@ -544,8 +554,11 @@ export class EditorDecorator {
                     hiddens.push({ range: fullRange });
                 }
             } else if (change.moveRole === 'to') {
-                if (showMarkup) {
+                if (showDelimitersInMarkup) {
                     pushMoveTo({ range: fullRange });
+                } else if (isReviewMode) {
+                    this.hideDelimiters(fullRange, contentRange, hiddens);
+                    pushMoveTo({ range: contentRange });
                 } else if (isCursorOnChangeLine) {
                     if (cursorRevealMode && isCursorInChange) {
                         this.revealDelimiters(fullRange, contentRange, unfoldedDelimiters);
@@ -562,8 +575,11 @@ export class EditorDecorator {
                 const reasonHover = change.metadata?.comment
                     ? new vscode.MarkdownString(`**Reason:** ${change.metadata.comment}`)
                     : undefined;
-                if (showMarkup) {
+                if (showDelimitersInMarkup) {
                     pushInsertion({ range: fullRange, hoverMessage: reasonHover });
+                } else if (isReviewMode) {
+                    this.hideDelimiters(fullRange, contentRange, hiddens);
+                    pushInsertion({ range: contentRange, hoverMessage: reasonHover });
                 } else if (isCursorOnChangeLine) {
                     // Cursor on this line — reveal with coloring
                     if (cursorRevealMode && isCursorInChange) {
@@ -582,8 +598,11 @@ export class EditorDecorator {
                 const reasonHover = change.metadata?.comment
                     ? new vscode.MarkdownString(`**Reason:** ${change.metadata.comment}`)
                     : undefined;
-                if (showMarkup) {
+                if (showDelimitersInMarkup) {
                     pushDeletion({ range: fullRange, hoverMessage: reasonHover });
+                } else if (isReviewMode) {
+                    this.hideDelimiters(fullRange, contentRange, hiddens);
+                    pushDeletion({ range: contentRange, hoverMessage: reasonHover });
                 } else if (isCursorOnChangeLine) {
                     // Cursor on this line — reveal with coloring
                     if (cursorRevealMode && isCursorInChange) {
@@ -606,16 +625,24 @@ export class EditorDecorator {
                     const originalRange = toRange(change.originalRange);
                     const modifiedRange = toRange(change.modifiedRange);
 
-                    if (showMarkup) {
+                    // Calculate delimiter positions from offsets (shared by all branches below)
+                    const openDelimiterEnd = offsetToPosition(text || '', change.range.start + 3);
+                    const separatorStart = offsetToPosition(text || '', change.originalRange.end);
+                    const separatorEnd = offsetToPosition(text || '', change.modifiedRange.start);
+                    const closeDelimiterStart = offsetToPosition(text || '', change.modifiedRange.end);
+
+                    if (showDelimitersInMarkup) {
                         // Include delimiters in decoration: {~~original~> in red, modified~~} in green
                         pushSubOriginal({ range: new vscode.Range(fullRange.start, modifiedRange.start), hoverMessage: reasonHover });
                         pushSubModified({ range: new vscode.Range(modifiedRange.start, fullRange.end), hoverMessage: reasonHover });
+                    } else if (isReviewMode) {
+                        // Review + Delimiters OFF: hide delimiters and separator, color both halves
+                        hiddens.push({ range: new vscode.Range(fullRange.start, openDelimiterEnd) });
+                        hiddens.push({ range: new vscode.Range(separatorStart, separatorEnd) });
+                        hiddens.push({ range: new vscode.Range(closeDelimiterStart, fullRange.end) });
+                        pushSubOriginal({ range: originalRange, hoverMessage: reasonHover });
+                        pushSubModified({ range: modifiedRange, hoverMessage: reasonHover });
                     } else {
-                        // Calculate delimiter positions from offsets
-                        const openDelimiterEnd = offsetToPosition(text || '', change.range.start + 3);
-                        const separatorStart = offsetToPosition(text || '', change.originalRange.end);
-                        const separatorEnd = offsetToPosition(text || '', change.modifiedRange.start);
-                        const closeDelimiterStart = offsetToPosition(text || '', change.modifiedRange.end);
 
                         if (isCursorOnChangeLine) {
                             // Cursor on this line — reveal with coloring
@@ -687,11 +714,11 @@ export class EditorDecorator {
                     ? new vscode.MarkdownString(`**Comment:** ${change.metadata.comment}`)
                     : undefined;
 
-                if (showMarkup) {
-                    pushHighlight({
-                        range: fullRange,
-                        hoverMessage
-                    });
+                if (showDelimitersInMarkup) {
+                    pushHighlight({ range: fullRange, hoverMessage });
+                } else if (isReviewMode) {
+                    this.hideDelimiters(fullRange, contentRange, hiddens);
+                    pushHighlight({ range: contentRange, hoverMessage });
                 } else if (isCursorOnChangeLine) {
                     // Cursor on this line — reveal with coloring
                     if (cursorRevealMode && isCursorInChange) {
@@ -753,9 +780,13 @@ export class EditorDecorator {
                     ? new vscode.MarkdownString(`**Comment:** ${change.metadata.comment}`)
                     : undefined;
 
-                if (showMarkup) {
-                    pushComment({
-                        range: fullRange,
+                if (showDelimitersInMarkup) {
+                    pushComment({ range: fullRange, hoverMessage });
+                } else if (isReviewMode) {
+                    // Review + Delimiters OFF: hide everything, show comment icon
+                    hiddens.push({ range: fullRange });
+                    commentIcons.push({
+                        range: new vscode.Range(fullRange.start, fullRange.start),
                         hoverMessage
                     });
                 } else if (isCursorOnChangeLine) {
@@ -824,6 +855,42 @@ export class EditorDecorator {
             }
         }
 
+        // ─── Footnote ref splitting (post-processing) ─────────────────────
+        // In review mode, anchored L2 changes have [^ct-N] refs at the end
+        // of their range. The type-colored decoration was applied to the full range
+        // above. Now trim those decorations to end before the ref, and add the ref
+        // portion to settledRefs (gray styling) instead.
+        if ((showDelimitersInMarkup || isReviewMode) && text) {
+            const searchArrays: vscode.DecorationOptions[][] = [
+                insertions, deletions, substitutionOriginals, substitutionModifieds,
+                highlights, comments, moveFroms, moveTos,
+            ];
+            for (const [, arr] of authorDecorations) {
+                searchArrays.push(arr);
+            }
+
+            for (const change of changes) {
+                if (!change.footnoteRefStart || change.settled) continue;
+                const refStartPos = offsetToPosition(text, change.footnoteRefStart);
+                const refEndPos = offsetToPosition(text, change.range.end);
+                const refRange = new vscode.Range(refStartPos, refEndPos);
+
+                // Find and trim the decoration entry that covers this ref
+                for (const arr of searchArrays) {
+                    for (let i = 0; i < arr.length; i++) {
+                        const entry = arr[i];
+                        if (entry.range.end.isEqual(refEndPos) &&
+                            entry.range.start.isBefore(refStartPos)) {
+                            // Trim: end the type-colored decoration before the ref
+                            arr[i] = { ...entry, range: new vscode.Range(entry.range.start, refStartPos) };
+                            settledRefs.push({ range: refRange });
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         // Apply all base decorations (10 fixed types — index-sensitive, see SpyEditor)
         editor.setDecorations(this.insertionObj, insertions);
         editor.setDecorations(this.deletionObj, deletions);
@@ -831,6 +898,14 @@ export class EditorDecorator {
         editor.setDecorations(this.substitutionModifiedObj, substitutionModifieds);
         editor.setDecorations(this.highlightObj, highlights);
         editor.setDecorations(this.commentObj, comments);
+        // Build sorted offset array of all hidden ranges for cursor snap.
+        // The hiddens array is already in document order (changes processed sequentially).
+        this.lastHiddenOffsets = text
+            ? hiddens.map(h => ({
+                start: positionToOffset(text, h.range.start),
+                end: positionToOffset(text, h.range.end)
+            }))
+            : [];
         // Only dispose/recreate hiddenObj to flush CSS cache when a document that
         // actually has changes transitions to a mode with no hidden ranges (e.g.
         // settled→review). Skip the guard for empty-change editors (comment threads)
@@ -912,6 +987,12 @@ export class EditorDecorator {
         }
     }
 
+    /**
+     * Returns the vscode.Range covering the `[^ct-N]` footnote anchor at the end of
+     * a change's full range, or undefined if the change has no attached footnote ref.
+     * Used in All Markup mode to style the ref with neutral gray instead of the
+     * change type colour.
+     */
     private isPositionInRange(position: vscode.Position, range: vscode.Range): boolean {
         return range.contains(position);
     }

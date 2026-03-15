@@ -293,9 +293,9 @@ Then('parsed hooks enforcement is {string}', function (this: ChangeTracksWorld, 
 
 // ── Then steps: parseEditorPreferences ───────────────────────────────
 
-Then('parsed commentsExpandedByDefault is {word}', function (this: ChangeTracksWorld, expected: string) {
+Then('parsed clickToShowComments is {word}', function (this: ChangeTracksWorld, expected: string) {
     assert.ok(this.parsedEditorPrefs, 'No parsed editor preferences');
-    assert.strictEqual(this.parsedEditorPrefs.commentsExpandedByDefault, expected === 'true');
+    assert.strictEqual(this.parsedEditorPrefs.clickToShowComments, expected === 'true');
 });
 
 Then('parsed commentInsertFormat is {string}', function (this: ChangeTracksWorld, expected: string) {

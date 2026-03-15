@@ -39,4 +39,4 @@ registerVideoScript('v2-accept-reject', 'v2-accept-reject.md', async ({ page }) 
     await beat(page, 600);
     await command(page, 'changetracks.acceptChange');
     await beat(page, 1000);
-}, { 'changetracks.commentsExpandedByDefault': false });
+}, { 'changetracks.clickToShowComments': false });

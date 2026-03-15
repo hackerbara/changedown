@@ -47,10 +47,10 @@ export { resolveViewName };
 export function isChangeVisibleInMode(
     change: ChangeNode,
     viewMode: ViewMode,
-    showCriticMarkup: boolean
+    showDelimiters: boolean
 ): boolean {
-    // Settled refs: visible only when showCriticMarkup is on
-    if (change.settled && !showCriticMarkup) return false;
+    // Settled refs: visible only when showDelimiters is on
+    if (change.settled && !showDelimiters) return false;
 
     if (viewMode === 'settled') {
         // Final mode: hide deletions

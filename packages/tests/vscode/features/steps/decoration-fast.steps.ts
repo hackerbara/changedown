@@ -444,38 +444,7 @@ When('I decorate in review mode with showDelimiters on', function (this: ChangeT
     decorator.decorate(this.spyEditor, this.parsedDoc, 'review', this.decorationText!, true);
 });
 
-// ── showCriticMarkup step definitions ──
-
-When('I decorate in review mode with showCriticMarkup off', function (this: ChangeTracksWorld) {
-    assert.ok(this.decorationText !== undefined, 'No markup text set');
-    const decorator = getOrCreateDecorator(this);
-    const parser = new CriticMarkupParser();
-    this.parsedDoc = parser.parse(this.decorationText!);
-    this.spyEditor = new SpyEditor(99, 0);
-    decorator.decorate(this.spyEditor, this.parsedDoc, 'review', this.decorationText!, false);
-});
-
-When('I decorate in review mode with showCriticMarkup off and cursor at {int}:{int}', function (
-    this: ChangeTracksWorld, line: number, char: number
-) {
-    assert.ok(this.decorationText !== undefined, 'No markup text set');
-    const decorator = getOrCreateDecorator(this);
-    const parser = new CriticMarkupParser();
-    this.parsedDoc = parser.parse(this.decorationText!);
-    this.spyEditor = new SpyEditor(line, char);
-    decorator.decorate(this.spyEditor, this.parsedDoc, 'review', this.decorationText!, false);
-});
-
-When('I decorate in review mode with showCriticMarkup on', function (this: ChangeTracksWorld) {
-    assert.ok(this.decorationText !== undefined, 'No markup text set');
-    const decorator = getOrCreateDecorator(this);
-    const parser = new CriticMarkupParser();
-    this.parsedDoc = parser.parse(this.decorationText!);
-    this.spyEditor = new SpyEditor(99, 0);
-    decorator.decorate(this.spyEditor, this.parsedDoc, 'review', this.decorationText!, true);
-});
-
-When('I decorate in review mode with showCriticMarkup on and cursor at {int}:{int}', function (
+When('I decorate in review mode with showDelimiters on and cursor at {int}:{int}', function (
     this: ChangeTracksWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
@@ -486,7 +455,9 @@ When('I decorate in review mode with showCriticMarkup on and cursor at {int}:{in
     decorator.decorate(this.spyEditor, this.parsedDoc, 'review', this.decorationText!, true);
 });
 
-When('I decorate in smart view mode with showCriticMarkup on and cursor at {int}:{int}', function (
+// ── showDelimiters step definitions (smart view mode with cursor) ──
+
+When('I decorate in smart view mode with showDelimiters on and cursor at {int}:{int}', function (
     this: ChangeTracksWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');

@@ -168,6 +168,37 @@ export function computeSettledText(text: string, options?: SettledTextOptions): 
 
   return result;
 }
+/**
+ * Compute the "Original" view: reject all changes, strip all markup.
+ * Insertions are removed entirely. Deletions keep their content.
+ * Substitutions keep the original (pre-change) text.
+ */
+export function computeOriginalText(text: string, options?: SettledTextOptions): string {
+  const parser = new CriticMarkupParser();
+  const doc = parser.parse(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
+  const changes = doc.getChanges();
+
+  if (changes.length === 0) {
+    const zones = findCodeZones(text);
+    return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones), zones);
+  }
+
+  const edits = [...changes]
+    .sort((a, b) => b.range.start - a.range.start)
+    .map(computeReject);
+
+  let result = text;
+  for (const edit of edits) {
+    result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
+  }
+
+  const zones = findCodeZones(result);
+  result = stripFootnoteDefinitions(result, zones);
+  result = stripInlineFootnoteRefs(result, zones);
+
+  return result;
+}
+
 // ─── Zone-aware ref placement ────────────────────────────────────────────────
 
 /**

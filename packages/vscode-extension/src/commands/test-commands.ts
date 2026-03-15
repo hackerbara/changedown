@@ -30,7 +30,7 @@ export function registerTestCommands(
                 'author', 'preferGutter', 'commentInsertAuthor', 'confirmBulkThreshold',
                 'editBoundary.pauseThresholdMs',
                 'editBoundary.breakOnNewline',
-                'commentsExpandedByDefault',
+                'clickToShowComments',
                 'preview.showOriginalOnHover', 'preview.showMetadataInHover',
                 'preview.autoExpandComments', 'preview.showStatusBarSummary',
                 'preview.diffHighlightStyle', 'showWalkthroughOnStartup',

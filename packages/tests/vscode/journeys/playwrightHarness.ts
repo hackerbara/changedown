@@ -199,7 +199,7 @@ async function launchVSCodeDirect(
         'editor.codeLens': options.codeLens !== false,
         'changetracks.authorColors': 'auto',
         'changetracks.author': 'test-reviewer',
-        'changetracks.commentsExpandedByDefault': true,
+        'changetracks.clickToShowComments': true,
         // Use 2000ms pause threshold for test speed (production default is 30000ms).
         'changetracks.editBoundary.pauseThresholdMs': 2000,
         // Prevent OUR walkthrough from opening too (firstInstall check)
@@ -207,7 +207,7 @@ async function launchVSCodeDirect(
         // Disable bulk-action confirmation dialog (modal returns undefined in Playwright)
         'changetracks.confirmBulkThreshold': 0,
         // Show CriticMarkup delimiters so D1/D2 decoration tests can distinguish view modes
-        'changetracks.showCriticMarkup': true,
+        'changetracks.showDelimiters': true,
     };
     fs.writeFileSync(path.join(userSettingsDir, 'settings.json'), JSON.stringify(settings));
 
@@ -644,7 +644,7 @@ export async function getCommentGutterIconCount(page: Page): Promise<number> {
 /**
  * Extract text from all visible comment peek widgets (zone widgets).
  * Returns an array of { body: string, isResolved: boolean } for each visible thread.
- * Relies on commentsExpandedByDefault: true in journey settings.
+ * Relies on clickToShowComments: true in journey settings.
  */
 export async function getVisibleCommentPeeks(page: Page): Promise<Array<{ body: string; isResolved: boolean }>> {
     const result = await page.evaluate(`(() => {

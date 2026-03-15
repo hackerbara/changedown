@@ -89,6 +89,7 @@ export interface ChangeNode {
   groupId?: string;
   settled?: boolean;
   anchored: boolean;  // true = [^ct-N] exists in file; false = parse-assigned
+  footnoteRefStart?: number;  // byte offset where [^ct-N] starts (set by parser for L2 anchored changes)
 }
 
 export interface TextEdit {

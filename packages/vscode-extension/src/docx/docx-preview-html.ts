@@ -276,6 +276,8 @@ body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); 
 .ct-anchor-author { font-weight: 500; }
 /* Inline change click target */
 #previewBody [data-ct-pair] { cursor: pointer; }
+/* Hide footnote ref badges — sidebar provides annotation access; hover linkage uses data-ct-pair */
+.ct-ref { display: none; }
 
 /* ── Simple view: settled text + change gutter ── */
 [data-view-mode="simple"] .ct-del,
