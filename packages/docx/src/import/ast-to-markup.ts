@@ -1,8 +1,9 @@
 import { toChangeTracksAuthor } from '../shared/author-mapper.js';
 import { toShortDate } from '../shared/date-utils.js';
 import type { ImportStats } from '../types.js';
+import type { EnrichmentMap, RevisionEnrichment } from './correlation-engine.js';
 import type { PandocAst, PandocBlock, PandocInline } from './pandoc-runner.js';
-import type { DocxComment } from './comment-extractor.js';
+import type { DocxComment, DrawingElement, RunFragment } from './xml-metadata-extractor.js';
 
 // ---------------------------------------------------------------------------
 // Options
@@ -16,6 +17,7 @@ export interface AstToMarkupOptions {
     rangedIds: Set<string>;
     replies: Map<string, string[]>;
   };
+  enrichment?: EnrichmentMap;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,6 +37,7 @@ interface Footnote {
     depth: number;
   }>;
   imageDimensions?: string;  // e.g., "2.5in x 1.8in"
+  extraLines?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -48,6 +51,8 @@ export function astToMarkup(
   // Per-call mutable state
   let ctIdCounter = 0;
   const footnotes: Footnote[] = [];
+  let currentBlockPath: number[] = [];
+  let currentSpanIndex = 0;
   const wordComments = new Map<
     string,
     { author: string; date: string; text: string }
@@ -128,6 +133,61 @@ export function astToMarkup(
     return id;
   }
 
+  function addFootnoteExtraLines(ctId: number, lines: string[]): void {
+    const fn = footnotes.find((f) => f.id === ctId);
+    if (fn) {
+      if (!fn.extraLines) fn.extraLines = [];
+      fn.extraLines.push(...lines);
+    }
+  }
+
+  function buildImagePositionLines(drawing: DrawingElement): string[] {
+    const lines: string[] = [];
+    lines.push('image-float: anchor');
+    if (drawing.horizontalPosition?.anchor) {
+      lines.push(`image-h-anchor: ${drawing.horizontalPosition.anchor}`);
+    }
+    if (drawing.horizontalPosition?.offset != null) {
+      lines.push(`image-h-offset: ${drawing.horizontalPosition.offset}`);
+    } else if (drawing.horizontalPosition?.align) {
+      lines.push(`image-h-align: ${drawing.horizontalPosition.align}`);
+    }
+    if (drawing.verticalPosition?.anchor) {
+      lines.push(`image-v-anchor: ${drawing.verticalPosition.anchor}`);
+    }
+    if (drawing.verticalPosition?.offset != null) {
+      lines.push(`image-v-offset: ${drawing.verticalPosition.offset}`);
+    } else if (drawing.verticalPosition?.align) {
+      lines.push(`image-v-align: ${drawing.verticalPosition.align}`);
+    }
+    if (drawing.wrapType) {
+      lines.push(`image-wrap: ${drawing.wrapType}`);
+    }
+    if (drawing.wrapSide) {
+      lines.push(`image-wrap-side: ${drawing.wrapSide}`);
+    }
+    if (drawing.behindDocument != null) {
+      lines.push(`image-z: ${drawing.behindDocument ? 'background' : 'foreground'}`);
+    }
+    if (
+      drawing.distT != null &&
+      drawing.distB != null &&
+      drawing.distL != null &&
+      drawing.distR != null
+    ) {
+      lines.push(`image-dist: ${drawing.distT} ${drawing.distB} ${drawing.distL} ${drawing.distR}`);
+    }
+    return lines;
+  }
+
+  function addImagePositionMetadata(ctId: number, src: string): void {
+    const basename = src.split('/').pop() || '';
+    const imgEnrichment = options.enrichment?.getImageEnrichment(basename);
+    if (imgEnrichment && !imgEnrichment.inline) {
+      addFootnoteExtraLines(ctId, buildImagePositionLines(imgEnrichment));
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Span helpers
   // -------------------------------------------------------------------------
@@ -161,7 +221,8 @@ export function astToMarkup(
     let k = j;
     while (k < inlines.length) {
       const node = inlines[k];
-      if (node.t === 'Space') {
+      // Skip whitespace nodes (Space, SoftBreak) between deletion and insertion
+      if (node.t === 'Space' || node.t === 'SoftBreak') {
         k++;
         continue;
       }
@@ -179,6 +240,37 @@ export function astToMarkup(
       break;
     }
     return null;
+  }
+
+  // -------------------------------------------------------------------------
+  // Enrichment helper
+  // -------------------------------------------------------------------------
+
+  function renderFormattedText(runs: RunFragment[]): string {
+    let result = '';
+    for (const run of runs) {
+      let text = run.text;
+      if (run.strikethrough) text = `~~${text}~~`;
+      if (run.bold) text = `**${text}**`;
+      if (run.italic) text = `*${text}*`;
+      if (run.underline) text = `<u>${text}</u>`;
+      result += text;
+    }
+    return result;
+  }
+
+  function getCurrentEnrichment(): RevisionEnrichment | undefined {
+    return options.enrichment?.getRevisionEnrichment(
+      currentBlockPath,
+      currentSpanIndex
+    );
+  }
+
+  function getEnrichedText(content: PandocInline[]): string {
+    const enrichment = getCurrentEnrichment();
+    return enrichment && enrichment.splitCount === 1
+      ? renderFormattedText(enrichment.runs)
+      : renderInlineContent(content);
   }
 
   // -------------------------------------------------------------------------
@@ -212,12 +304,51 @@ export function astToMarkup(
               meta.author, meta.date, 'del', 'proposed',
               widthAttr && heightAttr ? { width: widthAttr[1], height: heightAttr[1] } : undefined,
             );
+            addImagePositionMetadata(ctId, src);
             result += `{--![${alt}](${src})--}[^ct-${ctId}]`;
+            currentSpanIndex++;
             i++;
             continue;
           }
 
-          const delText = renderInlineContent(content);
+          // Check for boundary splitting
+          const delEnrichment = getCurrentEnrichment();
+          if (delEnrichment && delEnrichment.splitCount > 1 && delEnrichment.splitBoundaries) {
+            // Emit one CriticMarkup span per boundary element
+            for (const boundary of delEnrichment.splitBoundaries) {
+              const text = renderFormattedText(boundary.runs);
+              const ctId = addChangeFootnote(
+                boundary.author,
+                boundary.date,
+                'del',
+                'proposed'
+              );
+              result += `{--${text}--}[^ct-${ctId}]`;
+            }
+            currentSpanIndex++;
+            i++;
+            continue;
+          }
+
+          // Check for merge-detected diagnostic
+          if (delEnrichment && delEnrichment.mergeDetected) {
+            const delText = renderFormattedText(delEnrichment.runs);
+            const ctId = addChangeFootnote(
+              meta.author,
+              meta.date,
+              'del',
+              'proposed'
+            );
+            addFootnoteExtraLines(ctId, [
+              `merge-detected: ${delEnrichment.mergeDetected} original revisions`,
+            ]);
+            result += `{--${delText}--}[^ct-${ctId}]`;
+            currentSpanIndex++;
+            i++;
+            continue;
+          }
+
+          const delText = getEnrichedText(content);
 
           if (options.mergeSubstitutions) {
             // Look ahead for substitution
@@ -229,7 +360,9 @@ export function astToMarkup(
                 meta.author === insMeta.author &&
                 meta.date === insMeta.date
               ) {
-                const insText = renderInlineContent(
+                // Advance past the deletion span for enrichment
+                currentSpanIndex++;
+                const insText = getEnrichedText(
                   getSpanContent(insNode)
                 );
                 const ctId = addChangeFootnote(
@@ -239,6 +372,7 @@ export function astToMarkup(
                   'proposed'
                 );
                 result += `{~~${delText}~>${insText}~~}[^ct-${ctId}]`;
+                currentSpanIndex++;
 
                 // Process skipped comment spans
                 if (options.comments) {
@@ -280,6 +414,7 @@ export function astToMarkup(
             'proposed'
           );
           result += `{--${delText}--}[^ct-${ctId}]`;
+          currentSpanIndex++;
           i++;
           continue;
         }
@@ -301,12 +436,51 @@ export function astToMarkup(
               meta.author, meta.date, 'ins', 'proposed',
               widthAttr && heightAttr ? { width: widthAttr[1], height: heightAttr[1] } : undefined,
             );
+            addImagePositionMetadata(ctId, src);
             result += `{++![${alt}](${src})++}[^ct-${ctId}]`;
+            currentSpanIndex++;
             i++;
             continue;
           }
 
-          const text = renderInlineContent(content);
+          // Check for boundary splitting
+          const enrichment = getCurrentEnrichment();
+          if (enrichment && enrichment.splitCount > 1 && enrichment.splitBoundaries) {
+            // Emit one CriticMarkup span per boundary element
+            for (const boundary of enrichment.splitBoundaries) {
+              const text = renderFormattedText(boundary.runs);
+              const ctId = addChangeFootnote(
+                boundary.author,
+                boundary.date,
+                'ins',
+                'proposed'
+              );
+              result += `{++${text}++}[^ct-${ctId}]`;
+            }
+            currentSpanIndex++;
+            i++;
+            continue;
+          }
+
+          // Check for merge-detected diagnostic
+          if (enrichment && enrichment.mergeDetected) {
+            const text = renderFormattedText(enrichment.runs);
+            const ctId = addChangeFootnote(
+              meta.author,
+              meta.date,
+              'ins',
+              'proposed'
+            );
+            addFootnoteExtraLines(ctId, [
+              `merge-detected: ${enrichment.mergeDetected} original revisions`,
+            ]);
+            result += `{++${text}++}[^ct-${ctId}]`;
+            currentSpanIndex++;
+            i++;
+            continue;
+          }
+
+          const text = getEnrichedText(content);
           const ctId = addChangeFootnote(
             meta.author,
             meta.date,
@@ -314,6 +488,7 @@ export function astToMarkup(
             'proposed'
           );
           result += `{++${text}++}[^ct-${ctId}]`;
+          currentSpanIndex++;
           i++;
           continue;
         }
@@ -321,17 +496,61 @@ export function astToMarkup(
         // --- Comment start ---
         if (options.comments && classes.includes('comment-start')) {
           const meta = getSpanKvs(node);
-          const commentText = renderInlineContent(getSpanContent(node));
-          wordComments.set(meta.id, {
-            author: meta.author,
-            date: meta.date,
-            text: commentText,
-          });
-          activeRanges.set(meta.id, {
-            author: meta.author,
-            date: meta.date,
-            text: commentText,
-          });
+          const children = getSpanContent(node);
+
+          // Check for nested comment-end (zero-length comment range).
+          // Pandoc nests comment-end inside comment-start when the range
+          // has zero length and no text content.
+          const hasNestedEnd = children.some(
+            (child: PandocInline) =>
+              child.t === 'Span' &&
+              getSpanClasses(child).includes('comment-end')
+          );
+
+          if (hasNestedEnd) {
+            // Self-closing comment: look up text from commentData
+            // (xml-metadata-extractor already parsed word/comments.xml)
+            const commentFromXml = options.commentData?.allComments.get(meta.id);
+            const commentText = commentFromXml?.text
+              || renderInlineContent(children);
+            const ctId = addStandaloneCommentFootnote(
+              meta.author || commentFromXml?.author || 'Unknown',
+              meta.date || commentFromXml?.date || '',
+              commentText
+            );
+            // Attach replies
+            const replies = options.commentData?.replies.get(meta.id);
+            if (replies) {
+              for (const replyId of replies) {
+                const reply = options.commentData?.allComments.get(replyId);
+                if (reply) {
+                  addCommentToFootnote(
+                    ctId,
+                    reply.author,
+                    reply.date,
+                    reply.text,
+                    1
+                  );
+                }
+              }
+            }
+            result += `[^ct-${ctId}]`;
+            consumedCommentIds.add(meta.id);
+            consumedCommentScId.set(meta.id, ctId);
+          } else {
+            // Normal case: store and wait for sibling comment-end
+            const commentText = renderInlineContent(children);
+            wordComments.set(meta.id, {
+              author: meta.author,
+              date: meta.date,
+              text: commentText,
+            });
+            activeRanges.set(meta.id, {
+              author: meta.author,
+              date: meta.date,
+              text: commentText,
+            });
+          }
           i++;
           continue;
         }
@@ -391,19 +610,27 @@ export function astToMarkup(
         }
       }
 
-      // Plain image — intercept to attach synthetic footnote with dimensions
+      // Plain image — highlight-wrap and attach synthetic footnote with metadata
       if (node.t === 'Image') {
         const imgAttrs = node.c[0][2] as [string, string][];
         const alt = renderInlineContent(node.c[1]);
         const src = node.c[2][0];
         const widthAttr = imgAttrs.find(([k]: [string, string]) => k === 'width');
         const heightAttr = imgAttrs.find(([k]: [string, string]) => k === 'height');
-        if (widthAttr && heightAttr) {
+
+        // Check if there's any metadata worth preserving
+        const hasDimensions = !!(widthAttr && heightAttr);
+        const basename = src.split('/').pop() || '';
+        const imgEnrichment = options.enrichment?.getImageEnrichment(basename);
+        const hasPositionMetadata = !!(imgEnrichment && !imgEnrichment.inline);
+
+        if (hasDimensions || hasPositionMetadata) {
           const ctId = addChangeFootnote(
             '@system', new Date().toISOString(), 'image', 'proposed',
-            { width: widthAttr[1], height: heightAttr[1] },
+            hasDimensions ? { width: widthAttr![1], height: heightAttr![1] } : undefined,
           );
-          result += `![${alt}](${src})[^ct-${ctId}]`;
+          addImagePositionMetadata(ctId, src);
+          result += `{==![${alt}](${src})==}[^ct-${ctId}]`;
         } else {
           result += `![${alt}](${src})`;
         }
@@ -424,7 +651,7 @@ export function astToMarkup(
     for (const node of inlines) {
       result += renderInline(node);
     }
-    return result;
+    return result.replace(/\u200B/g, '');
   }
 
   function renderInline(node: PandocInline): string {
@@ -487,10 +714,11 @@ export function astToMarkup(
   // Block rendering
   // -------------------------------------------------------------------------
 
-  function renderBlocks(blocks: PandocBlock[]): string {
+  function renderBlocks(blocks: PandocBlock[], parentPath: number[] = []): string {
     const parts: string[] = [];
-    for (const block of blocks) {
-      const rendered = renderBlock(block);
+    for (let idx = 0; idx < blocks.length; idx++) {
+      const blockPath = [...parentPath, idx];
+      const rendered = renderBlock(blocks[idx], blockPath);
       if (rendered !== null) {
         parts.push(rendered);
       }
@@ -498,7 +726,11 @@ export function astToMarkup(
     return parts.join('\n\n');
   }
 
-  function renderBlock(block: PandocBlock): string | null {
+  function renderBlock(block: PandocBlock, blockPath: number[] = []): string | null {
+    // Set block path and reset span index for enrichment tracking
+    currentBlockPath = blockPath;
+    currentSpanIndex = 0;
+
     switch (block.t) {
       case 'Para':
         return renderInlines(block.c);
@@ -513,17 +745,17 @@ export function astToMarkup(
       }
 
       case 'BulletList':
-        return renderBulletList(block.c);
+        return renderBulletList(block.c, blockPath);
 
       case 'OrderedList':
-        return renderOrderedList(block.c);
+        return renderOrderedList(block.c, blockPath);
 
       case 'Table':
         return renderTable(block);
 
       case 'BlockQuote':
         return block.c
-          .map((b: PandocBlock) => renderBlock(b))
+          .map((b: PandocBlock, i: number) => renderBlock(b, [...blockPath, i]))
           .filter(Boolean)
           .map((l: string) => '> ' + l.replace(/\n/g, '\n> '))
           .join('\n>\n');
@@ -537,7 +769,7 @@ export function astToMarkup(
         return '---';
 
       case 'Div':
-        return renderBlocks(block.c[1]);
+        return renderBlocks(block.c[1], blockPath);
 
       case 'RawBlock':
         return block.c[1];
@@ -555,10 +787,10 @@ export function astToMarkup(
     }
   }
 
-  function renderBulletList(items: PandocBlock[][]): string {
+  function renderBulletList(items: PandocBlock[][], parentPath: number[]): string {
     const lines: string[] = [];
-    for (const item of items) {
-      const content = renderListItem(item);
+    for (let itemIdx = 0; itemIdx < items.length; itemIdx++) {
+      const content = renderListItem(items[itemIdx], [...parentPath, itemIdx]);
       const itemLines = content.split('\n');
       lines.push('- ' + itemLines[0]);
       for (let i = 1; i < itemLines.length; i++) {
@@ -568,12 +800,12 @@ export function astToMarkup(
     return lines.join('\n');
   }
 
-  function renderOrderedList(args: [any, PandocBlock[][]]): string {
+  function renderOrderedList(args: [any, PandocBlock[][]], parentPath: number[]): string {
     const [listAttrs, items] = args;
     const start: number = listAttrs[0] || 1;
     const lines: string[] = [];
     for (let idx = 0; idx < items.length; idx++) {
-      const content = renderListItem(items[idx]);
+      const content = renderListItem(items[idx], [...parentPath, idx]);
       const num = start + idx;
       const itemLines = content.split('\n');
       lines.push(`${num}. ` + itemLines[0]);
@@ -584,9 +816,9 @@ export function astToMarkup(
     return lines.join('\n');
   }
 
-  function renderListItem(blocks: PandocBlock[]): string {
+  function renderListItem(blocks: PandocBlock[], parentPath: number[]): string {
     return blocks
-      .map((b) => renderBlock(b))
+      .map((b, i) => renderBlock(b, [...parentPath, i]))
       .filter(Boolean)
       .join('\n');
   }
@@ -679,6 +911,12 @@ export function astToMarkup(
 
       if (fn.imageDimensions) {
         lines.push(`    image-dimensions: ${fn.imageDimensions}`);
+      }
+
+      if (fn.extraLines) {
+        for (const line of fn.extraLines) {
+          lines.push(`    ${line}`);
+        }
       }
 
       for (const comment of fn.comments) {

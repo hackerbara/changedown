@@ -1,19 +1,21 @@
 // changetracks/config — shared config schema, types, and TOML loader
+//
+// Core owns the canonical ChangeTracksConfig interface.
+// CLI extends it with hooks, protocol, and meta sections.
 
-export type PolicyMode = 'strict' | 'safety-net' | 'permissive';
-export type CreationTracking = 'none' | 'footnote' | 'inline';
+import {
+  DEFAULT_CONFIG as CORE_DEFAULT,
+  type ChangeTracksConfig as CoreConfig,
+} from '@changetracks/core';
 
-export interface ChangeTracksConfig {
-  tracking: {
-    include: string[];
-    exclude: string[];
-    default: 'tracked' | 'untracked';
-    auto_header: boolean;
-  };
-  author: {
-    default: string;
-    enforcement: 'optional' | 'required';
-  };
+// Re-export core types so downstream consumers can import from 'changetracks/config'
+export { type PolicyMode, type CreationTracking, type HumanAgentSplit, type CoherenceConfig } from '@changetracks/core';
+
+// ---------------------------------------------------------------------------
+// CLIConfig — extends core with CLI-only sections
+// ---------------------------------------------------------------------------
+
+export interface CLIConfig extends CoreConfig {
   hooks: {
     enforcement: 'warn' | 'block';
     exclude: string[];
@@ -21,51 +23,30 @@ export interface ChangeTracksConfig {
     intercept_bash: boolean;
     patch_wrap_experimental?: boolean;
   };
-  matching: {
-    mode: 'strict' | 'normalized';
-  };
-  hashline: {
-    enabled: boolean;
-    auto_remap: boolean;
-  };
-  response?: {
-    affected_lines?: boolean;
-  };
-  settlement: {
-    auto_on_approve: boolean;
-    auto_on_reject: boolean;
-  };
-  review: {
-    reasonRequired: { human: boolean; agent: boolean };
-  };
-  policy: {
-    mode: PolicyMode;
-    creation_tracking: CreationTracking;
-    default_view?: 'review' | 'changes' | 'settled';
-    view_policy?: 'suggest' | 'require';
-  };
   protocol: {
     mode: 'classic' | 'compact';
     level: 1 | 2;
     reasoning: 'optional' | 'required';
     batch_reasoning: 'optional' | 'required';
   };
-  meta?: {
-    compact_threshold: number;
-  };
 }
 
-export const DEFAULT_CONFIG: ChangeTracksConfig = {
-  tracking: {
-    include: ['**/*.md'],
-    exclude: ['node_modules/**', 'dist/**'],
-    default: 'tracked',
-    auto_header: true,
-  },
-  author: {
-    default: '',
-    enforcement: 'optional',
-  },
+// ---------------------------------------------------------------------------
+// Backward compat: ChangeTracksConfig = CLIConfig
+//
+// All downstream packages (hooks-impl, mcp-server, opencode-plugin) and
+// ~80+ test files import `ChangeTracksConfig` from the CLI. To avoid a
+// massive rename, we keep the alias.
+// ---------------------------------------------------------------------------
+
+export type ChangeTracksConfig = CLIConfig;
+
+// ---------------------------------------------------------------------------
+// Default config
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_CONFIG: CLIConfig = {
+  ...CORE_DEFAULT,
   hooks: {
     enforcement: 'warn',
     exclude: [],
@@ -73,34 +54,11 @@ export const DEFAULT_CONFIG: ChangeTracksConfig = {
     intercept_bash: false,
     patch_wrap_experimental: false,
   },
-  matching: {
-    mode: 'normalized',
-  },
-  hashline: {
-    enabled: false,
-    auto_remap: true,
-  },
-  settlement: {
-    auto_on_approve: true,
-    auto_on_reject: true,
-  },
-  review: {
-    reasonRequired: { human: false, agent: true },
-  },
-  policy: {
-    mode: 'safety-net',
-    creation_tracking: 'footnote',
-    default_view: 'review' as const,
-    view_policy: 'suggest' as const,
-  },
   protocol: {
     mode: 'classic',
     level: 2,
     reasoning: 'optional',
     batch_reasoning: 'optional',
-  },
-  meta: {
-    compact_threshold: 80,
   },
 };
 

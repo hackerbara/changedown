@@ -490,12 +490,109 @@ When(
 );
 
 Then(
-  'the inline markup shows the amended substitution',
+  'the amend created a new superseding change',
   function (this: ChangeTracksWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
     assert.equal(data.amended, true);
-    assert.equal(data.inline_updated, true);
+    assert.ok(data.new_change_id, 'Expected new_change_id in supersede result');
+    // Store the new change ID for later steps
+    this.lastSupersedeNewId = data.new_change_id as string;
+  },
+);
+
+Then(
+  'the original change {word} is now rejected',
+  async function (this: ChangeTracksWorld, changeId: string) {
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    await this.ctx.assertFootnoteStatus(filePath, changeId, 'rejected');
+  },
+);
+
+Then(
+  'the superseding change has {string} in its footnote',
+  async function (this: ChangeTracksWorld, expected: string) {
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    const disk = await this.ctx.readDisk(filePath);
+    const ref = `[^${this.lastSupersedeNewId}]:`;
+    const idx = disk.indexOf(ref);
+    assert.ok(idx >= 0, `Footnote ${ref} not found in file`);
+    const section = disk.slice(idx);
+    // Limit to this footnote section (until next footnote or end)
+    const nextFootnote = section.indexOf('\n[^ct-', 1);
+    const footnoteText = nextFootnote >= 0 ? section.slice(0, nextFootnote) : section;
+    assert.ok(
+      footnoteText.includes(expected),
+      `Expected "${expected}" in footnote for ${this.lastSupersedeNewId} but got:\n${footnoteText}`,
+    );
+  },
+);
+
+Then(
+  'the original change has {string} in its footnote',
+  async function (this: ChangeTracksWorld, expected: string) {
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    const disk = await this.ctx.readDisk(filePath);
+    const ref = '[^ct-1]:';
+    const idx = disk.indexOf(ref);
+    assert.ok(idx >= 0, `Footnote ${ref} not found in file`);
+    const section = disk.slice(idx);
+    const nextFootnote = section.indexOf('\n[^ct-', 1);
+    const footnoteText = nextFootnote >= 0 ? section.slice(0, nextFootnote) : section;
+    assert.ok(
+      footnoteText.includes(expected),
+      `Expected "${expected}" in ct-1 footnote but got:\n${footnoteText}`,
+    );
+  },
+);
+
+When(
+  'agent {string} approves the superseding change with reasoning {string}',
+  async function (this: ChangeTracksWorld, author: string, reasoning: string) {
+    if (!this.ctx) await this.setupContext();
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    try {
+      this.lastResult = await this.ctx.review(filePath, {
+        reviews: [{ change_id: this.lastSupersedeNewId, decision: 'approve', reason: reasoning }],
+        author,
+      });
+    } catch (err) {
+      this.lastError = err as Error;
+    }
+  },
+);
+
+When(
+  'agent {string} approves the superseding change',
+  async function (this: ChangeTracksWorld, author: string) {
+    if (!this.ctx) await this.setupContext();
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    try {
+      this.lastResult = await this.ctx.review(filePath, {
+        reviews: [{ change_id: this.lastSupersedeNewId, decision: 'approve', reason: 'Approved' }],
+        author,
+      });
+    } catch (err) {
+      this.lastError = err as Error;
+    }
+  },
+);
+
+Then(
+  'the superseding change has status {string}',
+  async function (this: ChangeTracksWorld, status: string) {
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    await this.ctx.assertFootnoteStatus(filePath, this.lastSupersedeNewId, status);
   },
 );
 
@@ -572,33 +669,77 @@ When(
 );
 
 When(
-  'agent {string} amends ct-1 \\(round {int})',
+  'agent {string} amends the latest change \\(round {int} supersede)',
   async function (this: ChangeTracksWorld, author: string, round: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const newText = round === 1 ? 'JWT authentication' : 'JWT with RS256 signing';
-    this.lastResult = await this.ctx.amend(filePath, 'ct-1', {
+    // Amend the latest change in the supersede chain
+    const targetId = this.lastSupersedeNewId || 'ct-1';
+    this.lastResult = await this.ctx.amend(filePath, targetId, {
       new_text: newText,
       reason: `Amendment round ${round}`,
+      author,
+    });
+    // Track the new superseding change ID
+    const data = this.ctx.parseResult(this.lastResult);
+    assert.ok(data.new_change_id, `Expected new_change_id in round ${round} amend result`);
+    this.lastSupersedeNewId = data.new_change_id as string;
+  },
+);
+
+When(
+  'agent {string} requests changes on the latest superseding change',
+  async function (this: ChangeTracksWorld, author: string) {
+    if (!this.ctx) await this.setupContext();
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    this.lastResult = await this.ctx.review(filePath, {
+      reviews: [{ change_id: this.lastSupersedeNewId, decision: 'request_changes', reason: 'Needs more specificity' }],
       author,
     });
   },
 );
 
 When(
-  'agent {string} requests changes again on ct-1',
+  'agent {string} approves the latest superseding change',
   async function (this: ChangeTracksWorld, author: string) {
     if (!this.ctx) await this.setupContext();
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'request_changes', reason: 'JWT is good but add RS256' }],
+      reviews: [{ change_id: this.lastSupersedeNewId, decision: 'approve', reason: 'Approved' }],
       author,
     });
   },
 );
 
+Then(
+  'the supersede chain has {int} rejected predecessors',
+  async function (this: ChangeTracksWorld, count: number) {
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    const disk = await this.ctx.readDisk(filePath);
+    const rejectedMatches = disk.match(/\|\s*rejected\b/g);
+    assert.ok(rejectedMatches, 'Expected rejected footnotes in supersede chain');
+    assert.equal(rejectedMatches!.length, count, `Expected ${count} rejected predecessors, found ${rejectedMatches!.length}`);
+  },
+);
+
+Then(
+  'the latest superseding change has status {string}',
+  async function (this: ChangeTracksWorld, status: string) {
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    await this.ctx.assertFootnoteStatus(filePath, this.lastSupersedeNewId, status);
+  },
+);
+
+// Keep old steps for AJ2 Scenario 3 and other non-supersede scenarios
 When(
   'agent {string} approves ct-1',
   async function (this: ChangeTracksWorld, author: string) {
@@ -803,10 +944,13 @@ When(
 );
 
 Then(
-  'the response is an error \\(cross-author amendment blocked)',
+  'the cross-author amend succeeds as a supersede',
   function (this: ChangeTracksWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
-    assert.equal(this.lastResult.isError, true, 'Expected an error response');
+    assert.notEqual(this.lastResult.isError, true, 'Expected success for cross-author supersede');
+    const data = this.ctx.parseResult(this.lastResult);
+    assert.ok(data.new_change_id, 'Expected new_change_id in supersede result');
+    this.lastSupersedeNewId = data.new_change_id as string;
   },
 );
 
@@ -848,6 +992,26 @@ Then(
     const approvalMatches = disk.match(/approved:|approval|accepted/gi);
     assert.ok(approvalMatches, 'Expected approval entries');
     assert.ok(approvalMatches!.length >= count, `Expected at least ${count} approval-related entries, found ${approvalMatches!.length}`);
+  },
+);
+
+Then(
+  'the footnote contains {int} approval entries for the superseding change',
+  async function (this: ChangeTracksWorld, count: number) {
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    const disk = await this.ctx.readDisk(filePath);
+    // Find the superseding change's footnote section
+    const ref = `[^${this.lastSupersedeNewId}]:`;
+    const idx = disk.indexOf(ref);
+    assert.ok(idx >= 0, `Footnote ${ref} not found in file`);
+    const section = disk.slice(idx);
+    const nextFootnote = section.indexOf('\n[^ct-', 1);
+    const footnoteText = nextFootnote >= 0 ? section.slice(0, nextFootnote) : section;
+    const approvalMatches = footnoteText.match(/approved:|approval|accepted/gi);
+    assert.ok(approvalMatches, 'Expected approval entries in superseding change footnote');
+    assert.ok(approvalMatches!.length >= count, `Expected at least ${count} approval-related entries in superseding change, found ${approvalMatches!.length}`);
   },
 );
 
@@ -1161,15 +1325,17 @@ When(
 );
 
 When(
-  'agent A tries to propose a change on an overlapping text span',
+  'agent A proposes a change on overlapping text \\(resolved via committed-text cascade)',
   async function (this: ChangeTracksWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
+      // This targets text that overlaps with Agent B's CriticMarkup.
+      // The matching cascade finds it via committed-text view (level 5).
       this.lastResult = await this.ctx.propose(filePath, {
-        old_text: 'has hello world content.\nIt also',
-        new_text: 'has hola mundo.\nIt also',
-        reason: 'Agent A overlapping',
+        old_text: 'additional text',
+        new_text: 'extra content',
+        reason: 'Agent A targeting different text via cascade',
       });
     } catch (err) {
       this.lastError = err as Error;
@@ -1178,27 +1344,27 @@ When(
 );
 
 Then(
-  'agent A gets an error \\(text no longer matches due to CriticMarkup insertion)',
-  function (this: ChangeTracksWorld) {
+  'both changes coexist in the document',
+  async function (this: ChangeTracksWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
-    assert.equal(this.lastResult.isError, true, 'Expected error for overlapping text');
+    assert.notEqual(this.lastResult.isError, true, 'Expected success for cascade-resolved match');
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    const disk = await this.ctx.readDisk(filePath);
+    // Both CriticMarkup substitutions should exist
+    assert.ok(disk.includes('[^ct-1]'), 'Expected ct-1 change');
+    assert.ok(disk.includes('[^ct-2]'), 'Expected ct-2 change');
   },
 );
 
-When(
-  'agent A re-reads and proposes on different, still-available text',
-  async function (this: ChangeTracksWorld) {
+Then(
+  'the document has {int} footnotes',
+  async function (this: ChangeTracksWorld, count: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    try {
-      this.lastResult = await this.ctx.propose(filePath, {
-        old_text: 'additional text',
-        new_text: 'extra content',
-        reason: 'Agent A targeting different text',
-      });
-    } catch (err) {
-      this.lastError = err as Error;
-    }
+    const disk = await this.ctx.readDisk(filePath);
+    const footnoteMatches = disk.match(/\[\^ct-\d+\]:/g) || [];
+    assert.equal(footnoteMatches.length, count, `Expected ${count} footnotes, found ${footnoteMatches.length}`);
   },
 );
 
@@ -1734,7 +1900,7 @@ When(
 );
 
 When(
-  'agent amends ct-1 incorporating feedback',
+  'agent amends ct-1 incorporating feedback \\(supersede)',
   async function (this: ChangeTracksWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
@@ -1744,17 +1910,31 @@ When(
       reason: 'Incorporated human feedback about rollback',
       author: 'ai:assistant',
     });
+    // Track the new superseding change ID
+    const data = this.ctx.parseResult(this.lastResult);
+    assert.ok(data.new_change_id, 'Expected new_change_id in supersede result');
+    this.lastSupersedeNewId = data.new_change_id as string;
+  },
+);
+
+Then(
+  'the amend created a new superseding change for ct-1',
+  function (this: ChangeTracksWorld) {
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
+    assert.ok(this.lastResult, 'No MCP result available');
+    assert.notEqual(this.lastResult.isError, true, 'Expected success');
   },
 );
 
 When(
-  'human accepts the amended ct-1 via core accept',
+  'human accepts the superseding change via core accept',
   async function (this: ChangeTracksWorld) {
     if (!this.ctx) await this.setupContext();
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'Looks good with rollback' }],
+      reviews: [{ change_id: this.lastSupersedeNewId, decision: 'approve', reason: 'Looks good with rollback' }],
       author: 'human:editor',
     });
     this.lastResult = await this.ctx.review(filePath, { settle: true });
@@ -1775,13 +1955,28 @@ Then(
 );
 
 Then(
+  'the footnote contains the full deliberation trail for the supersede chain',
+  async function (this: ChangeTracksWorld) {
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    const disk = await this.ctx.readDisk(filePath);
+    assert.ok(disk.includes('[^ct-1]:'), 'Expected ct-1 footnote');
+    assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
+    assert.ok(disk.includes(`[^${this.lastSupersedeNewId}]:`), `Expected ${this.lastSupersedeNewId} footnote`);
+    assert.ok(disk.includes('ai:assistant'), 'Expected ai:assistant in trail');
+    assert.ok(disk.includes('supersedes:'), 'Expected supersedes cross-reference');
+  },
+);
+
+// Keep the old deliberation trail step for other scenarios that still reference it
+Then(
   'the footnote contains the full deliberation trail',
   async function (this: ChangeTracksWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
     assert.ok(disk.includes('[^ct-1]:'), 'Expected ct-1 footnote');
-    assert.ok(disk.includes('ai:assistant'), 'Expected ai:assistant in trail');
+    assert.ok(disk.includes('ai:assistant') || disk.includes('ai:proposer'), 'Expected agent in trail');
   },
 );
 

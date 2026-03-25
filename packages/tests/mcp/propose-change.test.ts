@@ -57,7 +57,7 @@ describe('handleProposeChange', () => {
     await fs.writeFile(filePath, 'The quick brown fox jumps over the lazy dog.');
 
     const result = await handleProposeChange(
-      { file: filePath, old_text: 'quick brown', new_text: 'slow red' },
+      { file: filePath, old_text: 'quick brown', new_text: 'slow red', reason: 'test' },
       resolver,
       state
     );
@@ -74,7 +74,7 @@ describe('handleProposeChange', () => {
     await fs.writeFile(filePath, 'The quick brown fox jumps over the lazy dog.');
 
     const result = await handleProposeChange(
-      { file: filePath, old_text: 'quick brown', new_text: 'slow red' },
+      { file: filePath, old_text: 'quick brown', new_text: 'slow red', reason: 'test' },
       resolver,
       state
     );
@@ -101,7 +101,7 @@ describe('handleProposeChange', () => {
     await fs.writeFile(filePath, 'The quick brown fox jumps over the lazy dog.');
 
     const result = await handleProposeChange(
-      { file: filePath, old_text: ' brown', new_text: '' },
+      { file: filePath, old_text: ' brown', new_text: '', reason: 'test' },
       resolver,
       state
     );
@@ -120,7 +120,7 @@ describe('handleProposeChange', () => {
     await fs.writeFile(filePath, 'The quick fox jumps.');
 
     const result = await handleProposeChange(
-      { file: filePath, old_text: '', new_text: ' brown', insert_after: 'quick' },
+      { file: filePath, old_text: '', new_text: ' brown', insert_after: 'quick', reason: 'test' },
       resolver,
       state
     );
@@ -183,7 +183,7 @@ describe('handleProposeChange', () => {
     await fs.writeFile(filePath, 'Hello world.');
 
     const result = await handleProposeChange(
-      { file: filePath, old_text: 'xyz not here', new_text: 'replacement' },
+      { file: filePath, old_text: 'xyz not here', new_text: 'replacement', reason: 'test' },
       resolver,
       state
     );
@@ -197,7 +197,7 @@ describe('handleProposeChange', () => {
     await fs.writeFile(filePath, 'The quick brown fox.');
 
     const result = await handleProposeChange(
-      { file: filePath, oldText: 'quick brown', newText: 'slow red' },
+      { file: filePath, oldText: 'quick brown', newText: 'slow red', reason: 'test' },
       resolver,
       state
     );
@@ -235,7 +235,7 @@ describe('handleProposeChange', () => {
     await fs.writeFile(filePath, 'Some notes here.');
 
     const result = await handleProposeChange(
-      { file: 'docs/notes.md', old_text: 'Some', new_text: 'My' },
+      { file: 'docs/notes.md', old_text: 'Some', new_text: 'My', reason: 'test' },
       resolver,
       state
     );
@@ -277,7 +277,7 @@ describe('handleProposeChange', () => {
     await fs.writeFile(filePath, 'Hello world.');
 
     const result = await handleProposeChange(
-      { file: filePath, old_text: 'world', new_text: 'earth', author: 'ai:claude-sonnet-4.5' },
+      { file: filePath, old_text: 'world', new_text: 'earth', author: 'ai:claude-sonnet-4.5', reason: 'test' },
       resolver,
       state
     );
@@ -294,7 +294,7 @@ describe('handleProposeChange', () => {
     await fs.writeFile(filePath, 'Hello world.');
 
     const result = await handleProposeChange(
-      { file: filePath, old_text: 'world', new_text: 'earth' },
+      { file: filePath, old_text: 'world', new_text: 'earth', reason: 'test' },
       resolver,
       state
     );
@@ -314,7 +314,7 @@ describe('handleProposeChange', () => {
       await fs.writeFile(filePath, 'Hello world.');
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'world', new_text: 'earth' },
+        { file: filePath, old_text: 'world', new_text: 'earth', reason: 'test' },
         resolver,
         state,
       );
@@ -334,7 +334,7 @@ describe('handleProposeChange', () => {
       );
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'world', new_text: 'earth' },
+        { file: filePath, old_text: 'world', new_text: 'earth', reason: 'test' },
         resolver,
         state,
       );
@@ -358,7 +358,7 @@ describe('handleProposeChange', () => {
       const noAutoResolver = await createTestResolver(tmpDir, noAutoConfig);
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'world', new_text: 'earth' },
+        { file: filePath, old_text: 'world', new_text: 'earth', reason: 'test' },
         noAutoResolver,
         state,
       );
@@ -408,7 +408,7 @@ describe('handleProposeChange', () => {
       const requiredResolver = await createTestResolver(tmpDir, requiredConfig);
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'world', new_text: 'earth', author: 'ai:claude-sonnet-4.5' },
+        { file: filePath, old_text: 'world', new_text: 'earth', author: 'ai:claude-sonnet-4.5', reason: 'test' },
         requiredResolver,
         state
       );
@@ -446,7 +446,7 @@ describe('handleProposeChange', () => {
       await fs.writeFile(filePath, 'prefix text here');
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: '', new_text: '++ extra', insert_after: 'prefix', author: 'ai:test' },
+        { file: filePath, old_text: '', new_text: '++ extra', insert_after: 'prefix', author: 'ai:test', reason: 'test' },
         resolver, state,
       );
 
@@ -462,7 +462,7 @@ describe('handleProposeChange', () => {
       await fs.writeFile(filePath, 'replace ~this~ text');
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: '~this~', new_text: 'that', author: 'ai:test' },
+        { file: filePath, old_text: '~this~', new_text: 'that', author: 'ai:test', reason: 'test' },
         resolver, state,
       );
 
@@ -478,7 +478,7 @@ describe('handleProposeChange', () => {
       await fs.writeFile(filePath, 'The quick brown fox.');
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'quick ', new_text: '', author: 'ai:test' },
+        { file: filePath, old_text: 'quick ', new_text: '', author: 'ai:test', reason: 'test' },
         resolver, state,
       );
 
@@ -492,7 +492,7 @@ describe('handleProposeChange', () => {
       await fs.writeFile(filePath, 'prefix text');
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: '', new_text: ' brown', insert_after: 'prefix', author: 'ai:test' },
+        { file: filePath, old_text: '', new_text: ' brown', insert_after: 'prefix', author: 'ai:test', reason: 'test' },
         resolver, state,
       );
 
@@ -542,7 +542,7 @@ describe('handleProposeChange', () => {
       await fs.writeFile(filePath, 'The quick fox jumps.');
 
       const result = await handleProposeChange(
-        { file: filePath, new_text: ' brown', insert_after: 'quick', author: 'ai:test' },
+        { file: filePath, new_text: ' brown', insert_after: 'quick', author: 'ai:test', reason: 'test' },
         resolver, state,
       );
 
@@ -590,7 +590,7 @@ describe('handleProposeChange', () => {
       await fs.writeFile(filePath, content);
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'some text[^ct-1]', new_text: 'different text', author: 'ai:test' },
+        { file: filePath, old_text: 'some text[^ct-1]', new_text: 'different text', author: 'ai:test', reason: 'test' },
         resolver,
         state,
       );
@@ -606,7 +606,7 @@ describe('handleProposeChange', () => {
       const filePath = path.join(tmpDir, 'brand-new.md');
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: '', new_text: '# New Document\n\nThis is new content.' },
+        { file: filePath, old_text: '', new_text: '# New Document\n\nThis is new content.', reason: 'test' },
         resolver,
         state,
       );
@@ -632,7 +632,7 @@ describe('handleProposeChange', () => {
       const noAutoResolver = await createTestResolver(tmpDir, noAutoConfig);
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: '', new_text: 'Hello world.' },
+        { file: filePath, old_text: '', new_text: 'Hello world.', reason: 'test' },
         noAutoResolver,
         state,
       );
@@ -671,7 +671,7 @@ describe('handleProposeChange', () => {
 
       // "REST" appears in both prose (line 2) and footnote (line 4+5)
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'REST', new_text: 'GraphQL', author: 'ai:test' },
+        { file: filePath, old_text: 'REST', new_text: 'GraphQL', author: 'ai:test', reason: 'test' },
         resolver,
         state,
       );
@@ -687,7 +687,7 @@ describe('handleProposeChange', () => {
       await fs.writeFile(filePath, content);
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'REST', new_text: 'GraphQL', author: 'ai:test' },
+        { file: filePath, old_text: 'REST', new_text: 'GraphQL', author: 'ai:test', reason: 'test' },
         resolver,
         state,
       );
@@ -714,7 +714,7 @@ describe('handleProposeChange', () => {
       // the fake footnote would truncate too early.
       // This should find the text (it appears in prose content zone).
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'More REST content here', new_text: 'More GraphQL content here', author: 'ai:test' },
+        { file: filePath, old_text: 'More REST content here', new_text: 'More GraphQL content here', author: 'ai:test', reason: 'test' },
         resolver,
         state,
       );
@@ -740,7 +740,7 @@ describe('handleProposeChange', () => {
 
       // Agent proposes: change hyphen to en-dash (clean prose, no refs)
       const result = await handleProposeChange(
-        { file: filePath, old_text: '10-20 milliseconds', new_text: '10\u201320 milliseconds', author: 'ai:test' },
+        { file: filePath, old_text: '10-20 milliseconds', new_text: '10\u201320 milliseconds', author: 'ai:test', reason: 'test' },
         resolver,
         state,
       );
@@ -793,7 +793,7 @@ describe('handleProposeChange', () => {
 
       // Agent includes ref in old_text but also makes a real prose change
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'The value[^ct-1] is approximately correct.', new_text: 'The value is exactly correct.', author: 'ai:test' },
+        { file: filePath, old_text: 'The value[^ct-1] is approximately correct.', new_text: 'The value is exactly correct.', author: 'ai:test', reason: 'test' },
         resolver,
         state,
       );
@@ -860,6 +860,7 @@ describe('handleProposeChange', () => {
           old_text: 'inserted world',
           new_text: 'modified world',
           author: 'ai:test-model',
+          reason: 'test',
         },
         resolver,
         state,
@@ -894,6 +895,7 @@ describe('handleProposeChange', () => {
           old_text: 'new',
           new_text: 'newer',
           author: 'ai:test-model',
+          reason: 'test',
         },
         resolver,
         state,
@@ -950,6 +952,7 @@ describe('handleProposeChange', () => {
           at: '2:d4',
           op: '{~~inserted~>modified~~}',
           author: 'ai:test-model',
+          reason: 'test',
         },
         compactResolver,
         state,
@@ -987,6 +990,7 @@ describe('handleProposeChange', () => {
           at: '2:d4',
           op: '{~~new~>newer~~}',
           author: 'ai:test-model',
+          reason: 'test',
         },
         compactResolver,
         state,
@@ -1019,6 +1023,7 @@ describe('handleProposeChange', () => {
           at: '2:b2',
           op: '{~~world~>earth~~}',
           author: 'ai:test-model',
+          reason: 'test',
         },
         compactResolver,
         state,
@@ -1051,6 +1056,7 @@ describe('handleProposeChange', () => {
           at: '2:d4',
           op: '{~~new~>newer~~}',
           author: 'ai:test-model',
+          reason: 'test',
         },
         compactResolver,
         state,

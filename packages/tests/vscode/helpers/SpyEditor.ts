@@ -77,6 +77,9 @@ export class SpyEditor implements EditorPort {
     get activeHighlights(): RecordedDecoration[] { return this.getByIndex(9); }
     get moveFroms(): RecordedDecoration[] { return this.getByIndex(10); }
     get moveTos(): RecordedDecoration[] { return this.getByIndex(11); }
+    get settledRefs(): RecordedDecoration[] { return this.getByIndex(12); }
+    get settledDims(): RecordedDecoration[] { return this.getByIndex(13); }
+    get ghostDeletions(): RecordedDecoration[] { return this.getByIndex(14); }
 
     /** Total number of decoration types that were set */
     get callCount(): number { return this.calls.size; }

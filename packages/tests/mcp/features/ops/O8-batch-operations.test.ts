@@ -212,6 +212,7 @@ Third paragraph here.`;
     const classicCtx = new ScenarioContext({
       settlement: { auto_on_approve: false, auto_on_reject: false },
       hashline: { enabled: false, auto_remap: false },
+      response: { affected_lines: true },
     });
     await classicCtx.setup();
 

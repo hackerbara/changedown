@@ -60,7 +60,7 @@ describe('AJ2: Amendment negotiation cycle', () => {
     expect(disk2).toContain('suggestion');
     expect(disk2).toContain('ai:reviewer');
 
-    // ── Step 3: Original author amends based on feedback ─────────────
+    // ── Step 3: Original author amends based on feedback (supersede) ──
     const amendResult = await ctx.amend(filePath, 'ct-1', {
       new_text: 'OAuth2 with Authorization Code flow',
       reason: 'Incorporated reviewer suggestion',
@@ -70,25 +70,24 @@ describe('AJ2: Amendment negotiation cycle', () => {
 
     const amendData = ctx.parseResult(amendResult);
     expect(amendData.change_id).toBe('ct-1');
+    expect(amendData.new_change_id).toBeDefined();
     expect(amendData.amended).toBe(true);
-    expect(amendData.inline_updated).toBe(true);
-    expect(amendData.previous_text).toBe('OAuth2');
+    const newChangeId = amendData.new_change_id as string;
 
-    // Verify inline markup updated
+    // Verify inline markup updated via supersede
     const disk3 = await ctx.readDisk(filePath);
     expect(disk3).toContain('{~~basic authentication~>OAuth2 with Authorization Code flow~~}');
-    expect(disk3).not.toContain('{~~basic authentication~>OAuth2~~}');
-    // Footnote has revised entry
-    expect(disk3).toMatch(/revised @ai:proposer/);
+    // Original ct-1 is rejected, new change proposes the amended text
+    expect(disk3).toContain(`superseded-by: ${newChangeId}`);
+    expect(disk3).toContain('supersedes: ct-1');
     expect(disk3).toContain('Incorporated reviewer suggestion');
-    expect(disk3).toContain('previous: "OAuth2"');
-    // Change ID still ct-1
-    expect(disk3).toContain('[^ct-1]');
+    // New change has its own footnote
+    expect(disk3).toContain(`[^${newChangeId}]:`);
 
-    // ── Step 4: Reviewer approves the amended version ────────────────
+    // ── Step 4: Reviewer approves the NEW change (not ct-1) ──────────
     const approveResult = await ctx.review(filePath, {
       reviews: [{
-        change_id: 'ct-1',
+        change_id: newChangeId,
         decision: 'approve',
         reason: 'Looks good with grant type specified',
       }],
@@ -96,8 +95,8 @@ describe('AJ2: Amendment negotiation cycle', () => {
     });
     expect(approveResult.isError).toBeUndefined();
 
-    // Footnote status is now accepted
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+    // New change status is now accepted
+    await ctx.assertFootnoteStatus(filePath, newChangeId, 'accepted');
     const disk4 = await ctx.readDisk(filePath);
     expect(disk4).toContain('approved:');
     expect(disk4).toContain('ai:reviewer');
@@ -115,7 +114,7 @@ describe('AJ2: Amendment negotiation cycle', () => {
     const settleData = ctx.parseResult(settleResult);
     expect(settleData.settled).toBeDefined();
     const settledIds = settleData.settled as string[];
-    expect(settledIds).toContain('ct-1');
+    expect(settledIds).toContain(newChangeId);
 
     // Verify clean state
     await ctx.assertNoMarkupInBody(filePath);
@@ -123,11 +122,11 @@ describe('AJ2: Amendment negotiation cycle', () => {
     expect(disk5).toContain('OAuth2 with Authorization Code flow');
     expect(disk5).not.toContain('basic authentication');
 
-    // Footnote persists with full deliberation history
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
-    // All thread entries preserved
+    // Original ct-1 footnote preserves deliberation history
+    expect(disk5).toContain('[^ct-1]:');
     expect(disk5).toContain('Modern auth standard');                  // original reasoning
     expect(disk5).toContain('OAuth2 is good but we need to specify'); // reviewer feedback
+    // New change footnote has amendment reasoning and approval
     expect(disk5).toContain('Incorporated reviewer suggestion');      // amendment reasoning
     expect(disk5).toContain('Looks good with grant type specified');  // approval reasoning
   });
@@ -162,7 +161,7 @@ describe('AJ2: Amendment negotiation cycle', () => {
     // Status stays proposed after request_changes
     await ctx.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
 
-    // ── Round 1: Proposer amends ─────────────────────────────────────
+    // ── Round 1: Proposer amends (supersede ct-1) ────────────────────
     const amend1 = await ctx.amend(filePath, 'ct-1', {
       new_text: 'JWT authentication',
       reason: 'Specified JWT per reviewer request',
@@ -170,59 +169,62 @@ describe('AJ2: Amendment negotiation cycle', () => {
     });
     expect(amend1.isError).toBeUndefined();
     const amend1Data = ctx.parseResult(amend1);
-    expect(amend1Data.previous_text).toBe('token auth');
-    expect(amend1Data.inline_updated).toBe(true);
+    expect(amend1Data.new_change_id).toBeDefined();
+    expect(amend1Data.amended).toBe(true);
+    const round1Id = amend1Data.new_change_id as string;
 
     const diskR1 = await ctx.readDisk(filePath);
     expect(diskR1).toContain('{~~basic authentication~>JWT authentication~~}');
 
-    // ── Round 2: Reviewer requests changes again ─────────────────────
+    // ── Round 2: Reviewer requests changes on the NEW change ─────────
     const rc2 = await ctx.review(filePath, {
       reviews: [{
-        change_id: 'ct-1',
+        change_id: round1Id,
         decision: 'request_changes',
         reason: 'JWT is good but add RS256 signing requirement.',
       }],
       author: 'ai:reviewer',
     });
     expect(rc2.isError).toBeUndefined();
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, round1Id, 'proposed');
 
-    // ── Round 2: Proposer amends ─────────────────────────────────────
-    const amend2 = await ctx.amend(filePath, 'ct-1', {
+    // ── Round 2: Proposer amends (supersede round1Id) ────────────────
+    const amend2 = await ctx.amend(filePath, round1Id, {
       new_text: 'JWT with RS256 signing',
       reason: 'Added RS256 requirement',
       author: 'ai:proposer',
     });
     expect(amend2.isError).toBeUndefined();
     const amend2Data = ctx.parseResult(amend2);
-    expect(amend2Data.previous_text).toBe('JWT authentication');
-    expect(amend2Data.inline_updated).toBe(true);
+    expect(amend2Data.new_change_id).toBeDefined();
+    expect(amend2Data.amended).toBe(true);
+    const round2Id = amend2Data.new_change_id as string;
 
     const diskR2 = await ctx.readDisk(filePath);
     expect(diskR2).toContain('{~~basic authentication~>JWT with RS256 signing~~}');
 
-    // ── Reviewer approves final version ──────────────────────────────
+    // ── Reviewer approves the final change ───────────────────────────
     const approveResult = await ctx.review(filePath, {
       reviews: [{
-        change_id: 'ct-1',
+        change_id: round2Id,
         decision: 'approve',
         reason: 'RS256 requirement is exactly what we need',
       }],
       author: 'ai:reviewer',
     });
     expect(approveResult.isError).toBeUndefined();
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, round2Id, 'accepted');
 
     // ── Verify full deliberation history ─────────────────────────────
     const finalDisk = await ctx.readDisk(filePath);
 
-    // 2 revised entries
-    const revisedMatches = finalDisk.match(/revised @ai:proposer/g);
-    expect(revisedMatches).not.toBeNull();
-    expect(revisedMatches!.length).toBe(2);
+    // Supersede cross-references form a chain: ct-1 -> round1Id -> round2Id
+    expect(finalDisk).toContain(`superseded-by: ${round1Id}`);
+    expect(finalDisk).toContain(`supersedes: ct-1`);
+    expect(finalDisk).toContain(`superseded-by: ${round2Id}`);
+    expect(finalDisk).toContain(`supersedes: ${round1Id}`);
 
-    // 2 request-changes entries
+    // 2 request-changes entries (on ct-1 and round1Id)
     const rcMatches = finalDisk.match(/request-changes:/g);
     expect(rcMatches).not.toBeNull();
     expect(rcMatches!.length).toBe(2);
@@ -230,11 +232,7 @@ describe('AJ2: Amendment negotiation cycle', () => {
     // Final inline text reflects round 2 amendment
     expect(finalDisk).toContain('{~~basic authentication~>JWT with RS256 signing~~}');
 
-    // Previous texts recorded
-    expect(finalDisk).toContain('previous: "token auth"');
-    expect(finalDisk).toContain('previous: "JWT authentication"');
-
-    // Approval recorded
+    // Approval recorded on the final change
     expect(finalDisk).toContain('approved:');
     expect(finalDisk).toContain('RS256 requirement is exactly what we need');
   });

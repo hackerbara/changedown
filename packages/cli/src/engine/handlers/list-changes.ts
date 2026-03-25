@@ -1,5 +1,6 @@
 import * as fs from 'node:fs/promises';
-import { CriticMarkupParser, ChangeType, ChangeNode } from '@changetracks/core';
+import { parseForFormat, ChangeType, ChangeNode } from '@changetracks/core';
+import type { VirtualDocument } from '@changetracks/core';
 import { errorResult } from '../shared/error-result.js';
 import { isFileInScope } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
@@ -66,6 +67,7 @@ export interface ChangeSummary {
   preview: string;
   level: 0 | 1 | 2;
   anchored: boolean;
+  consumed_by?: string;
 }
 
 export interface ChangeContext extends ChangeSummary {
@@ -162,7 +164,7 @@ function buildFullDetailEntry(
   change: ChangeNode,
   fileContent: string,
   lines: string[],
-  doc: ReturnType<CriticMarkupParser['parse']>,
+  doc: VirtualDocument,
   summary: ChangeSummary,
   contextN: number,
 ): ChangeFullDetail {
@@ -283,8 +285,7 @@ export async function handleListChanges(
       return errorResult(`Could not read file: "${filePath}"`);
     }
 
-    const parser = new CriticMarkupParser();
-    const doc = parser.parse(fileContent);
+    const doc = parseForFormat(fileContent);
     const allChanges = doc.getChanges();
     const lines = fileContent.split('\n');
     const contextN = Math.max(0, contextLines);
@@ -392,6 +393,7 @@ function buildSummaryEntry(
     preview: buildPreview(change),
     level: change.level,
     anchored: change.anchored,
+    ...(change.consumedBy ? { consumed_by: change.consumedBy } : {}),
   };
 }
 
@@ -400,7 +402,7 @@ function buildDetailForLevel(
   change: ChangeNode,
   fileContent: string,
   lines: string[],
-  doc: ReturnType<CriticMarkupParser['parse']>,
+  doc: VirtualDocument,
   summary: ChangeSummary,
   contextN: number,
 ): ChangeSummary | ChangeContext | ChangeFullDetail {

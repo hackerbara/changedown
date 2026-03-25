@@ -46,7 +46,7 @@ Given('supersede author is {string}', function (this: ChangeTracksWorld, author:
     this.supersedeAuthor = author;
 });
 
-When('I supersede {word} with {string} and reason {string}', function (
+When('I supersede {word} with {string} and reason {string}', async function (
     this: ChangeTracksWorld,
     changeId: string,
     newText: string,
@@ -77,7 +77,7 @@ When('I supersede {word} with {string} and reason {string}', function (
         insertAfter = beforeChange;
     }
 
-    const result: SupersedeResult = coreSupersedeResult(
+    const result: SupersedeResult = await coreSupersedeResult(
         this.supersedeDocText,
         changeId,
         {
@@ -96,7 +96,7 @@ When('I supersede {word} with {string} and reason {string}', function (
     this.supersedeResultText = result.text;
 });
 
-When('I try to supersede {word} with {string} and reason {string}', function (
+When('I try to supersede {word} with {string} and reason {string}', async function (
     this: ChangeTracksWorld,
     changeId: string,
     newText: string,
@@ -127,7 +127,7 @@ When('I try to supersede {word} with {string} and reason {string}', function (
         // If change not found, let coreSupersedeResult handle the error
     }
 
-    const result: SupersedeResult = coreSupersedeResult(
+    const result: SupersedeResult = await coreSupersedeResult(
         this.supersedeDocText,
         changeId,
         {

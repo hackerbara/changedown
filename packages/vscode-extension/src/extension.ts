@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { ExtensionController } from './controller';
-import { createLanguageClient, setDecorationDataHandler, setViewModeChangedHandler, setDocumentStateHandler } from './lsp-client';
+import { createLanguageClient, setDecorationDataHandler, setViewModeChangedHandler, setDocumentStateHandler, setPromotionStartHandler, setPromotionCompleteHandler, setCoherenceHandler, clearStatusBarDocument } from './lsp-client';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { annotateFromGit } from './annotate-command';
 import { MoveCodeLensProvider } from './move-code-lens';
@@ -11,7 +11,7 @@ import { ReviewPanelProvider } from './review-panel';
 import { SettingsPanelProvider } from './settings-panel';
 import { ProjectStatusModel } from './project-status';
 import { registerHoverProvider } from './hover-provider';
-import { ResolvedContentProvider, RESOLVED_SCHEME, toResolvedUri } from './resolved-content-provider';
+import { ResolvedContentProvider, RESOLVED_SCHEME, toResolvedUri, GitOriginalContentProvider, GIT_ORIGINAL_SCHEME } from './resolved-content-provider';
 import { ChangetracksSCM } from './changetracks-scm';
 import { CurrentDocumentService } from './current-document-service';
 import { ChangeComments } from './change-comments';
@@ -25,6 +25,8 @@ import { registerChangeCommands, registerScmCommands, registerCommentCommands, r
 import { DocxEditorProvider } from './docx/docx-editor-provider';
 import { ChangeTracksFoldingProvider } from './folding-provider';
 import { ProjectedView } from './projected-view';
+import { GitGutterManager, GUTTER_STRATEGY } from './git-gutter-manager';
+import type { GutterStrategy } from './git-gutter-manager';
 
 let controller: ExtensionController;
 let scmInstance: ChangetracksSCM | null = null;
@@ -32,6 +34,7 @@ let changeComments: ChangeComments | { getChangeIdForThread: () => undefined };
 let client: LanguageClient;
 // P1-19: Removed duplicate statusBarItem — StatusBarManager in lsp-client.ts handles it
 let statusModel: ProjectStatusModel;
+let gutterManager: GitGutterManager | null = null;
 
 // Output channel for error logging
 export let outputChannel: vscode.OutputChannel;
@@ -44,7 +47,7 @@ function testDocPath(): string {
     return path.join(os.tmpdir(), `changetracks-test-doc${suffix}.json`);
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     // Create output channel for error logging
     outputChannel = vscode.window.createOutputChannel('ChangeTracks');
     setOutputChannel(outputChannel);
@@ -91,7 +94,13 @@ export function activate(context: vscode.ExtensionContext) {
         }
     }, 2000);
 
-    // Section 11: Create controller first so decorationDataHandler is wired before LSP sync.
+    // Initialize xxhash-wasm before creating the controller — the FootnoteNativeParser
+    // calls computeLineHash synchronously during parsing. Without this, opening an L3
+    // document at startup crashes with "xxhash-wasm not initialized".
+    const { initHashline } = await import('@changetracks/core');
+    await initHashline();
+
+    // Create controller first so decorationDataHandler is wired before LSP sync.
     // If handler is set after client.start(), we can miss decorationData sent during sync.
     controller = new ExtensionController(context);
 
@@ -122,14 +131,33 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     // Wire LSP view mode confirmation — log for diagnostics (controller owns the source of truth)
+    // Skip comment:// URIs to avoid O(N) log spam from comment thread input documents
     setViewModeChangedHandler((uri, viewMode) => {
-        outputChannel.appendLine(`[LSP] viewModeChanged: ${viewMode} for ${uri}`);
+        if (!uri.startsWith('comment://')) {
+            outputChannel.appendLine(`[LSP] viewModeChanged: ${viewMode} for ${uri}`);
+        }
     });
 
     // Wire LSP documentState to controller
     setDocumentStateHandler((uri, params) => {
         controller.setDocumentState(uri, params);
     });
+
+    // Wire LSP promotion lifecycle to controller
+    setPromotionStartHandler((uri) => {
+        controller.handlePromotionStarting(uri);
+    });
+    setPromotionCompleteHandler((uri) => {
+        controller.handlePromotionComplete(uri);
+    });
+
+    // Wire LSP coherence status to controller
+    setCoherenceHandler((uri, rate, unresolvedCount, threshold) => {
+        controller.updateCoherence(uri, rate, unresolvedCount, threshold);
+    });
+
+    // Wire document-close cleanup so StatusBarManager doesn't leak per-document state
+    controller.setStatusBarCleaner(clearStatusBarDocument);
 
     // Start LSP client — fire-and-forget, do not block extension host
     client = createLanguageClient(context);
@@ -150,7 +178,7 @@ export function activate(context: vscode.ExtensionContext) {
                 });
             }
         });
-        controller.setGetChangesClient(client);
+        controller.setLspClient(client);
         controller.setCursorPositionSender((uri: string, line: number, changeId?: string) => {
             if (client?.isRunning?.()) {
                 client.sendNotification('changetracks/cursorPosition', {
@@ -162,6 +190,15 @@ export function activate(context: vscode.ExtensionContext) {
         });
         const initialMode = vscode.workspace.getConfiguration('changetracks').get<string>('codeLensMode', 'cursor');
         client.sendNotification('changetracks/setCodeLensMode', { mode: initialMode });
+        // Wire batch edit sender for save/projected-view coordination
+        controller.setBatchEditSender((action, uri) => {
+            if (client?.isRunning?.()) {
+                const method = action === 'start'
+                    ? 'changetracks/batchEditStart'
+                    : 'changetracks/batchEditEnd';
+                client.sendNotification(method, { uri });
+            }
+        });
         outputChannel.appendLine('[activate] LSP client connected');
     }).catch(err => {
         outputChannel.appendLine(`[activate] LSP start failed: ${err?.message ?? err}`);
@@ -235,6 +272,13 @@ export function activate(context: vscode.ExtensionContext) {
         reviewPanelProvider
     );
 
+    // Wire cursor-in-change updates to review panel
+    context.subscriptions.push(
+        controller.onDidChangeCursorChange((changeId: string | null) => {
+            reviewPanelProvider.setActiveChangeId(changeId);
+        })
+    );
+
     // Settings Panel (WebviewView)
     const settingsPanelProvider = new SettingsPanelProvider(statusModel);
     context.subscriptions.push(
@@ -270,8 +314,10 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Resolved content provider (for diff and SCM)
     const resolvedProvider = new ResolvedContentProvider();
+    const gitOriginalProvider = new GitOriginalContentProvider();
     context.subscriptions.push(
         vscode.workspace.registerTextDocumentContentProvider(RESOLVED_SCHEME, resolvedProvider),
+        vscode.workspace.registerTextDocumentContentProvider(GIT_ORIGINAL_SCHEME, gitOriginalProvider),
         resolvedProvider
     );
 
@@ -284,18 +330,64 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // Git gutter management: silence Git's QuickDiff for markdown files with changes
+    const gutterStrategy = vscode.workspace.getConfiguration('changetracks').get<GutterStrategy>('gutterStrategy', GUTTER_STRATEGY.AUTO);
+    const gm = new GitGutterManager(outputChannel);
+    gm.setWarningShown(context.workspaceState.get<boolean>('changetracks.gutterWarningShown', false));
+
     // SCM provider (gutter diff integration + resource list when not legacy)
+    // Create SCM AFTER gutter manager — SCM wires index→flag sync internally
     // Wrapped in try/catch: SCM constructor runs async workspace scans and file
     // watchers that can fail in restricted environments. A SCM crash must NOT
     // prevent decorations, panels, or commands from working.
     let scm: ChangetracksSCM | null = null;
     try {
-        scm = new ChangetracksSCM(context, () => controller);
+        scm = new ChangetracksSCM(context, () => controller, gm, gutterStrategy);
         scmInstance = scm;
         context.subscriptions.push(scm);
     } catch (err: any) {
         outputChannel.appendLine(`[activate] SCM provider failed to initialize: ${err.message}\n${err.stack}`);
     }
+
+    // Start gutter manager (git subscriptions) only if Strategy A is needed
+    const proposedApiActive = scm?.isUsingProposedQuickDiff?.() ?? false;
+    if (gutterStrategy !== GUTTER_STRATEGY.OFF && !(gutterStrategy === GUTTER_STRATEGY.AUTO && proposedApiActive)) {
+        gm.start();
+        gutterManager = gm;
+        context.subscriptions.push(gm);
+
+        // Suppress git's QuickDiff gutter if the user setting allows it.
+        const suppressEnabled = vscode.workspace.getConfiguration('changetracks').get<boolean>('suppressGitGutter', true);
+        if (suppressEnabled) {
+            suppressGitQuickDiff(outputChannel, context);
+        } else {
+            // Still register the toggle command even when suppression is off
+            registerGitGutterToggle(outputChannel, context);
+        }
+    } else {
+        // Strategy A not needed — disable gm so SCM's syncGutterFlags calls are no-ops
+        gm.setEnabled(false);
+    }
+
+    // Persist warning state across VS Code restarts
+    context.subscriptions.push({
+        dispose: () => {
+            context.workspaceState.update('changetracks.gutterWarningShown', gm.wasWarningShown());
+        }
+    });
+
+    // Config change listeners
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration('changetracks.gutterStrategy')) {
+                const strategy = vscode.workspace.getConfiguration('changetracks').get<GutterStrategy>('gutterStrategy', GUTTER_STRATEGY.AUTO);
+                const shouldEnable = strategy !== GUTTER_STRATEGY.OFF && strategy !== GUTTER_STRATEGY.PROPOSED_API;
+                gutterManager?.setEnabled(shouldEnable);
+            }
+        })
+    );
+    watchSuppressGitGutterSetting(outputChannel, context);
+
     registerScmCommands(context, controller, () => scmInstance);
 
     // Comment API (gutter icons + threaded discussions)
@@ -405,6 +497,9 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidRenameFiles((event) => {
             for (const { oldUri, newUri } of event.files) {
                 controller.handleFileRename(oldUri.toString(), newUri.toString());
+                if (gutterManager && oldUri.path.endsWith('.md')) {
+                    gutterManager.handleFileRenamed(oldUri.toString(), newUri.toString());
+                }
             }
         })
     );
@@ -481,10 +576,91 @@ export function activate(context: vscode.ExtensionContext) {
     };
 }
 
+// ── Git QuickDiff suppression ───────────────────────────────────────────────
+
+const SCM_DIFF_SETTING = 'scm.diffDecorations';
+const ORIGINAL_SETTING_KEY = 'changetracks.originalDiffDecorations';
+
+/**
+ * Suppress git's QuickDiff gutter by setting scm.diffDecorations to "none".
+ * Saves the user's original value so it can be restored via toggle command.
+ * ChangeTracks' own decorations (via createTextEditorDecorationType) are unaffected.
+ */
+function suppressGitQuickDiff(output: vscode.OutputChannel, context: vscode.ExtensionContext): void {
+    const config = vscode.workspace.getConfiguration();
+    const current = config.get<string>(SCM_DIFF_SETTING, 'all');
+
+    // Save original value if we haven't already
+    if (context.workspaceState.get<string>(ORIGINAL_SETTING_KEY) === undefined) {
+        context.workspaceState.update(ORIGINAL_SETTING_KEY, current);
+    }
+
+    if (current !== 'none') {
+        config.update(SCM_DIFF_SETTING, 'none', vscode.ConfigurationTarget.Workspace);
+        output.appendLine(`[gutter] suppressed git QuickDiff (scm.diffDecorations: "${current}" → "none")`);
+    }
+
+    registerGitGutterToggle(output, context);
+}
+
+/** Register the toggle command (used whether suppression is on or off). */
+function registerGitGutterToggle(output: vscode.OutputChannel, context: vscode.ExtensionContext): void {
+    context.subscriptions.push(
+        vscode.commands.registerCommand('changetracks.toggleGitGutter', () => {
+            const cfg = vscode.workspace.getConfiguration();
+            const val = cfg.get<string>(SCM_DIFF_SETTING, 'all');
+            if (val === 'none') {
+                const original = context.workspaceState.get<string>(ORIGINAL_SETTING_KEY, 'all');
+                cfg.update(SCM_DIFF_SETTING, original, vscode.ConfigurationTarget.Workspace);
+                output.appendLine(`[gutter] restored git QuickDiff (scm.diffDecorations: "${original}")`);
+                vscode.window.showInformationMessage(`Git gutter restored (scm.diffDecorations: "${original}").`);
+            } else {
+                context.workspaceState.update(ORIGINAL_SETTING_KEY, val);
+                cfg.update(SCM_DIFF_SETTING, 'none', vscode.ConfigurationTarget.Workspace);
+                output.appendLine('[gutter] suppressed git QuickDiff');
+                vscode.window.showInformationMessage('Git gutter suppressed. ChangeTracks decorations still active.');
+            }
+        })
+    );
+}
+
+/** React to changetracks.suppressGitGutter setting changes at runtime. */
+function watchSuppressGitGutterSetting(output: vscode.OutputChannel, context: vscode.ExtensionContext): void {
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration(e => {
+            if (!e.affectsConfiguration('changetracks.suppressGitGutter')) return;
+            const enabled = vscode.workspace.getConfiguration('changetracks').get<boolean>('suppressGitGutter', true);
+            const cfg = vscode.workspace.getConfiguration();
+            if (enabled) {
+                const current = cfg.get<string>(SCM_DIFF_SETTING, 'all');
+                if (current !== 'none') {
+                    context.workspaceState.update(ORIGINAL_SETTING_KEY, current);
+                    cfg.update(SCM_DIFF_SETTING, 'none', vscode.ConfigurationTarget.Workspace);
+                    output.appendLine('[gutter] suppressGitGutter enabled — suppressed git QuickDiff');
+                }
+            } else {
+                const original = context.workspaceState.get<string>(ORIGINAL_SETTING_KEY, 'all');
+                cfg.update(SCM_DIFF_SETTING, original, vscode.ConfigurationTarget.Workspace);
+                output.appendLine(`[gutter] suppressGitGutter disabled — restored git QuickDiff ("${original}")`);
+            }
+        })
+    );
+}
+
 export async function deactivate() {
+    // Clear assume-unchanged flags before shutdown.
+    // Disable first to prevent racing syncFlags from re-setting flags.
+    if (gutterManager) {
+        gutterManager.setEnabled(false);
+        await gutterManager.clearAllFlags();
+        gutterManager = null;
+    }
     setDecorationDataHandler(null);
     setViewModeChangedHandler(null);
     setDocumentStateHandler(null);
+    setPromotionStartHandler(null);
+    setPromotionCompleteHandler(null);
+    setCoherenceHandler(null);
     if (controller) {
         controller.dispose();
         controller = null!;

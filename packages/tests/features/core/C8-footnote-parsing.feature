@@ -115,19 +115,24 @@ Feature: C8 - Footnote Parsing
     And footnote "ct-1" has reason "complex change"
 
   # --- Non-indented line stops scanning ---
+  # The parser only scans the terminal footnote block (backward from EOF).
+  # A non-indented, non-blank line between footnotes breaks the block,
+  # so both footnotes must be contiguous. Body termination is verified
+  # by checking that ct-1's endLine stops at its last indented line.
 
-  Scenario: Non-indented line terminates footnote body
+  Scenario: Next footnote header terminates previous footnote body
     When I parse footnotes from:
       """
+      Some body text.
+
       [^ct-1]: @alice | 2026-02-17 | ins | proposed
           reason: fix
-      This is regular text, not a footnote continuation.
       [^ct-2]: @bob | 2026-02-17 | del | accepted
       """
     Then the footnote map has 2 entries
-    And footnote "ct-1" has start line 0
-    And footnote "ct-1" has end line 1
-    And footnote "ct-2" has start line 3
+    And footnote "ct-1" has start line 2
+    And footnote "ct-1" has end line 3
+    And footnote "ct-2" has start line 4
 
   # --- Line positions ---
 

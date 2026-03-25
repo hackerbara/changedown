@@ -21,15 +21,25 @@ const encoder = new TextEncoder();
 
 // ─── WASM instance (lazy-initialized) ──────────────────────────────────────
 
-let xxhash: XXHashAPI | null = null;
+// Store on globalThis so the instance survives module duplication.
+// Vitest (and other bundlers) can load the same source file under multiple
+// module IDs — e.g. via direct import vs transitive re-export through another
+// workspace package. A module-level `let` would be separate per instance,
+// causing "xxhash-wasm not initialized" errors even after calling initHashline().
+// All read sites use getXXHash() so they always get the live global value.
+const HASHLINE_KEY = '__changetracks_xxhash__';
+
+function getXXHash(): XXHashAPI | null {
+  return (globalThis as any)[HASHLINE_KEY] ?? null;
+}
 
 /**
  * Initialize the xxhash-wasm module. Must be called once before any hash
  * functions. Idempotent — safe to call multiple times.
  */
 export async function initHashline(): Promise<void> {
-  if (!xxhash) {
-    xxhash = await xxhashWasm();
+  if (!getXXHash()) {
+    (globalThis as any)[HASHLINE_KEY] = await xxhashWasm();
   }
 }
 
@@ -68,19 +78,18 @@ function stripForHash(line: string): string {
  * @returns 2-char lowercase hex hash
  */
 export function computeLineHash(idx: number, line: string, allLines?: string[]): string {
-  if (!xxhash) {
+  const h = getXXHash();
+  if (!h) {
     throw new Error(
       'xxhash-wasm not initialized. Call `await initHashline()` or ' +
-      '`await ensureHashlineReady()` before using hashline functions. ' +
-      'If this occurs in tests, add `deps: { inline: ["@changetracks/core"] }` ' +
-      'to vitest.config.ts to prevent duplicate module instances.'
+      '`await ensureHashlineReady()` before using hashline functions.'
     );
   }
   const stripped = stripForHash(line);
 
   // Non-blank line or no context: content-based hash (original behavior)
   if (stripped.length > 0 || !allLines) {
-    return DICT[xxhash.h32Raw(encoder.encode(stripped)) % HASH_MOD];
+    return DICT[h.h32Raw(encoder.encode(stripped)) % HASH_MOD];
   }
 
   // Blank line with context: hash(prevNonBlank + "\0" + nextNonBlank + "\0" + dist)
@@ -102,7 +111,7 @@ export function computeLineHash(idx: number, line: string, allLines?: string[]):
   }
 
   const contextKey = prevNonBlank + '\0' + nextNonBlank + '\0' + distFromPrev;
-  return DICT[xxhash.h32Raw(encoder.encode(contextKey)) % HASH_MOD];
+  return DICT[h.h32Raw(encoder.encode(contextKey)) % HASH_MOD];
 }
 
 // ─── formatHashLines ───────────────────────────────────────────────────────

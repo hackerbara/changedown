@@ -206,7 +206,7 @@ describe('formatReadRedirect', () => {
     expect(result).toContain('read_tracked_file');
     expect(result).toContain('file="docs/readme.md"');
     expect(result).toContain('view="review"');
-    expect(result).toContain('strict mode');
+    expect(result).toContain('tracked');
   });
 
   it('uses configured default_view when set', () => {

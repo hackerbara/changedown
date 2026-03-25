@@ -30,13 +30,10 @@ Feature: Text matching
 
   # ── Level 2: NFKC-normalized match ───────────────────────────────
 
-  Scenario: Smart quote normalized to ASCII apostrophe
+  Scenario: Smart quote does not match ASCII apostrophe (ADR-061)
     Given a document text with smart right single quote "Sublime's architecture is elegant."
     When I search for "Sublime's" with normalizer
-    Then the match index is 0
-    And the match length is 9
-    And the match original text contains the smart quote
-    And the match was normalized
+    Then the search throws a not-found error
 
   # ── Level 3: NBSP matching ───────────────────────────────────────
 
@@ -95,10 +92,10 @@ Feature: Text matching
     When I search for "completely missing" with normalizer
     Then the search throws a not-found error
 
-  Scenario: Normalized match is ambiguous
+  Scenario: Smart quote mismatch is not found (ADR-061)
     Given a document text with two smart-quoted "Sublime's"
     When I search for "Sublime's" with normalizer
-    Then the search throws an ambiguous error
+    Then the search throws a not-found error
 
   # ── Overlap detection ─────────────────────────────────────────────
 

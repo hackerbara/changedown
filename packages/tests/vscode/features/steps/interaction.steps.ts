@@ -402,6 +402,68 @@ Then('the document does not contain {string}', { timeout: 10000 }, async functio
     assert.ok(!doc.includes(text), `Document unexpectedly contains "${text}"`);
 });
 
+/**
+ * Poll for L3 edit-op lines as the promotion-complete signal.
+ * L3 edit-op lines have the format: "    LINE:HASH {markup}" in footnote definitions.
+ * This is a reliable indicator that L2→L3 promotion completed successfully.
+ */
+Then('the document contains L3 edit-op lines', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+    assert.ok(this.page, 'Page not available');
+    const opts = { expectedFilename: this.fixtureFile, instanceId: this.instance?.instanceId };
+    const editOpPattern = /^ {4}\d+:[0-9a-fA-F]{2,}\s+\{/m;
+    const deadline = Date.now() + 10000;
+    let doc = '';
+    while (Date.now() < deadline) {
+        doc = await getDocumentText(this.page, opts);
+        if (editOpPattern.test(doc)) return;
+        await this.page.waitForTimeout(300);
+    }
+    assert.ok(doc.length > 0, 'getDocumentText returned empty — Monaco API unavailable.');
+    console.log(`[DIAG] L3 edit-op poll failed. Document (${doc.length} chars): ${JSON.stringify(doc.slice(0, 500))}`);
+    assert.fail('Document does not contain L3 edit-op lines after 10s — promotion did not complete');
+});
+
+/**
+ * Assert no inline CriticMarkup in the document BODY (before footnote section).
+ * L3 documents have CriticMarkup inside footnote edit-op lines, which is correct.
+ * This step only checks the body portion to avoid false positives.
+ * Polls for up to 10s to handle re-promotion after view mode cycling.
+ */
+Then('the document body has no inline CriticMarkup', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+    assert.ok(this.page, 'Page not available');
+    const opts = { expectedFilename: this.fixtureFile, instanceId: this.instance?.instanceId };
+    const delimiters = ['{++', '{--', '{~~', '{==', '{>>'];
+    const deadline = Date.now() + 10000;
+    let body = '';
+    let lastFailedDelimiter = '';
+    while (Date.now() < deadline) {
+        const doc = await getDocumentText(this.page, opts);
+        assert.ok(doc.length > 0, 'getDocumentText returned empty — Monaco API unavailable.');
+        const footnoteStart = doc.search(/^\[\^ct-\d+\]:/m);
+        body = footnoteStart >= 0 ? doc.slice(0, footnoteStart) : doc;
+        const found = delimiters.find(d => body.includes(d));
+        if (!found) return; // Body is clean — success
+        lastFailedDelimiter = found;
+        await this.page.waitForTimeout(300);
+    }
+    console.log(`[DIAG] Body still has CriticMarkup after 10s. Body (${body.length} chars): ${JSON.stringify(body.slice(0, 500))}`);
+    assert.fail(`Document body contains inline CriticMarkup "${lastFailedDelimiter}" — promotion did not strip L2 markup from body`);
+});
+
+/**
+ * Assert the document body does not contain a string.
+ * Only checks the body portion (before the first footnote definition).
+ */
+Then('the document body does not contain {string}', { timeout: 10000 }, async function (this: ChangeTracksWorld, text: string) {
+    assert.ok(this.page, 'Page not available');
+    const opts = { expectedFilename: this.fixtureFile, instanceId: this.instance?.instanceId };
+    const doc = await getDocumentText(this.page, opts);
+    assert.ok(doc.length > 0, 'getDocumentText returned empty — Monaco API unavailable.');
+    const footnoteStart = doc.search(/^\[\^ct-\d+\]:/m);
+    const body = footnoteStart >= 0 ? doc.slice(0, footnoteStart) : doc;
+    assert.ok(!body.includes(text), `Document body unexpectedly contains "${text}"`);
+});
+
 Then('{int} comment gutter icons are visible', { timeout: 5000 }, async function (this: ChangeTracksWorld, count: number) {
     assert.ok(this.page, 'Page not available');
     const actual = await getCommentGutterIconCount(this.page);

@@ -495,30 +495,4 @@ describe('read_tracked_file meta mode', () => {
     expect(text).toContain(overText);
   });
 
-  it('custom compact_threshold config does not affect unified renderer output', async () => {
-    const customConfig: ChangeTracksConfig = {
-      ...config,
-      meta: { compact_threshold: 20 },
-    };
-    const mediumText = 'E'.repeat(30); // 30 chars
-    const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
-      `{~~old~>${mediumText}~~}[^ct-1]`,
-      '',
-      '[^ct-1]: @alice | 2026-02-24 | sub | proposed',
-      '    @alice 2026-02-24: custom threshold test',
-    ].join('\n');
-    await fs.writeFile(filePath, content);
-    const resolver = await createTestResolver(tmpDir, customConfig);
-    const result = await handleReadTrackedFile(
-      { file: filePath, view: 'meta' },
-      resolver,
-      state,
-    );
-
-    expect(result.isError).toBeUndefined();
-    const text = result.content[0].text;
-    // Unified renderer does not compact — full text shown regardless of config
-    expect(text).toContain(mediumText);
-  });
 });

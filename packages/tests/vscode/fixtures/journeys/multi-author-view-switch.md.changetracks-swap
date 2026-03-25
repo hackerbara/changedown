@@ -1,0 +1,21 @@
+Multi-Author View Mode Switching Test
+
+An inserted by alice here.
+
+A inserted by bob here.
+
+A  here.
+
+A new text here.
+
+Normal text with no changes.
+
+[^ct-1]: @alice | 2026-03-01 | ins | proposed
+    3:b5 {++inserted by alice++} here.
+[^ct-2]: @bob | 2026-03-01 | ins | proposed
+    5:c4 {++inserted by bob++} here.
+[^ct-3]: @alice | 2026-03-01 | del | proposed
+    7:cf A {--deleted by alice--} here.
+[^ct-4]: @bob | 2026-03-01 | sub | proposed
+    9:34 {~~old text~>new text~~} here.
+

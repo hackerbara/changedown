@@ -95,4 +95,4 @@ Feature: Parser — Highlights
   Scenario: Highlight generates correct ID prefix
     Given the text "{==note==}"
     When I parse the text
-    Then change 1 has id "hig-0"
+    Then change 1 has id "ct-1"

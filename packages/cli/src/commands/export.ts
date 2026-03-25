@@ -25,6 +25,7 @@ export async function handleExport(
   const exportOpts: ExportOptions = {
     mode,
     comments,
+    mediaDir: path.dirname(path.resolve(file)),
   };
 
   const { buffer, stats } = await exportDocx(markdown, exportOpts);

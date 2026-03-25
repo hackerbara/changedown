@@ -268,9 +268,18 @@ export function applyCompactOp(
   let target = resolveAt(resolvedAt, fileLines);
 
   // Stage 5: Auto-supersede same-author overlapping proposed changes
+  // For sub-line ops, narrow to the actual match position before checking overlaps
+  // (resolveAt returns whole-line offsets, which would false-positive on unrelated changes)
   if (op.type !== 'ins' && op.type !== 'comment') {
+    let overlapStart = target.startOffset;
+    let overlapLength = target.endOffset - target.startOffset;
+    if (op.oldText !== '') {
+      const preMatch = findUniqueMatch(contentZoneText(target.content), op.oldText, defaultNormalizer);
+      overlapStart = target.startOffset + preMatch.index;
+      overlapLength = preMatch.length;
+    }
     const supersedeResult = resolveOverlapWithAuthor(
-      fileContent, target.startOffset, target.endOffset - target.startOffset, author,
+      fileContent, overlapStart, overlapLength, author,
     );
     if (supersedeResult) {
       fileContent = supersedeResult.settledContent;

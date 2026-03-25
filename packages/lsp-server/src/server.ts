@@ -30,22 +30,27 @@ import {
 } from 'vscode-languageserver/node';
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
-  Workspace, VirtualDocument, ChangeNode, ChangeType, ChangeStatus,
+  Workspace, VirtualDocument, ChangeNode, ChangeType, ChangeStatus, isGhostNode,
   annotateMarkdown, annotateSidecar, SIDECAR_BLOCK_MARKER, VIEW_NAMES,
-  applyReview, computeAmendEdits, computeSupersedeResult, computeReplyEdit,
+  applyReview, computeSupersedeResult, computeReplyEdit,
   computeResolutionEdit, computeUnresolveEdit, compactToLevel1, compactToLevel0,
   settleAcceptedChangesOnly, settleRejectedChangesOnly,
-  CriticMarkupParser, findFootnoteBlock, parseFootnoteHeader,
+  findFootnoteBlock, parseFootnoteHeader, parseForFormat,
+  initHashline,
+  convertL2ToL3,
+  compact, isL3Format, compactL2,
+  splitBodyAndFootnotes,
 } from '@changetracks/core';
-import type { ViewName, Decision } from '@changetracks/core';
+import type { ViewName, Decision, VerificationResult } from '@changetracks/core';
 import { getWorkspaceRoot, getPreviousVersion, PreviousVersionResult } from './git';
 import { parseConfigToml, DEFAULT_CONFIG } from 'changetracks/config';
 import type { ChangeTracksConfig } from 'changetracks/config';
 import { createHover } from './capabilities/hover';
 import { createCodeLenses, CodeLensMode, CursorState } from './capabilities/code-lens';
-import { sendDecorationData, sendChangeCount } from './notifications/decoration-data';
+import { sendDecorationData, sendChangeCount, sendCoherenceStatus } from './notifications/decoration-data';
 import { sendPendingEditFlushed } from './notifications/pending-edit';
 import { sendViewModeChanged, SetViewModeParams } from './notifications/view-mode';
 import { resolveTracking, sendDocumentState } from './notifications/document-state';
@@ -55,23 +60,14 @@ import { createCodeActions } from './capabilities/code-actions';
 import { createDocumentLinks } from './capabilities/document-links';
 import { PendingEditManager, CrystallizedEdit } from './pending-edit-manager';
 import { offsetRangeToLspRange } from './converters';
+import { createLspDocumentState } from './document-state';
+import type { PendingOverlay, LspDocumentState } from './document-state';
 
 /**
  * Parameters for the changetracks/annotate custom request.
  */
 export interface AnnotateParams {
   textDocument: { uri: string };
-}
-
-/**
- * Pending overlay from VS Code extension (Phase 1).
- * In-flight insertion before flush; LSP merges with parse for decorationData.
- */
-interface PendingOverlay {
-  range: { start: number; end: number };
-  text: string;
-  type: 'insertion';
-  scId?: string;
 }
 
 /**
@@ -110,15 +106,8 @@ export class ChangetracksServer {
   public readonly documents: TextDocuments<TextDocument>;
   public readonly workspace: Workspace;
   public readonly pendingEditManager: PendingEditManager;
-  private parseCache: Map<string, VirtualDocument> = new Map();
-  private textCache: Map<string, string> = new Map();
-  private languageIdCache: Map<string, string> = new Map();
-  /** Per-URI overlay from VS Code (Phase 1). Extension sends via changetracks/pendingOverlay. */
-  private overlayStorage: Map<string, PendingOverlay | null> = new Map();
-  /** Per-URI view mode. Defaults to 'review' when not explicitly set. */
-  private viewModeStorage: Map<string, ViewName> = new Map();
-  /** Per-URI debounce: limit decoration/changeCount notifications to reduce renderer CPU. */
-  private decorationNotifyTimeouts: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  /** Per-document state bag — replaces 7 Maps + 3 Sets (parseCache, textCache, etc.). */
+  private docStates = new Map<string, LspDocumentState>();
   /** Debounce timer for semanticTokens.refresh() — coalesces rapid setViewMode calls into one refresh. */
   private semanticTokenRefreshTimeout: ReturnType<typeof setTimeout> | null = null;
   /**
@@ -131,9 +120,14 @@ export class ChangetracksServer {
   private projectTrackingDefault: string | undefined;
   /** Full parsed project config (from .changetracks/config.toml). */
   private projectConfig: ChangeTracksConfig | undefined;
+  /** Coherence threshold (0–100) from project config coherence.threshold. */
+  private coherenceThreshold: number = DEFAULT_CONFIG.coherence.threshold;
+  /** Last-sent coherence status per URI — avoids re-sending identical notifications. */
+  private lastCoherenceStatus: Map<string, { rate: number; count: number }> = new Map();
+  /** Re-entrance guard: URIs with a pending write-back in flight. */
+  private pendingWriteBack = new Set<string>();
   /** Workspace root path for config file resolution. */
   private workspaceRoot: string | undefined;
-  private cursorStateStorage: Map<string, CursorState> = new Map();
   private codeLensMode: CodeLensMode = 'cursor';
 
   /**
@@ -150,7 +144,7 @@ export class ChangetracksServer {
     this.pendingEditManager = new PendingEditManager(
       this.workspace,
       (edit: CrystallizedEdit) => this.handleCrystallizedEdit(edit),
-      (uri: string) => this.textCache.get(uri)
+      (uri: string) => this.docStates.get(uri)?.text
     );
 
     this.setupHandlers();
@@ -167,34 +161,31 @@ export class ChangetracksServer {
     this.connection.onExit(this.handleExit.bind(this));
 
     // Document event handlers
-    this.documents.onDidOpen((event) => {
+    this.documents.onDidOpen(async (event) => {
+      const uri = event.document.uri;
+      const state = this.docStates.get(uri);
+      if (state) state.suppressRepromotion = false;
+      const text = event.document.getText();
+      const languageId = event.document.languageId;
+      await this.handleDocumentOpen(uri, text, languageId);
+    });
+
+    this.documents.onDidChangeContent(async (event) => {
       const uri = event.document.uri;
       const text = event.document.getText();
       const languageId = event.document.languageId;
-      this.handleDocumentOpen(uri, text, languageId);
+      await this.handleDocumentChange(uri, text, languageId);
     });
 
-    this.documents.onDidChangeContent((event) => {
-      const uri = event.document.uri;
-      const text = event.document.getText();
-      const languageId = event.document.languageId;
-      this.handleDocumentChange(uri, text, languageId);
-    });
-
-    // P1-15: Clean up per-document caches when a document closes to prevent memory leaks
+    // P1-15: Clean up per-document state when a document closes to prevent memory leaks
     this.documents.onDidClose((event) => {
       const uri = event.document.uri;
-      this.parseCache.delete(uri);
-      this.textCache.delete(uri);
-      this.languageIdCache.delete(uri);
-      this.overlayStorage.delete(uri);
-      this.viewModeStorage.delete(uri);
-      this.cursorStateStorage.delete(uri);
-      const timeout = this.decorationNotifyTimeouts.get(uri);
-      if (timeout) {
-        clearTimeout(timeout);
-        this.decorationNotifyTimeouts.delete(uri);
-      }
+      const state = this.docStates.get(uri);
+      if (state?.decorationTimeout) clearTimeout(state.decorationTimeout);
+      this.docStates.delete(uri);
+      this.lastCoherenceStatus.delete(uri);
+      this.pendingWriteBack.delete(uri);
+      this.pendingEditManager.removeDocument(uri);
     });
 
     // Hover capability
@@ -227,6 +218,7 @@ export class ChangetracksServer {
     this.connection.onRequest('changetracks/resolveThread', this.handleResolveThread.bind(this));
     this.connection.onRequest('changetracks/unresolveThread', this.handleUnresolveThread.bind(this));
     this.connection.onRequest('changetracks/compactChange', this.handleCompactChange.bind(this));
+    this.connection.onRequest('changetracks/compactChanges', this.handleCompactChanges.bind(this));
     this.connection.onRequest('changetracks/reviewAll', this.handleReviewAll.bind(this));
 
     // Tracking event handler - receives individual edit events from client
@@ -240,7 +232,7 @@ export class ChangetracksServer {
     }) => {
       try {
         const uri = params.textDocument.uri;
-        const text = this.textCache.get(uri) || '';
+        const text = this.docStates.get(uri)?.text || '';
 
         switch (params.type) {
           case 'insertion': {
@@ -267,6 +259,15 @@ export class ChangetracksServer {
       } catch (err) {
         this.connection.console.error(`changetracks/trackingEvent handler error: ${err}`);
       }
+    });
+
+    // Batch edit coordination: extension tells LSP to skip re-promotion during programmatic edits
+    this.connection.onNotification('changetracks/batchEditStart', (params: { uri: string }) => {
+      this.handleBatchEditStart(params.uri);
+    });
+
+    this.connection.onNotification('changetracks/batchEditEnd', (params: { uri: string }) => {
+      this.handleBatchEditEnd(params.uri);
     });
 
     // Flush pending handler - hard break signal from client
@@ -300,7 +301,8 @@ export class ChangetracksServer {
     }) => {
       try {
         const { uri, overlay } = params;
-        this.overlayStorage.set(uri, overlay);
+        const state = this.docStates.get(uri);
+        if (state) state.overlay = overlay;
         this.scheduleDecorationResend(uri);
       } catch (err) {
         this.connection.console.error(`changetracks/pendingOverlay handler error: ${err}`);
@@ -320,7 +322,8 @@ export class ChangetracksServer {
           );
           return;
         }
-        this.viewModeStorage.set(uri, viewMode);
+        const state = this.docStates.get(uri);
+        if (state) state.viewMode = viewMode;
         // Broadcast confirmation back to client
         sendViewModeChanged(this.connection, uri, viewMode);
         // Broadcast composite documentState (carries both tracking + view mode)
@@ -351,10 +354,13 @@ export class ChangetracksServer {
     }) => {
       try {
         const uri = params.textDocument.uri;
-        this.cursorStateStorage.set(uri, {
-          line: params.line,
-          changeId: params.changeId
-        });
+        const state = this.docStates.get(uri);
+        if (state) {
+          state.cursorState = {
+            line: params.line,
+            changeId: params.changeId
+          };
+        }
         // Trigger CodeLens refresh
         this.connection.sendRequest(CodeLensRefreshRequest.type).catch(() => {
           // Client does not support workspace/codeLens/refresh — safe to ignore
@@ -396,7 +402,11 @@ export class ChangetracksServer {
    * Handle LSP initialize request
    * Returns server capabilities
    */
-  public handleInitialize(params: InitializeParams): InitializeResult {
+  public async handleInitialize(params: InitializeParams): Promise<InitializeResult> {
+    // Initialize xxhash-wasm before any document parsing can occur.
+    // L3 documents use hashline functions that require the WASM module.
+    await initHashline();
+
     // Read reviewer identity from initializationOptions (Sublime, Neovim, and other non-VS Code clients).
     // VS Code sends this via changetracks/updateSettings notification after the client starts.
     const raw = (params.initializationOptions as Record<string, unknown> | undefined)?.changetracks;
@@ -452,7 +462,7 @@ export class ChangetracksServer {
         if (event.uri.endsWith('config.toml')) {
           this.loadProjectConfig();
           // Re-broadcast for all open documents
-          for (const uri of this.textCache.keys()) {
+          for (const uri of this.docStates.keys()) {
             this.broadcastDocumentState(uri);
           }
         }
@@ -465,18 +475,15 @@ export class ChangetracksServer {
    * Prepare for exit
    */
   public async handleShutdown(): Promise<void> {
-    for (const t of this.decorationNotifyTimeouts.values()) clearTimeout(t);
-    this.decorationNotifyTimeouts.clear();
+    for (const state of this.docStates.values()) {
+      if (state.decorationTimeout) clearTimeout(state.decorationTimeout);
+    }
+    this.docStates.clear();
     if (this.semanticTokenRefreshTimeout) {
       clearTimeout(this.semanticTokenRefreshTimeout);
       this.semanticTokenRefreshTimeout = null;
     }
     this.pendingEditManager.dispose();
-    this.parseCache.clear();
-    this.textCache.clear();
-    this.languageIdCache.clear();
-    this.overlayStorage.clear();
-    this.viewModeStorage.clear();
   }
 
   /**
@@ -484,8 +491,10 @@ export class ChangetracksServer {
    * Server should exit after this
    */
   public handleExit(): void {
-    for (const t of this.decorationNotifyTimeouts.values()) clearTimeout(t);
-    this.decorationNotifyTimeouts.clear();
+    for (const state of this.docStates.values()) {
+      if (state.decorationTimeout) clearTimeout(state.decorationTimeout);
+    }
+    this.docStates.clear();
     if (this.semanticTokenRefreshTimeout) {
       clearTimeout(this.semanticTokenRefreshTimeout);
       this.semanticTokenRefreshTimeout = null;
@@ -497,9 +506,9 @@ export class ChangetracksServer {
    * Phase 1: Overlay becomes a synthetic ChangeNode (insertion); merged list sorted by offset.
    */
   private getMergedChanges(uri: string): ChangeNode[] {
-    const parseResult = this.parseCache.get(uri);
-    const parseChanges = parseResult ? parseResult.getChanges() : [];
-    const overlay = this.overlayStorage.get(uri);
+    const state = this.docStates.get(uri);
+    const parseChanges = state?.parseResult ? state.parseResult.getChanges() : [];
+    const overlay = state?.overlay;
     if (!overlay) return parseChanges;
     const synthetic: ChangeNode = {
       id: overlay.scId ?? 'ct-overlay-0',
@@ -523,8 +532,8 @@ export class ChangetracksServer {
     const text = this.getDocumentText(uri);
     if (!text) return;
     const tracking = resolveTracking(text, this.projectTrackingDefault);
-    // Use existing viewModeStorage (defaults to 'review' when not set)
-    const viewMode = this.viewModeStorage.get(uri) ?? 'review';
+    // Use existing state viewMode (defaults to 'review' when not set)
+    const viewMode = this.docStates.get(uri)?.viewMode ?? 'review';
     sendDocumentState(this.connection, uri, tracking, viewMode);
   }
 
@@ -540,9 +549,11 @@ export class ChangetracksServer {
       const content = fs.readFileSync(configPath, 'utf-8');
       this.projectConfig = parseConfigToml(content);
       this.projectTrackingDefault = this.projectConfig.tracking.default;
+      this.coherenceThreshold = this.projectConfig.coherence?.threshold ?? DEFAULT_CONFIG.coherence.threshold;
     } catch {
       this.projectConfig = undefined;
       this.projectTrackingDefault = undefined;
+      this.coherenceThreshold = DEFAULT_CONFIG.coherence.threshold;
     }
   }
 
@@ -551,15 +562,29 @@ export class ChangetracksServer {
    * Debounced to avoid flooding on rapid overlay updates.
    */
   private scheduleDecorationResend(uri: string): void {
-    const existing = this.decorationNotifyTimeouts.get(uri);
-    if (existing) clearTimeout(existing);
-    const timeout = setTimeout(() => {
-      this.decorationNotifyTimeouts.delete(uri);
+    const state = this.docStates.get(uri);
+    if (!state) return;
+    if (state.decorationTimeout) clearTimeout(state.decorationTimeout);
+    state.decorationTimeout = setTimeout(() => {
+      state.decorationTimeout = null;
       const changes = this.getMergedChanges(uri);
-      sendDecorationData(this.connection, uri, changes);
+      sendDecorationData(this.connection, uri, changes, state.version);
       sendChangeCount(this.connection, uri, changes);
     }, DECORATION_NOTIFY_DEBOUNCE_MS);
-    this.decorationNotifyTimeouts.set(uri, timeout);
+  }
+
+  /**
+   * Ensure a state bag exists for the given URI. Creates one if absent.
+   */
+  private ensureDocState(uri: string, text: string, languageId?: string): LspDocumentState {
+    let state = this.docStates.get(uri);
+    if (!state) {
+      const initialParse = this.workspace.parse(text, languageId);
+      const docVersion = this.documents.get(uri)?.version ?? 0;
+      state = createLspDocumentState(docVersion, text, languageId ?? 'markdown', initialParse);
+      this.docStates.set(uri, state);
+    }
+    return state;
   }
 
   /**
@@ -568,36 +593,262 @@ export class ChangetracksServer {
    */
   private parseAndCacheDocument(uri: string, text: string, languageId?: string): VirtualDocument {
     const parseResult = this.workspace.parse(text, languageId);
-    this.parseCache.set(uri, parseResult);
-    this.textCache.set(uri, text);
-    if (languageId) {
-      this.languageIdCache.set(uri, languageId);
+    const state = this.docStates.get(uri);
+    if (state) {
+      state.parseResult = parseResult;
+      state.text = text;
+      state.version = this.documents.get(uri)?.version ?? 0;
+      if (languageId) state.languageId = languageId;
     }
 
-    const diagnostics = createDiagnostics(parseResult.getChanges(), text);
+    // Send diagnostics — now includes Warning-level for unresolved anchors
+    const diagnostics = createDiagnostics(parseResult.getChanges(), text, parseResult.unresolvedDiagnostics);
     this.connection.sendDiagnostics({ uri, diagnostics });
+
+    // Send coherence status (threshold from project config)
+    const threshold = this.coherenceThreshold;
+    const unresolvedCount = parseResult.getUnresolvedChanges().length;
+    const last = this.lastCoherenceStatus.get(uri);
+    if (!last || last.rate !== parseResult.coherenceRate || last.count !== unresolvedCount) {
+      this.lastCoherenceStatus.set(uri, { rate: parseResult.coherenceRate, count: unresolvedCount });
+      sendCoherenceStatus(this.connection, uri, parseResult.coherenceRate, unresolvedCount, threshold);
+    }
+
+    // Write-back: apply resolved anchors if parser produced fresh text
+    const isBatchEditing = this.docStates.get(uri)?.isBatchEditing ?? false;
+    if (parseResult.resolvedText && !this.pendingWriteBack.has(uri) && !isBatchEditing) {
+      const currentLines = text.split('\n');
+      const { bodyLines, footnoteLines } = splitBodyAndFootnotes(currentLines);
+      const resolvedLines = parseResult.resolvedText.split('\n');
+      const { bodyLines: resolvedBodyLines, footnoteLines: resolvedFootnoteLines } = splitBodyAndFootnotes(resolvedLines);
+
+      // Body safety check (Resolution Protocol Invariant 4) — length fast-path
+      if (bodyLines.length === resolvedBodyLines.length && bodyLines.join('\n') === resolvedBodyLines.join('\n')) {
+        // Replace footnote section only — start at the first footnote line
+        const footnoteStart = currentLines.length - footnoteLines.length;
+        const resolvedFootnoteText = resolvedFootnoteLines.join('\n');
+
+        this.pendingWriteBack.add(uri);
+        const textDocument = this.documents.get(uri);
+        if (textDocument) {
+          const startPos = { line: footnoteStart, character: 0 };
+          const endPos = {
+            line: textDocument.lineCount - 1,
+            character: currentLines[currentLines.length - 1]?.length ?? 0
+          };
+          this.connection.workspace.applyEdit({
+            changes: {
+              [uri]: [{
+                range: { start: startPos, end: endPos },
+                newText: resolvedFootnoteText,
+              }],
+            },
+          }).then(
+            (result) => { if (!result.applied) this.connection.console.warn(`[write-back] edit rejected for ${uri}`); },
+            (err) => { this.pendingWriteBack.delete(uri); this.connection.console.error(`[write-back] applyEdit failed for ${uri}: ${err}`); }
+          );
+        }
+      } else {
+        this.connection.console.warn(`[write-back] Body mismatch for ${uri} — skipping anchor refresh`);
+      }
+    }
 
     return parseResult;
   }
 
+  public handleBatchEditStart(uri: string): void {
+    let state = this.docStates.get(uri);
+    if (!state) {
+      // Create a minimal state bag so the batch flag persists until document open/change
+      state = createLspDocumentState(0, '', 'markdown', this.workspace.parse(''));
+      this.docStates.set(uri, state);
+    }
+    state.isBatchEditing = true;
+  }
+
+  public handleBatchEditEnd(uri: string): void {
+    const state = this.docStates.get(uri);
+    if (state) {
+      state.isBatchEditing = false;
+      // Re-send decoration data with the already-cached parse result from the batch
+      const changes = this.getMergedChanges(uri);
+      sendDecorationData(this.connection, uri, changes, state.version);
+      sendChangeCount(this.connection, uri, changes);
+    }
+  }
+
   /**
-   * Handle document open event
-   * Parse the document and send all notifications immediately (with overlay merge if any).
+   * Handle document open event.
+   * If the document is L2 with changes, promote to L3 via workspace/applyEdit.
+   * Otherwise, parse and send decorationData normally.
    */
-  public handleDocumentOpen(uri: string, text: string, languageId?: string): void {
+  public async handleDocumentOpen(uri: string, text: string, languageId?: string): Promise<void> {
+    // Skip comment input documents — they don't need parsing, decorations, or state
+    if (uri.startsWith('comment://')) return;
+
+    // Create or reuse state bag for this document
+    this.ensureDocState(uri, text, languageId);
+    const state = this.docStates.get(uri)!;
+
+    const isL3 = this.workspace.isFootnoteNative(text);
+
+    if (!isL3) {
+      // Check if this is an L2 document with changes that should be promoted
+      const l2Doc = this.workspace.parse(text, languageId);
+      const l2Changes = l2Doc.getChanges();
+
+      if (l2Changes.length > 0) {
+        // L2 with changes → promote to L3
+        try {
+          const l3Text = await convertL2ToL3(text);
+
+          // Parse L3 for decoration data
+          this.parseAndCacheDocument(uri, l3Text, languageId);
+          const l3Changes = this.getMergedChanges(uri);
+
+          // Send L3 decoration data FIRST (pre-populates extension cache)
+          sendDecorationData(this.connection, uri, l3Changes, state.version);
+          sendChangeCount(this.connection, uri, l3Changes);
+
+          // Notify extension to set convertingUris guard
+          this.connection.sendNotification('changetracks/promotionStarting', { uri });
+
+          // CRITICAL: set isPromoting BEFORE sending applyEdit
+          // because didChange can arrive before the applyEdit response returns
+          state.isPromoting = true;
+
+          // Request extension to replace buffer with L3 text
+          const applied = await this.connection.workspace.applyEdit({
+            label: 'Promote to L3',
+            edit: {
+              changes: {
+                [uri]: [{
+                  range: {
+                    start: { line: 0, character: 0 },
+                    end: (() => {
+                      const lines = text.split('\n');
+                      return { line: lines.length - 1, character: lines[lines.length - 1].length };
+                    })()
+                  },
+                  newText: l3Text
+                }]
+              }
+            }
+          });
+
+          if (!applied.applied) {
+            // Promotion failed — fall back to L2 decoration data
+            state.isPromoting = false;
+            this.parseAndCacheDocument(uri, text, languageId);
+            const fallbackChanges = this.getMergedChanges(uri);
+            sendDecorationData(this.connection, uri, fallbackChanges, state.version);
+            sendChangeCount(this.connection, uri, fallbackChanges);
+            this.connection.console?.error(
+              `[promoteToL3] workspace/applyEdit rejected for ${uri}`
+            );
+          }
+
+          // Notify extension that promotion is complete (success or failure)
+          this.connection.sendNotification('changetracks/promotionComplete', { uri });
+          this.broadcastDocumentState(uri);
+          return;
+        } catch (err) {
+          // Conversion failed — fall through to normal L2 handling
+          this.connection.console?.error(
+            `[promoteToL3] conversion error for ${uri}: ${err}`
+          );
+        }
+      }
+    }
+
+    // Normal path: L3 document, L2 without changes, or promotion failed
     this.parseAndCacheDocument(uri, text, languageId);
     const changes = this.getMergedChanges(uri);
-    sendDecorationData(this.connection, uri, changes);
+    sendDecorationData(this.connection, uri, changes, state.version);
     sendChangeCount(this.connection, uri, changes);
     this.broadcastDocumentState(uri);
   }
 
+  private async isDiskTextEqualForUri(uri: string, text: string): Promise<boolean> {
+    try {
+      const url = new URL(uri);
+      if (url.protocol !== 'file:') return false;
+      const filePath = fileURLToPath(url);
+      const diskText = await fs.promises.readFile(filePath, 'utf-8');
+      return diskText === text;
+    } catch {
+      return false;
+    }
+  }
+
   /**
-   * Handle document change event
-   * Re-parse the document; debounce decoration/changeCount notifications to reduce renderer CPU.
+   * Handle document change event.
+   * Re-parse the document; debounce decoration/changeCount notifications.
+   * Suppresses re-parse for promotion echoes and batch edits.
+   * Auto-detects L2 documents with changes and re-promotes.
    */
-  public handleDocumentChange(uri: string, text: string, languageId?: string): void {
-    const previousText = this.textCache.get(uri);
+  public async handleDocumentChange(uri: string, text: string, languageId?: string): Promise<void> {
+    // Skip comment input documents
+    if (uri.startsWith('comment://')) return;
+
+    // Ensure state bag exists (normally created in handleDocumentOpen, but didChange can arrive first)
+    const state = this.ensureDocState(uri, text, languageId);
+
+    // Skip re-parse for promotion echo — we already sent correct decorationData
+    if (state.isPromoting) {
+      state.isPromoting = false;
+      // Still update text in state bag with the L3 text
+      state.text = text;
+      // parseResult already has L3 parse from handleDocumentOpen
+      return;
+    }
+
+    // Clear write-back re-entrance guard unconditionally on echo parse
+    // (mirrors isPromoting pattern — clear at entry, not conditionally inside parse)
+    this.pendingWriteBack.delete(uri);
+
+    // Skip re-promotion during batch edits (save conversion, projected view transitions)
+    if (state.isBatchEditing) {
+      // Parse and cache the intermediate content
+      const previousText = state.text;
+      this.parseAndCacheDocument(uri, text, languageId);
+
+      // Check if tracking header changed — load-bearing for state sync
+      const headerRegex = /^<!--\s*ctrcks\.com\/v1:\s*(tracked|untracked)\s*-->/m;
+      const oldHeader = previousText?.match(headerRegex)?.[1];
+      const newHeader = text.match(headerRegex)?.[1];
+      if (oldHeader !== newHeader) {
+        this.broadcastDocumentState(uri);
+      }
+
+      // Skip decorationData during batch — fresh data will be sent on batchEditEnd
+      return;
+    }
+
+    // Check if this is an L2 document that needs re-promotion (e.g., after save)
+    const isL3 = this.workspace.isFootnoteNative(text);
+    if (!isL3) {
+      const doc = this.workspace.parse(text, languageId);
+      const changes = doc.getChanges();
+      if (changes.length > 0) {
+        // L2 with changes on didChange — re-promote via handleDocumentOpen.
+        // VS Code sends a revert-to-disk didChange during "Don't Save" close.
+        // When didChange text equals disk content, suppress repromotion until
+        // the next didOpen/didClose.
+        if (!state.suppressRepromotion) {
+          const diskMatches = await this.isDiskTextEqualForUri(uri, text);
+          if (diskMatches) {
+            state.suppressRepromotion = true;
+          } else {
+            await this.handleDocumentOpen(uri, text, languageId);
+            return;
+          }
+        }
+      }
+    }
+
+    // Normal change handling: parse, cache, debounced notifications
+    const previousText = state.text;
     this.parseAndCacheDocument(uri, text, languageId);
 
     // Check if tracking header changed
@@ -609,15 +860,13 @@ export class ChangetracksServer {
     }
 
     // Debounce decoration/changeCount so we don't flood the client on every keystroke
-    const existing = this.decorationNotifyTimeouts.get(uri);
-    if (existing) clearTimeout(existing);
-    const timeout = setTimeout(() => {
-      this.decorationNotifyTimeouts.delete(uri);
+    if (state.decorationTimeout) clearTimeout(state.decorationTimeout);
+    state.decorationTimeout = setTimeout(() => {
+      state.decorationTimeout = null;
       const changes = this.getMergedChanges(uri);
-      sendDecorationData(this.connection, uri, changes);
+      sendDecorationData(this.connection, uri, changes, state.version);
       sendChangeCount(this.connection, uri, changes);
     }, DECORATION_NOTIFY_DEBOUNCE_MS);
-    this.decorationNotifyTimeouts.set(uri, timeout);
   }
 
   /**
@@ -700,8 +949,10 @@ export class ChangetracksServer {
       }
       const changes = this.getMergedChanges(uri);
       const viewMode = this.getViewMode(uri);
-      const cursorState = this.cursorStateStorage.get(uri);
-      return createCodeLenses(changes, text, viewMode, this.codeLensMode, cursorState);
+      const state = this.docStates.get(uri);
+      const cursorState = state?.cursorState ?? undefined;
+      const coherenceRate = state?.parseResult?.coherenceRate ?? 100;
+      return createCodeLenses(changes, text, viewMode, this.codeLensMode, cursorState, coherenceRate);
     } catch (err) {
       this.connection.console.error(`handleCodeLens error: ${err}`);
       return [];
@@ -787,12 +1038,13 @@ export class ChangetracksServer {
 
       // Get the document from the text document manager or text cache
       const document = this.documents.get(uri);
-      const currentText = document?.getText() ?? this.textCache.get(uri);
+      const docState = this.docStates.get(uri);
+      const currentText = document?.getText() ?? docState?.text;
       if (currentText === undefined) {
         return null;
       }
 
-      const languageId = document?.languageId ?? this.languageIdCache.get(uri);
+      const languageId = document?.languageId ?? docState?.languageId;
 
       // Check if the file already contains annotations
       if (currentText.includes(SIDECAR_BLOCK_MARKER) || currentText.includes('{++') || currentText.includes('{--')) {
@@ -874,7 +1126,7 @@ export class ChangetracksServer {
    * @returns VirtualDocument if cached, undefined otherwise
    */
   public getParseResult(uri: string): VirtualDocument | undefined {
-    return this.parseCache.get(uri);
+    return this.docStates.get(uri)?.parseResult;
   }
 
   /**
@@ -885,7 +1137,7 @@ export class ChangetracksServer {
    * @returns The active ViewName for this document
    */
   public getViewMode(uri: string): ViewName {
-    return this.viewModeStorage.get(uri) ?? 'review';
+    return this.docStates.get(uri)?.viewMode ?? 'review';
   }
 
   /**
@@ -898,10 +1150,11 @@ export class ChangetracksServer {
     const uri = params.textDocument.uri;
     // Ensure we have parsed content — parse if document is open but not cached
     const doc = this.documents.get(uri);
-    if (doc && !this.parseCache.has(uri)) {
-      this.parseAndCacheDocument(uri, doc.getText(), doc.languageId);
+    if (doc && !this.docStates.get(uri)?.parseResult) {
+      this.ensureDocState(uri, doc.getText(), doc.languageId);
     }
-    const changes = this.getMergedChanges(uri);
+    const changes = this.getMergedChanges(uri)
+      .filter(c => !isGhostNode(c));
     return { changes };
   }
 
@@ -914,7 +1167,7 @@ export class ChangetracksServer {
    * documents not yet opened by the client.
    */
   private getDocumentText(uri: string): string | undefined {
-    return this.documents.get(uri)?.getText() ?? this.textCache.get(uri);
+    return this.documents.get(uri)?.getText() ?? this.docStates.get(uri)?.text;
   }
 
   /**
@@ -949,9 +1202,11 @@ export class ChangetracksServer {
     reasonRequired: { human: boolean; agent: boolean };
     reviewerIdentity: string | undefined;
   } {
-    const review = this.projectConfig?.review ?? DEFAULT_CONFIG.review;
+    // Map the new reasoning.review section back to the legacy reasonRequired
+    // shape expected by the VS Code extension.
+    const reasoning = this.projectConfig?.reasoning ?? DEFAULT_CONFIG.reasoning;
     return {
-      reasonRequired: review.reasonRequired,
+      reasonRequired: reasoning.review,
       reviewerIdentity: this.reviewerIdentity,
     };
   }
@@ -1034,21 +1289,48 @@ export class ChangetracksServer {
    * 2D: changetracks/amendChange
    * Amend a proposed change's inline text or reasoning.
    */
-  public handleAmendChange(params: {
+  public async handleAmendChange(params: {
     uri: string;
     changeId: string;
     newText: string;
     reason?: string;
     author?: string;
-  }): { edit: TextEdit } | { error: string } {
+  }): Promise<{ edit: TextEdit } | { error: string }> {
     try {
       const docText = this.getDocumentText(params.uri);
       if (!docText) return { error: 'Document not found' };
       const author = params.author ?? this.reviewerIdentity ?? '';
-      const result = computeAmendEdits(docText, params.changeId, {
+
+      // --- Author check: amend requires same author ---
+      const lines = docText.split('\n');
+      const block = findFootnoteBlock(lines, params.changeId);
+      if (!block) return { error: `Change "${params.changeId}" not found in file.` };
+      const header = parseFootnoteHeader(lines[block.headerLine]);
+      if (!header) return { error: `Malformed metadata for change "${params.changeId}".` };
+      const normalizedAuthor = author.replace(/^@/, '');
+      const normalizedOriginal = (header.author ?? '').replace(/^@/, '');
+      if (normalizedAuthor !== normalizedOriginal) {
+        return { error: `You are not the original author of change "${params.changeId}". Use supersede to propose an alternative.` };
+      }
+
+      // --- For insertions, derive insertAfter anchor ---
+      let insertAfter: string | undefined;
+      const doc = parseForFormat(docText);
+      const change = doc.getChanges().find(c => c.id === params.changeId);
+      if (change && change.type === ChangeType.Insertion) {
+        const start = change.range.start;
+        const contextLen = Math.min(30, start);
+        if (contextLen > 0) {
+          insertAfter = docText.slice(start - contextLen, start).trimStart();
+        }
+      }
+
+      // oldText omitted — computeSupersedeResult derives it from the rejected change
+      const result = await computeSupersedeResult(docText, params.changeId, {
         newText: params.newText,
         reason: params.reason,
         author,
+        insertAfter,
       });
       if (result.isError) return { error: result.error };
       return { edit: this.fullDocumentEdit(params.uri, result.text) };
@@ -1062,7 +1344,7 @@ export class ChangetracksServer {
    * 2E: changetracks/supersedeChange
    * Reject a proposed change and propose a replacement, with cross-references.
    */
-  public handleSupersedeChange(params: {
+  public async handleSupersedeChange(params: {
     uri: string;
     changeId: string;
     newText: string;
@@ -1070,12 +1352,12 @@ export class ChangetracksServer {
     author?: string;
     oldText?: string;
     insertAfter?: string;
-  }): { edit: TextEdit; newChangeId: string } | { error: string } {
+  }): Promise<{ edit: TextEdit; newChangeId: string } | { error: string }> {
     try {
       const docText = this.getDocumentText(params.uri);
       if (!docText) return { error: 'Document not found' };
       const author = params.author ?? this.reviewerIdentity ?? '';
-      const result = computeSupersedeResult(docText, params.changeId, {
+      const result = await computeSupersedeResult(docText, params.changeId, {
         newText: params.newText,
         oldText: params.oldText,
         reason: params.reason,
@@ -1176,9 +1458,8 @@ export class ChangetracksServer {
         const preBlock = findFootnoteBlock(preLines, params.changeId);
         const preHeader = preBlock ? parseFootnoteHeader(preLines[preBlock.headerLine]) : null;
 
-        const parser = new CriticMarkupParser();
-        const doc = parser.parse(result);
-        const changes = doc.getChanges();
+        const compactDoc = this.workspace.parse(result);
+        const changes = compactDoc.getChanges();
 
         // Find the target L1 change by matching on inlineMetadata fields
         let idx = -1;
@@ -1218,6 +1499,53 @@ export class ChangetracksServer {
   }
 
   /**
+   * 2G+: changetracks/compactChanges (plural)
+   * Compact multiple decided footnotes from an L3 (or L2) document in a single
+   * operation. Removes targeted footnote blocks, applies body mutations for
+   * rejected proposed changes, and inserts a compaction-boundary footnote.
+   */
+  public async handleCompactChanges(params: {
+    uri: string;
+    targets: string[] | 'all-decided';
+    undecidedPolicy: 'accept' | 'reject';
+    boundaryMeta?: Record<string, string>;
+  }): Promise<{ edit: TextEdit; compactedIds: string[]; verification: VerificationResult } | { error: string }> {
+    try {
+      const docText = this.getDocumentText(params.uri);
+      if (!docText) return { error: 'Document not found' };
+
+      const l3 = isL3Format(docText);
+      const compactFn = l3 ? compact : compactL2;
+
+      const result = await compactFn(docText, {
+        targets: params.targets,
+        undecidedPolicy: params.undecidedPolicy,
+        boundaryMeta: params.boundaryMeta,
+      });
+
+      if (!result.verification.valid) {
+        const issues: string[] = [];
+        if (result.verification.danglingRefs.length > 0)
+          issues.push(`${result.verification.danglingRefs.length} dangling ref(s)`);
+        if (result.verification.anchorCoherence < 100)
+          issues.push(`anchor coherence ${result.verification.anchorCoherence}%`);
+        if (result.verification.danglingSupersedes.length > 0)
+          issues.push(`${result.verification.danglingSupersedes.length} dangling supersedes`);
+        this.connection.console.warn(`Compaction verification: ${issues.join(', ')}`);
+      }
+
+      return {
+        edit: this.fullDocumentEdit(params.uri, result.text),
+        compactedIds: result.compactedIds,
+        verification: result.verification,
+      };
+    } catch (err) {
+      this.connection.console.error(`handleCompactChanges error: ${err}`);
+      return { error: `Compaction failed: ${err}` };
+    }
+  }
+
+  /**
    * 2H: changetracks/reviewAll
    * Apply a review decision to all proposed changes in a document in a single
    * request, eliminating the stale-text race that occurs when looping over
@@ -1237,9 +1565,9 @@ export class ChangetracksServer {
 
       const author = this.reviewerIdentity ?? '';
 
-      // Parse once to identify all proposed changes
-      const parser = new CriticMarkupParser();
-      const doc = parser.parse(text);
+      // Parse once to identify all proposed changes (format-aware via workspace)
+      const languageId = this.docStates.get(params.uri)?.languageId;
+      const doc = this.workspace.parse(text, languageId);
       const allChanges = doc.getChanges();
 
       // Filter to proposed changes; optionally restrict to a specified ID set

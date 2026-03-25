@@ -146,7 +146,9 @@ export function buildChangeTracksRule(config, projectDir, sessionId) {
                 }
             }
             catch { /* ignore */ }
-            await logEdit(projectDir, sessionId, op.file, oldText, newText, op.source.tool, contextBefore, contextAfter);
+            // Capitalize tool name for pending edit storage (e.g. 'edit' → 'Edit')
+            const toolName = op.source.tool.charAt(0).toUpperCase() + op.source.tool.slice(1);
+            await logEdit(projectDir, sessionId, op.file, oldText, newText, toolName, contextBefore, contextAfter);
         },
         afterRead: async (op, _result) => {
             await logReadAudit(projectDir, sessionId, op.file);

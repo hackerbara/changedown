@@ -9,6 +9,8 @@ describe('composeGuide', () => {
         ...DEFAULT_CONFIG,
         protocol: { ...DEFAULT_CONFIG.protocol, mode: 'classic' },
         hashline: { enabled: false, auto_remap: false },
+        // Disable annotation section so `op` term doesn't appear from annotation guidance
+        reasoning: { ...DEFAULT_CONFIG.reasoning, propose: { human: false, agent: false } },
       });
       expect(guide).toContain('old_text');
       expect(guide).toContain('new_text');
@@ -63,18 +65,18 @@ describe('composeGuide', () => {
   });
 
   describe('annotation section', () => {
-    it('required reasoning includes annotation requirement', () => {
+    it('reasoning.propose.agent=true includes annotation requirement', () => {
       const guide = composeGuide({
         ...DEFAULT_CONFIG,
-        protocol: { ...DEFAULT_CONFIG.protocol, reasoning: 'required' },
+        reasoning: { ...DEFAULT_CONFIG.reasoning, propose: { human: false, agent: true } },
       });
       expect(guide).toMatch(/annotation.*required|required.*annotation/i);
     });
 
-    it('optional reasoning omits annotation requirement', () => {
+    it('reasoning.propose.agent=false omits annotation requirement', () => {
       const guide = composeGuide({
         ...DEFAULT_CONFIG,
-        protocol: { ...DEFAULT_CONFIG.protocol, reasoning: 'optional' },
+        reasoning: { ...DEFAULT_CONFIG.reasoning, propose: { human: false, agent: false } },
       });
       expect(guide).not.toMatch(/annotation.*required/i);
     });
@@ -165,10 +167,11 @@ describe('composeGuide', () => {
   });
 
   describe('token cost', () => {
-    it('minimal config (classic, no hashlines, optional everything) is under 300 tokens', () => {
+    it('default config (classic, no hashlines, agent reasoning required) is under 325 tokens', () => {
       const guide = composeGuide(DEFAULT_CONFIG);
       // Rough token estimate: ~4 chars per token
-      expect(guide.length).toBeLessThan(1200);
+      // DEFAULT_CONFIG has reasoning.propose.agent = true, so annotation section is included
+      expect(guide.length).toBeLessThan(1300);
     });
 
     it('maximal config (compact, hashlines, required everything) is under 500 tokens', () => {

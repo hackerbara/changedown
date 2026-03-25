@@ -119,7 +119,8 @@ describe('hashline', () => {
 
     it('handles empty content (single empty line)', () => {
       const result = formatHashLines('');
-      const hash = computeLineHash(0, '');
+      // formatHashLines splits '' into [''] and calls computeLineHash with context
+      const hash = computeLineHash(0, '', ['']);
       expect(result).toBe(`1:${hash}|`);
     });
 

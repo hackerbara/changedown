@@ -15,7 +15,8 @@
  * Extracted from `[^ct-N]: @author | date | type | status` header lines
  * plus indented metadata and thread reply lines.
  */
-import { FOOTNOTE_DEF_LENIENT, FOOTNOTE_DEF_START, FOOTNOTE_CONTINUATION } from './footnote-patterns.js';
+import { FOOTNOTE_DEF_LENIENT, FOOTNOTE_THREAD_REPLY } from './footnote-patterns.js';
+import { findFootnoteBlockStart } from './footnote-utils.js';
 import { parseTimestamp, type Timestamp } from './timestamp.js';
 
 export interface FootnoteInfo {
@@ -34,13 +35,12 @@ export interface FootnoteInfo {
   endLine: number;
   /** Image dimensions from import, format: { widthIn, heightIn } in inches */
   imageDimensions?: { widthIn: number; heightIn: number };
+  /** Bag of image-* positioning metadata (e.g. image-float, image-h-anchor, image-wrap) */
+  imageMetadata?: Record<string, string>;
 }
 
-/**
- * Regex matching a thread reply line (indented, starts with @author date:).
- * e.g. `    @bob 2026-02-17: I think 1000 is correct`
- */
-const RE_THREAD_REPLY = /^\s+@\S+\s+\d{4}-\d{2}-\d{2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?Z?)?:/;
+// Use shared FOOTNOTE_THREAD_REPLY from footnote-patterns.ts
+const RE_THREAD_REPLY = FOOTNOTE_THREAD_REPLY;
 
 /**
  * Regex matching a footnote metadata line (indented, key: value).
@@ -103,6 +103,12 @@ export function parseFootnotes(content: string): Map<string, FootnoteInfo> {
               heightIn: parseFloat(dimMatch[2]),
             };
           }
+        } else if (metaMatch && metaMatch[1].startsWith('image-') && metaMatch[1] !== 'image-dimensions') {
+          if (!info.imageMetadata) info.imageMetadata = {};
+          info.imageMetadata[metaMatch[1]] = metaMatch[2];
+        } else if (metaMatch && metaMatch[1] === 'merge-detected') {
+          if (!info.imageMetadata) info.imageMetadata = {};
+          info.imageMetadata['merge-detected'] = metaMatch[2];
         }
       }
       info.endLine = j;
@@ -113,96 +119,4 @@ export function parseFootnotes(content: string): Map<string, FootnoteInfo> {
   }
 
   return footnotes;
-}
-
-/**
- * Find the 0-based line index where the terminal footnote block starts.
- * Returns `lines.length` if no footnote definitions exist.
- *
- * Uses a backward scan from end-of-file, exploiting the structural invariant
- * that real footnotes are always a contiguous block at the end. This avoids
- * false positives from [^ct- patterns inside code blocks, CriticMarkup, or
- * literal body text.
- *
- * Uses FOOTNOTE_DEF_START (matches `[^ct-N]:` at column 0) rather than
- * FOOTNOTE_DEF_LENIENT for resilience against malformed trailing footnotes.
- */
-export function findFootnoteBlockStart(lines: string[]): number {
-
-  // Phase 1: Find the last footnote definition (scanning backward)
-  let lastDefIdx = -1;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (FOOTNOTE_DEF_START.test(lines[i])) {
-      lastDefIdx = i;
-      break;
-    }
-  }
-
-  if (lastDefIdx === -1) {
-    return lines.length; // No footnotes
-  }
-
-  // Phase 1b: Verify the block containing lastDefIdx is truly terminal.
-  // Walk forward from lastDefIdx through footnote defs, continuations, and
-  // blank lines. If we encounter non-blank, non-footnote body content before
-  // reaching EOF, this "footnote" is inside body text (e.g. a code fence) and
-  // we must scan backward for the next candidate.
-  let candidate = lastDefIdx;
-  while (candidate >= 0) {
-    let j = candidate + 1;
-    let isTerminal = true;
-    while (j < lines.length) {
-      const line = lines[j];
-      if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
-        j++;
-      } else if (line.trim() === '') {
-        j++;
-      } else {
-        isTerminal = false;
-        break;
-      }
-    }
-    if (isTerminal) {
-      lastDefIdx = candidate;
-      break;
-    }
-    // Not terminal — scan backward for the next candidate
-    candidate--;
-    while (candidate >= 0 && !FOOTNOTE_DEF_START.test(lines[candidate])) {
-      candidate--;
-    }
-  }
-
-  if (candidate < 0) {
-    return lines.length; // No terminal footnote block
-  }
-
-  // Phase 2: Scan backward from lastDefIdx through the contiguous block.
-  // Blank lines are included only if a footnote def or continuation appears before them.
-  let blockStart = lastDefIdx;
-  for (let i = lastDefIdx - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
-      blockStart = i;
-    } else if (line.trim() === '') {
-      // Include this blank only if there is a footnote def or continuation before it
-      let hasFootnoteBefore = false;
-      for (let k = i - 1; k >= 0; k--) {
-        if (lines[k].trim() === '') continue;
-        if (FOOTNOTE_DEF_START.test(lines[k]) || FOOTNOTE_CONTINUATION.test(lines[k])) {
-          hasFootnoteBefore = true;
-        }
-        break;
-      }
-      if (hasFootnoteBefore) {
-        blockStart = i;
-      } else {
-        break;
-      }
-    } else {
-      break;
-    }
-  }
-
-  return blockStart;
 }

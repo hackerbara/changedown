@@ -148,8 +148,8 @@ describe('propose_change with settled hashes', () => {
 
     expect(proposeResult.isError).toBe(true);
     const errorText = proposeResult.content[0].text;
-    expect(errorText).toContain('Hash mismatch at line');
-    expect(errorText).toContain('settled view');
+    expect(errorText).toContain('Hash mismatch on line');
+    expect(errorText).toContain('read_tracked_file');
   });
 
   it('handles file with pending deletion — deleted line absent from settled view', async () => {
@@ -250,6 +250,7 @@ describe('propose_change with settled hashes', () => {
         new_text: 'Updated first line.',
         start_line: firstLineNum,
         start_hash: firstHash,
+        reason: 'test',
       },
       resolver,
       state,
@@ -282,6 +283,7 @@ describe('propose_change with settled hashes', () => {
         new_text: 'Updated second line.',
         start_line: secondLineNum,
         start_hash: secondHash,
+        reason: 'test',
       },
       resolver,
       state,

@@ -1,10 +1,21 @@
-import { ChangeNode, ChangeStatus, ChangeType, OffsetRange, PendingOverlay } from './types.js';
+import { ChangeNode, ChangeStatus, ChangeType, isGhostNode, OffsetRange, PendingOverlay, UnresolvedDiagnostic } from './types.js';
 
 export class VirtualDocument {
   private changes: ChangeNode[];
+  readonly coherenceRate: number;
+  readonly unresolvedDiagnostics: UnresolvedDiagnostic[];
+  readonly resolvedText?: string;
 
-  constructor(changes: ChangeNode[] = []) {
+  constructor(
+    changes: ChangeNode[] = [],
+    coherenceRate: number = 100,
+    unresolvedDiagnostics: UnresolvedDiagnostic[] = [],
+    resolvedText?: string,
+  ) {
     this.changes = changes;
+    this.coherenceRate = coherenceRate;
+    this.unresolvedDiagnostics = unresolvedDiagnostics;
+    this.resolvedText = resolvedText;
   }
 
   /**
@@ -30,9 +41,16 @@ export class VirtualDocument {
     return this.changes;
   }
 
+  /** Returns L2+ ghost nodes that failed anchor resolution. L0/L1 unanchored nodes are excluded. */
+  getUnresolvedChanges(): ChangeNode[] {
+    return this.changes.filter(c => isGhostNode(c));
+  }
+
   changeAtOffset(offset: number): ChangeNode | null {
     for (const change of this.changes) {
-      if (offset >= change.range.start && offset <= change.range.end) {
+      if (change.range.start === change.range.end
+          ? offset === change.range.start
+          : offset >= change.range.start && offset < change.range.end) {
         return change;
       }
     }

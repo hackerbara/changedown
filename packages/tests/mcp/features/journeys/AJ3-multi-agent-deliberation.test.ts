@@ -101,7 +101,7 @@ describe('AJ3: Multi-agent deliberation', () => {
     expect(disk4).toContain('{~~PostgreSQL~>CockroachDB~~}');
     expect(disk4).not.toContain('MySQL');
 
-    // ── Phase 5: Original author amends based on feedback ────────────
+    // ── Phase 5: Original author amends based on feedback (supersede) ─
     const amendResult = await ctx.amend(filePath, 'ct-1', {
       new_text: 'CockroachDB with encryption-at-rest enabled',
       reason: 'Addressed security concern: enable encryption-at-rest',
@@ -111,57 +111,56 @@ describe('AJ3: Multi-agent deliberation', () => {
 
     const amendData = ctx.parseResult(amendResult);
     expect(amendData.change_id).toBe('ct-1');
+    expect(amendData.new_change_id).toBeDefined();
     expect(amendData.amended).toBe(true);
-    expect(amendData.inline_updated).toBe(true);
-    expect(amendData.previous_text).toBe('CockroachDB');
+    const newChangeId = amendData.new_change_id as string;
 
     const disk5 = await ctx.readDisk(filePath);
     expect(disk5).toContain('{~~PostgreSQL~>CockroachDB with encryption-at-rest enabled~~}');
-    expect(disk5).not.toContain('{~~PostgreSQL~>CockroachDB~~}');
-    // Amendment recorded in footnote
-    expect(disk5).toMatch(/revised @ai:architect/);
-    expect(disk5).toContain('previous: "CockroachDB"');
+    // Original ct-1 rejected with superseded-by cross-reference
+    expect(disk5).toContain(`superseded-by: ${newChangeId}`);
+    expect(disk5).toContain('supersedes: ct-1');
 
-    // ── Phase 6: get_change before settlement to verify participants ─
+    // ── Phase 6: get_change on the NEW change to verify it exists ────
     // (Must check before approval triggers auto-settlement which removes inline markup)
-    const getResult = await ctx.getChange(filePath, 'ct-1');
-    expect(getResult.isError).toBeUndefined();
-    const changeData = ctx.parseResult(getResult);
-    const participants = changeData.participants as string[];
-    // Participants include the @ prefix as stored in footnote metadata
-    expect(participants).toContain('@ai:architect');
-    expect(participants).toContain('@ai:security');
-    expect(participants).toContain('@ai:performance');
+    // The original ct-1 footnote preserves the discussion thread from all agents
+    const getResultOrig = await ctx.getChange(filePath, 'ct-1');
+    expect(getResultOrig.isError).toBeUndefined();
+    const origData = ctx.parseResult(getResultOrig);
+    const origParticipants = origData.participants as string[];
+    expect(origParticipants).toContain('@ai:architect');
+    expect(origParticipants).toContain('@ai:security');
+    expect(origParticipants).toContain('@ai:performance');
 
-    // ── Phase 7: Agent B approves, Agent C approves ──────────────────
+    // ── Phase 7: Agent B approves, Agent C approves the NEW change ───
     const approve1 = await ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'Encryption concern addressed' }],
+      reviews: [{ change_id: newChangeId, decision: 'approve', reason: 'Encryption concern addressed' }],
       author: 'ai:security',
     });
     expect(approve1.isError).toBeUndefined();
 
     // Auto-settlement fires on first approve; second approve targets already-accepted footnote
     const approve2 = await ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'Latency acceptable with encryption trade-off' }],
+      reviews: [{ change_id: newChangeId, decision: 'approve', reason: 'Latency acceptable with encryption trade-off' }],
       author: 'ai:performance',
     });
     // Second approve on an already-accepted change: check that the call itself
     // does not crash (it records the approval in footnote regardless)
     expect(approve2.isError).toBeUndefined();
 
-    // Verify final state: footnote accepted, inline markup settled
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+    // Verify final state: new change accepted, inline markup settled
+    await ctx.assertFootnoteStatus(filePath, newChangeId, 'accepted');
 
     // Body contains the amended text with no markup delimiters
     await ctx.assertNoMarkupInBody(filePath);
     const disk6 = await ctx.readDisk(filePath);
     expect(disk6).toContain('CockroachDB with encryption-at-rest enabled');
 
-    // Footnote preserves all three agent identities in the thread
+    // Original ct-1 footnote preserves all three agent identities in the thread
     expect(disk6).toContain('@ai:architect');
     expect(disk6).toContain('@ai:security');
     expect(disk6).toContain('@ai:performance');
-    // Footnote contains approval entries
+    // New change footnote contains approval entries
     expect(disk6).toContain('approved:');
   });
 

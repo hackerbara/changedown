@@ -20,9 +20,9 @@ Feature: H5 - Read Interception
     When I format a read redirect for "docs/readme.md"
     Then the redirect contains 'view="changes"'
 
-  Scenario: Read redirect mentions strict mode
+  Scenario: Read redirect mentions tracked files are blocked
     When I format a read redirect for "docs/readme.md"
-    Then the redirect contains "strict mode"
+    Then the redirect contains "tracked files are blocked"
 
   # ── PreToolUse Adapter (Claude Code) ──
 

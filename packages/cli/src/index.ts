@@ -177,6 +177,7 @@ Commands:
   respond    Add a response to a change discussion thread
   group      Begin or end a change group
   raw-edit   Edit a tracked file without CriticMarkup wrapping
+  compact    Compact decided footnotes from a tracked file
 
 User commands:
   diff       Show file with colored CriticMarkup

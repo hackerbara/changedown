@@ -17,6 +17,7 @@ export { ConfigResolver } from './config-resolver.js';
 
 // ── Session state ───────────────────────────────────────────────────
 export { SessionState } from './state.js';
+export { rerecordState } from './state-utils.js';
 
 // ── Tool handlers ───────────────────────────────────────────────────
 export { handleProposeChange } from './tools/propose-change.js';
@@ -31,6 +32,7 @@ export { handleListOpenThreads } from './tools/list-open-threads.js';
 export { handleGetTrackingStatus } from './tools/get-tracking-status.js';
 export { handleRawEdit } from './tools/raw-edit.js';
 export { handleRespondToThread } from './tools/respond-to-thread.js';
+export { handleResolveThread, resolveThreadTool } from './tools/resolve-thread.js';
 export { handleBeginChangeGroup } from './tools/begin-change-group.js';
 export { handleEndChangeGroup } from './tools/end-change-group.js';
 export { handleSupersedeChange } from './tools/supersede-change.js';

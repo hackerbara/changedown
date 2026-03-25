@@ -78,6 +78,8 @@ export interface ThreeZoneLine {
   metadata: LineMetadata[];
   /** Raw file line number (1-indexed). Equals margin.lineNumber for review/raw views. */
   rawLineNumber: number;
+  /** True if this line continues a multi-line CriticMarkup block from a previous line. */
+  continuesChange?: boolean;
   /** Additional hashes for session binding (not rendered). */
   sessionHashes?: {
     raw: string;

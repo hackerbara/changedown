@@ -1,10 +1,12 @@
 import { CriticMarkupParser } from '../parser/parser.js';
-import { ChangeType } from '../model/types.js';
+import { changeTypeToAbbrev } from '../model/types.js';
 import { findFootnoteBlock, parseFootnoteHeader, findReviewInsertionIndex, findChildFootnoteIds } from '../footnote-utils.js';
 import { nowTimestamp } from '../timestamp.js';
 import { ensureL2 } from './ensure-l2.js';
+import type { ChangeTracksConfig } from '../config/index.js';
+import { canAccept } from '../config/review-permissions.js';
 
-export const VALID_DECISIONS = ['approve', 'reject', 'request_changes'] as const;
+export const VALID_DECISIONS = ['approve', 'reject', 'request_changes', 'withdraw'] as const;
 export type Decision = typeof VALID_DECISIONS[number];
 
 export interface ApplyReviewSuccess {
@@ -16,13 +18,6 @@ export interface ApplyReviewError {
   error: string;
 }
 
-/**
- * Maps a decision value to its footnote keyword.
- *
- * - `approve` -> `approved:`
- * - `reject` -> `rejected:`
- * - `request_changes` -> `request-changes:`
- */
 function decisionToKeyword(decision: Decision): string {
   switch (decision) {
     case 'approve':
@@ -31,20 +26,43 @@ function decisionToKeyword(decision: Decision): string {
       return 'rejected:';
     case 'request_changes':
       return 'request-changes:';
+    case 'withdraw':
+      return 'withdrew:';
+    default: {
+      const _exhaustive: never = decision;
+      return _exhaustive;
+    }
   }
 }
 
+
 /**
- * Maps a ChangeType enum value to the abbreviated type string used in footnotes.
+ * Scans footnote body lines for `blocked: @author` entries and checks whether
+ * each blocker has been resolved by a subsequent `withdrew:` or `approved:` line
+ * from the same author.
  */
-function changeTypeToAbbrev(type: ChangeType): string {
-  switch (type) {
-    case ChangeType.Insertion: return 'ins';
-    case ChangeType.Deletion: return 'del';
-    case ChangeType.Substitution: return 'sub';
-    case ChangeType.Highlight: return 'hig';
-    case ChangeType.Comment: return 'com';
+function checkBlocks(
+  lines: string[],
+  block: { headerLine: number; blockEnd: number },
+): { blocked: boolean; blockers: string[] } {
+  const blockers: string[] = [];
+  const resolved = new Set<string>();
+
+  for (let i = block.headerLine + 1; i <= block.blockEnd; i++) {
+    const line = lines[i].trim();
+    const colonIdx = line.indexOf(':');
+    if (colonIdx < 1) continue;
+    const keyword = line.slice(0, colonIdx);
+    const authorMatch = line.slice(colonIdx + 1).match(/^\s*@(\S+)/);
+    if (!authorMatch) continue;
+    const author = '@' + authorMatch[1];
+
+    if (keyword === 'blocked') blockers.push(author);
+    else if (keyword === 'withdrew' || keyword === 'approved') resolved.add(author);
   }
+
+  const unresolvedBlockers = blockers.filter(b => !resolved.has(b));
+  return { blocked: unresolvedBlockers.length > 0, blockers: unresolvedBlockers };
 }
 
 /**
@@ -93,7 +111,8 @@ export function applyReview(
   changeId: string,
   decision: Decision,
   reasoning: string,
-  author: string
+  author: string,
+  config?: ChangeTracksConfig,
 ): ApplyReviewSuccess | ApplyReviewError {
   let lines = fileContent.split('\n');
   let block = findFootnoteBlock(lines, changeId);
@@ -120,6 +139,14 @@ export function applyReview(
   }
   const currentStatus = header.status;
 
+  // Permission checks (when config provided)
+  if (config && (decision === 'approve' || decision === 'reject')) {
+    const acceptCheck = canAccept(author, header.author, config);
+    if (!acceptCheck.allowed) {
+      return { error: acceptCheck.reason! };
+    }
+  }
+
   // Idempotency: if the change is already in the target status, return a no-op.
   // request_changes still appends (it is a comment, not a status transition).
   if (decision === 'approve' && currentStatus === 'accepted') {
@@ -133,6 +160,14 @@ export function applyReview(
       updatedContent: fileContent,
       result: { change_id: changeId, decision, status_updated: false, reason: 'already_rejected' },
     };
+  }
+
+  // Block checking: prevent acceptance when unresolved blocked: lines exist
+  if (decision === 'approve') {
+    const blockResult = checkBlocks(lines, block);
+    if (blockResult.blocked) {
+      return { error: `Acceptance blocked by unresolved request-changes from ${blockResult.blockers.join(', ')}` };
+    }
   }
 
   const keyword = decisionToKeyword(decision);
@@ -153,6 +188,10 @@ export function applyReview(
   } else if (decision === 'reject' && currentStatus === 'accepted') {
     // Explicit reject overrides prior cascade (e.g. parent approved then user rejects child).
     lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*accepted\s*$/, '| rejected');
+    statusUpdated = true;
+  } else if (decision === 'approve' && currentStatus === 'rejected') {
+    // ADR-D §2: rejection is not terminal — a later approval overrides it.
+    lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*rejected\s*$/, '| accepted');
     statusUpdated = true;
   } else if (decision === 'request_changes') {
     reason = 'request_changes_no_status_change';

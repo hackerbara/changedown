@@ -53,7 +53,7 @@ Feature: E5 - Guide Composer
     Then the first content item contains "LINE:HASH"
     And the first content item contains "old~>new"
 
-  Scenario: Guide includes chaining advice about updated_lines
+  Scenario: Guide includes chaining advice about affected_lines
     Given the config has protocol.mode = "classic"
     And guide delivery is enabled
     And a tracked markdown file "doc.md" with content:
@@ -63,4 +63,4 @@ Feature: E5 - Guide Composer
       Some content.
       """
     When I call read_tracked_file for "doc.md" with view = "review"
-    Then the first content item contains "updated_lines"
+    Then the first content item contains "affected_lines"

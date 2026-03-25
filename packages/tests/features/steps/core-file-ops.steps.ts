@@ -78,11 +78,11 @@ Given(
 
 When(
   'I apply propose-change substituting {string} with {string} as {string} by {string}',
-  function (this: ChangeTracksWorld, oldText: string, newText: string, changeId: string, author: string) {
+  async function (this: ChangeTracksWorld, oldText: string, newText: string, changeId: string, author: string) {
     const text = fileOpsDoc.get(this);
     assert.ok(text !== undefined, 'No file-ops document set');
     try {
-      const result = applyProposeChange({ text, oldText, newText, changeId, author });
+      const result = await applyProposeChange({ text, oldText, newText, changeId, author });
       fileOpsResult.set(this, result);
     } catch (err) {
       fileOpsError.set(this, err as Error);
@@ -92,11 +92,11 @@ When(
 
 When(
   'I apply propose-change substituting {string} with {string} as {string} by {string} with reasoning {string}',
-  function (this: ChangeTracksWorld, oldText: string, newText: string, changeId: string, author: string, reasoning: string) {
+  async function (this: ChangeTracksWorld, oldText: string, newText: string, changeId: string, author: string, reasoning: string) {
     const text = fileOpsDoc.get(this);
     assert.ok(text !== undefined, 'No file-ops document set');
     try {
-      const result = applyProposeChange({ text, oldText, newText, changeId, author, reasoning });
+      const result = await applyProposeChange({ text, oldText, newText, changeId, author, reasoning });
       fileOpsResult.set(this, result);
     } catch (err) {
       fileOpsError.set(this, err as Error);
@@ -106,11 +106,11 @@ When(
 
 When(
   'I apply propose-change substituting {string} with {string} as {string} by {string} expecting an error',
-  function (this: ChangeTracksWorld, oldText: string, newText: string, changeId: string, author: string) {
+  async function (this: ChangeTracksWorld, oldText: string, newText: string, changeId: string, author: string) {
     const text = fileOpsDoc.get(this);
     assert.ok(text !== undefined, 'No file-ops document set');
     try {
-      applyProposeChange({ text, oldText, newText, changeId, author });
+      await applyProposeChange({ text, oldText, newText, changeId, author });
       assert.fail('Expected applyProposeChange to throw but it did not');
     } catch (err) {
       fileOpsError.set(this, err as Error);
@@ -120,11 +120,11 @@ When(
 
 When(
   'I apply propose-change deleting {string} as {string} by {string}',
-  function (this: ChangeTracksWorld, oldText: string, changeId: string, author: string) {
+  async function (this: ChangeTracksWorld, oldText: string, changeId: string, author: string) {
     const text = fileOpsDoc.get(this);
     assert.ok(text !== undefined, 'No file-ops document set');
     try {
-      const result = applyProposeChange({ text, oldText, newText: '', changeId, author });
+      const result = await applyProposeChange({ text, oldText, newText: '', changeId, author });
       fileOpsResult.set(this, result);
     } catch (err) {
       fileOpsError.set(this, err as Error);
@@ -134,11 +134,11 @@ When(
 
 When(
   'I apply propose-change inserting {string} after {string} as {string} by {string}',
-  function (this: ChangeTracksWorld, newText: string, insertAfter: string, changeId: string, author: string) {
+  async function (this: ChangeTracksWorld, newText: string, insertAfter: string, changeId: string, author: string) {
     const text = fileOpsDoc.get(this);
     assert.ok(text !== undefined, 'No file-ops document set');
     try {
-      const result = applyProposeChange({ text, oldText: '', newText, changeId, author, insertAfter });
+      const result = await applyProposeChange({ text, oldText: '', newText, changeId, author, insertAfter });
       fileOpsResult.set(this, result);
     } catch (err) {
       fileOpsError.set(this, err as Error);
@@ -148,11 +148,11 @@ When(
 
 When(
   'I apply propose-change with empty old and new text as {string} by {string} expecting an error',
-  function (this: ChangeTracksWorld, changeId: string, author: string) {
+  async function (this: ChangeTracksWorld, changeId: string, author: string) {
     const text = fileOpsDoc.get(this);
     assert.ok(text !== undefined, 'No file-ops document set');
     try {
-      applyProposeChange({ text, oldText: '', newText: '', changeId, author });
+      await applyProposeChange({ text, oldText: '', newText: '', changeId, author });
       assert.fail('Expected applyProposeChange to throw but it did not');
     } catch (err) {
       fileOpsError.set(this, err as Error);
@@ -162,11 +162,11 @@ When(
 
 When(
   'I apply propose-change inserting {string} without anchor as {string} by {string} expecting an error',
-  function (this: ChangeTracksWorld, newText: string, changeId: string, author: string) {
+  async function (this: ChangeTracksWorld, newText: string, changeId: string, author: string) {
     const text = fileOpsDoc.get(this);
     assert.ok(text !== undefined, 'No file-ops document set');
     try {
-      applyProposeChange({ text, oldText: '', newText, changeId, author });
+      await applyProposeChange({ text, oldText: '', newText, changeId, author });
       assert.fail('Expected applyProposeChange to throw but it did not');
     } catch (err) {
       fileOpsError.set(this, err as Error);
@@ -243,11 +243,11 @@ When(
 
 When(
   'I apply single-operation substituting {string} with {string} as {string} by {string}',
-  function (this: ChangeTracksWorld, oldText: string, newText: string, changeId: string, author: string) {
+  async function (this: ChangeTracksWorld, oldText: string, newText: string, changeId: string, author: string) {
     const fileContent = fileOpsDoc.get(this);
     assert.ok(fileContent !== undefined, 'No file-ops document set');
     try {
-      const result = applySingleOperation({ fileContent, oldText, newText, changeId, author });
+      const result = await applySingleOperation({ fileContent, oldText, newText, changeId, author });
       fileOpsResult.set(this, result);
     } catch (err) {
       fileOpsError.set(this, err as Error);

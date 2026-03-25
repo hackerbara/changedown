@@ -1,0 +1,32 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "workspaces": {
+    "packages/core": {
+      "entry": ["src/index.ts", "src/internals.ts", "src/edit-boundary/index.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/**/*.test.ts"]
+    },
+    "packages/lsp-server": {
+      "entry": ["src/server.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/vscode-extension": {
+      "entry": ["src/extension.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/test/**"]
+    },
+    "packages/cli": {
+      "entry": ["src/index.ts", "src/engine/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/docx": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/opencode-plugin": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    }
+  },
+  "ignoreDependencies": ["docx"]
+}

@@ -58,6 +58,7 @@ describe('propose_change hashline addressing', () => {
       settlement: { auto_on_approve: true, auto_on_reject: true },
       policy: { mode: 'safety-net', creation_tracking: 'footnote' },
       protocol: { mode: 'classic', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
+      response: { affected_lines: true },
     };
     resolver = await createTestResolver(tmpDir, config);
   });
@@ -74,7 +75,7 @@ describe('propose_change hashline addressing', () => {
       await fs.writeFile(filePath, 'The quick brown fox jumps over the lazy dog.');
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'quick brown', new_text: 'slow red' },
+        { file: filePath, old_text: 'quick brown', new_text: 'slow red', reason: 'test' },
         resolver,
         state,
       );
@@ -95,7 +96,7 @@ describe('propose_change hashline addressing', () => {
       await fs.writeFile(filePath, 'The quick fox jumps.');
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: '', new_text: ' brown', insert_after: 'quick' },
+        { file: filePath, old_text: '', new_text: ' brown', insert_after: 'quick', reason: 'test' },
         resolver,
         state,
       );
@@ -173,6 +174,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'Line TWO',
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -205,6 +207,7 @@ describe('propose_change hashline addressing', () => {
           start_hash: startHash,
           end_line: 3,
           end_hash: endHash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -235,6 +238,7 @@ describe('propose_change hashline addressing', () => {
           new_text: '',
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -265,6 +269,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'Inserted line',
           after_line: 2,
           after_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -302,6 +307,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'TERM',
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -335,6 +341,7 @@ describe('propose_change hashline addressing', () => {
           start_hash: startHash,
           end_line: 3,
           end_hash: endHash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -361,6 +368,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'replaced',
           start_line: 2,
           start_hash: 'zz', // Wrong hash
+          reason: 'test',
         },
         resolver,
         state,
@@ -385,6 +393,7 @@ describe('propose_change hashline addressing', () => {
           start_hash: startHash,
           end_line: 3,
           end_hash: 'zz', // Wrong hash
+          reason: 'test',
         },
         resolver,
         state,
@@ -413,6 +422,7 @@ describe('propose_change hashline addressing', () => {
           end_line: 4,
           end_hash: hashLine4,
           author: 'ai:test',
+          reason: 'test',
         },
         resolver,
         state,
@@ -438,6 +448,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'new stuff',
           after_line: 2,
           after_hash: 'zz', // Wrong hash
+          reason: 'test',
         },
         resolver,
         state,
@@ -463,6 +474,7 @@ describe('propose_change hashline addressing', () => {
           after_line: 2,
           after_hash: hashLine2,
           author: 'ai:test',
+          reason: 'test',
         },
         resolver,
         state,
@@ -516,6 +528,7 @@ describe('propose_change hashline addressing', () => {
           start_line: 3,
           start_hash: hashLine3,
           author: 'ai:test',
+          reason: 'test',
         },
         resolver,
         state,
@@ -547,6 +560,7 @@ describe('propose_change hashline addressing', () => {
           new_text: '  Line  two  ', // Whitespace-different but same content
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -575,6 +589,7 @@ describe('propose_change hashline addressing', () => {
           new_text: '2:ab|Line TWO', // Model echoed hashline prefix
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -601,7 +616,7 @@ describe('propose_change hashline addressing', () => {
       const hash2 = hashForLine(content, 2);
 
       const result = await handleProposeChange(
-        { file: 'doc.md', at: `2:${hash2}`, op: '{~~two~>TWO~~}', author: 'ai:test' },
+        { file: 'doc.md', at: `2:${hash2}`, op: '{~~two~>TWO~~}', author: 'ai:test', reason: 'test' },
         compactResolver,
         state,
       );
@@ -625,7 +640,7 @@ describe('propose_change hashline addressing', () => {
       await fs.writeFile(filePath, content);
 
       const result = await handleProposeChange(
-        { file: 'doc2.md', old_text: 'Line two', new_text: 'Line TWO', author: 'ai:test' },
+        { file: 'doc2.md', old_text: 'Line two', new_text: 'Line TWO', author: 'ai:test', reason: 'test' },
         noHashResolver,
         new SessionState(),
       );
@@ -651,6 +666,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'Line TWO',
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -693,6 +709,7 @@ describe('propose_change hashline addressing', () => {
           start_line: 3,
           start_hash: hashSec1,
           author: 'ai:test',
+          reason: 'test',
         },
         resolver,
         state,
@@ -707,6 +724,7 @@ describe('propose_change hashline addressing', () => {
           start_line: 5,
           start_hash: hashSec2,
           author: 'ai:test',
+          reason: 'test',
         },
         resolver,
         state,
@@ -727,6 +745,7 @@ describe('propose_change hashline addressing', () => {
           start_line: 7,
           start_hash: hashSec3,
           author: 'ai:test',
+          reason: 'test',
         },
         resolver,
         state,
@@ -768,6 +787,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'Line two REPLACED',
           start_line: 2,
           start_hash: startHash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -799,6 +819,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'Line one\nLine TWO\nLine three',
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -828,6 +849,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'Line\u2013two', // en dash
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -867,6 +889,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'Line TWO',
           start_line: 2,
           start_hash: hash2,
+          reason: 'test',
         },
         resolver,
         state,
@@ -885,6 +908,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'Line FOUR',
           start_line: 4,
           start_hash: hash4,
+          reason: 'test',
         },
         resolver,
         state,
@@ -914,6 +938,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'Line TWO',
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -949,6 +974,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'Completely new line two',
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -972,6 +998,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'content',
           start_line: 2,
           start_hash: hash,
+          reason: 'test',
         },
         resolver,
         state,
@@ -996,6 +1023,7 @@ describe('propose_change hashline addressing', () => {
           new_text: 'replaced',
           start_line: 99,
           start_hash: 'ab',
+          reason: 'test',
         },
         resolver,
         state,
@@ -1041,6 +1069,7 @@ describe('propose_change hashline addressing', () => {
           after_line: 2,
           after_hash: h2,
           author: 'ai:test',
+          reason: 'test',
         },
         autoHeaderResolver,
         state,
@@ -1072,6 +1101,7 @@ describe('propose_change hashline addressing', () => {
           start_line: 3,
           start_hash: h3,
           author: 'ai:test',
+          reason: 'test',
         },
         autoHeaderResolver,
         state,
@@ -1098,6 +1128,7 @@ describe('propose_change hashline addressing', () => {
           after_line: 3,
           after_hash: h3,
           author: 'ai:test',
+          reason: 'test',
         },
         autoHeaderResolver,
         state,
@@ -1144,6 +1175,7 @@ describe('propose_change hashline addressing', () => {
           start_line: 3,
           start_hash: hashLine3,
           author: 'ai:test',
+          reason: 'test',
         },
         remapResolver,
         state,
@@ -1180,6 +1212,7 @@ describe('propose_change hashline addressing', () => {
           start_line: 2,
           start_hash: 'zz', // Wrong hash — no candidate
           author: 'ai:test',
+          reason: 'test',
         },
         resolver,
         state,
@@ -1221,6 +1254,7 @@ describe('propose_change hashline addressing', () => {
           start_line: 3,
           start_hash: hashLine3,
           author: 'ai:test',
+          reason: 'test',
         },
         noRemapResolver,
         state,
@@ -1255,6 +1289,7 @@ describe('propose_change hashline addressing', () => {
           after_line: 2,
           after_hash: hashLine2,
           author: 'ai:test',
+          reason: 'test',
         },
         remapResolver,
         state,
@@ -1291,6 +1326,7 @@ describe('propose_change hashline addressing', () => {
           end_line: 4,
           end_hash: hashLine4,
           author: 'ai:test',
+          reason: 'test',
         },
         remapResolver,
         state,

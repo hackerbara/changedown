@@ -55,13 +55,11 @@ describe('findUniqueMatch', () => {
     expect(() => findUniqueMatch('the cat and the dog', 'the')).toThrow(/multiple|ambiguous/i);
   });
 
-  it('finds target via normalized match when exact fails', () => {
+  it('does not match smart quote via NFKC normalization (confusables removed per ADR-061)', () => {
     const text = 'Sublime\u2019s architecture is elegant.';
-    const result = findUniqueMatch(text, "Sublime's", defaultNormalizer);
-    expect(result.index).toBe(0);
-    expect(result.length).toBe(9);
-    expect(result.originalText).toBe('Sublime\u2019s');
-    expect(result.wasNormalized).toBe(true);
+    // NFKC does not normalize \u2019 (right single quotation mark) to ASCII apostrophe.
+    // After ADR-061 removed confusables normalization, this should throw "not found".
+    expect(() => findUniqueMatch(text, "Sublime's", defaultNormalizer)).toThrow(/not found/i);
   });
 
   it('finds target with NBSP via normalization', () => {
@@ -86,11 +84,13 @@ describe('findUniqueMatch', () => {
     }
   });
 
-  it('throws when normalized match is ambiguous', () => {
+  it('does not match smart quote even when ambiguous (confusables removed per ADR-061)', () => {
     const text = 'Sublime\u2019s and Sublime\u2019s';
+    // NFKC does not normalize smart quotes, so the ASCII apostrophe search fails
+    // with "not found", not "ambiguous".
     expect(() =>
       findUniqueMatch(text, "Sublime's", defaultNormalizer)
-    ).toThrow(/multiple|ambiguous/i);
+    ).toThrow(/not found/i);
   });
 });
 

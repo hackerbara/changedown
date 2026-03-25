@@ -13,7 +13,12 @@
         "skipLibCheck": true,
         "paths": {
             "changetracks/init": ["../cli/dist/init/index.d.ts"]
-        }
+        },
+        // TODO: enable after fixing violations
+        // "noUncheckedIndexedAccess": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "forceConsistentCasingInFileNames": true
     },
     "exclude": [
         "node_modules",

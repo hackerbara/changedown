@@ -1,9 +1,11 @@
 import * as vscode from 'vscode';
 import { getScmIntegrationMode } from './scm-integration-mode';
-import { toResolvedUri } from './resolved-content-provider';
+import { toResolvedUri, toGitOriginalUri } from './resolved-content-provider';
 import { ScmHybridIndex } from './scm-hybrid-index';
 import type { ExtensionController } from './controller';
 import { recordScmIntegrationEvent } from './scm-integration-mode';
+import { GitGutterManager, GUTTER_STRATEGY } from './git-gutter-manager';
+import type { GutterStrategy } from './git-gutter-manager';
 
 const SYNC_FROM_OPEN_DEBOUNCE_MS = 300;
 
@@ -17,23 +19,49 @@ export class ChangetracksSCM implements vscode.Disposable {
   private index: ScmHybridIndex | undefined;
   private disposables: vscode.Disposable[] = [];
   private syncFromOpenTimeout: ReturnType<typeof setTimeout> | null = null;
+  private usingProposedQuickDiff = false;
 
   constructor(
     context: vscode.ExtensionContext,
-    getController: () => ExtensionController | null
+    getController: () => ExtensionController | null,
+    private gutterManager?: GitGutterManager,
+    private gutterStrategy: GutterStrategy = GUTTER_STRATEGY.AUTO
   ) {
     this.sourceControl = vscode.scm.createSourceControl(
       'changetracks',
       'ChangeTracks'
     );
-    this.sourceControl.quickDiffProvider = {
+    const quickDiff: vscode.QuickDiffProvider = {
       provideOriginalResource(uri: vscode.Uri): vscode.Uri | undefined {
         if (uri.scheme !== 'file') return undefined;
-        // Only provide "original" for markdown so VS Code doesn't request our content provider for every file type (reduces renderer CPU).
-        if (!uri.path.toLowerCase().endsWith('.md')) return undefined;
-        return toResolvedUri(uri);
+        // Markdown files: use settled text (strips CriticMarkup, shows real changes)
+        if (uri.path.toLowerCase().endsWith('.md')) return toResolvedUri(uri);
+        // All other files: proxy git HEAD content so non-markdown gutter works normally
+        return toGitOriginalUri(uri);
       }
     };
+
+    if (typeof vscode.window.registerQuickDiffProvider === 'function') {
+      try {
+        const disposable = vscode.window.registerQuickDiffProvider(
+          { language: 'markdown' },
+          quickDiff,
+          'changetracks',
+          'ChangeTracks',
+          vscode.workspace.workspaceFolders?.[0]?.uri
+        );
+        this.disposables.push(disposable);
+        this.usingProposedQuickDiff = true;
+        console.debug('[changetracks] scm_integration: using proposed registerQuickDiffProvider (language-scoped)');
+      } catch (err: any) {
+        console.debug(`[changetracks] scm_integration: proposed API failed, falling back: ${err.message}`);
+        if (this.gutterStrategy !== GUTTER_STRATEGY.PROPOSED_API) {
+          this.sourceControl.quickDiffProvider = quickDiff;
+        }
+      }
+    } else if (this.gutterStrategy !== GUTTER_STRATEGY.PROPOSED_API) {
+      this.sourceControl.quickDiffProvider = quickDiff;
+    }
 
     this.disposables.push(this.sourceControl);
 
@@ -54,6 +82,12 @@ export class ChangetracksSCM implements vscode.Disposable {
       this.disposables.push(
         this.index.onDidChange(() => this.applyResourceStates())
       );
+
+      if (this.gutterManager) {
+        this.disposables.push(
+          this.index.onDidChange(() => this.syncGutterFlags())
+        );
+      }
 
       // Event path: controller change (debounced — sync only affected docs when uris provided)
       const controller = getController();
@@ -164,6 +198,16 @@ export class ChangetracksSCM implements vscode.Disposable {
         vscode.workspace.getConfiguration('git').update('enabled', false, vscode.ConfigurationTarget.Workspace);
       }
     });
+  }
+
+  isUsingProposedQuickDiff(): boolean {
+    return this.usingProposedQuickDiff;
+  }
+
+  private syncGutterFlags(): void {
+    if (!this.gutterManager || !this.index) return;
+    const uris = new Set(this.index.getResourceUris());
+    this.gutterManager.syncFlags(uris);
   }
 
   /** For diagnostics command: report index file count and last scan time. */

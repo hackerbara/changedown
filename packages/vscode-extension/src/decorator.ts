@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
-import { ChangeNode, ChangeStatus, ChangeType, VirtualDocument } from '@changetracks/core';
+import { ChangeNode, ChangeStatus, ChangeType, isGhostNode, VirtualDocument } from '@changetracks/core';
 import { ViewMode } from './view-mode';
 import { EditorPort } from './view/EditorPort';
 import { offsetToPosition, positionToOffset } from './converters';
 import { diffChars } from 'diff';
 import { AUTHOR_PALETTE } from './visual-semantics';
+import { getOutputChannel } from './output-channel';
 
 /**
  * Maps author names to palette indices. Assignment is insertion-order based;
@@ -49,6 +50,12 @@ export class EditorDecorator {
     private moveToObj: vscode.TextEditorDecorationType;
     private settledRefObj: vscode.TextEditorDecorationType;
     private settledDimObj: vscode.TextEditorDecorationType;
+    // L3: shared ghost-text type for zero-width deletions. The base type sets the
+    // visual style (strikethrough, italic, deletion color); per-range renderOptions
+    // supply contentText individually, so one type handles all ghost deletions.
+    private ghostDeletionObj: vscode.TextEditorDecorationType;
+    private consumedRefObj: vscode.TextEditorDecorationType;
+    private consumingOpAnnotationObj: vscode.TextEditorDecorationType;
 
     // Overview ruler mark decoration types — one per change type, using ThemeColor
     // references so the user can override colors in their VS Code theme.
@@ -206,6 +213,36 @@ export class EditorDecorator {
             dark: { textDecoration: 'none; color: rgba(160, 160, 160, 0.5); font-style: italic' }
         });
 
+        // L3 ghost-text deletion: base style shared by all zero-width deletion points.
+        // Per-range renderOptions.before.contentText carries the individual deleted strings.
+        // Colors match the inline deletionObj (#C0392B light / #EF5350 dark).
+        this.ghostDeletionObj = vscode.window.createTextEditorDecorationType({
+            light: {
+                before: {
+                    color: '#C0392B',
+                    fontStyle: 'italic',
+                    textDecoration: 'line-through',
+                }
+            },
+            dark: {
+                before: {
+                    color: '#EF5350',
+                    fontStyle: 'italic',
+                    textDecoration: 'line-through',
+                }
+            }
+        });
+
+        // Consumed ops: dimmed + italic to signal "superseded by another change"
+        this.consumedRefObj = vscode.window.createTextEditorDecorationType({
+            opacity: '0.45',
+            fontStyle: 'italic',
+        });
+
+        // Consuming op annotation: only the after-text renderOptions matter,
+        // so the base style is empty (no opacity/color on the body text itself)
+        this.consumingOpAnnotationObj = vscode.window.createTextEditorDecorationType({});
+
         // Overview ruler-only decoration types — no inline styling, pure ruler marks.
         // Colors reference ThemeColor tokens declared in package.json contributes.colors
         // so users can override them per-theme.
@@ -327,6 +364,10 @@ export class EditorDecorator {
         const moveTos: vscode.DecorationOptions[] = [];
         const settledRefs: vscode.DecorationOptions[] = [];
         const settledDims: vscode.DecorationOptions[] = [];
+        // L3: ghost-text entries for zero-width deletions (before pseudo-element per range)
+        const ghostDeletions: vscode.DecorationOptions[] = [];
+        const consumedRanges: vscode.DecorationOptions[] = [];
+        const consumingOpAnnotations: vscode.DecorationOptions[] = [];
 
         const cursorPos = editor.selection.active;
 
@@ -363,7 +404,45 @@ export class EditorDecorator {
             return new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 0));
         };
 
+        // Pre-build consumed-by lookup for O(1) predecessor queries inside the loop
+        const consumedByMap = new Map<string, ChangeNode[]>();
+        for (const c of changes) {
+            if (c.consumedBy) {
+                const list = consumedByMap.get(c.consumedBy) ?? [];
+                list.push(c);
+                consumedByMap.set(c.consumedBy, list);
+            }
+        }
+
         changes.forEach(change => {
+            // Skip unresolved L3 nodes: anchored === false on level >= 2 means the
+            // FootnoteNativeParser could not uniquely locate the change in the document
+            // body (Invariant A / C in the L3 spec). Rendering these with a sentinel
+            // range {0,0} would produce a spurious decoration at the top of the file.
+            // Note: L0/L1 inline changes also have anchored=false (meaning "no footnote
+            // ref"), but their ranges ARE correct — they must NOT be filtered here.
+            if (isGhostNode(change)) {
+                const ch = getOutputChannel();
+                if (ch) ch.appendLine(`[decorator] skipping unresolved L3 node id=${change.id} type=${change.type} — position could not be deterministically anchored`);
+                return;
+            }
+
+            // Consumed ops: dimmed + italic with "consumed by ct-N" after-label.
+            // Skip normal decoration logic — consumed ops are visually distinct.
+            if (change.consumedBy) {
+                consumedRanges.push({
+                    range: toRange(change.range),
+                    renderOptions: {
+                        after: {
+                            contentText: ` consumed by ${change.consumedBy}`,
+                            color: new vscode.ThemeColor('editorCodeLens.foreground'),
+                            fontStyle: 'italic',
+                        }
+                    }
+                });
+                return; // Don't process as normal change
+            }
+
             const fullRange = toRange(change.range);
             const contentRange = toRange(change.contentRange);
 
@@ -456,11 +535,25 @@ export class EditorDecorator {
                         hiddens.push({ range: fullRange });
                     }
                 } else if (effectiveType === ChangeType.Deletion) {
-                    if (isFinalMode) {
-                        // Final: hide entire deletion (accepted = removed)
+                    if (change.range.start === change.range.end) {
+                        // L3 zero-width deletion in final/original mode.
+                        // isFinalMode: deletion accepted = text is gone, nothing to render.
+                        // isOriginalMode: show the deleted text as ghost text (it existed originally).
+                        if (isOriginalMode) {
+                            const deletedText = change.originalText ?? '';
+                            if (deletedText) {
+                                ghostDeletions.push({
+                                    range: fullRange,
+                                    renderOptions: { before: { contentText: deletedText } }
+                                });
+                            }
+                        }
+                        // isFinalMode: zero-width range, nothing to hide — no-op.
+                    } else if (isFinalMode) {
+                        // L2 final: hide entire deletion (accepted = removed)
                         hiddens.push({ range: fullRange });
                     } else {
-                        // Original: show deletion content, hide delimiters (original text)
+                        // L2 original: show deletion content, hide delimiters (original text)
                         this.hideDelimiters(fullRange, contentRange, hiddens);
                     }
                 } else if (effectiveType === ChangeType.Substitution) {
@@ -598,22 +691,48 @@ export class EditorDecorator {
                 const reasonHover = change.metadata?.comment
                     ? new vscode.MarkdownString(`**Reason:** ${change.metadata.comment}`)
                     : undefined;
-                if (showDelimitersInMarkup) {
-                    pushDeletion({ range: fullRange, hoverMessage: reasonHover });
-                } else if (isReviewMode) {
-                    this.hideDelimiters(fullRange, contentRange, hiddens);
-                    pushDeletion({ range: contentRange, hoverMessage: reasonHover });
-                } else if (isCursorOnChangeLine) {
-                    // Cursor on this line — reveal with coloring
-                    if (cursorRevealMode && isCursorInChange) {
-                        this.revealDelimiters(fullRange, contentRange, unfoldedDelimiters);
-                    } else {
-                        this.hideDelimiters(fullRange, contentRange, hiddens);
+
+                // L3 zero-width deletion: the deleted text is not in the document body at
+                // all — it lives only in change.originalText. Render it as ghost text via a
+                // before pseudo-element so the reviewer can see what was removed.
+                if (change.range.start === change.range.end) {
+                    const deletedText = change.originalText ?? '';
+                    if (deletedText && !isFinalMode) {
+                        // In Simple (changes) mode, hide ghost text unless cursor is on
+                        // the change's line — consistent with L2 deletion hiding at line 676.
+                        // In Review and Raw modes, always show ghost text.
+                        if (isReviewMode || isOriginalMode || isCursorOnChangeLine) {
+                            ghostDeletions.push({
+                                range: fullRange,
+                                renderOptions: {
+                                    before: { contentText: deletedText }
+                                },
+                                hoverMessage: reasonHover,
+                            });
+                        }
                     }
-                    pushDeletion({ range: contentRange, hoverMessage: reasonHover });
+                    // Final mode (all accepted): deletion accepted means the text is gone —
+                    // no ghost text, nothing to show. Range is already zero-width, so no
+                    // additional hiding is needed.
                 } else {
-                    // Settled-base: hide entire deletion
-                    hiddens.push({ range: fullRange });
+                    // L2: existing deletion handling — delimiter range [start, end) has content.
+                    if (showDelimitersInMarkup) {
+                        pushDeletion({ range: fullRange, hoverMessage: reasonHover });
+                    } else if (isReviewMode) {
+                        this.hideDelimiters(fullRange, contentRange, hiddens);
+                        pushDeletion({ range: contentRange, hoverMessage: reasonHover });
+                    } else if (isCursorOnChangeLine) {
+                        // Cursor on this line — reveal with coloring
+                        if (cursorRevealMode && isCursorInChange) {
+                            this.revealDelimiters(fullRange, contentRange, unfoldedDelimiters);
+                        } else {
+                            this.hideDelimiters(fullRange, contentRange, hiddens);
+                        }
+                        pushDeletion({ range: contentRange, hoverMessage: reasonHover });
+                    } else {
+                        // Settled-base: hide entire deletion
+                        hiddens.push({ range: fullRange });
+                    }
                 }
             }
             else if (change.type === ChangeType.Substitution) {
@@ -689,23 +808,63 @@ export class EditorDecorator {
                 // These don't have delimiter ranges, just text fields
                 else if ((change.originalText || change.modifiedText) && text) {
                     // For sidecar changes, contentRange covers the full visible change
-
-                    // Try to apply character-level highlighting if both texts are present
-                    const charRanges = this.getCharLevelRanges(change, text);
-
-                    if (charRanges.length > 0) {
-                        // Character-level highlighting available - use it instead of line-level
-                        for (const charRange of charRanges) {
-                            pushSubModified({ range: charRange, hoverMessage: reasonHover });
+                    if (isFinalMode) {
+                        // Final (settled): new text wins — show content as plain text, no coloring
+                        // contentRange already shows the modified text; no styling needed
+                    } else if (isOriginalMode) {
+                        // Original (raw): old text wins — show content with original coloring
+                        pushSubOriginal({ range: contentRange, hoverMessage: reasonHover });
+                    } else if (showDelimitersInMarkup) {
+                        // N/A for L3 sidecar: no CriticMarkup delimiters to show
+                        // Fall back to review-mode coloring
+                        const charRanges = this.getCharLevelRanges(change, text);
+                        if (charRanges.length > 0) {
+                            for (const charRange of charRanges) {
+                                pushSubModified({ range: charRange, hoverMessage: reasonHover });
+                            }
+                        } else {
+                            if (change.modifiedText) {
+                                pushSubModified({ range: contentRange, hoverMessage: reasonHover });
+                            }
+                            if (change.originalText) {
+                                pushSubOriginal({ range: contentRange, hoverMessage: reasonHover });
+                            }
+                        }
+                    } else if (isReviewMode) {
+                        // Review: show ghost text + colors
+                        const charRanges = this.getCharLevelRanges(change, text);
+                        if (charRanges.length > 0) {
+                            // Character-level highlighting available - use it instead of line-level
+                            for (const charRange of charRanges) {
+                                pushSubModified({ range: charRange, hoverMessage: reasonHover });
+                            }
+                        } else {
+                            // No character-level highlighting - fall back to line-level
+                            if (change.modifiedText) {
+                                pushSubModified({ range: contentRange, hoverMessage: reasonHover });
+                            }
+                            if (change.originalText) {
+                                pushSubOriginal({ range: contentRange, hoverMessage: reasonHover });
+                            }
+                        }
+                    } else if (isCursorOnChangeLine) {
+                        // Simple mode, cursor on this line: show colors without ghost text
+                        const charRanges = this.getCharLevelRanges(change, text);
+                        if (charRanges.length > 0) {
+                            for (const charRange of charRanges) {
+                                pushSubModified({ range: charRange, hoverMessage: reasonHover });
+                            }
+                        } else {
+                            if (change.modifiedText) {
+                                pushSubModified({ range: contentRange, hoverMessage: reasonHover });
+                            }
+                            if (change.originalText) {
+                                pushSubOriginal({ range: contentRange, hoverMessage: reasonHover });
+                            }
                         }
                     } else {
-                        // No character-level highlighting - fall back to line-level
-                        if (change.modifiedText) {
-                            pushSubModified({ range: contentRange, hoverMessage: reasonHover });
-                        }
-                        if (change.originalText) {
-                            pushSubOriginal({ range: contentRange, hoverMessage: reasonHover });
-                        }
+                        // Settled-base (Simple mode, cursor elsewhere): hide — show content as plain text
+                        // No pushSubOriginal/pushSubModified — content shows unstyled
                     }
                 }
             }
@@ -814,6 +973,21 @@ export class EditorDecorator {
                         hoverMessage
                     });
                 }
+            }
+
+            const consumedPreds = consumedByMap.get(change.id) ?? [];
+            if (consumedPreds.length > 0) {
+                const ids = consumedPreds.map(c => c.id).join(', ');
+                consumingOpAnnotations.push({
+                    range: new vscode.Range(fullRange.end, fullRange.end),
+                    renderOptions: {
+                        after: {
+                            contentText: ` (consumed ${ids})`,
+                            color: new vscode.ThemeColor('editorCodeLens.foreground'),
+                            fontStyle: 'italic',
+                        }
+                    }
+                });
             }
         });
 
@@ -929,6 +1103,12 @@ export class EditorDecorator {
         editor.setDecorations(this.moveToObj, moveTos);
         editor.setDecorations(this.settledRefObj, settledRefs);
         editor.setDecorations(this.settledDimObj, settledDims);
+        // L3 ghost-text deletions (before pseudo-elements, one entry per zero-width deletion)
+        editor.setDecorations(this.ghostDeletionObj, ghostDeletions);
+        // Consumed ops: dimmed body + "consumed by" after-label
+        editor.setDecorations(this.consumedRefObj, consumedRanges);
+        // Consuming op annotations: "(consumed ct-N)" after-label on the consuming op
+        editor.setDecorations(this.consumingOpAnnotationObj, consumingOpAnnotations);
 
         // Overview ruler marks — applied after base decorations to preserve
         // SpyEditor index order (indices 0–11 must stay stable for fast tests)
@@ -1071,6 +1251,9 @@ export class EditorDecorator {
         this.moveToObj.dispose();
         this.settledRefObj.dispose();
         this.settledDimObj.dispose();
+        this.ghostDeletionObj.dispose();
+        this.consumedRefObj.dispose();
+        this.consumingOpAnnotationObj.dispose();
         this.rulerInsertionObj.dispose();
         this.rulerDeletionObj.dispose();
         this.rulerSubstitutionObj.dispose();

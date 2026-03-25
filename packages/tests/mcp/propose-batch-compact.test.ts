@@ -30,6 +30,10 @@ describe('propose_batch compact mode', () => {
     settlement: { auto_on_approve: true, auto_on_reject: true },
     policy: { mode: 'safety-net', creation_tracking: 'footnote' },
     protocol: { mode: 'compact', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
+    reasoning: {
+      propose: { human: false, agent: false },
+      review: { human: false, agent: false },
+    },
   };
 
   beforeAll(async () => {
@@ -354,14 +358,11 @@ describe('propose_batch compact mode', () => {
       state,
     );
 
-    expect(result.isError).toBeUndefined();
-    const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{~~tpyo~>typo~~}');
-    expect(modified).toContain('{~~HTTP/2.0~>HTTP/2~~}');
-    // Both on the same line
-    const lines = modified.split('\n');
-    const targetLine = lines.find(l => l.includes('tpyo'));
-    expect(targetLine).toContain('HTTP/2.0~>HTTP/2');
+    // Same-line ops targeting the same at coordinate are detected as overlapping.
+    // The batch handler rejects overlapping operations to prevent corruption.
+    expect(result.isError).toBe(true);
+    const errorText = result.content[0].text;
+    expect(errorText).toContain('overlap');
   });
 
   // ─── Out-of-order batch operations ───────────────────────────────

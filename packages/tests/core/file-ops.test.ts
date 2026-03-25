@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { initHashline, splitBodyAndFootnotes } from '@changetracks/core';
 import {
   findUniqueMatch,
   applyProposeChange,
@@ -238,7 +239,7 @@ describe('findUniqueMatch', () => {
       } catch (err: any) {
         expect(err.message.includes('Unicode mismatch')).toBeFalsy();
         expect(err.message.includes('not found')).toBeTruthy();
-        expect(err.message.includes('Searched in (1 lines')).toBeTruthy();
+        expect(err.message.includes('Searched in (1 line,')).toBeTruthy();
         expect(err.message.includes('Hello world.')).toBeTruthy();
       }
     });
@@ -271,8 +272,8 @@ describe('findUniqueMatch', () => {
 
 describe('applyProposeChange', () => {
   describe('substitution', () => {
-    it('replaces oldText with substitution markup and appends footnote', () => {
-      const result = applyProposeChange({
+    it('replaces oldText with substitution markup and appends footnote', async () => {
+      const result = await applyProposeChange({
         text: 'The quick brown fox jumps over the lazy dog.',
         oldText: 'quick brown',
         newText: 'slow red',
@@ -288,8 +289,8 @@ describe('applyProposeChange', () => {
   });
 
   describe('deletion', () => {
-    it('replaces oldText with deletion markup and appends footnote', () => {
-      const result = applyProposeChange({
+    it('replaces oldText with deletion markup and appends footnote', async () => {
+      const result = await applyProposeChange({
         text: 'The quick brown fox jumps over the lazy dog.',
         oldText: ' brown',
         newText: '',
@@ -305,8 +306,8 @@ describe('applyProposeChange', () => {
   });
 
   describe('insertion', () => {
-    it('inserts text after anchor with insertion markup and appends footnote', () => {
-      const result = applyProposeChange({
+    it('inserts text after anchor with insertion markup and appends footnote', async () => {
+      const result = await applyProposeChange({
         text: 'The quick fox jumps.',
         oldText: '',
         newText: ' brown',
@@ -323,8 +324,8 @@ describe('applyProposeChange', () => {
   });
 
   describe('reasoning', () => {
-    it('includes reason line in footnote when reasoning is provided', () => {
-      const result = applyProposeChange({
+    it('includes reason line in footnote when reasoning is provided', async () => {
+      const result = await applyProposeChange({
         text: 'Hello world.',
         oldText: 'world',
         newText: 'earth',
@@ -332,64 +333,65 @@ describe('applyProposeChange', () => {
         author: 'ai:claude-opus-4.6',
         reasoning: 'More specific term',
       });
-      expect(result.modifiedText.includes(
-        `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed\n    @ai:claude-opus-4.6 ${TODAY}: More specific term`
-      )).toBeTruthy();
+      // Footnote header uses date-only, but reason line uses nowTimestamp().raw (full ISO)
+      const footnote = result.modifiedText;
+      expect(footnote.includes(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`)).toBeTruthy();
+      expect(footnote).toMatch(new RegExp(`@ai:claude-opus-4\\.6 ${TODAY}T\\d{2}:\\d{2}:\\d{2}Z: More specific term`));
     });
   });
 
   describe('overlap guard', () => {
-    it('throws when oldText targets inside existing CriticMarkup', () => {
+    it('throws when oldText targets inside existing CriticMarkup', async () => {
       const text = 'Before {++inserted text++} after.';
-      expect(() => applyProposeChange({
+      await expect(applyProposeChange({
           text,
           oldText: 'inserted text',
           newText: 'replacement',
           changeId: 'ct-2',
           author: 'ai:test',
-        })).toThrow(/overlaps with proposed change/);
+        })).rejects.toThrow(/overlaps with proposed change/);
     });
   });
 
   describe('error cases', () => {
-    it('throws when oldText is not found in text', () => {
-      expect(() => applyProposeChange({
+    it('throws when oldText is not found in text', async () => {
+      await expect(applyProposeChange({
           text: 'Hello world.',
           oldText: 'xyz not here',
           newText: 'replacement',
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
-        })).toThrow(/xyz not here/);
+        })).rejects.toThrow(/xyz not here/);
     });
 
-    it('throws when oldText is found multiple times', () => {
-      expect(() => applyProposeChange({
+    it('throws when oldText is found multiple times', async () => {
+      await expect(applyProposeChange({
           text: 'the cat and the dog',
           oldText: 'the',
           newText: 'a',
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
-        })).toThrow(/ambiguous|multiple|context/i);
+        })).rejects.toThrow(/ambiguous|multiple|context/i);
     });
 
-    it('throws when both oldText and newText are empty', () => {
-      expect(() => applyProposeChange({
+    it('throws when both oldText and newText are empty', async () => {
+      await expect(applyProposeChange({
           text: 'Hello world.',
           oldText: '',
           newText: '',
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
-        })).toThrow();
+        })).rejects.toThrow();
     });
 
-    it('throws when insertion has no insertAfter anchor', () => {
-      expect(() => applyProposeChange({
+    it('throws when insertion has no insertAfter anchor', async () => {
+      await expect(applyProposeChange({
           text: 'Hello world.',
           oldText: '',
           newText: 'inserted text',
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
-        })).toThrow(/insertAfter/i);
+        })).rejects.toThrow(/insertAfter/i);
     });
   });
 });
@@ -688,8 +690,8 @@ describe('replaceUnique', () => {
 // ─── applySingleOperation ───────────────────────────────────────────────────
 
 describe('applySingleOperation', () => {
-  it('delegates to applyProposeChange for string-match substitution', () => {
-    const result = applySingleOperation({
+  it('delegates to applyProposeChange for string-match substitution', async () => {
+    const result = await applySingleOperation({
       fileContent: 'Hello world.',
       oldText: 'world',
       newText: 'earth',
@@ -700,8 +702,8 @@ describe('applySingleOperation', () => {
     expect(result.modifiedText.includes('{~~world~>earth~~}[^ct-1]')).toBeTruthy();
   });
 
-  it('handles afterLine insertion', () => {
-    const result = applySingleOperation({
+  it('handles afterLine insertion', async () => {
+    const result = await applySingleOperation({
       fileContent: 'line one\nline two\nline three',
       oldText: '',
       newText: 'inserted text',
@@ -713,8 +715,8 @@ describe('applySingleOperation', () => {
     expect(result.modifiedText.includes('{++inserted text++}')).toBeTruthy();
   });
 
-  it('handles startLine/endLine range substitution', () => {
-    const result = applySingleOperation({
+  it('handles startLine/endLine range substitution', async () => {
+    const result = await applySingleOperation({
       fileContent: 'line one\nline two\nline three',
       oldText: '',
       newText: 'replaced content',
@@ -727,14 +729,14 @@ describe('applySingleOperation', () => {
     expect(result.modifiedText.includes('{~~line two~>replaced content~~}')).toBeTruthy();
   });
 
-  it('throws when both oldText and newText are empty', () => {
-    expect(() => applySingleOperation({
+  it('throws when both oldText and newText are empty', async () => {
+    await expect(applySingleOperation({
         fileContent: 'Hello world.',
         oldText: '',
         newText: '',
         changeId: 'ct-1',
         author: 'ai:test',
-      })).toThrow();
+      })).rejects.toThrow();
   });
 });
 
@@ -775,9 +777,9 @@ describe('stripRefsFromContent', () => {
 // ─── applyProposeChange — ref preservation ──────────────────────────────────
 
 describe('applyProposeChange — ref preservation', () => {
-  it('preserves settled ref when substitution target includes ref via view-aware match', () => {
+  it('preserves settled ref when substitution target includes ref via view-aware match', async () => {
     const text = '| **RUNNING** | check |[^ct-1] end.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | accepted';
-    const result = applyProposeChange({
+    const result = await applyProposeChange({
       text,
       oldText: '| **RUNNING** | check |',
       newText: '| **DONE** 95% | check passed |',
@@ -791,9 +793,9 @@ describe('applyProposeChange — ref preservation', () => {
     expect(subMatch![0].includes('[^ct-1]')).toBeFalsy();
   });
 
-  it('preserves settled ref during deletion', () => {
+  it('preserves settled ref during deletion', async () => {
     const text = 'remove this[^ct-1] text.\n\n[^ct-1]: @ai:test | 2026-02-20 | del | accepted';
-    const result = applyProposeChange({
+    const result = await applyProposeChange({
       text,
       oldText: 'remove this',
       newText: '',
@@ -803,9 +805,9 @@ describe('applyProposeChange — ref preservation', () => {
     expect(result.modifiedText.includes('[^ct-1]')).toBeTruthy();
   });
 
-  it('preserves ref in applySingleOperation line-range path', () => {
+  it('preserves ref in applySingleOperation line-range path', async () => {
     const fileContent = 'line one\n| data |[^ct-1]\nline three\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | accepted';
-    const result = applySingleOperation({
+    const result = await applySingleOperation({
       fileContent,
       oldText: '',
       newText: '| updated data |',
@@ -815,5 +817,100 @@ describe('applyProposeChange — ref preservation', () => {
       endLine: 2,
     });
     expect(result.modifiedText.includes('[^ct-1]')).toBeTruthy();
+  });
+});
+
+// ─── applyProposeChange level=3 (L3) ────────────────────────────────────────
+
+describe('applyProposeChange level=3 (L3)', () => {
+  const l3Doc = [
+    '# Test Document',
+    '',
+    'The quick brown fox jumps over the lazy dog.',
+    '',
+    '[^ct-1]: @alice | 2026-03-15 | ins | proposed',
+    '    3:a1 fox jumps over the',
+    '    @alice 2026-03-15: Added verb',
+  ].join('\n');
+
+  beforeAll(async () => {
+    await initHashline();
+  });
+
+  describe('insertion', () => {
+    it('inserts text directly (no CriticMarkup in body) and appends footnote with edit-op line', async () => {
+      const result = await applyProposeChange({
+        text: l3Doc,
+        oldText: '',
+        newText: ' rapidly',
+        changeId: 'ct-2',
+        author: 'ai:claude-opus-4.6',
+        insertAfter: 'jumps over',
+        level: 3,
+      });
+      expect(result.changeType).toBe('ins');
+      // Body has the inserted text directly — no {++...++} wrapping in body
+      const body = splitBodyAndFootnotes(result.modifiedText.split('\n')).bodyLines.join('\n');
+      expect(body).toContain('jumps over rapidly the lazy');
+      expect(body).not.toContain('{++');
+      // Footnote has LINE:HASH edit-op line (may contain {++ ... ++} as the change record)
+      expect(result.modifiedText).toMatch(/\[\^ct-2\]:.*\| ins \| proposed/);
+      expect(result.modifiedText).toMatch(/^ {4}\d+:[0-9a-f]{2,} .*\{\+\+ rapidly\+\+\}/m);
+    });
+  });
+
+  describe('deletion', () => {
+    it('removes text directly and appends footnote with edit-op line', async () => {
+      const result = await applyProposeChange({
+        text: l3Doc,
+        oldText: 'brown ',
+        newText: '',
+        changeId: 'ct-2',
+        author: 'ai:claude-opus-4.6',
+        level: 3,
+      });
+      expect(result.changeType).toBe('del');
+      // Body has the text removed — no {--...--} in body
+      const body = splitBodyAndFootnotes(result.modifiedText.split('\n')).bodyLines.join('\n');
+      expect(body).toContain('The quick fox jumps');
+      expect(body).not.toContain('{--');
+      // Footnote has edit-op with deletion markup as the change record
+      expect(result.modifiedText).toMatch(/\[\^ct-2\]:.*\| del \| proposed/);
+      expect(result.modifiedText).toMatch(/^ {4}\d+:[0-9a-f]{2,} .*\{--brown --\}/m);
+    });
+  });
+
+  describe('substitution', () => {
+    it('replaces text directly and appends footnote with edit-op line', async () => {
+      const result = await applyProposeChange({
+        text: l3Doc,
+        oldText: 'quick brown',
+        newText: 'slow red',
+        changeId: 'ct-2',
+        author: 'ai:claude-opus-4.6',
+        level: 3,
+      });
+      expect(result.changeType).toBe('sub');
+      // Body has the replacement directly — no {~~...~~} in body
+      const body = splitBodyAndFootnotes(result.modifiedText.split('\n')).bodyLines.join('\n');
+      expect(body).toContain('The slow red fox');
+      expect(body).not.toContain('{~~');
+      // Footnote has edit-op with substitution markup as the change record
+      expect(result.modifiedText).toMatch(/\[\^ct-2\]:.*\| sub \| proposed/);
+      expect(result.modifiedText).toMatch(/^ {4}\d+:[0-9a-f]{2,} .*\{~~quick brown~>slow red~~\}/m);
+    });
+  });
+
+  describe('safety check', () => {
+    it('throws when level=2 is passed for L3 text', async () => {
+      await expect(applyProposeChange({
+        text: l3Doc,
+        oldText: 'quick',
+        newText: 'slow',
+        changeId: 'ct-2',
+        author: 'test',
+        level: 2,
+      })).rejects.toThrow();
+    });
   });
 });

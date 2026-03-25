@@ -54,7 +54,7 @@ export const DEFAULT_SETTINGS_CONFIG: SettingsConfig = {
     hooks: { enforcement: 'warn', exclude: [] },
     hashline: { enabled: false },
     matching: { mode: 'normalized' },
-    settlement: { auto_on_approve: true, auto_on_reject: true },
+    settlement: { auto_on_approve: false, auto_on_reject: false },
     policy: { mode: 'safety-net', creation_tracking: 'footnote' },
     protocol: { mode: 'classic', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
 };

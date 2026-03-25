@@ -6,16 +6,26 @@ import { nowTimestamp } from '@changetracks/core';
 import { augment } from 'llm-jail';
 import { loadConfig } from '../../config.js';
 import { isFileInScope } from '../../scope.js';
+import { readPendingEdits } from '../../pending.js';
+import { logReadAudit } from '../../core/edit-tracker.js';
 import { buildChangeTracksRule } from '../../changetracks-rules.js';
 export async function handlePostToolUse(input) {
     const { tool_name, tool_input, session_id, cwd } = input;
     if (!tool_name || !cwd)
-        return {};
+        return { logged: false };
     const projectDir = cwd;
     const sessionId = session_id ?? 'unknown';
     const config = await loadConfig(projectDir);
+    const tool = tool_name.toLowerCase();
+    // Skip interception based on config toggles
+    const isBuiltInTool = tool === 'edit' || tool === 'write' || tool === 'read';
+    const isBashTool = tool === 'bash';
+    if (isBuiltInTool && !config.hooks.intercept_tools)
+        return { logged: false };
+    if (isBashTool && !config.hooks.intercept_bash)
+        return { logged: false };
     const toolCall = {
-        tool: tool_name.toLowerCase(),
+        tool,
         input: tool_input ?? {},
         cwd: projectDir,
     };
@@ -43,17 +53,32 @@ export async function handlePostToolUse(input) {
             }
         }
     }
+    // Audit logging for read_tracked_file MCP tool (not recognized by llm-jail analyzer)
+    if (tool === 'read_tracked_file') {
+        const filePath = tool_input?.file ?? '';
+        if (filePath && isFileInScope(filePath, config, projectDir)) {
+            await logReadAudit(projectDir, sessionId, filePath);
+            return { logged: true };
+        }
+        return { logged: false };
+    }
+    // Snapshot pending edit count before augment to detect logging
+    const editsBefore = await readPendingEdits(projectDir);
+    const countBefore = editsBefore.length;
     // Run augment phase (side effects + optional additionalContext)
     const rule = buildChangeTracksRule(config, projectDir, sessionId);
     const additionalContext = await augment(toolCall, toolResult, [rule]);
+    const editsAfter = await readPendingEdits(projectDir);
+    const logged = editsAfter.length > countBefore;
     if (additionalContext) {
         return {
+            logged,
             hookSpecificOutput: {
                 hookEventName: 'PostToolUse',
                 additionalContext,
             },
         };
     }
-    return {};
+    return { logged };
 }
 //# sourceMappingURL=post-tool-use.js.map

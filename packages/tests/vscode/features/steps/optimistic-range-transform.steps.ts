@@ -81,7 +81,7 @@ Given(
             { id: 'test-1', type: 0, status: 0, range: { start: s1, end: e1 }, contentRange: { start: s1, end: e1 }, level: 0 as const, anchored: false },
             { id: 'test-2', type: 0, status: 0, range: { start: s2, end: e2 }, contentRange: { start: s2, end: e2 }, level: 0 as const, anchored: false },
         ] as any[];
-        setCachedDecorationData(uri, nodes);
+        setCachedDecorationData(uri, nodes, 1);
     }
 );
 
@@ -103,7 +103,7 @@ When(
             text: 'x'.repeat(count),
             range: { start: { line: 0, character: offset }, end: { line: 0, character: offset } },
         }] as any[];
-        this.ortTransformResult = transformCachedDecorations(uri, contentChanges);
+        this.ortTransformResult = transformCachedDecorations(uri, contentChanges, 2);
     }
 );
 
@@ -117,7 +117,7 @@ When(
             text: '',
             range: { start: { line: 0, character: offset }, end: { line: 0, character: offset + count } },
         }] as any[];
-        this.ortTransformResult = transformCachedDecorations(uri, contentChanges);
+        this.ortTransformResult = transformCachedDecorations(uri, contentChanges, 2);
     }
 );
 
@@ -126,11 +126,12 @@ Then(
     function (this: ChangeTracksWorld, s1: number, e1: number, s2: number, e2: number) {
         const cached = getCachedDecorationData('file:///test.md');
         assert.ok(cached, 'No cached data');
-        assert.strictEqual(cached!.length, 2, `Expected 2 nodes, got ${cached!.length}`);
-        assert.strictEqual(cached![0].range.start, s1);
-        assert.strictEqual(cached![0].range.end, e1);
-        assert.strictEqual(cached![1].range.start, s2);
-        assert.strictEqual(cached![1].range.end, e2);
+        const changes = cached!.changes;
+        assert.strictEqual(changes.length, 2, `Expected 2 nodes, got ${changes.length}`);
+        assert.strictEqual(changes[0].range.start, s1);
+        assert.strictEqual(changes[0].range.end, e1);
+        assert.strictEqual(changes[1].range.start, s2);
+        assert.strictEqual(changes[1].range.end, e2);
     }
 );
 

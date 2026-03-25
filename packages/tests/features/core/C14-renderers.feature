@@ -198,7 +198,7 @@ Feature: Renderers
     Then the meta output contains "proposed: 1"
     And the meta output contains "test.md"
 
-  Scenario: Meta view replaces footnote refs with lightweight anchors
+  Scenario: Meta view includes inline comment annotation for changes
     Given a tracked markdown file "test.md" with content:
       """
       Hello {++world++}[^ct-1].
@@ -206,7 +206,7 @@ Feature: Renderers
       [^ct-1]: @ai:test | 2026-02-25 | ins | proposed
       """
     When I render meta view for "test.md"
-    Then the meta output contains "[ct-1]"
+    Then the meta output contains "{>>ct-1"
     And the meta output does not contain "[^ct-1]:"
 
   Scenario: Meta view appends Zone 3 metadata at end of line

@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { computeAmendEdits } from '@changetracks/core';
+import { describe, it, expect, beforeAll } from 'vitest';
+import { computeAmendEdits, initHashline } from '@changetracks/core';
+
+beforeAll(async () => {
+  await initHashline();
+});
 
 describe('computeAmendEdits', () => {
   const baseDoc = [
@@ -293,6 +297,44 @@ describe('computeAmendEdits', () => {
     expect(result.isError).toBe(false);
     if (!result.isError) {
       expect(result.text).toContain('revised @alice 2026-03-09T12:00:00Z: Fixed typo');
+    }
+  });
+});
+
+describe('computeAmendEdits on L3 (footnote-native)', () => {
+  const l3Doc = [
+    '<!-- ctrcks.com/v1: tracked -->',
+    'Hello wrold more text',
+    '',
+    '[^ct-1]: @alice | 2026-03-09 | ins | proposed',
+    '    2:b4 {++wrold ++}',
+  ].join('\n');
+
+  it('finds the change and produces valid edits for L3 format', () => {
+    const result = computeAmendEdits(l3Doc, 'ct-1', {
+      newText: 'world ',
+      reason: 'Fixed typo',
+      author: '@alice',
+    });
+    expect(result.isError).toBe(false);
+    if (!result.isError) {
+      // The amended text should have the corrected inline markup
+      expect(result.text).toContain('world');
+      // Revision entry should be added
+      expect(result.text).toContain('revised');
+      expect(result.text).toContain('Fixed typo');
+      expect(result.previousText).toBe('wrold ');
+    }
+  });
+
+  it('rejects amend from non-author on L3', () => {
+    const result = computeAmendEdits(l3Doc, 'ct-1', {
+      newText: 'world ',
+      author: '@bob',
+    });
+    expect(result.isError).toBe(true);
+    if (result.isError) {
+      expect(result.error).toContain('not the original author');
     }
   });
 });

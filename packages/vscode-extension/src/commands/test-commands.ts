@@ -125,33 +125,19 @@ export function registerTestCommands(
                 // during execution, which triggers cursor-move flush in the controller.
                 // If there's a stale pending edit from a previous scenario, that flush
                 // would crystallize it into the freshly-reset document. So we must:
-                // 1. Disable tracking (prevents cursor-move flush guard at controller.ts:491)
+                // 1. Disable tracking (prevents cursor-move flush guard)
                 // 2. Abandon pending edits (nothing left to flush)
                 // 3. Clear unconfirmed edits (prevents selection-confirmation gate)
                 // 4. Set isApplyingTrackedEdit (prevents text change handler)
                 // THEN call editor.edit().
                 const uri = editor.document.uri.toString();
 
-                // Step 1: Disable tracking to prevent cursor-move flush
-                (controller as any)._trackingMode = false;
-                vscode.commands.executeCommand('setContext', 'changetracks:trackingEnabled', false);
-
-                // Step 2: Clear pending edit buffer
-                (controller as any).pendingEditManager?.abandon?.();
-
-                // Step 3: Clear unconfirmed tracked edit
-                (controller as any).unconfirmedTrackedEdit = null;
-                if ((controller as any).unconfirmedEditTimer) {
-                    clearTimeout((controller as any).unconfirmedEditTimer);
-                    (controller as any).unconfirmedEditTimer = null;
-                }
-
-                // Step 4: Clear user tracking overrides (prevents stale state leaking)
-                (controller as any).userTrackingOverrides?.delete?.(uri);
+                // Steps 1–4: Reset all transient controller state atomically
+                controller.resetForTest();
 
                 // Step 5: Suppress tracking handler during edit
                 let editSuccess = false;
-                (controller as any).isApplyingTrackedEdit = true;
+                controller.isApplyingTrackedEdit = true;
                 try {
                     const fullRange = new vscode.Range(
                         editor.document.positionAt(0),
@@ -159,24 +145,21 @@ export function registerTestCommands(
                     );
                     editSuccess = await editor.edit(eb => eb.replace(fullRange, input.content));
 
-                    // Set tracking state based on content
+                    // Set tracking state and reset shadow/ID counter
                     const isTracked = input.content.includes('ctrcks.com/v1: tracked');
-                    (controller as any)._trackingMode = isTracked;
-                    vscode.commands.executeCommand('setContext', 'changetracks:trackingEnabled', isTracked);
+                    controller.setStateForTest(uri, {
+                        tracking: isTracked,
+                        shadow: input.content,
+                        nextScId: 1,
+                    });
 
                     // Move cursor (safe — pending edits already cleared)
                     editor.selection = new vscode.Selection(0, 0, 0, 0);
 
                     // Invalidate decoration cache
                     invalidateDecorationCache(uri);
-
-                    // Reset document shadow
-                    (controller as any).documentShadow?.set(uri, input.content);
-
-                    // Reset ct-ID counter for this document
-                    (controller as any).nextScIdMap?.delete?.(uri);
                 } finally {
-                    (controller as any).isApplyingTrackedEdit = false;
+                    controller.isApplyingTrackedEdit = false;
                 }
                 fs.writeFileSync(statePath, JSON.stringify({
                     ok: true,
@@ -223,7 +206,7 @@ export function registerTestCommands(
             while (Date.now() - start < timeout) {
                 const cached = getCachedDecorationData(uri);
                 if (cached !== undefined) {
-                    fs.writeFileSync(statePath, JSON.stringify({ ready: true, changeCount: cached.length, uri, timestamp: Date.now() }));
+                    fs.writeFileSync(statePath, JSON.stringify({ ready: true, changeCount: cached.changes.length, uri, timestamp: Date.now() }));
                     return;
                 }
                 await new Promise(r => setTimeout(r, pollInterval));

@@ -8,15 +8,12 @@ import {
   computeLineHash,
   stripHashlinePrefixes,
   stripBoundaryEcho,
-  computeSettledLineHash,
-  settledLine,
   defaultNormalizer,
-  computeCommittedView,
-  computeSettledView,
   CriticMarkupParser,
   ChangeStatus,
   settleAcceptedChangesOnly,
   settleRejectedChangesOnly,
+  reviewerType,
 } from '@changetracks/core';
 import { validateOrAutoRemap, type RelocationEntry, type AutoRemapResult } from './hashline-relocate.js';
 import { HashlineMismatchError } from '@changetracks/core';
@@ -31,6 +28,7 @@ import { resolveTrackingStatus } from '../scope.js';
 import { SessionState, type ViewName } from '../state.js';
 import { parseOp, nowTimestamp } from '@changetracks/core';
 import { resolveProtocolMode } from '../config.js';
+import { rerecordState } from '../state-utils.js';
 import { resolveAndApply, type NormalizedCompactOp } from './resolve-and-apply.js';
 export interface ProposeChangeResult {
   content: Array<{ type: 'text'; text: string }>;
@@ -45,10 +43,26 @@ type ProposeChangeErrorCode =
   | 'HASHLINE_LINE_OUT_OF_RANGE'
   | 'FILE_UNREADABLE'
   | 'AUTHOR_RESOLUTION_FAILED'
+  | 'REASONING_REQUIRED'
   | 'VALIDATION_ERROR'
   | 'PROTOCOL_MODE_MISMATCH'
   | 'DEPRECATED_PARAMS'
   | 'INTERNAL_ERROR';
+
+function checkReasoningRequired(
+  author: string,
+  reasoning: string | undefined,
+  config: { reasoning?: { propose?: { human?: boolean; agent?: boolean } } },
+  compact: boolean,
+): ProposeChangeResult | null {
+  const participantType = reviewerType(author);
+  if (!config.reasoning?.propose?.[participantType]) return null;
+  if (reasoning) return null;
+  const hint = compact
+    ? 'Append {>>reason to your op string, or include a reason parameter in your propose_change call.'
+    : 'Include a reason parameter in your propose_change call.';
+  return errorResult(`This project requires reasoning on proposals. ${hint}`, 'REASONING_REQUIRED');
+}
 
 /**
  * Detects whether hashline addressing params are present in args.
@@ -414,13 +428,12 @@ export async function handleProposeChange(
       }
 
       // Multiple changes: delegate to batch handler (reuses handleProposeBatch logic).
-      // propose_change(changes=[...]) is atomic: validate all, apply none on any failure.
+      // Same partial semantics as propose_batch: all failures reported, not just the first.
       const batchArgs: Record<string, unknown> = {
         file: args.file,
         reason: args.reason,
         author: args.author,
         changes: changesArray,
-        atomic: true,
       };
       const batchResult = await handleProposeBatch(batchArgs, resolver, state);
       // Adapt ProposeBatchResult to ProposeChangeResult (same shape)
@@ -651,6 +664,10 @@ export async function handleProposeChange(
     if (authorError) {
       return errorResult(authorError.message, 'AUTHOR_RESOLUTION_FAILED');
     }
+
+    // 7. Reasoning enforcement check
+    const reasoningError = checkReasoningRequired(author!, reasoning, config, false);
+    if (reasoningError) return reasoningError;
 
     // Determine addressing mode
     const useLineRange = (startLine !== undefined && startHash !== undefined);
@@ -971,7 +988,7 @@ export async function handleProposeChange(
         }
       }
 
-      const result = applyProposeChange({
+      const result = await applyProposeChange({
         text: fileContent,
         oldText,
         newText,
@@ -996,18 +1013,9 @@ export async function handleProposeChange(
           break;
         }
       }
-      // Bounded window: markup line ±2 before, +5 after (includes footnote area)
+      // Bounded window: markup line ±2 before, +5 after
       const affStart = Math.max(1, matchLine - 2);
-      let affEnd = Math.min(modLines.length, matchLine + 5);
-
-      // Extend window to include footnote region if present
-      // Footnotes are at the end of the file, marked by [^ct-N]: pattern
-      for (let i = modLines.length - 1; i >= affEnd; i--) {
-        if (/^\[\^ct-\d+(?:\.\d+)?\]:/.test(modLines[i])) {
-          affEnd = modLines.length; // Include entire footnote block
-          break;
-        }
-      }
+      const affEnd = Math.min(modLines.length, matchLine + 5);
       try {
         affectedLines = computeAffectedLines(modifiedText, affStart, affEnd, {
           hashlineEnabled: config.hashline.enabled,
@@ -1021,52 +1029,7 @@ export async function handleProposeChange(
     await fs.writeFile(filePath, modifiedText, 'utf-8');
 
     // 8a. Re-record hashes and fingerprint so chained edits don't trigger false staleness warnings
-    if (isHashlineMode) {
-      await initHashline();
-      const rerecordLines = modifiedText.split('\n');
-      const allSettledRerecord = rerecordLines.map(l => settledLine(l));
-      if (viewResolved === 'changes') {
-        // Re-record with committed hashes for chained committed-view edits
-        const committedResult = computeCommittedView(modifiedText);
-        const newHashes = committedResult.lines.map(cl => ({
-          line: cl.committedLineNum,
-          raw: computeLineHash(cl.rawLineNum - 1, rerecordLines[cl.rawLineNum - 1], rerecordLines),
-          settled: computeSettledLineHash(cl.rawLineNum - 1, rerecordLines[cl.rawLineNum - 1], allSettledRerecord),
-          committed: cl.hash,
-          rawLineNum: cl.rawLineNum,
-        }));
-        state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-      } else if (viewResolved === 'review') {
-        // Review view shows raw line numbers to agents — re-record with raw coordinates
-        const newHashes = rerecordLines.map((line, i) => ({
-          line: i + 1,
-          raw: computeLineHash(i, line, rerecordLines),
-          settled: computeSettledLineHash(i, line, allSettledRerecord),
-        }));
-        state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-      } else if (viewResolved === 'settled') {
-        // Re-record with settled hashes for chained settled-view edits
-        const settledResult = computeSettledView(modifiedText);
-        const newHashes = settledResult.lines.map(sl => ({
-          line: sl.settledLineNum,
-          raw: computeLineHash(sl.rawLineNum - 1, rerecordLines[sl.rawLineNum - 1], rerecordLines),
-          settled: computeSettledLineHash(sl.rawLineNum - 1, rerecordLines[sl.rawLineNum - 1], allSettledRerecord),
-          settledView: sl.hash,
-          rawLineNum: sl.rawLineNum,
-        }));
-        state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-      } else {
-        const newHashes = rerecordLines.map((line, i) => ({
-          line: i + 1,
-          raw: computeLineHash(i, line, rerecordLines),
-          settled: computeSettledLineHash(i, line, allSettledRerecord),
-        }));
-        state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-      }
-    } else {
-      // Non-hashline classic path: still update fingerprint and reset ID counter
-      state.rerecordAfterWrite(filePath, modifiedText, []);
-    }
+    await rerecordState(state, filePath, modifiedText, config);
 
     // 9. Build response
     const responseData: Record<string, unknown> = {
@@ -1253,13 +1216,13 @@ async function handleCompactProposeChange(
   // Merge reasoning: op {>> suffix takes priority, JSON param is fallback
   const reasoning = parsed.reasoning ?? (args.reason as string | undefined);
 
+  // Reasoning enforcement check
+  const reasoningError = checkReasoningRequired(author!, reasoning, config, true);
+  if (reasoningError) return reasoningError;
+
   let modifiedText: string;
   let changeType: 'ins' | 'del' | 'sub' | 'highlight' | 'comment';
   const supersededIds: string[] = [];
-  // Track which view the agent was working in — used post-write for re-recording
-  // hashes in view-space and for projecting affected_lines to view coordinates.
-  let compactViewResolved: ViewName | undefined;
-
   // ─── Resolve coordinates and apply markup via pipeline ───────────────────
   let applyResult: ReturnType<typeof resolveAndApply>;
   try {
@@ -1288,8 +1251,6 @@ async function handleCompactProposeChange(
   modifiedText = applyResult.modifiedText;
   changeType = applyResult.changeType;
   supersededIds.push(...applyResult.supersededIds);
-  compactViewResolved = applyResult.viewResolved;
-
   // Update fileContent and fileLines so re-recording block uses modified content
   fileContent = applyResult.modifiedText;
   fileLines = fileContent.split('\n');
@@ -1297,75 +1258,23 @@ async function handleCompactProposeChange(
   // Write to disk
   await fs.writeFile(filePath, modifiedText, 'utf-8');
 
-  // Re-record hashes and fingerprint for staleness detection (initHashline already called above).
-  // When the agent was working in settled or changes view, re-record with view-space hashes so
-  // chained edits can use the same view coordinates without a re-read.
-  const rerecordLines = modifiedText.split('\n');
-  const allSettledRerecord = rerecordLines.map(l => settledLine(l));
+  // Re-record hashes and fingerprint for staleness detection.
+  const viewResult = await rerecordState(state, filePath, modifiedText, config);
 
+  // Build viewProjection from returned view result (no double computation)
   let viewProjection: ViewProjection | undefined;
-
-  if (compactViewResolved === 'changes') {
-    // Re-record with committed hashes for chained committed-view edits
-    const committedResult = computeCommittedView(modifiedText);
-    const newHashes = committedResult.lines.map(cl => ({
-      line: cl.committedLineNum,
-      raw: computeLineHash(cl.rawLineNum - 1, rerecordLines[cl.rawLineNum - 1], rerecordLines),
-      settled: computeSettledLineHash(cl.rawLineNum - 1, rerecordLines[cl.rawLineNum - 1], allSettledRerecord),
-      committed: cl.hash,
-      rawLineNum: cl.rawLineNum,
-    }));
-    state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-
-    // Build rawToView map for affected_lines projection (changes view)
+  if (viewResult?.settledView) {
     const rawToViewMap = new Map<number, { viewLine: number; viewHash: string; viewContent: string }>();
-    for (const cl of committedResult.lines) {
-      rawToViewMap.set(cl.rawLineNum, {
-        viewLine: cl.committedLineNum,
-        viewHash: cl.hash,
-        viewContent: cl.text,
-      });
-    }
-    viewProjection = { view: 'changes', rawToView: rawToViewMap };
-  } else if (compactViewResolved === 'review') {
-    // Review view shows raw line numbers to agents — re-record with raw coordinates
-    const newHashes = rerecordLines.map((line, i) => ({
-      line: i + 1,
-      raw: computeLineHash(i, line, rerecordLines),
-      settled: computeSettledLineHash(i, line, allSettledRerecord),
-    }));
-    state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-    // No viewProjection needed: review view uses raw line numbers (identity mapping)
-  } else if (compactViewResolved === 'settled') {
-    // Re-record with settled hashes for chained settled-view edits
-    const settledResult = computeSettledView(modifiedText);
-    const newHashes = settledResult.lines.map(sl => ({
-      line: sl.settledLineNum,
-      raw: computeLineHash(sl.rawLineNum - 1, rerecordLines[sl.rawLineNum - 1], rerecordLines),
-      settled: computeSettledLineHash(sl.rawLineNum - 1, rerecordLines[sl.rawLineNum - 1], allSettledRerecord),
-      settledView: sl.hash,
-      rawLineNum: sl.rawLineNum,
-    }));
-    state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-
-    // Build rawToView map for affected_lines projection (settled view)
-    const rawToViewMap = new Map<number, { viewLine: number; viewHash: string; viewContent: string }>();
-    for (const sl of settledResult.lines) {
-      rawToViewMap.set(sl.rawLineNum, {
-        viewLine: sl.settledLineNum,
-        viewHash: sl.hash,
-        viewContent: sl.text,
-      });
+    for (const sl of viewResult.settledView.lines) {
+      rawToViewMap.set(sl.rawLineNum, { viewLine: sl.settledLineNum, viewHash: sl.hash, viewContent: sl.text });
     }
     viewProjection = { view: 'settled', rawToView: rawToViewMap };
-  } else {
-    // Raw view or no session state: record raw hashes
-    const newHashes = rerecordLines.map((line, i) => ({
-      line: i + 1,
-      raw: computeLineHash(i, line, rerecordLines),
-      settled: computeSettledLineHash(i, line, allSettledRerecord),
-    }));
-    state.rerecordAfterWrite(filePath, modifiedText, newHashes);
+  } else if (viewResult?.committedView) {
+    const rawToViewMap = new Map<number, { viewLine: number; viewHash: string; viewContent: string }>();
+    for (const cl of viewResult.committedView.lines) {
+      rawToViewMap.set(cl.rawLineNum, { viewLine: cl.committedLineNum, viewHash: cl.hash, viewContent: cl.text });
+    }
+    viewProjection = { view: 'changes', rawToView: rawToViewMap };
   }
 
   // Build response
@@ -1401,7 +1310,9 @@ async function handleCompactProposeChange(
   } catch {
     // Degrade gracefully: return response without affected_lines rather than failing after successful write
   }
-  responseData.affected_lines = affectedLines;
+  if (affectedLines && config.response?.affected_lines) {
+    responseData.affected_lines = affectedLines;
+  }
 
   return {
     content: [{ type: 'text', text: JSON.stringify(responseData) }],

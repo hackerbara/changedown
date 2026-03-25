@@ -27,7 +27,7 @@
     "test:core": "cd packages/tests && npx vitest run core/",
     "test:ext": "cd packages/vscode-extension && npm run test:features",
     "test:cursor-preview": "cd packages/cursor-preview && npm test",
-    "lint": "cd packages/core && npm run lint 2>/dev/null; cd ../../packages/vscode-extension && npm run lint",
+    "lint": "eslint 'packages/core/src/**/*.ts' 'packages/lsp-server/src/**/*.ts' 'packages/vscode-extension/src/**/*.ts' 'packages/cli/src/**/*.ts' 'packages/docx/src/**/*.ts' 'packages/opencode-plugin/src/**/*.ts'",
     "build:cli": "cd packages/cli && npx tsc",
     "sc": "node packages/cli/dist/index.js",
     "test:cucumber": "npm run test:features -w packages/tests",
@@ -39,6 +39,9 @@
     "build:release": "node scripts/build.mjs",
     "install:local": "node scripts/install.mjs"
   },
+  "lint-staged": {
+    "packages/**/*.ts": "eslint"
+  },
   "dependencies": {
     "docx": "^9.5.1"
   },
@@ -49,6 +52,12 @@
     "@changesets/cli": "^2.29.8",
     "@cucumber/cucumber": "^12.7.0",
     "@types/diff": "^7.0.2",
-    "tsx": "^4.21.0"
+    "eslint": "^9.39.4",
+    "eslint-plugin-import-x": "^4.16.2",
+    "husky": "^9.1.7",
+    "knip": "^6.0.5",
+    "lint-staged": "^16.4.0",
+    "tsx": "^4.21.0",
+    "typescript-eslint": "^8.57.2"
   }
 }

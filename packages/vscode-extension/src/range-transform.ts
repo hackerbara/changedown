@@ -15,15 +15,24 @@ import { ChangeNode } from '@changetracks/core';
 // ---------------------------------------------------------------------------
 
 /**
+ * Cached decoration entry: the change nodes plus the document version at which
+ * they were stored. Used to detect stale optimistic transforms.
+ */
+export interface CachedDecorationData {
+    changes: ChangeNode[];
+    documentVersion: number;
+}
+
+/**
  * Cache for decoration data received from the LSP server.
  * Exported so lsp-client.ts can reference the exact same Map object.
  */
-export const decorationCache: Map<string, ChangeNode[]> = new Map();
+export const decorationCache = new Map<string, CachedDecorationData>();
 
 /**
  * Get cached decoration data for a document.
  */
-export function getCachedDecorationData(uri: string): ChangeNode[] | undefined {
+export function getCachedDecorationData(uri: string): CachedDecorationData | undefined {
     return decorationCache.get(uri);
 }
 
@@ -41,8 +50,8 @@ export function invalidateDecorationCache(uri: string): void {
  * Used when the extension receives changes via changetracks/getChanges request
  * or via the changetracks/decorationData notification.
  */
-export function setCachedDecorationData(uri: string, changes: ChangeNode[]): void {
-    decorationCache.set(uri, changes);
+export function setCachedDecorationData(uri: string, changes: ChangeNode[], documentVersion: number): void {
+    decorationCache.set(uri, { changes, documentVersion });
 }
 
 // ---------------------------------------------------------------------------
@@ -85,21 +94,23 @@ export function transformRange(
  * round-trip. The authoritative LSP push (changetracks/decorationData) overwrites
  * the cache when the server responds.
  *
+ * @param newVersion The document version after the edit — stamped onto the cache entry.
  * @returns true if the cache was found and transformed, false if cache was empty/absent
  */
 export function transformCachedDecorations(
     uri: string,
-    contentChanges: readonly { rangeOffset: number; rangeLength: number; text: string }[]
+    contentChanges: readonly { rangeOffset: number; rangeLength: number; text: string }[],
+    newVersion: number
 ): boolean {
     const cached = decorationCache.get(uri);
-    if (!cached || cached.length === 0) return false;
+    if (!cached || cached.changes.length === 0) return false;
 
     for (const change of contentChanges) {
         const editStart = change.rangeOffset;
         const editEnd = editStart + change.rangeLength;
         const delta = change.text.length - change.rangeLength;
 
-        for (const node of cached) {
+        for (const node of cached.changes) {
             transformRange(node.range, editStart, editEnd, delta);
             transformRange(node.contentRange, editStart, editEnd, delta);
             if (node.originalRange) {
@@ -113,7 +124,7 @@ export function transformCachedDecorations(
 
     // Remove nodes whose ranges have gone invalid (end < start or negative start).
     // Zero-width ranges (end === start) are kept — they represent collapsed positions.
-    const valid = cached.filter(n => n.range.end >= n.range.start && n.range.start >= 0);
-    decorationCache.set(uri, valid);
+    cached.changes = cached.changes.filter(n => n.range.end >= n.range.start && n.range.start >= 0);
+    cached.documentVersion = newVersion;
     return true;
 }

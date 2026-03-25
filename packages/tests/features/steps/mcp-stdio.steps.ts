@@ -11,7 +11,11 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { spawn, type ChildProcess } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { ChangeTracksWorld } from './world.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // =============================================================================
 // Per-scenario state stored in a WeakMap keyed on the world instance
@@ -305,7 +309,7 @@ Then(
 );
 
 Then(
-  'the tools include: read_tracked_file, propose_change, review_changes, get_change, amend_change, list_changes, supersede_change',
+  'the tools include: read_tracked_file, propose_change, review_changes, resolve_thread, amend_change, list_changes, supersede_change',
   function (this: ChangeTracksWorld) {
     const state = getState(this);
     const tools = state.lastResponse.result.tools;
@@ -314,7 +318,7 @@ Then(
       'read_tracked_file',
       'propose_change',
       'review_changes',
-      'get_change',
+      'resolve_thread',
       'amend_change',
       'list_changes',
       'supersede_change',

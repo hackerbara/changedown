@@ -36,6 +36,7 @@ Feature: Batch operations
 
   Scenario: Batch affected_lines returns bounded window, not entire file
     Given a tracked file with 50+ lines
+    And the config has response.affected_lines = true
     When I call propose_change with a changes array in classic mode (no hashlines)
     Then affected_lines contains fewer than 20 entries
     And affected_lines includes the edit region with context

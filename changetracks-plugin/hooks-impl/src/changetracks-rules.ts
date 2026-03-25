@@ -65,10 +65,11 @@ export function buildChangeTracksRule(
     },
 
     onWrite: async (op: FileOperation): Promise<Verdict> => {
-      // Creation tracking bypass: non-existent files are allowed through
+      // Creation tracking bypass: non-existent files are allowed through (Write only, not Edit)
       if (
         config.policy.creation_tracking !== 'none' &&
-        !fs.existsSync(op.file)
+        !fs.existsSync(op.file) &&
+        op.source.tool !== 'edit'
       ) {
         return {
           action: 'allow',
@@ -160,7 +161,9 @@ export function buildChangeTracksRule(
         }
       } catch { /* ignore */ }
 
-      await logEdit(projectDir, sessionId, op.file, oldText, newText, op.source.tool, contextBefore, contextAfter);
+      // Capitalize tool name for pending edit storage (e.g. 'edit' → 'Edit')
+      const toolName = op.source.tool.charAt(0).toUpperCase() + op.source.tool.slice(1);
+      await logEdit(projectDir, sessionId, op.file, oldText, newText, toolName, contextBefore, contextAfter);
     },
 
     afterRead: async (op: FileOperation, _result: ToolResult): Promise<void> => {

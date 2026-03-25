@@ -56,3 +56,59 @@ describe('footnote-parser image-dimensions', () => {
     expect(fn!.imageDimensions!.heightIn).toBeCloseTo(0.333, 3);
   });
 });
+
+describe('footnote-parser imageMetadata bag', () => {
+  it('parses image-* metadata keys into imageMetadata bag', () => {
+    const content = `Some image text
+
+[^ct-1]: @alice | 2026-03-14 | ins | proposed
+    image-dimensions: 2.5in x 1.8in
+    image-float: anchor
+    image-h-anchor: column
+    image-h-offset: 914400
+    image-v-anchor: paragraph
+    image-v-offset: 457200
+    image-wrap: wrapSquare
+    image-wrap-side: bothSides
+    image-z: background
+    image-dist: 0 0 114300 114300
+`;
+    const footnotes = parseFootnotes(content);
+    const fn = footnotes.get('ct-1');
+    expect(fn).toBeDefined();
+    // image-dimensions goes to its own field
+    expect(fn!.imageDimensions).toEqual({ widthIn: 2.5, heightIn: 1.8 });
+    // all other image-* keys go to imageMetadata bag
+    expect(fn!.imageMetadata).toBeDefined();
+    expect(fn!.imageMetadata!['image-float']).toBe('anchor');
+    expect(fn!.imageMetadata!['image-h-anchor']).toBe('column');
+    expect(fn!.imageMetadata!['image-h-offset']).toBe('914400');
+    expect(fn!.imageMetadata!['image-v-anchor']).toBe('paragraph');
+    expect(fn!.imageMetadata!['image-v-offset']).toBe('457200');
+    expect(fn!.imageMetadata!['image-wrap']).toBe('wrapSquare');
+    expect(fn!.imageMetadata!['image-wrap-side']).toBe('bothSides');
+    expect(fn!.imageMetadata!['image-z']).toBe('background');
+    expect(fn!.imageMetadata!['image-dist']).toBe('0 0 114300 114300');
+  });
+
+  it('parses merge-detected into imageMetadata bag', () => {
+    const content = `[^ct-2]: @alice | 2026-03-14 | ins | proposed
+    merge-detected: 3
+`;
+    const footnotes = parseFootnotes(content);
+    const fn = footnotes.get('ct-2');
+    expect(fn).toBeDefined();
+    expect(fn!.imageMetadata).toBeDefined();
+    expect(fn!.imageMetadata!['merge-detected']).toBe('3');
+  });
+
+  it('returns undefined imageMetadata when no image-* keys present', () => {
+    const content = `[^ct-3]: @alice | 2026-03-14 | ins | proposed
+    reason: just a text change
+`;
+    const footnotes = parseFootnotes(content);
+    const fn = footnotes.get('ct-3');
+    expect(fn).toBeDefined();
+    expect(fn!.imageMetadata).toBeUndefined();
+  });
+});

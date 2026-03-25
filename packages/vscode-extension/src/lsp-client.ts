@@ -15,8 +15,8 @@ import {
     TransportKind
 } from 'vscode-languageclient/node';
 import { ChangeNode } from '@changetracks/core';
-import type { ViewName } from '@changetracks/core';
-import { decorationCache } from './range-transform';
+import type { ViewName, CoherenceStatusParams, ChangeCountParams, AllChangesResolvedParams, DecorationDataParams } from '@changetracks/core';
+import { decorationCache, setCachedDecorationData } from './range-transform';
 
 /**
  * Resolve reviewer identity from VS Code config.
@@ -39,36 +39,6 @@ function sendReviewerIdentity(client: LanguageClient): void {
 }
 
 /**
- * Decoration data notification parameters
- */
-interface DecorationDataParams {
-    uri: string;
-    changes: ChangeNode[];
-}
-
-/**
- * Change count notification parameters
- */
-interface ChangeCountParams {
-    uri: string;
-    counts: {
-        insertions: number;
-        deletions: number;
-        substitutions: number;
-        highlights: number;
-        comments: number;
-        total: number;
-    };
-}
-
-/**
- * All changes resolved notification parameters
- */
-interface AllChangesResolvedParams {
-    uri: string;
-}
-
-/**
  * Document state notification parameters
  */
 interface DocumentStateParams {
@@ -86,6 +56,7 @@ interface DocumentStateParams {
 class StatusBarManager {
     private statusBarItem: vscode.StatusBarItem;
     private changeCounts: Map<string, ChangeCountParams['counts']> = new Map();
+    private coherenceData: Map<string, { rate: number; unresolvedCount: number; threshold: number }> = new Map();
 
     constructor() {
         this.statusBarItem = vscode.window.createStatusBarItem(
@@ -120,20 +91,63 @@ class StatusBarManager {
     }
 
     /**
+     * Update coherence data for a document
+     */
+    updateCoherence(uri: string, rate: number, unresolvedCount: number, threshold: number): void {
+        this.coherenceData.set(uri, { rate, unresolvedCount, threshold });
+        this.refresh();
+    }
+
+    /**
+     * Get stored coherence data for a document
+     */
+    getCoherence(uri: string): { rate: number; unresolvedCount: number; threshold: number } | undefined {
+        return this.coherenceData.get(uri);
+    }
+
+    /**
+     * Clear coherence data for a document
+     */
+    clearCoherence(uri: string): void {
+        this.coherenceData.delete(uri);
+        this.refresh();
+    }
+
+    /**
+     * Clear all data for a document (change counts + coherence). Call on document close.
+     */
+    clearDocument(uri: string): void {
+        this.changeCounts.delete(uri);
+        this.coherenceData.delete(uri);
+        this.refresh();
+    }
+
+    /**
      * Refresh status bar display based on active editor
      */
     private refresh(): void {
         const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor) {
             this.statusBarItem.text = '$(check) No changes';
+            this.statusBarItem.backgroundColor = undefined;
             return;
         }
 
-        const counts = this.changeCounts.get(activeEditor.document.uri.toString());
-        if (!counts || counts.total === 0) {
-            this.statusBarItem.text = '$(check) No changes';
+        const uri = activeEditor.document.uri.toString();
+        const counts = this.changeCounts.get(uri);
+        const coherence = this.coherenceData.get(uri);
+
+        if (coherence && coherence.unresolvedCount > 0) {
+            const resolved = (counts?.total ?? 0) - coherence.unresolvedCount;
+            this.statusBarItem.text = `$(warning) ${coherence.unresolvedCount} unresolved · ${resolved >= 0 ? resolved : 0} resolved`;
+            this.statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
         } else {
-            this.statusBarItem.text = `$(check) ${counts.total} change${counts.total === 1 ? '' : 's'}`;
+            if (!counts || counts.total === 0) {
+                this.statusBarItem.text = '$(check) No changes';
+            } else {
+                this.statusBarItem.text = `$(check) ${counts.total} change${counts.total === 1 ? '' : 's'}`;
+            }
+            this.statusBarItem.backgroundColor = undefined;
         }
     }
 
@@ -186,6 +200,39 @@ export function setDocumentStateHandler(handler: DocumentStateHandler | null): v
     documentStateHandler = handler;
 }
 
+export type PromotionStartHandler = (uri: string) => void;
+let promotionStartHandler: PromotionStartHandler | null = null;
+
+export type PromotionCompleteHandler = (uri: string) => void;
+let promotionCompleteHandler: PromotionCompleteHandler | null = null;
+
+export type CoherenceHandler = (uri: string, rate: number, unresolvedCount: number, threshold: number) => void;
+let coherenceHandler: CoherenceHandler | null = null;
+
+/**
+ * Set the handler invoked when changetracks/coherenceStatus arrives.
+ * Pass null to clear.
+ */
+export function setCoherenceHandler(handler: CoherenceHandler | null): void {
+    coherenceHandler = handler;
+}
+
+/**
+ * Set the handler invoked when changetracks/promotionStarting arrives.
+ * Pass null to clear.
+ */
+export function setPromotionStartHandler(handler: PromotionStartHandler | null): void {
+    promotionStartHandler = handler;
+}
+
+/**
+ * Set the handler invoked when changetracks/promotionComplete arrives.
+ * Pass null to clear.
+ */
+export function setPromotionCompleteHandler(handler: PromotionCompleteHandler | null): void {
+    promotionCompleteHandler = handler;
+}
+
 // Re-export cache helpers and optimistic range transform from range-transform.ts.
 // The implementations live there (no vscode-languageclient dependency) so @fast
 // tier tests can import them directly via the internals barrel.
@@ -196,6 +243,12 @@ export {
     transformRange,
     transformCachedDecorations,
 } from './range-transform';
+
+/**
+ * Batch edit sender type. Controller field only — no module-level state needed.
+ * Called with ('start', uri) or ('end', uri) to bracket programmatic edits.
+ */
+export type BatchEditSender = (action: 'start' | 'end', uri: string) => void;
 
 /**
  * Create and configure the Language Server Protocol client
@@ -269,7 +322,7 @@ export function createLanguageClient(context: vscode.ExtensionContext): Language
     client.onNotification(
         'changetracks/decorationData',
         (params: DecorationDataParams) => {
-            decorationCache.set(params.uri, params.changes);
+            setCachedDecorationData(params.uri, params.changes, params.documentVersion ?? 0);
             decorationDataHandler?.(params.uri, params.changes);
         }
     );
@@ -307,6 +360,28 @@ export function createLanguageClient(context: vscode.ExtensionContext): Language
         documentStateHandler?.(params.textDocument.uri, params);
     });
 
+    // Handle promotion lifecycle notifications from LSP
+    client.onNotification('changetracks/promotionStarting', (params: { uri: string }) => {
+        promotionStartHandler?.(params.uri);
+    });
+
+    client.onNotification('changetracks/promotionComplete', (params: { uri: string }) => {
+        promotionCompleteHandler?.(params.uri);
+    });
+
+    // Handle coherence status notifications
+    client.onNotification(
+        'changetracks/coherenceStatus',
+        (params: CoherenceStatusParams) => {
+            if (statusBarManager) {
+                statusBarManager.updateCoherence(params.uri, params.coherenceRate, params.unresolvedCount, params.threshold);
+            }
+            if (coherenceHandler) {
+                coherenceHandler(params.uri, params.coherenceRate, params.unresolvedCount, params.threshold);
+            }
+        }
+    );
+
     // Push reviewer identity to the LSP server once it transitions to Running,
     // and again on every configuration change that affects the reviewer identity settings.
     context.subscriptions.push(
@@ -332,6 +407,22 @@ export function createLanguageClient(context: vscode.ExtensionContext): Language
     );
 
     return client;
+}
+
+/**
+ * Clear all StatusBarManager data for a document (change counts + coherence).
+ * Call when a document closes to prevent memory leaks.
+ */
+export function clearStatusBarDocument(uri: string): void {
+    statusBarManager?.clearDocument(uri);
+}
+
+/**
+ * Get the current coherence data stored in StatusBarManager for a document.
+ * Returns undefined if no coherence notification has been received yet.
+ */
+export function getStatusBarCoherence(uri: string): { rate: number; unresolvedCount: number; threshold: number } | undefined {
+    return statusBarManager?.getCoherence(uri);
 }
 
 export function migrateDecorationCache(oldUri: string, newUri: string): void {

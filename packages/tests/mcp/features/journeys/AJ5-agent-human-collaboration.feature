@@ -62,11 +62,12 @@ Feature: Agent-human collaboration across surfaces
     Then ct-1 shows as accepted
     And ct-2's comment thread contains the agent's suggestion
 
-  Scenario: Round-trip -- agent proposes, human comments, agent amends, human accepts
+  Scenario: Round-trip -- agent proposes, human comments, agent amends (supersede), human accepts
     When agent "ai:assistant" proposes ct-1
     And human adds a comment to ct-1 footnote
     And agent reads the file and sees the comment via get_change
-    And agent amends ct-1 incorporating feedback
-    And human accepts the amended ct-1 via core accept
+    And agent amends ct-1 incorporating feedback (supersede)
+    Then the amend created a new superseding change for ct-1
+    When human accepts the superseding change via core accept
     Then the file is clean with the final amended text
-    And the footnote contains the full deliberation trail
+    And the footnote contains the full deliberation trail for the supersede chain

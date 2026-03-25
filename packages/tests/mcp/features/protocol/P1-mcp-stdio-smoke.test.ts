@@ -25,7 +25,7 @@ const SERVER_ENTRY = path.resolve(__dirname, '../../../../../changetracks-plugin
 /** Timeout for individual MCP operations (server startup is slow) */
 const OP_TIMEOUT = 15_000;
 
-/** The 6 listed tool names in the current tool surface */
+/** The 7 listed tool names in the current tool surface */
 const LISTED_TOOLS = [
   'read_tracked_file',
   'propose_change',
@@ -33,6 +33,7 @@ const LISTED_TOOLS = [
   'amend_change',
   'list_changes',
   'supersede_change',
+  'resolve_thread',
 ];
 
 /**
@@ -177,8 +178,8 @@ describe('P1: MCP stdio transport smoke tests', () => {
 
     const result = await client.listTools();
 
-    // Verify we get exactly 6 tools
-    expect(result.tools).toHaveLength(6);
+    // Verify we get exactly 7 tools
+    expect(result.tools).toHaveLength(7);
 
     // Verify exact tool names
     const names = result.tools.map((t) => t.name).sort();

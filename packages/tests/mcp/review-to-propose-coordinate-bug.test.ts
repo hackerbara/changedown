@@ -385,7 +385,7 @@ describe('BUG: review view re-recording uses committed line numbers (classic mod
     const result1 = await handleProposeChange(
       {
         file: filePath, old_text: '## First Heading', new_text: '## First Heading (edited)',
-        start_line: first.lineNum, start_hash: first.hash,
+        start_line: first.lineNum, start_hash: first.hash, reason: 'test',
       },
       classicResolver, state,
     );
@@ -401,7 +401,7 @@ describe('BUG: review view re-recording uses committed line numbers (classic mod
     const result2 = await handleProposeChange(
       {
         file: filePath, old_text: '## Second Heading', new_text: '## Second Heading (edited)',
-        start_line: second.lineNum, start_hash: second.hash,
+        start_line: second.lineNum, start_hash: second.hash, reason: 'test',
       },
       classicResolver, state,
     );

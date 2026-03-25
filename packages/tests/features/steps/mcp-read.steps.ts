@@ -304,7 +304,9 @@ Then(
     const text = this.ctx.resultText(this.lastResult);
     const parts = text.split('\n\n');
     const contentSection = parts.slice(1).join('\n\n');
-    const contentLines = contentSection.split('\n').filter((l: string) => l.trim().length > 0);
+    const contentLines = contentSection.split('\n').filter(
+      (l: string) => l.trim().length > 0 && !l.startsWith('--- showing lines'),
+    );
     assert.equal(contentLines.length, count, `Expected ${count} content line(s), got ${contentLines.length}`);
   },
 );

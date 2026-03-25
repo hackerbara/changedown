@@ -5,6 +5,7 @@ import { resolveAuthor } from '../author.js';
 import { isFileInScope } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
 import { applyReview, VALID_DECISIONS, type Decision, type ApplyReviewSuccess, type ApplyReviewError } from '@changetracks/core';
+import { applyBlockingAnnotation } from '../shared/blocking-annotation.js';
 import { SessionState } from '../state.js';
 import { rerecordState } from '../state-utils.js';
 import { settleAcceptedChanges, settleRejectedChanges } from './settle.js';
@@ -30,7 +31,7 @@ export const reviewChangeTool = {
       },
       decision: {
         type: 'string',
-        enum: ['approve', 'reject', 'request_changes'],
+        enum: ['approve', 'reject', 'request_changes', 'withdraw'],
         description: 'The review decision',
       },
       reason: {
@@ -41,6 +42,14 @@ export const reviewChangeTool = {
         type: 'string',
         description:
           'Who is making this change. Recommended: always pass your model/agent identity (e.g. ai:composer) for clear attribution. Required when this project has author enforcement.',
+      },
+      blocking: {
+        type: 'boolean',
+        description: 'When true and decision is request_changes, adds a blocking hold that must be withdrawn before acceptance.',
+      },
+      label: {
+        type: 'string',
+        description: 'Optional label for request_changes (e.g. "security", "testing"). Labels in config blocking_labels auto-block.',
       },
     },
     required: ['file', 'change_id', 'decision', 'reason'],
@@ -93,7 +102,7 @@ export async function handleReviewChange(
     // Validate decision enum
     if (!VALID_DECISIONS.includes(decision as Decision)) {
       return errorResult(
-        `Invalid decision: "${decision}". Must be one of: approve, reject, request_changes`
+        `Invalid decision: "${decision}". Must be one of: approve, reject, request_changes, withdraw`
       );
     }
     const typedDecision = decision as Decision;
@@ -130,17 +139,26 @@ export async function handleReviewChange(
     }
 
     // 6. Apply review (shared logic)
-    const applied = applyReview(fileContent, changeId, typedDecision, reasoning, author);
+    const applied = applyReview(fileContent, changeId, typedDecision, reasoning, author, config);
     if ('error' in applied) {
       return errorResult(applied.error);
+    }
+
+    // 6b. Post-process: add blocked: line for request_changes with blocking/label
+    if (typedDecision === 'request_changes') {
+      const blockingArg = args.blocking === true;
+      const labelArg = optionalStrArg(args, 'label', 'label');
+      const autoBlock = labelArg ? (config.review.blocking_labels[labelArg] === true) : false;
+      const shouldBlock = blockingArg || autoBlock;
+      if (labelArg || shouldBlock) {
+        applied.updatedContent = applyBlockingAnnotation(applied.updatedContent, changeId, author, labelArg, shouldBlock);
+      }
     }
 
     // 7. Write file back (only when content actually changed)
     if (applied.updatedContent !== fileContent) {
       fileContent = applied.updatedContent;
       await fs.writeFile(filePath, fileContent, 'utf-8');
-    } else {
-      fileContent = applied.updatedContent;
     }
 
     let settlementInfo: { settledIds: string[] } | undefined;

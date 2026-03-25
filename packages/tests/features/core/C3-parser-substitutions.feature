@@ -75,4 +75,4 @@ Feature: Parser — Substitutions
   Scenario: Substitution generates correct ID prefix
     Given the text "{++a++}{--b--}{~~c~>d~~}"
     When I parse the text
-    Then change 3 has id "sub-2"
+    Then change 3 has id "ct-3"

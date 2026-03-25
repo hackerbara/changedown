@@ -15,7 +15,7 @@ describe('O6: Amend changes', () => {
     await ctx.teardown();
   });
 
-  it('Scenario: Amend substitution with new text', async () => {
+  it('Scenario: Amend substitution with new text (supersede)', async () => {
     // Background: tracked file with proposed substitution ct-1
     const filePath = await ctx.createFile('doc.md', 'The API uses REST for services.');
     await ctx.propose(filePath, {
@@ -28,7 +28,7 @@ describe('O6: Amend changes', () => {
     const before = await ctx.readDisk(filePath);
     expect(before).toContain('{~~REST~>GraphQL~~}');
 
-    // Amend with new text
+    // Amend with new text — supersedes ct-1
     const result = await ctx.amend(filePath, 'ct-1', {
       new_text: 'gRPC',
       reason: 'gRPC better for internal services',
@@ -37,22 +37,21 @@ describe('O6: Amend changes', () => {
 
     const data = ctx.parseResult(result);
     expect(data.change_id).toBe('ct-1');
+    expect(data.new_change_id).toBeDefined();
     expect(data.amended).toBe(true);
-    expect(data.inline_updated).toBe(true);
-    expect(data.previous_text).toBe('GraphQL');
 
     const disk = await ctx.readDisk(filePath);
-    // Inline markup updated: old side preserved, new side changed
+    // New change proposes the amended text
     expect(disk).toContain('{~~REST~>gRPC~~}');
-    expect(disk).not.toContain('{~~REST~>GraphQL~~}');
-    // Footnote has revised entry with author
-    expect(disk).toMatch(/revised @ai:test-agent/);
+    // Original ct-1 is rejected with superseded-by cross-reference
+    expect(disk).toContain('| rejected');
+    expect(disk).toContain(`superseded-by: ${data.new_change_id}`);
+    // New change has supersedes cross-reference and the reason
+    expect(disk).toContain('supersedes: ct-1');
     expect(disk).toContain('gRPC better for internal services');
-    // Footnote records the previous proposed text
-    expect(disk).toContain('previous: "GraphQL"');
   });
 
-  it('Scenario: Amend only reasoning (deletion — no inline change)', async () => {
+  it('Scenario: Amend deletion (supersede creates new deletion)', async () => {
     // A proposed deletion: removing " brown"
     const filePath = await ctx.createFile('doc.md', 'The quick brown fox.');
     await ctx.propose(filePath, {
@@ -64,20 +63,20 @@ describe('O6: Amend changes', () => {
     const before = await ctx.readDisk(filePath);
     expect(before).toContain('{-- brown--}');
 
-    // Amend reasoning only (new_text omitted → defaults to '' which is valid for deletion)
+    // Amend with empty new_text — supersedes ct-1 and creates new deletion
     const result = await ctx.amend(filePath, 'ct-1', {
       reason: 'Updated rationale: consistency across document',
     });
     expect(result.isError).toBeUndefined();
 
     const data = ctx.parseResult(result);
-    expect(data.inline_updated).toBe(false);
+    expect(data.new_change_id).toBeDefined();
+    expect(data.amended).toBe(true);
 
     const disk = await ctx.readDisk(filePath);
-    // Inline markup unchanged
-    expect(disk).toContain('{-- brown--}');
-    // Footnote has revised entry
-    expect(disk).toMatch(/revised @ai:test-agent/);
+    // Original ct-1 rejected, new deletion proposed
+    expect(disk).toContain('| rejected');
+    expect(disk).toContain('supersedes: ct-1');
     expect(disk).toContain('Updated rationale: consistency across document');
   });
 
@@ -127,14 +126,14 @@ describe('O6: Amend changes', () => {
 
     expect(result.isError).toBe(true);
     const errorText = ctx.resultText(result);
-    expect(errorText).toContain('Cannot amend a accepted change');
+    expect(errorText).toContain('already accepted');
 
     // File unchanged
     const disk = await ctx.readDisk(filePath);
     expect(disk).toContain('{~~REST~>GraphQL~~}');
   });
 
-  it('Scenario: Amendment preserves change ID and thread', async () => {
+  it('Scenario: Amendment preserves original footnote and creates cross-references', async () => {
     const filePath = await ctx.createFile('doc.md', 'The API uses REST.');
     await ctx.propose(filePath, {
       old_text: 'REST',
@@ -152,7 +151,7 @@ describe('O6: Amend changes', () => {
     expect(beforeAmend).toContain('[^ct-1]');
     expect(beforeAmend).toContain('Have you benchmarked this?');
 
-    // Amend the change
+    // Amend the change — supersedes ct-1
     const result = await ctx.amend(filePath, 'ct-1', {
       new_text: 'gRPC',
       reason: 'benchmarks show gRPC is 3x faster',
@@ -161,19 +160,19 @@ describe('O6: Amend changes', () => {
 
     const data = ctx.parseResult(result);
     expect(data.change_id).toBe('ct-1');
+    expect(data.new_change_id).toBeDefined();
 
     const disk = await ctx.readDisk(filePath);
-    // Change ID preserved in inline markup
-    expect(disk).toContain('[^ct-1]');
-    expect(disk).toContain('{~~REST~>gRPC~~}');
-    // Original discussion entry preserved
+    // Original ct-1 footnote preserved (rejected) with discussion
+    expect(disk).toContain('[^ct-1]:');
     expect(disk).toContain('Have you benchmarked this?');
-    // Footnote still has original reasoning
     expect(disk).toContain('original reasoning about flexibility');
-    // New revised entry added
-    expect(disk).toMatch(/revised @ai:test-agent/);
+    // New change proposes gRPC
+    expect(disk).toContain('{~~REST~>gRPC~~}');
+    expect(disk).toContain(`[^${data.new_change_id}]`);
+    // Cross-references link old and new
+    expect(disk).toContain(`superseded-by: ${data.new_change_id}`);
+    expect(disk).toContain('supersedes: ct-1');
     expect(disk).toContain('benchmarks show gRPC is 3x faster');
-    // Previous text recorded
-    expect(disk).toContain('previous: "GraphQL"');
   });
 });

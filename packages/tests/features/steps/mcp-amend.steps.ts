@@ -202,6 +202,15 @@ Then(
 );
 
 Then(
+  'the footnote for {word} has status {string}',
+  async function (this: ChangeTracksWorld, changeId: string, status: string) {
+    const filePath = this.files.values().next().value;
+    assert.ok(filePath, 'No file in this scenario');
+    await this.ctx.assertFootnoteStatus(filePath, changeId, status);
+  },
+);
+
+Then(
   'the inline markup is unchanged',
   async function (this: ChangeTracksWorld) {
     const filePath = this.files.values().next().value;

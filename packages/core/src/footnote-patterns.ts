@@ -1,3 +1,5 @@
+import { findCodeZones } from './parser/code-zones.js';
+
 /**
  * Shared footnote regex patterns for ChangeTracks.
  *
@@ -159,6 +161,131 @@ export const FOOTNOTE_DEF_STATUS_VALUE = new RegExp(
   `^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:\\s.*\\|\\s*(proposed|accepted|rejected)`
 );
 
+// ─── L3 format detection ────────────────────────────────────────────────────
+
+/**
+ * Matches an L3 edit-op body line inside a footnote definition.
+ * Format: 4-space indent, LINE:HASH, space, then CriticMarkup op.
+ * Example: `    5:a3 {++inserted text++}`
+ *
+ * Captures:
+ *   1: line number (e.g. "5")
+ *   2: hash (e.g. "a3")
+ *   3: edit-op string (e.g. "{++inserted text++}")
+ *
+ * Non-global.
+ */
+export const FOOTNOTE_L3_EDIT_OP = /^ {4}(\d+):([0-9a-fA-F]{2,}) (.*)/;
+
+/**
+ * Auto-detect whether text is in L3 (footnote-native) format.
+ *
+ * L3 format has:
+ * 1. At least one `[^ct-N]:` footnote definition
+ * 2. No inline CriticMarkup delimiters in the body (before footnotes)
+ * 3. At least one footnote body line with LINE:HASH {edit-op} format
+ *
+ * This is the single source of truth for L3 detection. Used by
+ * Workspace.isFootnoteNative() and standalone functions like
+ * computeSettledText() that need format detection without a Workspace.
+ */
+export function isL3Format(text: string): boolean {
+  // Find the first footnote definition that is NOT inside a code zone.
+  // text.search() would match inside code fences — use exec() loop with zone check.
+  const zones = findCodeZones(text);
+  const defRe = new RegExp(FOOTNOTE_DEF_START.source, 'gm');
+  let defMatch: RegExpExecArray | null;
+  let firstFootnote = -1;
+  while ((defMatch = defRe.exec(text)) !== null) {
+    if (!zones.some(z => defMatch!.index >= z.start && defMatch!.index < z.end)) {
+      firstFootnote = defMatch.index;
+      break;
+    }
+  }
+  if (firstFootnote < 0) return false;
+  const body = text.slice(0, firstFootnote);
+
+  // Check for inline CriticMarkup in body, respecting code zones.
+  // Delimiters inside code fences or inline code spans (e.g. `{++text++}`)
+  // are documentation examples, not actual markup.
+  // Reuse the zones computed on the full text — body is text[0..firstFootnote],
+  // so match indices in body equal text offsets.
+  const cmRe = /\{\+\+|\{--|\{~~|\{==|\{>>/g;
+  if (cmRe.test(body)) {
+    // Body has potential CriticMarkup — check if any are outside code zones
+    cmRe.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = cmRe.exec(body)) !== null) {
+      if (!zones.some(z => m!.index >= z.start && m!.index < z.end)) {
+        return false; // real inline CriticMarkup outside code zones
+      }
+    }
+  }
+
+  // Check footnote section for at least one LINE:HASH {op} body line
+  const footnoteSection = text.slice(firstFootnote);
+  return footnoteSection.split('\n').some(line => FOOTNOTE_L3_EDIT_OP.test(line));
+}
+
+// ─── @ctx: deletion context escaping ────────────────────────────────────────
+
+/** Regex for @ctx:"before"||"after" with escaped-aware quoting */
+export const CTX_RE = /@ctx:"((?:[^"\\]|\\.)*)"\|\|"((?:[^"\\]|\\.)*)"/;
+
+/** Escape a string for use inside @ctx:"..." quoting (\ and " are escaped) */
+export function escapeCtxString(s: string): string {
+  return s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/** Unescape a string from @ctx:"..." quoting */
+export function unescapeCtxString(s: string): string {
+  return s.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+}
+
+// ─── Body / footnote splitting ──────────────────────────────────────────────
+
+/**
+ * Split a document's lines into body and footnote sections.
+ *
+ * Finds the first footnote definition line (`[^ct-N]:`), trims trailing
+ * blank lines from the body, and returns both sections as line arrays.
+ * If no footnotes exist, all lines go to body (with trailing blanks trimmed).
+ *
+ * This is the single source of truth for body/footnote separation.
+ * Used by the parser, conversion functions, and settlement functions.
+ */
+export function splitBodyAndFootnotes(lines: string[]): {
+  bodyLines: string[];
+  footnoteLines: string[];
+  bodyEndIndex: number;
+} {
+  // Compute code zones so we skip footnote-like patterns inside code fences.
+  // Same pattern as stripFootnoteDefinitions() in settled-text.ts.
+  const text = lines.join('\n');
+  const zones = findCodeZones(text);
+
+  let firstFootnoteLine = lines.length;
+  let charOffset = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const inCodeZone = zones.some(z => charOffset >= z.start && charOffset < z.end);
+    if (!inCodeZone && FOOTNOTE_DEF_START.test(lines[i])) {
+      firstFootnoteLine = i;
+      break;
+    }
+    charOffset += lines[i].length + 1; // +1 for newline
+  }
+  // Trim trailing blank lines before footnote block
+  let bodyEnd = firstFootnoteLine;
+  while (bodyEnd > 0 && lines[bodyEnd - 1].trim() === '') {
+    bodyEnd--;
+  }
+  return {
+    bodyLines: lines.slice(0, bodyEnd),
+    footnoteLines: lines.slice(firstFootnoteLine),
+    bodyEndIndex: bodyEnd,
+  };
+}
+
 // ─── Continuation line pattern ──────────────────────────────────────────────
 
 /**
@@ -169,3 +296,16 @@ export const FOOTNOTE_DEF_STATUS_VALUE = new RegExp(
  * Non-global.
  */
 export const FOOTNOTE_CONTINUATION = /^\s+\S/;
+
+// ─── Thread reply pattern ───────────────────────────────────────────────────
+
+/**
+ * Matches a discussion reply line inside a footnote body.
+ * Format: indented, starts with `@author date:`.
+ * e.g. `    @bob 2026-02-17: I think this is correct`
+ *
+ * Used by footnote-parser.ts and compact.ts for thread detection.
+ *
+ * Non-global.
+ */
+export const FOOTNOTE_THREAD_REPLY = /^\s+@\S+\s+\d{4}-\d{2}-\d{2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?Z?)?:/;

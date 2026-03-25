@@ -142,3 +142,100 @@ Feature: DX6 - Round-trip Fidelity
     And I import the exported DOCX file
     Then the re-imported markdown contains "Main Title"
     And the re-imported stats show at least 1 insertion
+
+  @roundtrip @fast
+  Scenario: Empty-content deletion round-trips
+    Given CriticMarkup markdown:
+      """
+      Text with{----}[^ct-1] more text.
+
+      [^ct-1]: @alice | 2026-01-15 | del | proposed
+      """
+    When I export to DOCX with mode "tracked"
+    Then the export stats show 1 deletion
+    When I import the exported DOCX file
+    Then the re-imported stats show at least 1 deletion
+
+  @roundtrip @fast
+  Scenario: Empty-content insertion round-trips
+    Given CriticMarkup markdown:
+      """
+      Text with{++++}[^ct-1] more text.
+
+      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      """
+    When I export to DOCX with mode "tracked"
+    Then the export stats show 1 insertion
+    When I import the exported DOCX file
+    Then the re-imported stats show at least 1 insertion
+
+  @roundtrip @fast
+  Scenario: Comment round-trip preserves text and author
+    Given CriticMarkup markdown:
+      """
+      Text with {==highlighted==}{>>review this<<}[^ct-1] here.
+
+      [^ct-1]: @alice | 2026-01-15 | hl | proposed
+      """
+    When I export to DOCX with mode "tracked"
+    Then the export stats show 1 comments
+    When I import the exported DOCX file
+    Then the re-imported stats show at least 1 comment
+    And the re-imported markdown contains "review this"
+
+  @roundtrip @fast
+  Scenario: Zero-length comment round-trip
+    Given CriticMarkup markdown:
+      """
+      Text here.{>>standalone note<<}[^ct-1]
+
+      [^ct-1]: @alice | 2026-01-15 | hl | proposed
+      """
+    When I export to DOCX with mode "tracked"
+    Then the export stats show 1 comments
+    When I import the exported DOCX file
+    Then the re-imported stats show at least 1 comment
+    And the re-imported markdown contains "standalone note"
+
+  @roundtrip @fast
+  Scenario: Non-adjacent del+ins not merged into substitution
+    Given CriticMarkup markdown:
+      """
+      Word{--old--}[^ct-1] text {++new++}[^ct-2] here.
+
+      [^ct-1]: @alice | 2026-01-15 | del | proposed
+      [^ct-2]: @alice | 2026-01-15 | ins | proposed
+      """
+    When I export to DOCX with mode "tracked"
+    And I import the exported DOCX file
+    Then the re-imported stats show at least 1 deletion
+    And the re-imported stats show at least 1 insertion
+    And the re-imported markdown contains "{--"
+    And the re-imported markdown contains "{++"
+
+  @roundtrip @fast
+  Scenario: Adjacent same-type changes stay separate
+    Given CriticMarkup markdown:
+      """
+      Text{--first--}[^ct-1]{--second--}[^ct-2] here.
+
+      [^ct-1]: @alice | 2026-01-15 | del | proposed
+      [^ct-2]: @alice | 2026-01-15 | del | proposed
+      """
+    When I export to DOCX with mode "tracked"
+    And I import the exported DOCX file
+    Then the re-imported stats show at least 2 deletions
+
+  @roundtrip @fast
+  Scenario: Compound merging — adjacent insertions stay separate even after del+ins merge
+    Given CriticMarkup markdown:
+      """
+      Text{--removed--}[^ct-1]{++first++}[^ct-2]{++second++}[^ct-3] here.
+
+      [^ct-1]: @alice | 2026-01-15 | del | proposed
+      [^ct-2]: @alice | 2026-01-15 | ins | proposed
+      [^ct-3]: @alice | 2026-01-15 | ins | proposed
+      """
+    When I export to DOCX with mode "tracked"
+    And I import the exported DOCX file
+    Then the re-imported stats show at least 1 insertion

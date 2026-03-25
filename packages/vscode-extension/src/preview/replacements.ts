@@ -315,7 +315,7 @@ function changeToReplacement(change: ChangeNode, src: string, options: PreviewOp
             return {
                 start: change.range.start,
                 end: change.range.end,
-                html: `<del class="ct-sub-del ${sc}"${pairAttr}>${sanitizeContentHtml(original)}</del><span class="ct-sub-sep">\u2192</span>${insHtml}${badge}${annotation}`,
+                html: `<del class="ct-sub-del ${sc}"${pairAttr}>${sanitizeContentHtml(original)}</del>${insHtml}${badge}${annotation}`,
             };
         }
         case ChangeType.Highlight: {

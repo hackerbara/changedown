@@ -81,6 +81,37 @@ export async function patchDocxForWordOnline(
   const commentsFile = zip.file('word/comments.xml');
   if (commentsFile && commentPatchInfos.length > 0) {
     let commentsXml = await commentsFile.async('string');
+
+    // Deduplicate w:comment entries — the docx npm library may emit
+    // duplicate entries for the same w:id (first with text, second empty).
+    // Keep only the entry with non-empty <w:t> content for each ID.
+    const commentEntryPattern =
+      /<w:comment\b[^>]*?w:id="(\d+)"[^>]*?>[\s\S]*?<\/w:comment>/g;
+    const seenIds = new Map<string, { hasText: boolean; isDuplicated: boolean }>();
+    let commentMatch;
+    while ((commentMatch = commentEntryPattern.exec(commentsXml)) !== null) {
+      const [fullMatch] = commentMatch;
+      const id = commentMatch[1];
+      const hasText = /<w:t[^>]*>[^<]+<\/w:t>/.test(fullMatch);
+      const existing = seenIds.get(id);
+      if (!existing) {
+        seenIds.set(id, { hasText, isDuplicated: false });
+      } else if (hasText && !existing.hasText) {
+        seenIds.set(id, { hasText, isDuplicated: true });
+      } else {
+        existing.isDuplicated = true;
+      }
+    }
+    // Remove empty duplicates for IDs that have a text-containing entry
+    for (const [id, { hasText, isDuplicated }] of seenIds) {
+      if (!hasText || !isDuplicated) continue;
+      const emptyPattern = new RegExp(
+        `<w:comment\\b[^>]*?w:id="${id}"[^>]*?>\\s*<w:p[^>]*>\\s*<\\/w:p>\\s*<\\/w:comment>`,
+        'g'
+      );
+      commentsXml = commentsXml.replace(emptyPattern, '');
+    }
+
     for (const ci of commentPatchInfos) {
       const commentPattern = new RegExp(
         `(<w:comment[^>]*w:id="${ci.id}"[^>]*>)<w:p>`,

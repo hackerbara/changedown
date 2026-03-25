@@ -17,7 +17,7 @@ export async function evaluate(call: ToolCall, rules: Rule[]): Promise<Verdict> 
     if (!rule.onToolCall) continue;
     const verdict = await rule.onToolCall(call);
     if (verdict.action === 'deny') return verdict;
-    if (verdict.action === 'warn' && !advisory) advisory = verdict;
+    if ((verdict.action === 'warn' || verdict.agentHint) && !advisory) advisory = verdict;
   }
 
   // Phase 2: File-operation analysis
@@ -35,7 +35,7 @@ export async function evaluate(call: ToolCall, rules: Rule[]): Promise<Verdict> 
 
       const verdict = await handler(op);
       if (verdict.action === 'deny') return verdict;
-      if (verdict.action === 'warn' && !advisory) advisory = verdict;
+      if ((verdict.action === 'warn' || verdict.agentHint) && !advisory) advisory = verdict;
     }
   }
 

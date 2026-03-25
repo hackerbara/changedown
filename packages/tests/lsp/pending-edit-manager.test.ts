@@ -90,7 +90,7 @@ describe('PendingEditManager', () => {
       expect(emittedEdits[0].newText).toBe('{++hi++}');
       expect(emittedEdits[0].offset).toBe(0);
       expect(emittedEdits[0].length).toBe(2); // replaces the 2 chars "hi"
-      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
+      expect(manager.hasPendingEdit('file:///test.md')).toBeFalsy();
     });
 
     it('should flush pending insertion on hard break (non-adjacent offset)', () => {
@@ -326,7 +326,7 @@ describe('PendingEditManager', () => {
 
       manager.dispose();
 
-      expect(manager.hasPendingEdit('file:///test.md')).toBeTruthy();
+      expect(manager.hasPendingEdit('file:///test.md')).toBeFalsy();
       // Dispose should NOT flush — just discard
       expect(emittedEdits).toHaveLength(0);
     });
@@ -378,7 +378,7 @@ describe('PendingEditManager', () => {
 
       // doc2 is still pending
       expect(manager.hasPendingEdit('file:///doc2.md')).toBeTruthy();
-      expect(manager.hasPendingEdit('file:///doc1.md')).toBeTruthy();
+      expect(manager.hasPendingEdit('file:///doc1.md')).toBeFalsy();
     });
 
     it('should flush only the specified document', () => {

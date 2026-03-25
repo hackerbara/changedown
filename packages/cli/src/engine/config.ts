@@ -4,7 +4,7 @@
 // This module re-exports everything so existing imports within the engine continue
 // to work without changes.
 
-export type { ChangeTracksConfig, PolicyMode, CreationTracking } from '../config/index.js';
+export type { ChangeTracksConfig, CLIConfig, PolicyMode, CreationTracking } from '../config/index.js';
 export {
   DEFAULT_CONFIG,
   loadConfig,

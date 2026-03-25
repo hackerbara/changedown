@@ -4,6 +4,7 @@ import { readTrackedFileTool } from './handlers/read-tracked-file.js';
 import { amendChangeTool } from './handlers/amend-change.js';
 import { listChangesTool } from './handlers/list-changes.js';
 import { supersedeChangeTool } from './handlers/supersede-change.js';
+import { resolveThreadTool } from './handlers/resolve-thread.js';
 import {
   classicProposeChangeSchema,
   compactProposeChangeSchema,
@@ -16,7 +17,7 @@ export type ListedTool = {
 };
 
 /**
- * Final 6-tool surface returned by MCP listTools (tools/list).
+ * Final 7-tool surface returned by MCP listTools (tools/list).
  *
  * 1. read_tracked_file  — read with deliberation-aware projection
  * 2. propose_change     — propose 1-N tracked changes (classic or compact)
@@ -24,6 +25,7 @@ export type ListedTool = {
  * 4. amend_change       — revise own proposed change
  * 5. list_changes       — change inventory with detail levels + batch ID lookup
  * 6. supersede_change   — atomically reject + re-propose a change
+ * 7. resolve_thread     — resolve or unresolve a change discussion thread
  *
  * get_change is now a backward-compat alias routing through list_changes
  * with detail=full. All other old tools (raw_edit, get_tracking_status,
@@ -40,6 +42,7 @@ export function getListedTools(mode: 'classic' | 'compact' = 'classic'): ListedT
     { name: amendChangeTool.name, description: amendChangeTool.description, inputSchema: amendChangeTool.inputSchema },
     { name: listChangesTool.name, description: listChangesTool.description, inputSchema: listChangesTool.inputSchema },
     { name: supersedeChangeTool.name, description: supersedeChangeTool.description, inputSchema: supersedeChangeTool.inputSchema },
+    { name: resolveThreadTool.name, description: resolveThreadTool.description, inputSchema: resolveThreadTool.inputSchema },
   ];
 }
 

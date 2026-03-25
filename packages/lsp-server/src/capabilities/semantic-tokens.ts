@@ -6,7 +6,7 @@
  */
 
 import { SemanticTokens, SemanticTokensLegend } from 'vscode-languageserver/node';
-import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
+import { ChangeNode, ChangeType, ChangeStatus, isGhostNode } from '@changetracks/core';
 import type { ViewName } from '@changetracks/core';
 
 /**
@@ -163,6 +163,11 @@ function getMetadataModifiers(change: ChangeNode, authorMap: Map<string, number>
         mods |= TokenModifier.HasThread;
     }
 
+    // Consumed-op modifier: strikethrough/dimmed for superseded operations
+    if (change.consumedBy) {
+        mods |= TokenModifier.Deprecated;
+    }
+
     // Author slot modifier (first-seen ordering, mod 3)
     if (change.metadata?.author) {
         if (!authorMap.has(change.metadata.author)) {
@@ -231,6 +236,7 @@ function shouldEmitTokensForView(changeType: ChangeType, viewMode: ViewName): bo
  * @returns SemanticTokens with encoded data array
  */
 export function buildSemanticTokens(changes: ChangeNode[], text: string, viewMode: ViewName = 'review'): SemanticTokens {
+  const resolved = changes.filter(c => !isGhostNode(c));
   const data: number[] = [];
   let previousPosition: Position = { line: 0, character: 0 };
   const authorMap = new Map<string, number>();
@@ -263,7 +269,7 @@ export function buildSemanticTokens(changes: ChangeNode[], text: string, viewMod
   }
 
   // Process each change node, filtering by view mode
-  for (const change of changes) {
+  for (const change of resolved) {
     // Skip change types that should not emit tokens in the current view mode
     if (!shouldEmitTokensForView(change.type, viewMode)) {
       continue;

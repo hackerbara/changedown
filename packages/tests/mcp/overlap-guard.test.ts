@@ -139,11 +139,11 @@ describe('guardOverlap', () => {
 });
 
 describe('applyProposeChange — overlap guard integration', () => {
-  it('rejects substitution targeting text inside existing substitution', () => {
+  it('rejects substitution targeting text inside existing substitution', async () => {
     // File has an existing substitution: {~~old content~>new content~~}[^ct-1]
     // Agent tries to change "old content" which exists verbatim inside the markup
     const text = 'Intro {~~old content~>new content~~}[^ct-1] end.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | proposed';
-    expect(() =>
+    await expect(async () =>
       applyProposeChange({
         text,
         oldText: 'old content',
@@ -151,12 +151,12 @@ describe('applyProposeChange — overlap guard integration', () => {
         changeId: 'ct-2',
         author: 'ai:test',
       })
-    ).toThrow(/overlaps with proposed change/);
+    ).rejects.toThrow(/overlaps with proposed change/);
   });
 
-  it('rejects substitution targeting text inside existing insertion', () => {
+  it('rejects substitution targeting text inside existing insertion', async () => {
     const text = 'Intro {++some new text++}[^ct-1] end.\n\n[^ct-1]: @ai:test | 2026-02-20 | ins | proposed';
-    expect(() =>
+    await expect(async () =>
       applyProposeChange({
         text,
         oldText: 'some new text',
@@ -164,12 +164,12 @@ describe('applyProposeChange — overlap guard integration', () => {
         changeId: 'ct-2',
         author: 'ai:test',
       })
-    ).toThrow(/overlaps with proposed change/);
+    ).rejects.toThrow(/overlaps with proposed change/);
   });
 
-  it('rejects deletion targeting text inside existing deletion', () => {
+  it('rejects deletion targeting text inside existing deletion', async () => {
     const text = 'Intro {--removed text--}[^ct-1] end.\n\n[^ct-1]: @ai:test | 2026-02-20 | del | proposed';
-    expect(() =>
+    await expect(async () =>
       applyProposeChange({
         text,
         oldText: 'removed text',
@@ -177,13 +177,13 @@ describe('applyProposeChange — overlap guard integration', () => {
         changeId: 'ct-2',
         author: 'ai:test',
       })
-    ).toThrow(/overlaps with proposed change/);
+    ).rejects.toThrow(/overlaps with proposed change/);
   });
 
-  it('rejects substitution spanning across markup boundary', () => {
+  it('rejects substitution spanning across markup boundary', async () => {
     // The text "Intro {~~old" spans from outside into the markup
     const text = 'Intro {~~old~>new~~}[^ct-1] end.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | proposed';
-    expect(() =>
+    await expect(async () =>
       applyProposeChange({
         text,
         oldText: 'Intro {~~old',
@@ -191,13 +191,13 @@ describe('applyProposeChange — overlap guard integration', () => {
         changeId: 'ct-2',
         author: 'ai:test',
       })
-    ).toThrow(/overlaps with proposed change/);
+    ).rejects.toThrow(/overlaps with proposed change/);
   });
 
-  it('allows changes on text adjacent to but NOT inside markup', () => {
+  it('allows changes on text adjacent to but NOT inside markup', async () => {
     const text = 'Hello world {~~old~>new~~}[^ct-1] goodbye.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | proposed';
     // "Hello world" is before the markup, should succeed
-    const result = applyProposeChange({
+    const result = await applyProposeChange({
       text,
       oldText: 'Hello world',
       newText: 'Greetings earth',
@@ -208,10 +208,10 @@ describe('applyProposeChange — overlap guard integration', () => {
     expect(result.modifiedText).toContain('{~~Hello world~>Greetings earth~~}[^ct-2]');
   });
 
-  it('allows changes on text after markup', () => {
+  it('allows changes on text after markup', async () => {
     const text = 'Hello {~~old~>new~~}[^ct-1] goodbye world.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | proposed';
     // "goodbye world" is after the markup, should succeed
-    const result = applyProposeChange({
+    const result = await applyProposeChange({
       text,
       oldText: 'goodbye world',
       newText: 'farewell earth',
@@ -222,9 +222,9 @@ describe('applyProposeChange — overlap guard integration', () => {
     expect(result.modifiedText).toContain('{~~goodbye world~>farewell earth~~}[^ct-2]');
   });
 
-  it('rejects insertion with anchor inside existing markup', () => {
+  it('rejects insertion with anchor inside existing markup', async () => {
     const text = 'Before {++inserted text++}[^ct-1] after.\n\n[^ct-1]: @ai:test | 2026-02-20 | ins | proposed';
-    expect(() =>
+    await expect(async () =>
       applyProposeChange({
         text,
         oldText: '',
@@ -233,13 +233,13 @@ describe('applyProposeChange — overlap guard integration', () => {
         author: 'ai:test',
         insertAfter: 'inserted',
       })
-    ).toThrow(/overlaps with proposed change/);
+    ).rejects.toThrow(/overlaps with proposed change/);
   });
 
-  it('error message includes the change ID', () => {
+  it('error message includes the change ID', async () => {
     const text = 'Intro {~~old~>new~~}[^ct-5] end.\n\n[^ct-5]: @ai:test | 2026-02-20 | sub | proposed';
     try {
-      applyProposeChange({
+      await applyProposeChange({
         text,
         oldText: 'old',
         newText: 'replaced',
@@ -255,10 +255,10 @@ describe('applyProposeChange — overlap guard integration', () => {
     }
   });
 
-  it('error message is actionable (mentions settled view)', () => {
+  it('error message is actionable (mentions settled view)', async () => {
     const text = 'Intro {++added text++}[^ct-1] end.\n\n[^ct-1]: @ai:test | 2026-02-20 | ins | proposed';
     try {
-      applyProposeChange({
+      await applyProposeChange({
         text,
         oldText: 'added text',
         newText: 'replaced',
@@ -473,6 +473,7 @@ describe('Semantic guard — settled refs do not block edits', () => {
         old_text: 'quick',
         new_text: 'slow',
         author: 'ai:test',
+        reason: 'test',
       },
       resolver,
       state,

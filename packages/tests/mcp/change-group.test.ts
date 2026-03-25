@@ -63,8 +63,8 @@ describe('SessionState group tracking', () => {
     const result = state.endGroup();
     expect(result.id).toBe('ct-1');
     expect(result.childIds).toEqual(['ct-1.1', 'ct-1.2', 'ct-1.3']);
-    expect(result.files).toContain('/tmp/a.md');
-    expect(result.files).toContain('/tmp/b.md');
+    expect(result.files.some((f: string) => f.endsWith('/a.md'))).toBe(true);
+    expect(result.files.some((f: string) => f.endsWith('/b.md'))).toBe(true);
     expect(result.files).toHaveLength(2);
   });
 
@@ -217,7 +217,7 @@ describe('handleBeginChangeGroup', () => {
     expect(data.group_id).toBe('ct-1');
   });
 
-  it('file-local numbering: does not scan existing files', async () => {
+  it('scans existing files to avoid ID collisions', async () => {
     // Create a file with existing ct-5 and ct-5.1 footnotes
     const filePath = path.join(tmpDir, 'existing.md');
     await fs.writeFile(filePath, [
@@ -235,11 +235,11 @@ describe('handleBeginChangeGroup', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    // With file-local numbering, always starts from ct-1 (no project scan)
-    expect(data.group_id).toBe('ct-1');
+    // Scans project files for max ID (ct-5) and starts after it
+    expect(data.group_id).toBe('ct-6');
   });
 
-  it('file-local numbering: each group is independent', async () => {
+  it('scans all tracked files to find max ID across project', async () => {
     await fs.writeFile(path.join(tmpDir, 'a.md'), 'Text [^ct-3] here.');
     await fs.writeFile(path.join(tmpDir, 'b.md'), 'Text [^ct-8] here.');
     await fs.writeFile(path.join(tmpDir, 'c.md'), 'Text [^ct-2] here.');
@@ -251,24 +251,24 @@ describe('handleBeginChangeGroup', () => {
     );
 
     const data = JSON.parse(result.content[0].text);
-    // No cross-file scanning - each group starts from ct-1
-    expect(data.group_id).toBe('ct-1');
+    // Scans all tracked files; max ID is ct-8 from b.md, so group starts at ct-9
+    expect(data.group_id).toBe('ct-9');
   });
 
-  it('no scanning behavior: ignores all files in project', async () => {
-    // Create files with existing IDs
+  it('scans only in-scope files (ignores out-of-scope extensions)', async () => {
+    // Create files with existing IDs — notes.txt is NOT in scope (only **/*.md)
     await fs.writeFile(path.join(tmpDir, 'notes.txt'), 'Text [^ct-100] here.');
     await fs.writeFile(path.join(tmpDir, 'doc.md'), 'Text [^ct-3] here.');
 
     const result = await handleBeginChangeGroup(
-      { description: 'File-local numbering' },
+      { description: 'Scoped scanning' },
       resolver,
       state
     );
 
     const data = JSON.parse(result.content[0].text);
-    // No scanning - always ct-1
-    expect(data.group_id).toBe('ct-1');
+    // Scans only .md files; doc.md has ct-3, so group starts at ct-4
+    expect(data.group_id).toBe('ct-4');
   });
 
   it('returns error when description is missing', async () => {
@@ -365,7 +365,7 @@ describe('handleEndChangeGroup', () => {
 
     // Make a change in the group
     await handleProposeChange(
-      { file: filePath, old_text: 'Hello', new_text: 'Hi' },
+      { file: filePath, old_text: 'Hello', new_text: 'Hi', reason: 'test' },
       resolver,
       state
     );
@@ -400,7 +400,7 @@ describe('handleEndChangeGroup', () => {
     );
 
     await handleProposeChange(
-      { file: filePath, old_text: 'Hello', new_text: 'Hi' },
+      { file: filePath, old_text: 'Hello', new_text: 'Hi', reason: 'test' },
       resolver,
       state
     );
@@ -451,7 +451,7 @@ describe('handleEndChangeGroup', () => {
     );
 
     await handleProposeChange(
-      { file: filePath, old_text: 'Hello', new_text: 'Hi' },
+      { file: filePath, old_text: 'Hello', new_text: 'Hi', reason: 'test' },
       resolver,
       state
     );
@@ -484,7 +484,7 @@ describe('handleEndChangeGroup', () => {
     );
 
     await handleProposeChange(
-      { file: filePath, old_text: 'Hello', new_text: 'Hi' },
+      { file: filePath, old_text: 'Hello', new_text: 'Hi', reason: 'test' },
       resolver,
       state
     );
@@ -521,7 +521,7 @@ describe('handleEndChangeGroup', () => {
     );
 
     await handleProposeChange(
-      { file: filePath, old_text: 'Some', new_text: 'Other' },
+      { file: filePath, old_text: 'Some', new_text: 'Other', reason: 'test' },
       resolver,
       state
     );
@@ -560,7 +560,7 @@ describe('handleEndChangeGroup', () => {
     );
 
     await handleProposeChange(
-      { file: filePath, old_text: 'Hello', new_text: 'Hi' },
+      { file: filePath, old_text: 'Hello', new_text: 'Hi', reason: 'test' },
       resolver,
       state
     );
@@ -609,7 +609,7 @@ describe('handleEndChangeGroup', () => {
     );
 
     await handleProposeChange(
-      { file: filePath, old_text: 'Hello', new_text: 'Hi' },
+      { file: filePath, old_text: 'Hello', new_text: 'Hi', reason: 'test' },
       resolver,
       state
     );
@@ -691,7 +691,7 @@ describe('full change group integration', () => {
 
     // First change: substitution
     const change1 = await handleProposeChange(
-      { file: filePath, old_text: 'quick brown', new_text: 'slow red' },
+      { file: filePath, old_text: 'quick brown', new_text: 'slow red', reason: 'test' },
       resolver,
       state
     );
@@ -700,7 +700,7 @@ describe('full change group integration', () => {
 
     // Second change: substitution
     const change2 = await handleProposeChange(
-      { file: filePath, old_text: 'lazy', new_text: 'energetic' },
+      { file: filePath, old_text: 'lazy', new_text: 'energetic', reason: 'test' },
       resolver,
       state
     );
@@ -745,7 +745,7 @@ describe('full change group integration', () => {
       state
     );
     await handleProposeChange(
-      { file: filePath, old_text: 'First', new_text: 'Modified first' },
+      { file: filePath, old_text: 'First', new_text: 'Modified first', reason: 'test' },
       resolver,
       state
     );
@@ -756,7 +756,7 @@ describe('full change group integration', () => {
 
     // Now make a non-grouped change (re-read the file since it was modified)
     const change = await handleProposeChange(
-      { file: filePath, old_text: 'Second', new_text: 'Another' },
+      { file: filePath, old_text: 'Second', new_text: 'Another', reason: 'test' },
       resolver,
       state
     );
@@ -779,14 +779,14 @@ describe('full change group integration', () => {
     );
 
     const changeA = await handleProposeChange(
-      { file: fileA, old_text: 'Content', new_text: 'Updated content' },
+      { file: fileA, old_text: 'Content', new_text: 'Updated content', reason: 'test' },
       resolver,
       state
     );
     expect(JSON.parse(changeA.content[0].text).change_id).toBe('ct-1.1');
 
     const changeB = await handleProposeChange(
-      { file: fileB, old_text: 'Content', new_text: 'Updated content' },
+      { file: fileB, old_text: 'Content', new_text: 'Updated content', reason: 'test' },
       resolver,
       state
     );
@@ -795,8 +795,10 @@ describe('full change group integration', () => {
     const endResult = await handleEndChangeGroup({}, resolver, state);
     const endData = JSON.parse(endResult.content[0].text);
     expect(endData.files).toHaveLength(2);
-    expect(endData.files).toContain(fileA);
-    expect(endData.files).toContain(fileB);
+    // macOS resolves /var → /private/var, so normalize for comparison
+    const normalizedFiles = (endData.files as string[]).map((f: string) => f.replace('/private/var/', '/var/'));
+    expect(normalizedFiles).toContain(fileA);
+    expect(normalizedFiles).toContain(fileB);
 
     // Parent footnote should be written to the first file in the group
     const modifiedA = await fs.readFile(fileA, 'utf-8');

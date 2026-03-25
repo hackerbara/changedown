@@ -33,8 +33,8 @@ describe('loadConfig', () => {
   it('returns default settlement section when config file does not exist', async () => {
     const config = await loadConfig(tmpDir);
 
-    expect(config.settlement.auto_on_approve).toBe(true);
-    expect(config.settlement.auto_on_reject).toBe(true);
+    expect(config.settlement.auto_on_approve).toBe(false);
+    expect(config.settlement.auto_on_reject).toBe(false);
   });
 
   it('returns default policy section when config file does not exist', async () => {
@@ -53,13 +53,6 @@ describe('loadConfig', () => {
     expect(config.protocol.level).toBe(2);
     expect(config.protocol.reasoning).toBe('optional');
     expect(config.protocol.batch_reasoning).toBe('optional');
-  });
-
-  it('returns default meta section when config file does not exist', async () => {
-    const config = await loadConfig(tmpDir);
-
-    expect(config.meta).toBeDefined();
-    expect(config.meta!.compact_threshold).toBe(80);
   });
 
   it('parses settlement section from TOML', async () => {
@@ -119,22 +112,6 @@ batch_reasoning = "required"
     expect(config.protocol.level).toBe(1);
     expect(config.protocol.reasoning).toBe('required');
     expect(config.protocol.batch_reasoning).toBe('required');
-  });
-
-  it('parses meta section from TOML', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
-    await fs.mkdir(configDir);
-    await fs.writeFile(
-      path.join(configDir, 'config.toml'),
-      `[meta]
-compact_threshold = 120
-`
-    );
-
-    const config = await loadConfig(tmpDir);
-
-    expect(config.meta).toBeDefined();
-    expect(config.meta!.compact_threshold).toBe(120);
   });
 
   it('parses custom include patterns', async () => {

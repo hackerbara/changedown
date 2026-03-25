@@ -8,7 +8,7 @@ describe('Code Lens', () => {
     it('should return empty array for no changes', () => {
       const changes: ChangeNode[] = [];
       const text = 'Some text without changes';
-      const result = createCodeLenses(changes, text);
+      const result = createCodeLenses(changes, text, undefined, 'always');
       expect(result).toHaveLength(0);
     });
 
@@ -24,27 +24,20 @@ describe('Code Lens', () => {
         }
       ];
       const text = '{++added text++}';
-      const result = createCodeLenses(changes, text);
+      const result = createCodeLenses(changes, text, undefined, 'always');
 
-      // Should have 2 document-level lenses + 2 per-change lenses = 4 total
-      expect(result).toHaveLength(4);
-
-      // Find per-change lenses
-      const perChangeLenses = result.filter(lens =>
-        lens.command?.command === 'changetracks.acceptChange' ||
-        lens.command?.command === 'changetracks.rejectChange'
-      );
-      expect(perChangeLenses).toHaveLength(2);
+      // Should have 2 per-change lenses (Accept + Reject)
+      expect(result).toHaveLength(2);
 
       // Both per-change lenses should be positioned at line 0 (where the change is)
-      expect(perChangeLenses[0].range.start.line).toBe(0);
-      expect(perChangeLenses[0].range.start.character).toBe(0);
-      expect(perChangeLenses[1].range.start.line).toBe(0);
-      expect(perChangeLenses[1].range.start.character).toBe(0);
+      expect(result[0].range.start.line).toBe(0);
+      expect(result[0].range.start.character).toBe(0);
+      expect(result[1].range.start.line).toBe(0);
+      expect(result[1].range.start.character).toBe(0);
 
       // Check commands
-      const acceptLens = perChangeLenses.find(l => l.command?.title === 'Accept');
-      const rejectLens = perChangeLenses.find(l => l.command?.title === 'Reject');
+      const acceptLens = result.find(l => l.command?.title === 'Accept');
+      const rejectLens = result.find(l => l.command?.title === 'Reject');
 
       expect(acceptLens?.command?.command).toBe('changetracks.acceptChange');
       expect(acceptLens?.command?.arguments).toStrictEqual(['change-1']);
@@ -65,10 +58,10 @@ describe('Code Lens', () => {
         }
       ];
       const text = '{--removed text--}';
-      const result = createCodeLenses(changes, text);
+      const result = createCodeLenses(changes, text, undefined, 'always');
 
-      // Should have 2 document-level lenses + 2 per-change lenses = 4 total
-      expect(result).toHaveLength(4);
+      // Should have 2 per-change lenses (Accept + Reject)
+      expect(result).toHaveLength(2);
 
       // Find per-change lenses
       const perChangeLenses = result.filter(lens =>
@@ -91,7 +84,7 @@ describe('Code Lens', () => {
         }
       ];
       const text = 'line1\n{++multi-line\ntext++}';
-      const result = createCodeLenses(changes, text);
+      const result = createCodeLenses(changes, text, undefined, 'always');
 
       // Find per-change lenses (not document-level)
       const perChangeLenses = result.filter(lens =>
@@ -103,7 +96,7 @@ describe('Code Lens', () => {
       expect(perChangeLenses[0].range.start.character).toBe(0);
     });
 
-    it('should create document-level lenses when changes exist', () => {
+    it('should create per-change lenses for multiple changes in always mode', () => {
       const changes: ChangeNode[] = [
         {
           id: 'change-1',
@@ -123,45 +116,24 @@ describe('Code Lens', () => {
         }
       ];
       const text = '{++added text++} {--removed text--}';
-      const result = createCodeLenses(changes, text);
+      const result = createCodeLenses(changes, text, undefined, 'always');
 
-      // Should have 4 per-change lenses + 2 document-level lenses
-      expect(result).toHaveLength(6);
+      // 2 changes x 2 per-change lenses = 4 total (no document-level lenses in always mode)
+      expect(result).toHaveLength(4);
 
-      // Find document-level lenses (should be at line 0)
-      const docLenses = result.filter(lens =>
-        lens.command?.title.startsWith('Accept All') ||
-        lens.command?.title.startsWith('Reject All')
+      // Check that we have per-change lenses
+      const perChangeLenses = result.filter(lens =>
+        lens.command?.command === 'changetracks.acceptChange' ||
+        lens.command?.command === 'changetracks.rejectChange'
       );
-      expect(docLenses).toHaveLength(2);
-
-      // Check document-level lens positions (both at line 0, char 0)
-      expect(docLenses[0].range.start.line).toBe(0);
-      expect(docLenses[0].range.start.character).toBe(0);
-      expect(docLenses[1].range.start.line).toBe(0);
-      expect(docLenses[1].range.start.character).toBe(0);
-
-      // Check titles include count
-      expect(docLenses[0].command?.title.includes('(2 changes)')).toBeTruthy();
-      expect(docLenses[1].command?.title.includes('(2 changes)')).toBeTruthy();
-
-      // Check commands
-      const acceptAllLens = docLenses.find(l => l.command?.title.startsWith('Accept All'));
-      const rejectAllLens = docLenses.find(l => l.command?.title.startsWith('Reject All'));
-      expect(acceptAllLens?.command?.command).toBe('changetracks.acceptAll');
-      expect(rejectAllLens?.command?.command).toBe('changetracks.rejectAll');
+      expect(perChangeLenses).toHaveLength(4);
     });
 
-    it('should not create document-level lenses when no changes exist', () => {
+    it('should not create lenses when no changes exist', () => {
       const changes: ChangeNode[] = [];
       const text = 'No changes here';
-      const result = createCodeLenses(changes, text);
-
-      const docLenses = result.filter(lens =>
-        lens.command?.title.startsWith('Accept All') ||
-        lens.command?.title.startsWith('Reject All')
-      );
-      expect(docLenses).toHaveLength(0);
+      const result = createCodeLenses(changes, text, undefined, 'always');
+      expect(result).toHaveLength(0);
     });
 
     it('should handle multiple changes at different lines', () => {
@@ -194,10 +166,10 @@ describe('Code Lens', () => {
         }
       ];
       const text = '{++text++}\n{--text--}\n{~~old~>new~~}';
-      const result = createCodeLenses(changes, text);
+      const result = createCodeLenses(changes, text, undefined, 'always');
 
-      // 3 changes × 2 lenses per change + 2 document lenses = 8 total
-      expect(result).toHaveLength(8);
+      // 3 changes x 2 lenses per change = 6 total
+      expect(result).toHaveLength(6);
 
       // Check that per-change lenses are at correct lines
       const change1Lenses = result.filter(l =>
@@ -219,7 +191,7 @@ describe('Code Lens', () => {
       expect(change3Lenses[0].range.start.line).toBe(2);
     });
 
-    it('should create lenses with singular change count', () => {
+    it('should return empty array in default cursor mode without cursor state', () => {
       const changes: ChangeNode[] = [
         {
           id: 'change-1',
@@ -231,15 +203,9 @@ describe('Code Lens', () => {
         }
       ];
       const text = '{++text++}';
+      // Default mode is 'cursor', no cursorState provided → empty
       const result = createCodeLenses(changes, text);
-
-      const docLenses = result.filter(lens =>
-        lens.command?.title.startsWith('Accept All') ||
-        lens.command?.title.startsWith('Reject All')
-      );
-
-      expect(docLenses[0].command?.title.includes('(1 change)')).toBeTruthy();
-      expect(docLenses[1].command?.title.includes('(1 change)')).toBeTruthy();
+      expect(result).toHaveLength(0);
     });
 
     it('should handle change at offset 0 correctly', () => {
@@ -254,7 +220,7 @@ describe('Code Lens', () => {
         }
       ];
       const text = '{++text++}';
-      const result = createCodeLenses(changes, text);
+      const result = createCodeLenses(changes, text, undefined, 'always');
 
       // Per-change lenses should be at line 0, char 0
       const perChangeLenses = result.filter(l =>
@@ -263,6 +229,56 @@ describe('Code Lens', () => {
       );
       expect(perChangeLenses[0].range.start.line).toBe(0);
       expect(perChangeLenses[0].range.start.character).toBe(0);
+    });
+    it('excludes consumed ops from actionable change count', () => {
+      const changes: ChangeNode[] = [
+        {
+          id: 'ct-1',
+          type: ChangeType.Insertion,
+          status: ChangeStatus.Proposed,
+          range: { start: 0, end: 15 },
+          contentRange: { start: 3, end: 13 },
+          level: 2,
+          anchored: true,
+        },
+        {
+          id: 'ct-2',
+          type: ChangeType.Insertion,
+          status: ChangeStatus.Proposed,
+          range: { start: 16, end: 31 },
+          contentRange: { start: 19, end: 29 },
+          level: 2,
+          anchored: true,
+          consumedBy: 'ct-3',
+        },
+        {
+          id: 'ct-3',
+          type: ChangeType.Insertion,
+          status: ChangeStatus.Proposed,
+          range: { start: 32, end: 47 },
+          contentRange: { start: 35, end: 45 },
+          level: 2,
+          anchored: true,
+        },
+      ];
+      const text = '{++first change++} {++consumed op++} {++third change++}';
+      const lenses = createCodeLenses(changes, text, 'review', 'always');
+
+      // ct-2 is consumed — should not generate a per-change lens
+      const perChangeLenses = lenses.filter(
+        l => l.command?.command === 'changetracks.acceptChange' ||
+             l.command?.command === 'changetracks.rejectChange'
+      );
+      const lensChangeIds = perChangeLenses
+        .map(l => l.command?.arguments?.[0])
+        .filter(Boolean);
+
+      // Only ct-1 and ct-3 should have lenses (not ct-2)
+      expect(lensChangeIds).not.toContain('ct-2');
+      expect(lensChangeIds).toContain('ct-1');
+      expect(lensChangeIds).toContain('ct-3');
+      // 2 actionable changes × 2 lenses each = 4 per-change lenses
+      expect(perChangeLenses).toHaveLength(4);
     });
   });
 });

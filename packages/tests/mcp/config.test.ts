@@ -362,9 +362,9 @@ enabled = "yes"
 
   // --- settlement section ---
 
-  it('defaults settlement.auto_on_approve to true when no config file', async () => {
+  it('defaults settlement.auto_on_approve to false when no config file', async () => {
     const config = await loadConfig(tmpDir);
-    expect(config.settlement.auto_on_approve).toBe(true);
+    expect(config.settlement.auto_on_approve).toBe(false);
   });
 
   it('parses settlement.auto_on_approve from [settlement] section', async () => {

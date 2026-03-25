@@ -13,7 +13,7 @@ describe('Diagnostics', () => {
           status: ChangeStatus.Proposed,
           range: { start: 6, end: 17 }, // {++world++}
           contentRange: { start: 9, end: 14 }, // world,
-          level: 0, anchored: false
+          level: 0, anchored: true
         }
       ];
 
@@ -44,7 +44,7 @@ describe('Diagnostics', () => {
           status: ChangeStatus.Proposed,
           range: { start: 6, end: 17 },
           contentRange: { start: 9, end: 14 },
-          level: 0, anchored: false
+          level: 0, anchored: true
         }
       ];
 
@@ -70,7 +70,7 @@ describe('Diagnostics', () => {
           modifiedRange: { start: 16, end: 24 }, // universe
           originalText: 'world',
           modifiedText: 'universe',
-          level: 0, anchored: false
+          level: 0, anchored: true
         }
       ];
 
@@ -92,7 +92,7 @@ describe('Diagnostics', () => {
           status: ChangeStatus.Proposed,
           range: { start: 6, end: 17 },
           contentRange: { start: 9, end: 14 },
-          level: 0, anchored: false
+          level: 0, anchored: true
         }
       ];
 
@@ -114,7 +114,7 @@ describe('Diagnostics', () => {
           status: ChangeStatus.Proposed,
           range: { start: 6, end: 26 },
           contentRange: { start: 9, end: 23 },
-          level: 0, anchored: false
+          level: 0, anchored: true
         }
       ];
 
@@ -139,7 +139,7 @@ describe('Diagnostics', () => {
           metadata: {
             comment: 'note'
           },
-          level: 0, anchored: false
+          level: 0, anchored: true
         }
       ];
 
@@ -160,7 +160,7 @@ describe('Diagnostics', () => {
           status: ChangeStatus.Proposed,
           range: { start: 7, end: 26 },
           contentRange: { start: 10, end: 23 },
-          level: 0, anchored: false
+          level: 0, anchored: true
         }
       ];
 
@@ -187,7 +187,7 @@ describe('Diagnostics', () => {
           status: ChangeStatus.Proposed,
           range: { start: 0, end: 12 },
           contentRange: { start: 3, end: 9 },
-          level: 0, anchored: false
+          level: 0, anchored: true
         },
         {
           id: 'change-9',
@@ -195,7 +195,7 @@ describe('Diagnostics', () => {
           status: ChangeStatus.Proposed,
           range: { start: 23, end: 35 },
           contentRange: { start: 26, end: 32 },
-          level: 0, anchored: false
+          level: 0, anchored: true
         }
       ];
 
@@ -225,7 +225,7 @@ describe('Diagnostics', () => {
           status: ChangeStatus.Proposed,
           range: { start: 0, end: text.length },
           contentRange: { start: 3, end: text.length - 3 },
-          level: 0, anchored: false
+          level: 0, anchored: true
         }
       ];
 
@@ -248,7 +248,7 @@ describe('Diagnostics', () => {
           status: ChangeStatus.Proposed,
           range: { start: 8, end: 20 },
           contentRange: { start: 11, end: 17 },
-          level: 0, anchored: false
+          level: 0, anchored: true
         }
       ];
 
@@ -260,6 +260,52 @@ describe('Diagnostics', () => {
       // Verify CRLF handling
       expect(diag.range.start.line).toBe(1);
       expect(diag.range.start.character).toBe(0);
+    });
+
+    it('emits Information diagnostic for consumed change', () => {
+      const text = 'Some document text.\n\n[^ct-3]: {++inserted text++}';
+      const changes: ChangeNode[] = [
+        {
+          id: 'ct-3',
+          type: ChangeType.Insertion,
+          status: ChangeStatus.Proposed,
+          anchored: false,
+          level: 2,
+          consumedBy: 'ct-5',
+          range: { start: 21, end: 49 }, // footnote block range
+          contentRange: { start: 31, end: 44 }, // inserted text
+        }
+      ];
+
+      const diagnostics = createDiagnostics(changes, text);
+
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Information);
+      expect(diagnostics[0].message).toContain('Consumed by ct-5');
+      expect(diagnostics[0].data).toMatchObject({ consumed: true, consumedBy: 'ct-5' });
+    });
+
+    it('emits Information diagnostic with partial consumption label', () => {
+      const text = 'Some document text.\n\n[^ct-7]: {++partial text++}';
+      const changes: ChangeNode[] = [
+        {
+          id: 'ct-7',
+          type: ChangeType.Insertion,
+          status: ChangeStatus.Proposed,
+          anchored: false,
+          level: 2,
+          consumedBy: 'ct-9',
+          consumptionType: 'partial',
+          range: { start: 21, end: 48 },
+          contentRange: { start: 31, end: 43 },
+        }
+      ];
+
+      const diagnostics = createDiagnostics(changes, text);
+
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Information);
+      expect(diagnostics[0].message).toContain('Partially consumed by ct-9');
     });
   });
 });

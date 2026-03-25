@@ -29,12 +29,11 @@ Feature: Error recovery and resilience
     Then the response is an error
     And the error mentions the file not being found
 
-  Scenario: Propose on already-changed text (concurrent edit)
+  Scenario: Propose on already-changed text (concurrent edit via committed-text cascade)
     When agent B proposes a change on a phrase in the document
-    And agent A tries to propose a change on an overlapping text span
-    Then agent A gets an error (text no longer matches due to CriticMarkup insertion)
-    When agent A re-reads and proposes on different, still-available text
-    Then the change is applied successfully
+    And agent A proposes a change on overlapping text (resolved via committed-text cascade)
+    Then both changes coexist in the document
+    And the document has 2 footnotes
 
   Scenario: Policy block on strict mode
     Given the config has policy.mode = "strict"

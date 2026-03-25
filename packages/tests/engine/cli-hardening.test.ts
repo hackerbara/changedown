@@ -40,7 +40,7 @@ describe('Bug 1: flag values starting with dash', () => {
     await fs.writeFile(filePath, makeTrackedFile('- Item 1\n- Item 2'));
 
     const result = await runCommand('propose', [
-      filePath, '--old', '- Item 1', '--new', '- Updated Item 1', '--author', 'ai:test',
+      filePath, '--old', '- Item 1', '--new', '- Updated Item 1', '--author', 'ai:test', '--reason', 'test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     expect(result.success).toBe(true);
@@ -55,7 +55,7 @@ describe('Bug 1: flag values starting with dash', () => {
     await fs.writeFile(filePath, makeTrackedFile('Some text'));
 
     const result = await runCommand('propose', [
-      filePath, '--new', '- New list item', '--insert-after', 'Some text', '--author', 'ai:test',
+      filePath, '--new', '- New list item', '--insert-after', 'Some text', '--author', 'ai:test', '--reason', 'test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     expect(result.success).toBe(true);
@@ -74,10 +74,11 @@ describe('Bug 2: list --pretty formatting', () => {
     await fs.writeFile(filePath, makeTrackedFile('The quick brown fox.'));
 
     await runCommand('propose', [
-      filePath, '--old', 'quick', '--new', 'slow', '--author', 'ai:test',
+      filePath, '--old', 'quick', '--new', 'slow', '--author', 'ai:test', '--reason', 'test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
-    const result = await runCommand('list', [tmpDir], {
+    // List changes by passing the file path directly (not the directory)
+    const result = await runCommand('list', [filePath], {
       outputFormat: 'json', projectDir: tmpDir,
     });
 
@@ -103,7 +104,7 @@ describe('Bug 4: review --settle flag', () => {
     await fs.writeFile(filePath, makeTrackedFile('The quick brown fox.'));
 
     await runCommand('propose', [
-      filePath, '--old', 'quick', '--new', 'slow', '--author', 'ai:test',
+      filePath, '--old', 'quick', '--new', 'slow', '--author', 'ai:test', '--reason', 'test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     const result = await runCommand('review', [
@@ -191,7 +192,7 @@ describe('Ergonomics: amend --new alias', () => {
     await fs.writeFile(filePath, makeTrackedFile('The quick brown fox.'));
 
     await runCommand('propose', [
-      filePath, '--old', 'quick', '--new', 'slow', '--author', 'ai:test',
+      filePath, '--old', 'quick', '--new', 'slow', '--author', 'ai:test', '--reason', 'test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     const result = await runCommand('amend', [
@@ -216,7 +217,7 @@ describe('Bug 7: delimiter padding via CLI', () => {
     await fs.writeFile(filePath, makeTrackedFile('- Item 1\n- Item 2'));
 
     const result = await runCommand('propose', [
-      filePath, '--old', '- Item 1\n', '--new', '', '--author', 'ai:test',
+      filePath, '--old', '- Item 1\n', '--new', '', '--author', 'ai:test', '--reason', 'test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     expect(result.success).toBe(true);
@@ -238,7 +239,7 @@ describe('Bug 8: insert-after newline via CLI', () => {
     await fs.writeFile(filePath, makeTrackedFile('- Item 1\n- Item 2\n- Item 3'));
 
     const result = await runCommand('propose', [
-      filePath, '--new', '- Item 4', '--insert-after', '- Item 3', '--author', 'ai:test',
+      filePath, '--new', '- Item 4', '--insert-after', '- Item 3', '--author', 'ai:test', '--reason', 'test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     expect(result.success).toBe(true);

@@ -33,6 +33,8 @@ export class ChangeTracksWorld extends World {
   showGuide: boolean = false;
   /** Whether teardown was already performed by a step */
   tornDown: boolean = false;
+  /** ID of the most recently created superseding change (set by amend/supersede steps) */
+  lastSupersedeNewId: string = '';
 
   // --- Core-level test state (no ScenarioContext needed) ---
   /** Parser instance for core-level tests */
@@ -62,6 +64,7 @@ Before(async function (this: ChangeTracksWorld) {
   this.files.clear();
   this.showGuide = false;
   this.tornDown = false;
+  this.lastSupersedeNewId = '';
   this.parser = new CriticMarkupParser();
   this.lastDoc = null;
   this.lastText = '';

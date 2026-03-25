@@ -140,8 +140,8 @@ describe('propose_change with committed hashes', () => {
 
     expect(proposeResult.isError).toBe(true);
     const errorText = proposeResult.content[0].text;
-    expect(errorText).toContain('Hash mismatch at line');
-    expect(errorText).toContain('view');
+    expect(errorText).toContain('Hash mismatch on line');
+    expect(errorText).toContain('read_tracked_file');
   });
 
   it('re-records committed hashes after edit for chained edits', async () => {
@@ -176,6 +176,7 @@ describe('propose_change with committed hashes', () => {
         new_text: 'Updated first line.',
         start_line: firstLineNum,
         start_hash: firstHash,
+        reason: 'test',
       },
       resolver,
       state,
@@ -208,6 +209,7 @@ describe('propose_change with committed hashes', () => {
         new_text: 'Updated second line.',
         start_line: secondLineNum,
         start_hash: secondHash,
+        reason: 'test',
       },
       resolver,
       state,

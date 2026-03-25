@@ -105,6 +105,7 @@ function createMockConnection(): any {
         sendDiagnostics: () => {},
         sendNotification: (method: string, params: any) => { notifications.push({ method, params }); },
         sendRequest: () => Promise.resolve(undefined),
+        workspace: { applyEdit: () => Promise.resolve({ applied: false }) },
         languages: { semanticTokens: { on: () => {} } },
         listen: () => {},
         console: { error: () => {}, warn: () => {}, log: () => {}, info: () => {} },
@@ -116,8 +117,8 @@ function setupServer(): ChangetracksServer {
     return createServer(conn);
 }
 
-function openDoc(server: ChangetracksServer, text: string): void {
-    server.handleDocumentOpen(URI, text, 'markdown');
+async function openDoc(server: ChangetracksServer, text: string): Promise<void> {
+    await server.handleDocumentOpen(URI, text, 'markdown');
 }
 
 // ── Step definitions ─────────────────────────────────────────────────
@@ -126,39 +127,39 @@ Given('an LSP server instance with a test document', function (this: ChangeTrack
     this.lspServer = setupServer();
 });
 
-Given('the test document contains a proposed ct-1 insertion', function (this: ChangeTracksWorld) {
+Given('the test document contains a proposed ct-1 insertion', async function (this: ChangeTracksWorld) {
     assert.ok(this.lspServer, 'LSP server not initialized');
-    openDoc(this.lspServer, L2_INSERTION_DOC);
+    await openDoc(this.lspServer, L2_INSERTION_DOC);
 });
 
-Given('the test document contains a proposed ct-1 insertion with existing discussion', function (this: ChangeTracksWorld) {
+Given('the test document contains a proposed ct-1 insertion with existing discussion', async function (this: ChangeTracksWorld) {
     assert.ok(this.lspServer, 'LSP server not initialized');
-    openDoc(this.lspServer, L2_INSERTION_DOC);
+    await openDoc(this.lspServer, L2_INSERTION_DOC);
 });
 
-Given('the test document contains a proposed ct-1 insertion by {string}', function (this: ChangeTracksWorld, _author: string) {
+Given('the test document contains a proposed ct-1 insertion by {string}', async function (this: ChangeTracksWorld, _author: string) {
     assert.ok(this.lspServer, 'LSP server not initialized');
-    openDoc(this.lspServer, L2_INSERTION_DOC);
+    await openDoc(this.lspServer, L2_INSERTION_DOC);
 });
 
-Given('the test document contains a proposed ct-1 substitution by {string}', function (this: ChangeTracksWorld, _author: string) {
+Given('the test document contains a proposed ct-1 substitution by {string}', async function (this: ChangeTracksWorld, _author: string) {
     assert.ok(this.lspServer, 'LSP server not initialized');
-    openDoc(this.lspServer, L2_SUBSTITUTION_DOC);
+    await openDoc(this.lspServer, L2_SUBSTITUTION_DOC);
 });
 
-Given('the test document contains an accepted ct-1 insertion', function (this: ChangeTracksWorld) {
+Given('the test document contains an accepted ct-1 insertion', async function (this: ChangeTracksWorld) {
     assert.ok(this.lspServer, 'LSP server not initialized');
-    openDoc(this.lspServer, ACCEPTED_DOC);
+    await openDoc(this.lspServer, ACCEPTED_DOC);
 });
 
-Given('the test document contains a resolved ct-1', function (this: ChangeTracksWorld) {
+Given('the test document contains a resolved ct-1', async function (this: ChangeTracksWorld) {
     assert.ok(this.lspServer, 'LSP server not initialized');
-    openDoc(this.lspServer, RESOLVED_DOC);
+    await openDoc(this.lspServer, RESOLVED_DOC);
 });
 
-Given('the test document contains an L0 insertion with no footnote', function (this: ChangeTracksWorld) {
+Given('the test document contains an L0 insertion with no footnote', async function (this: ChangeTracksWorld) {
     assert.ok(this.lspServer, 'LSP server not initialized');
-    openDoc(this.lspServer, L0_INSERTION_DOC);
+    await openDoc(this.lspServer, L0_INSERTION_DOC);
 });
 
 // ── When: send requests ──────────────────────────────────────────────
@@ -210,7 +211,7 @@ When('I send changetracks\\/replyToThread with changeId {string}, text {string},
     });
 });
 
-When('I promote the L0 change at offset {int} then reply with text {string}, author {string}', function (
+When('I promote the L0 change at offset {int} then reply with text {string}, author {string}', async function (
     this: ChangeTracksWorld,
     offset: number,
     text: string,
@@ -218,14 +219,14 @@ When('I promote the L0 change at offset {int} then reply with text {string}, aut
 ) {
     assert.ok(this.lspServer, 'LSP server not initialized');
     // Step 1: Promote L0 to L2 via ensureL2
-    const docText = (this.lspServer as any).textCache.get(URI);
-    assert.ok(docText, 'Document not found in text cache');
+    const docText = (this.lspServer as any).getDocumentText(URI);
+    assert.ok(docText, 'Document not found');
     const promoted = ensureL2(docText, offset, { author: author.replace(/^@/, ''), type: 'ins' });
     assert.ok(promoted.promoted, 'Expected L0-to-L2 promotion');
     assert.ok(promoted.changeId, 'Expected a changeId from ensureL2');
 
     // Step 2: Update the server's document with the promoted text
-    openDoc(this.lspServer, promoted.text);
+    await openDoc(this.lspServer, promoted.text);
 
     // Step 3: Reply to the now-L2 change
     this.lspResult = this.lspServer.handleReplyToThread({
@@ -236,7 +237,7 @@ When('I promote the L0 change at offset {int} then reply with text {string}, aut
     });
 });
 
-When('I send changetracks\\/amendChange with changeId {string}, newText {string}, reason {string}, author {string}', function (
+When('I send changetracks\\/amendChange with changeId {string}, newText {string}, reason {string}, author {string}', async function (
     this: ChangeTracksWorld,
     changeId: string,
     newText: string,
@@ -244,7 +245,7 @@ When('I send changetracks\\/amendChange with changeId {string}, newText {string}
     author: string,
 ) {
     assert.ok(this.lspServer, 'LSP server not initialized');
-    this.lspResult = this.lspServer.handleAmendChange({
+    this.lspResult = await this.lspServer.handleAmendChange({
         uri: URI,
         changeId,
         newText,
@@ -253,14 +254,14 @@ When('I send changetracks\\/amendChange with changeId {string}, newText {string}
     });
 });
 
-When('I send changetracks\\/amendChange with changeId {string}, newText {string}, author {string}', function (
+When('I send changetracks\\/amendChange with changeId {string}, newText {string}, author {string}', async function (
     this: ChangeTracksWorld,
     changeId: string,
     newText: string,
     author: string,
 ) {
     assert.ok(this.lspServer, 'LSP server not initialized');
-    this.lspResult = this.lspServer.handleAmendChange({
+    this.lspResult = await this.lspServer.handleAmendChange({
         uri: URI,
         changeId,
         newText,
@@ -268,7 +269,7 @@ When('I send changetracks\\/amendChange with changeId {string}, newText {string}
     });
 });
 
-When('I send changetracks\\/supersedeChange with changeId {string}, newText {string}, oldText {string}, reason {string}, author {string}', function (
+When('I send changetracks\\/supersedeChange with changeId {string}, newText {string}, oldText {string}, reason {string}, author {string}', async function (
     this: ChangeTracksWorld,
     changeId: string,
     newText: string,
@@ -277,7 +278,7 @@ When('I send changetracks\\/supersedeChange with changeId {string}, newText {str
     author: string,
 ) {
     assert.ok(this.lspServer, 'LSP server not initialized');
-    this.lspResult = this.lspServer.handleSupersedeChange({
+    this.lspResult = await this.lspServer.handleSupersedeChange({
         uri: URI,
         changeId,
         newText,

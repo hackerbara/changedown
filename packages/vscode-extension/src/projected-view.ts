@@ -73,8 +73,17 @@ export class ProjectedView {
         edit.replace(document.uri, fullRange, this.originalMarkup);
         await vscode.workspace.applyEdit(edit);
 
-        // Revert to clean disk state (removes dirty indicator)
-        await vscode.commands.executeCommand('workbench.action.files.revert');
+        // Revert to clean disk state only if restored content matches disk.
+        // When the buffer was promoted (L3) but disk is L2, reverting would
+        // undo the promotion by replacing L3 buffer with L2 disk content.
+        try {
+            const diskContent = await fs.promises.readFile(document.uri.fsPath, 'utf-8');
+            if (diskContent === this.originalMarkup) {
+                await vscode.commands.executeCommand('workbench.action.files.revert');
+            }
+        } catch {
+            // File not on disk (untitled) — skip revert
+        }
 
         // Remove crash recovery file
         const swapPath = this._originalUri.fsPath + SWAP_EXTENSION;
@@ -90,17 +99,21 @@ export class ProjectedView {
      * This is idempotent — safe to call multiple times.
      */
     private async setReadOnly(uri: vscode.Uri, readOnly: boolean): Promise<void> {
-        const config = vscode.workspace.getConfiguration('files');
-        const existing: Record<string, boolean> = { ...(config.get('readonlyInclude') ?? {}) };
-        const relPath = vscode.workspace.asRelativePath(uri);
+        try {
+            const config = vscode.workspace.getConfiguration('files');
+            const existing: Record<string, boolean> = { ...(config.get('readonlyInclude') ?? {}) };
+            const relPath = vscode.workspace.asRelativePath(uri);
 
-        if (readOnly) {
-            existing[relPath] = true;
-        } else {
-            delete existing[relPath];
+            if (readOnly) {
+                existing[relPath] = true;
+            } else {
+                delete existing[relPath];
+            }
+
+            await config.update('readonlyInclude', existing, vscode.ConfigurationTarget.Workspace);
+        } catch {
+            // Workspace settings unavailable (single-file mode) — read-only not enforced
         }
-
-        await config.update('readonlyInclude', existing, vscode.ConfigurationTarget.Workspace);
     }
 
     /**

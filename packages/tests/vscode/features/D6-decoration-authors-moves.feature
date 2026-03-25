@@ -13,7 +13,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" with no author at offset 0 to 5
     When I decorate the manual changes in markup mode
     Then insertions count is 1
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   Scenario: Change with author produces additional setDecorations call
     Given author colors mode "always"
@@ -21,7 +21,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "alice" at offset 0 to 5
     When I decorate the manual changes in markup mode
     Then insertions is empty
-    And total setDecorations calls is 20
+    And total setDecorations calls is 23
 
   Scenario: Two changes, same author same type grouped under one decoration type
     Given author colors mode "always"
@@ -30,8 +30,8 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "alice" at offset 6 to 11
     When I decorate the manual changes in markup mode
     Then insertions is empty
-    And total setDecorations calls is 20
-    And author decoration call 19 has 2 ranges
+    And total setDecorations calls is 23
+    And author decoration call 22 has 2 ranges
 
   Scenario: Two changes, different authors get different decoration types
     Given author colors mode "always"
@@ -40,7 +40,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "bob" at offset 6 to 11
     When I decorate the manual changes in markup mode
     Then insertions is empty
-    And total setDecorations calls is 21
+    And total setDecorations calls is 24
 
   Scenario: Authored deletion and insertion get separate decoration types
     Given author colors mode "always"
@@ -50,7 +50,7 @@ Feature: D6 -- Per-author coloring and move decorations
     When I decorate the manual changes in markup mode
     Then insertions is empty
     And deletions is empty
-    And total setDecorations calls is 21
+    And total setDecorations calls is 24
 
   Scenario: 6 authors - colors cycle through palette
     Given author colors mode "always"
@@ -63,7 +63,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "author_f" at offset 10 to 11
     When I decorate the manual changes in markup mode
     Then insertions is empty
-    And total setDecorations calls is 25
+    And total setDecorations calls is 28
 
   Scenario: Authored substitution - original and modified get separate decoration types
     Given author colors mode "always"
@@ -72,7 +72,7 @@ Feature: D6 -- Per-author coloring and move decorations
     When I decorate the manual changes in markup mode
     Then substitutionOriginals is empty
     And substitutionModifieds is empty
-    And total setDecorations calls is 21
+    And total setDecorations calls is 24
 
   Scenario: Authored change in smart view settled-base: no author decoration (cursor far away)
     Given author colors mode "always"
@@ -80,7 +80,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "alice" at offset 6 to 11
     When I decorate the manual changes in smart view mode
     Then insertions is empty
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   Scenario: Authored highlight always uses default highlight type, never author type
     Given author colors mode "always"
@@ -88,7 +88,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "highlight" by "alice" at offset 0 to 10
     When I decorate the manual changes in markup mode
     Then highlights count is 1
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   Scenario: Authored comment always uses default comment type, never author type
     Given author colors mode "always"
@@ -96,7 +96,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "comment" by "alice" at offset 0 to 10
     When I decorate the manual changes in markup mode
     Then comments count is 1
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   # ── Mocha source: Author Colors Configuration (auto / always / never) ──
 
@@ -106,7 +106,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "alice" at offset 0 to 5
     When I decorate the manual changes in markup mode
     Then insertions count is 1
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   Scenario: Auto mode - two authors activates per-author coloring
     Given author colors mode "auto"
@@ -115,7 +115,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "bob" at offset 6 to 11
     When I decorate the manual changes in markup mode
     Then insertions is empty
-    And total setDecorations calls is 21
+    And total setDecorations calls is 24
 
   Scenario: Auto mode - no author metadata uses semantic colors
     Given author colors mode "auto"
@@ -123,7 +123,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" with no author at offset 0 to 5
     When I decorate the manual changes in markup mode
     Then insertions count is 1
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   Scenario: Auto mode - mixed authored and unauthored with single author uses semantic
     Given author colors mode "auto"
@@ -133,7 +133,7 @@ Feature: D6 -- Per-author coloring and move decorations
     When I decorate the manual changes in markup mode
     Then insertions count is 1
     And deletions count is 1
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   Scenario: Auto mode - three changes with two distinct authors activates per-author
     Given author colors mode "auto"
@@ -143,7 +143,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "bob" at offset 8 to 11
     When I decorate the manual changes in markup mode
     Then insertions is empty
-    And total setDecorations calls is 21
+    And total setDecorations calls is 24
 
   Scenario: Always mode - single author still uses per-author coloring
     Given author colors mode "always"
@@ -151,7 +151,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "alice" at offset 0 to 5
     When I decorate the manual changes in markup mode
     Then insertions is empty
-    And total setDecorations calls is 20
+    And total setDecorations calls is 23
 
   Scenario: Always mode - no author metadata still uses semantic
     Given author colors mode "always"
@@ -159,7 +159,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" with no author at offset 0 to 5
     When I decorate the manual changes in markup mode
     Then insertions count is 1
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   Scenario: Never mode - two authors still uses semantic colors
     Given author colors mode "never"
@@ -168,7 +168,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "bob" at offset 6 to 11
     When I decorate the manual changes in markup mode
     Then insertions count is 2
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   Scenario: Never mode - six authors still uses semantic colors
     Given author colors mode "never"
@@ -181,7 +181,7 @@ Feature: D6 -- Per-author coloring and move decorations
     And a change of type "insertion" by "f" at offset 10 to 11
     When I decorate the manual changes in markup mode
     Then insertions count is 6
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   Scenario: Never mode - deletion with author uses semantic red, not author color
     Given author colors mode "never"
@@ -191,7 +191,7 @@ Feature: D6 -- Per-author coloring and move decorations
     When I decorate the manual changes in markup mode
     Then deletions count is 1
     And insertions count is 1
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   Scenario: Default constructor authorColors defaults to auto
     Given markup text "Hello"
@@ -199,7 +199,7 @@ Feature: D6 -- Per-author coloring and move decorations
     When I decorate the manual changes in markup mode
     # auto + single author = semantic
     Then insertions count is 1
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22
 
   # ── Mocha source: Move Decorations (moveRole) ──
 
@@ -289,7 +289,7 @@ Feature: D6 -- Per-author coloring and move decorations
     When I decorate the manual changes in markup mode
     Then moveFroms is empty
     And deletions is empty
-    And total setDecorations calls is 20
+    And total setDecorations calls is 23
 
   Scenario: Authored move-to with always mode routes to author decoration type
     Given author colors mode "always"
@@ -298,7 +298,7 @@ Feature: D6 -- Per-author coloring and move decorations
     When I decorate the manual changes in markup mode
     Then moveTos is empty
     And insertions is empty
-    And total setDecorations calls is 20
+    And total setDecorations calls is 23
 
   Scenario: Authored move with auto mode and single author uses semantic move colors
     Given markup text "{--moved text--}"
@@ -307,4 +307,4 @@ Feature: D6 -- Per-author coloring and move decorations
     # auto + single author: uses default moveFroms
     Then moveFroms count is 1
     And deletions is empty
-    And total setDecorations calls is 19
+    And total setDecorations calls is 22

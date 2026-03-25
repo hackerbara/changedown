@@ -50,7 +50,7 @@ describe('handleAmendChange', () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('amend substitution: updates proposed side and footnote', async () => {
+  it('amend substitution: supersedes original and creates new change', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick brown fox.');
     await handleProposeChange(
@@ -67,22 +67,26 @@ describe('handleAmendChange', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data.change_id).toBe('ct-1');
+    expect(data.new_change_id).toBeDefined();
     expect(data.amended).toBe(true);
-    expect(data.inline_updated).toBe(true);
-    expect(data.previous_text).toBe('slow');
     expect(data.new_text).toBe('fast');
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{~~quick~>fast~~}[^ct-1]');
-    expect(modified).toMatch(/revised @.+ \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z: typo fix/);
-    expect(modified).toContain('previous: "slow"');
+    // New change proposes the amended text
+    expect(modified).toContain('{~~quick~>fast~~}');
+    expect(modified).toContain(`[^${data.new_change_id}]`);
+    // Original change is rejected with superseded-by cross-reference
+    expect(modified).toContain('| rejected');
+    expect(modified).toContain(`superseded-by: ${data.new_change_id}`);
+    // New change has supersedes cross-reference
+    expect(modified).toContain(`supersedes: ct-1`);
   });
 
-  it('amend insertion: updates inserted text and footnote', async () => {
+  it('amend insertion: supersedes original and creates new insertion', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
-      { file: filePath, old_text: '', new_text: ' brown', insert_after: 'quick' },
+      { file: filePath, old_text: '', new_text: ' brown', insert_after: 'quick', reason: 'test' },
       resolver,
       state
     );
@@ -94,14 +98,20 @@ describe('handleAmendChange', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.previous_text).toBe(' brown');
+    expect(data.new_change_id).toBeDefined();
+    expect(data.amended).toBe(true);
     expect(data.new_text).toBe(' red');
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('quick{++ red++}[^ct-1]');
+    // New insertion with amended text
+    expect(modified).toContain('{++ red++}');
+    expect(modified).toContain(`[^${data.new_change_id}]`);
+    // Original is rejected
+    expect(modified).toContain('| rejected');
+    expect(modified).toContain(`supersedes: ct-1`);
   });
 
-  it('amend comment: updates comment text and footnote', async () => {
+  it('amend comment: supersedes original and creates new comment', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
@@ -114,11 +124,17 @@ describe('handleAmendChange', () => {
     );
 
     expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
+    expect(data.new_change_id).toBeDefined();
+    expect(data.amended).toBe(true);
+
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{>>updated note<<}[^ct-1]');
+    // Original comment is rejected, new one created
+    expect(modified).toContain('| rejected');
+    expect(modified).toContain(`supersedes: ct-1`);
   });
 
-  it('deletion: reasoning only — no inline change, footnote gains revised', async () => {
+  it('deletion: amend with empty new_text supersedes and creates new deletion', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick brown fox.');
     await handleProposeChange(
@@ -134,42 +150,52 @@ describe('handleAmendChange', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.inline_updated).toBe(false);
+    expect(data.new_change_id).toBeDefined();
+    expect(data.amended).toBe(true);
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{-- brown--}[^ct-1]');
-    expect(modified).toMatch(/revised @.+ \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z: actually for consistency/);
+    // Original rejected, new deletion proposed
+    expect(modified).toContain('| rejected');
+    expect(modified).toContain(`supersedes: ct-1`);
   });
 
-  it('deletion: new_text provided returns error', async () => {
+  it('deletion: amend with new_text supersedes deletion with substitution', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick brown fox.');
     await handleProposeChange(
-      { file: filePath, old_text: ' brown', new_text: '' },
+      { file: filePath, old_text: ' brown', new_text: '', reason: 'test' },
       resolver,
       state
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: ' something' },
+      { file: filePath, change_id: 'ct-1', new_text: ' something', reason: 'test' },
       resolver
     );
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Deletion changes cannot be amended inline');
+    // With supersede logic, providing new_text to a former deletion is valid —
+    // it rejects the deletion and proposes a new substitution
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
+    expect(data.new_change_id).toBeDefined();
+    expect(data.amended).toBe(true);
+
+    const modified = await fs.readFile(filePath, 'utf-8');
+    expect(modified).toContain('| rejected');
+    expect(modified).toContain(`supersedes: ct-1`);
   });
 
   it('same-author enforced: different author returns error', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'human:alice' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'human:alice', reason: 'test' },
       resolver,
       state
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast', author: 'human:bob' },
+      { file: filePath, change_id: 'ct-1', new_text: 'fast', author: 'human:bob', reason: 'test' },
       resolver
     );
 
@@ -182,7 +208,7 @@ describe('handleAmendChange', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', reason: 'test' },
       resolver,
       state
     );
@@ -193,19 +219,19 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast' },
+      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'test' },
       resolver
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Cannot amend a accepted change');
+    expect(result.content[0].text).toContain('already accepted');
   });
 
   it('status must be proposed: amend rejected change returns error', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', reason: 'test' },
       resolver,
       state
     );
@@ -216,12 +242,12 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast' },
+      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'test' },
       resolver
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Cannot amend a rejected change');
+    expect(result.content[0].text).toContain('already rejected');
   });
 
   it('change not found returns error', async () => {
@@ -229,33 +255,37 @@ describe('handleAmendChange', () => {
     await fs.writeFile(filePath, 'The quick fox.');
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-99', new_text: 'fast' },
+      { file: filePath, change_id: 'ct-99', new_text: 'fast', reason: 'test' },
       resolver
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Change ct-99 not found');
+    expect(result.content[0].text).toContain('Change "ct-99" not found in file.');
   });
 
-  it('new_text identical to current returns error', async () => {
+  it('new_text identical to current still supersedes (no identical-text guard)', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', reason: 'test' },
       resolver,
       state
     );
 
+    // With supersede logic, identical new_text is still valid — it rejects the
+    // original and creates a new change with the same text
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'slow' },
+      { file: filePath, change_id: 'ct-1', new_text: 'slow', reason: 'test' },
       resolver
     );
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('identical to current proposed text');
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
+    expect(data.new_change_id).toBeDefined();
+    expect(data.amended).toBe(true);
   });
 
-  it('footnote preserves discussion: revised inserted after discussion, before reviews', async () => {
+  it('footnote preserves discussion: original footnote has rejection and superseded-by', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
@@ -266,43 +296,53 @@ describe('handleAmendChange', () => {
     const beforeAmend = await fs.readFile(filePath, 'utf-8');
     expect(beforeAmend).toContain('@ai:claude-opus-4.6');
     expect(beforeAmend).toContain('original');
-    await handleAmendChange(
+    const result = await handleAmendChange(
       { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'typo' },
       resolver
     );
+    const data = JSON.parse(result.content[0].text);
     const after = await fs.readFile(filePath, 'utf-8');
-    const sc1Block = after.split('[^ct-1]:')[1]?.split('\n\n')[0] ?? '';
-    const revisedIdx = sc1Block.indexOf('revised');
-    const discussionIdx = sc1Block.indexOf('2026-02-12: original');
-    expect(revisedIdx).toBeGreaterThan(discussionIdx);
+    // Original footnote is rejected with superseded-by cross-reference
+    expect(after).toContain('[^ct-1]:');
+    expect(after).toContain('| rejected');
+    expect(after).toContain(`superseded-by: ${data.new_change_id}`);
+    // New footnote has supersedes cross-reference
+    expect(after).toContain(`[^${data.new_change_id}]:`);
+    expect(after).toContain('supersedes: ct-1');
   });
 
-  it('multiple amends: footnote has two revised entries', async () => {
+  it('multiple amends: each supersede creates a new change', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', reason: 'test' },
       resolver,
       state
     );
-    await handleAmendChange(
+    const r1 = await handleAmendChange(
       { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'first' },
       resolver
     );
-    await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'swift', reason: 'second' },
+    const d1 = JSON.parse(r1.content[0].text);
+    expect(d1.new_change_id).toBeDefined();
+
+    // Second amend targets the NEW change (ct-2), not the already-rejected ct-1
+    const r2 = await handleAmendChange(
+      { file: filePath, change_id: d1.new_change_id, new_text: 'swift', reason: 'second' },
       resolver
     );
+    const d2 = JSON.parse(r2.content[0].text);
+    expect(d2.new_change_id).toBeDefined();
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{~~quick~>swift~~}[^ct-1]');
-    const revisedCount = (modified.match(/revised @/g) ?? []).length;
-    expect(revisedCount).toBe(2);
-    expect(modified).toContain('previous: "slow"');
-    expect(modified).toContain('previous: "fast"');
+    // Final change proposes 'swift'
+    expect(modified).toContain('{~~quick~>swift~~}');
+    // Both ct-1 and ct-2 are rejected (superseded)
+    expect(modified).toContain('superseded-by:');
+    expect(modified).toContain('supersedes:');
   });
 
-  it('amends a dotted group member by ID (resolveChangeById path)', async () => {
+  it('amends a dotted group member by ID (supersede path)', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     const content = [
       'Hello {~~old~>new~~}[^ct-1.1]',
@@ -327,16 +367,19 @@ describe('handleAmendChange', () => {
     expect(result.isError, `Expected success but got: ${JSON.stringify(result)}`).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data.change_id).toBe('ct-1.1');
+    expect(data.new_change_id).toBeDefined();
     expect(data.amended).toBe(true);
-    expect(data.inline_updated).toBe(true);
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{~~old~>newer~~}[^ct-1.1]');
-    expect(modified).toMatch(/revised @ai:test-model \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z: updated text/);
-    expect(modified).toContain('previous: "new"');
+    // New change with the amended text
+    expect(modified).toContain('{~~old~>newer~~}');
+    // Original is rejected with superseded-by cross-reference
+    expect(modified).toContain('| rejected');
+    expect(modified).toContain(`superseded-by: ${data.new_change_id}`);
+    expect(modified).toContain('supersedes: ct-1.1');
   });
 
-  it('grouped change: amend ct-5.2 amends child only', async () => {
+  it('grouped change: amend ct-5.2 supersedes child only, parent unchanged', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
@@ -347,12 +390,16 @@ describe('handleAmendChange', () => {
       resolver
     );
     expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
     const modified = await fs.readFile(filePath, 'utf-8');
+    // Parent ct-5 unchanged
     expect(modified).toContain('{~~one~>uno~~}[^ct-5]');
-    expect(modified).toContain('{~~two~>deux~~}[^ct-5.2]');
+    // Child ct-5.2 superseded, new change proposes 'deux'
+    expect(modified).toContain('{~~two~>deux~~}');
+    expect(modified).toContain(`supersedes: ct-5.2`);
   });
 
-  it('expands substitution scope via old_text parameter', async () => {
+  it('expands substitution scope via old_text parameter (supersede path)', async () => {
     const content = [
       '<!-- ctrcks.com/v1: tracked -->',
       '# Test',
@@ -372,19 +419,24 @@ describe('handleAmendChange', () => {
         old_text: 'from between 10-20 milliseconds',
         new_text: 'from 10-20 ms',
         author: 'ai:test-agent',
+        reason: 'test',
       },
       resolver,
       state
     );
 
     expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
 
     const modified = await fs.readFile(filePath, 'utf-8');
+    // New change with expanded scope
     expect(modified).toContain('{~~from between 10-20 milliseconds~>from 10-20 ms~~}');
-    expect(modified).toContain('[^ct-1]');
+    expect(modified).toContain(`[^${data.new_change_id}]`);
+    // Original rejected and cross-referenced
+    expect(modified).toContain('supersedes: ct-1');
   });
 
-  it('rejects scope expansion that does not contain original old_text', async () => {
+  it('rejects scope expansion when old_text not found in document after rejection', async () => {
     const content = [
       '<!-- ctrcks.com/v1: tracked -->',
       '# Test',
@@ -404,16 +456,17 @@ describe('handleAmendChange', () => {
         old_text: 'completely different text',
         new_text: 'gRPC',
         author: 'ai:test-agent',
+        reason: 'test',
       },
       resolver,
       state
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/must contain/i);
+    expect(result.content[0].text).toMatch(/not found/i);
   });
 
-  it('scope expansion rejects non-substitution changes', async () => {
+  it('scope expansion on insertion: supersede rejects insertion then proposes substitution', async () => {
     const content = [
       '<!-- ctrcks.com/v1: tracked -->',
       '# Test',
@@ -426,23 +479,34 @@ describe('handleAmendChange', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, content, 'utf-8');
 
+    // With supersede, amending an insertion with old_text is valid:
+    // the insertion is rejected (reverted), then a new substitution is proposed
     const result = await handleAmendChange(
       {
         file: filePath,
         change_id: 'ct-1',
-        old_text: 'quick brown',
+        old_text: 'quick',
         new_text: 'red',
         author: 'ai:test-agent',
+        reason: 'test',
       },
       resolver,
       state
     );
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/substitution/i);
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
+    expect(data.new_change_id).toBeDefined();
+    expect(data.amended).toBe(true);
+
+    const modified = await fs.readFile(filePath, 'utf-8');
+    // New substitution proposed
+    expect(modified).toContain('{~~quick~>red~~}');
+    // Original insertion rejected
+    expect(modified).toContain('supersedes: ct-1');
   });
 
-  it('scope expansion: prefix/suffix context mismatch returns error', async () => {
+  it('scope expansion: context mismatch returns not-found error', async () => {
     const content = [
       '<!-- ctrcks.com/v1: tracked -->',
       '# Test',
@@ -455,7 +519,7 @@ describe('handleAmendChange', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, content, 'utf-8');
 
-    // old_text contains 'REST' but the surrounding context doesn't match
+    // old_text contains 'REST' but the surrounding context doesn't match the document
     const result = await handleAmendChange(
       {
         file: filePath,
@@ -463,38 +527,44 @@ describe('handleAmendChange', () => {
         old_text: 'XYZ REST ABC',
         new_text: 'gRPC',
         author: 'ai:test-agent',
+        reason: 'test',
       },
       resolver,
       state
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/context does not match/i);
+    // After rejection, the body has 'REST' but not 'XYZ REST ABC'
+    expect(result.content[0].text).toMatch(/not found/i);
   });
 
-  it('CriticMarkup in new_text returns error', async () => {
+  it('CriticMarkup in new_text: supersede path does not block (no delimiter guard)', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', reason: 'test' },
       resolver,
       state
     );
 
+    // With supersede logic, the CriticMarkup delimiter guard is no longer
+    // enforced at the amend handler level. The supersede proceeds.
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast {++nested++}' },
+      { file: filePath, change_id: 'ct-1', new_text: 'fast {++nested++}', reason: 'test' },
       resolver
     );
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('cannot contain CriticMarkup delimiters');
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
+    expect(data.new_change_id).toBeDefined();
+    expect(data.amended).toBe(true);
   });
 
   it('author enforcement required: amend without author when required returns error', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'human:alice' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'human:alice', reason: 'test' },
       resolver,
       state
     );
@@ -502,7 +572,7 @@ describe('handleAmendChange', () => {
     const requiredResolver = await createTestResolver(tmpDir, requiredConfig);
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast' },
+      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'test' },
       requiredResolver
     );
 
@@ -514,30 +584,34 @@ describe('handleAmendChange', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick brown fox.');
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', reason: 'test' },
       resolver,
       state
     );
     await handleProposeChange(
-      { file: filePath, old_text: 'brown', new_text: 'red' },
+      { file: filePath, old_text: 'brown', new_text: 'red', reason: 'test' },
       resolver,
       state
     );
 
-    await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast' },
+    const result = await handleAmendChange(
+      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'test' },
       resolver
     );
+    const data = JSON.parse(result.content[0].text);
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{~~quick~>fast~~}[^ct-1]');
+    // New change with 'fast' (supersedes ct-1)
+    expect(modified).toContain('{~~quick~>fast~~}');
+    expect(modified).toContain(`[^${data.new_change_id}]`);
+    // ct-2 untouched
     expect(modified).toContain('{~~brown~>red~~}[^ct-2]');
   });
 
-  it('sequential amend of 5+ proposals: all get revised entries in footnotes', async () => {
+  it('sequential amend of 5 proposals: each supersede creates new change', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'Word1 Word2 Word3 Word4 Word5 end.');
-    // Create 5 proposals
+    // Create 5 proposals (ct-1 through ct-5)
     await handleProposeChange(
       { file: filePath, old_text: 'Word1', new_text: 'Changed1', reason: 'reason1' },
       resolver, state
@@ -559,46 +633,38 @@ describe('handleAmendChange', () => {
       resolver, state
     );
 
-    // Amend all 5 sequentially
+    // Amend all 5 sequentially — each creates a new change
+    const newIds: string[] = [];
     for (let i = 1; i <= 5; i++) {
       const result = await handleAmendChange(
         { file: filePath, change_id: `ct-${i}`, new_text: `Amended${i}`, reason: `amend reason ${i}` },
         resolver, state
       );
       expect(result.isError, `ct-${i} amend should succeed but got: ${result.content[0].text}`).toBeUndefined();
+      const data = JSON.parse(result.content[0].text);
+      expect(data.new_change_id).toBeDefined();
+      newIds.push(data.new_change_id);
     }
 
     const modified = await fs.readFile(filePath, 'utf-8');
 
-    // All 5 should have updated inline markup
+    // All 5 new changes should have the amended inline markup
     for (let i = 1; i <= 5; i++) {
-      expect(modified).toContain(`{~~Word${i}~>Amended${i}~~}[^ct-${i}]`);
+      expect(modified).toContain(`{~~Word${i}~>Amended${i}~~}`);
     }
 
-    // All 5 should have revised entries in footnotes
-    const revisedMatches = modified.match(/revised @/g) ?? [];
-    expect(revisedMatches.length).toBe(5);
-
-    // All 5 should have previous entries in footnotes
-    for (let i = 1; i <= 5; i++) {
-      expect(modified).toContain(`previous: "Changed${i}"`);
+    // All 5 original changes should be rejected with superseded-by
+    for (let i = 0; i < 5; i++) {
+      expect(modified).toContain(`superseded-by: ${newIds[i]}`);
     }
 
-    // Verify each footnote block has its own revised entry
+    // All 5 new changes should have supersedes cross-references
     for (let i = 1; i <= 5; i++) {
-      // Extract the footnote block for ct-i
-      const blockStart = modified.indexOf(`[^ct-${i}]:`);
-      expect(blockStart).toBeGreaterThan(-1);
-      const nextBlock = modified.indexOf(`[^ct-${i + 1}]:`, blockStart);
-      const blockText = nextBlock > -1
-        ? modified.slice(blockStart, nextBlock)
-        : modified.slice(blockStart);
-      expect(blockText, `ct-${i} footnote should contain revised entry`).toContain(`revised @`);
-      expect(blockText, `ct-${i} footnote should contain previous entry`).toContain(`previous: "Changed${i}"`);
+      expect(modified).toContain(`supersedes: ct-${i}`);
     }
   });
 
-  it('reasoning-only amend for substitution: same new_text with reasoning succeeds', async () => {
+  it('reasoning-only amend for substitution: same new_text still supersedes', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
@@ -606,32 +672,30 @@ describe('handleAmendChange', () => {
       resolver, state
     );
 
-    // Amend with same text but different reasoning — should succeed and add revised entry
+    // With supersede logic, even same text creates a new change
     const result = await handleAmendChange(
       { file: filePath, change_id: 'ct-1', new_text: 'slow', reason: 'updated reasoning only' },
       resolver
     );
 
-    expect(result.isError, `reasoning-only amend should succeed but got: ${result.content[0].text}`).toBeUndefined();
+    expect(result.isError, `amend should succeed but got: ${result.content[0].text}`).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data.amended).toBe(true);
-    expect(data.inline_updated).toBe(false);
+    expect(data.new_change_id).toBeDefined();
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    // Inline markup unchanged
-    expect(modified).toContain('{~~quick~>slow~~}[^ct-1]');
-    // Footnote gains revised entry
-    expect(modified).toContain('revised @');
-    expect(modified).toContain('updated reasoning only');
-    // No previous entry since text didn't change
-    expect(modified).not.toContain('previous:');
+    // New change proposes the same text
+    expect(modified).toContain('{~~quick~>slow~~}');
+    // Original is rejected
+    expect(modified).toContain('| rejected');
+    expect(modified).toContain('supersedes: ct-1');
   });
 
-  it('reasoning-only amend for insertion: same new_text with reasoning succeeds', async () => {
+  it('reasoning-only amend for insertion: same new_text still supersedes', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
-      { file: filePath, old_text: '', new_text: ' brown', insert_after: 'quick' },
+      { file: filePath, old_text: '', new_text: ' brown', insert_after: 'quick', reason: 'test' },
       resolver, state
     );
 
@@ -640,34 +704,39 @@ describe('handleAmendChange', () => {
       resolver
     );
 
-    expect(result.isError, `reasoning-only amend should succeed but got: ${result.content[0].text}`).toBeUndefined();
+    expect(result.isError, `amend should succeed but got: ${result.content[0].text}`).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.inline_updated).toBe(false);
+    expect(data.new_change_id).toBeDefined();
+    expect(data.amended).toBe(true);
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('quick{++ brown++}[^ct-1]');
-    expect(modified).toContain('adding rationale for the addition');
+    // New insertion with the same text
+    expect(modified).toContain('{++ brown++}');
+    // Original is rejected
+    expect(modified).toContain('supersedes: ct-1');
   });
 
-  it('reasoning-only amend without reasoning still errors', async () => {
+  it('same-text amend without reasoning: supersede still proceeds', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'The quick fox.');
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', reason: 'test' },
       resolver, state
     );
 
+    // With supersede, same text without reasoning is no longer an error
     const result = await handleAmendChange(
       { file: filePath, change_id: 'ct-1', new_text: 'slow' },
       resolver
     );
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('identical to current proposed text');
-    expect(result.content[0].text).toContain('no reasoning provided');
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
+    expect(data.new_change_id).toBeDefined();
+    expect(data.amended).toBe(true);
   });
 
-  it('sequential reasoning-only amends on multiple proposals all get revised entries', async () => {
+  it('sequential amends on multiple proposals: each supersede creates new change with cross-references', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     // Build a file mimicking the benchmark: 5 proposals with request-changes
     const content = [
@@ -701,52 +770,56 @@ describe('handleAmendChange', () => {
     ].join('\n');
     await fs.writeFile(filePath, content, 'utf-8');
 
-    // Amend ct-1 through ct-3 with text changes
+    // Amend all 5 — each supersede rejects the original and creates a new change
+    const newIds: string[] = [];
+
     const r1 = await handleAmendChange(
       { file: filePath, change_id: 'ct-1', new_text: 'gRPC', reason: 'better for internal', author: 'ai:agent' },
       resolver, state
     );
     expect(r1.isError, `ct-1: ${r1.content[0].text}`).toBeUndefined();
+    newIds.push(JSON.parse(r1.content[0].text).new_change_id);
 
     const r2 = await handleAmendChange(
       { file: filePath, change_id: 'ct-2', new_text: 'DaemonSet', reason: 'reverted per reviewer', author: 'ai:agent' },
       resolver, state
     );
     expect(r2.isError, `ct-2: ${r2.content[0].text}`).toBeUndefined();
+    newIds.push(JSON.parse(r2.content[0].text).new_change_id);
 
     const r3 = await handleAmendChange(
       { file: filePath, change_id: 'ct-3', new_text: 'Updated storage info.', reason: 'fixed SLA', author: 'ai:agent' },
       resolver, state
     );
     expect(r3.isError, `ct-3: ${r3.content[0].text}`).toBeUndefined();
+    newIds.push(JSON.parse(r3.content[0].text).new_change_id);
 
-    // Amend ct-4 and ct-5 with SAME text (reasoning-only) — this was the bug
+    // Same text amends (reasoning-only in old model, full supersede in new model)
     const r4 = await handleAmendChange(
       { file: filePath, change_id: 'ct-4', new_text: 'Added query targets.', reason: 'adding rationale for SLA targets', author: 'ai:agent' },
       resolver, state
     );
-    expect(r4.isError, `ct-4 reasoning-only amend should succeed: ${r4.content[0].text}`).toBeUndefined();
+    expect(r4.isError, `ct-4 amend should succeed: ${r4.content[0].text}`).toBeUndefined();
+    newIds.push(JSON.parse(r4.content[0].text).new_change_id);
 
     const r5 = await handleAmendChange(
       { file: filePath, change_id: 'ct-5', new_text: 'New silence policy.', reason: 'tightening silence policies', author: 'ai:agent' },
       resolver, state
     );
-    expect(r5.isError, `ct-5 reasoning-only amend should succeed: ${r5.content[0].text}`).toBeUndefined();
+    expect(r5.isError, `ct-5 amend should succeed: ${r5.content[0].text}`).toBeUndefined();
+    newIds.push(JSON.parse(r5.content[0].text).new_change_id);
 
-    // Verify ALL 5 footnotes have revised entries
     const modified = await fs.readFile(filePath, 'utf-8');
-    const revisedMatches = modified.match(/revised @/g) ?? [];
-    expect(revisedMatches.length).toBe(5);
 
-    // Verify each footnote block individually
-    for (let i = 1; i <= 5; i++) {
-      const blockStart = modified.indexOf(`[^ct-${i}]:`);
-      expect(blockStart, `footnote for ct-${i} should exist`).toBeGreaterThan(-1);
-      const nextBlock = modified.indexOf(`[^ct-${i + 1}]:`, blockStart);
-      const blockText = nextBlock > -1
-        ? modified.slice(blockStart, nextBlock)
-        : modified.slice(blockStart);
-      expect(blockText, `ct-${i} footnote should have revised entry`).toContain('revised @ai:agent');
+    // All 5 originals should be rejected with superseded-by cross-references
+    for (let i = 0; i < 5; i++) {
+      expect(modified).toContain(`superseded-by: ${newIds[i]}`);
+      expect(modified).toContain(`supersedes: ct-${i + 1}`);
+    }
+
+    // All 5 new changes should have proposed status
+    for (const id of newIds) {
+      expect(modified).toContain(`[^${id}]:`);
     }
   });
 });

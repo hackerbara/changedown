@@ -99,6 +99,10 @@
                 "title": "ChangeTracks: Set View Mode"
             },
             {
+                "command": "changetracks.toggleGitGutter",
+                "title": "ChangeTracks: Toggle Git Gutter"
+            },
+            {
                 "command": "changetracks.annotateFromGit",
                 "title": "ChangeTracks: Annotate Recent Changes",
                 "icon": "$(git-compare)"
@@ -218,6 +222,10 @@
                 "title": "ChangeTracks: Request Changes"
             },
             {
+                "command": "changetracks.withdrawRequest",
+                "title": "ChangeTracks: Withdraw Request"
+            },
+            {
                 "command": "changetracks.amendChange",
                 "title": "ChangeTracks: Amend Change"
             },
@@ -276,6 +284,22 @@
             {
                 "command": "changetracks._testExecuteCommand",
                 "title": "ChangeTracks: Test Execute Command"
+            },
+            {
+                "command": "changetracks.inspectUnresolved",
+                "title": "ChangeTracks: Inspect Unresolved Anchors"
+            },
+            {
+                "command": "changetracks.searchAnchorText",
+                "title": "ChangeTracks: Search for Anchor Text"
+            },
+            {
+                "command": "changetracks.jumpToFootnote",
+                "title": "ChangeTracks: Jump to Footnote"
+            },
+            {
+                "command": "changetracks.reanchorToSelection",
+                "title": "ChangeTracks: Re-anchor to Selection"
             }
         ],
         "customEditors": [
@@ -367,7 +391,27 @@
                 {
                     "command": "changetracks.addComment",
                     "when": "resourceLangId == markdown && editorTextFocus",
-                    "group": "1_changetracks"
+                    "group": "1_changetracks@1"
+                },
+                {
+                    "command": "changetracks.acceptChange",
+                    "when": "resourceLangId == markdown && changetracks:changeAtCursor",
+                    "group": "1_changetracks@2"
+                },
+                {
+                    "command": "changetracks.rejectChange",
+                    "when": "resourceLangId == markdown && changetracks:changeAtCursor",
+                    "group": "1_changetracks@3"
+                },
+                {
+                    "command": "changetracks.requestChanges",
+                    "when": "resourceLangId == markdown && changetracks:changeAtCursor",
+                    "group": "1_changetracks@4"
+                },
+                {
+                    "command": "changetracks.withdrawRequest",
+                    "when": "resourceLangId == markdown && changetracks:changeAtCursor",
+                    "group": "1_changetracks@5"
                 },
                 {
                     "command": "changetracks.viewDeliberation",
@@ -693,6 +737,17 @@
                     "default": true,
                     "description": "When true, clicking inside a tracked change opens its comment thread peek widget. Other open peeks are automatically closed."
                 },
+                "changetracks.suppressGitGutter": {
+                    "type": "boolean",
+                    "default": true,
+                    "markdownDescription": "Suppress Git's QuickDiff gutter indicators when ChangeTracks is active. Git's gutter shows L2→L3 format noise for markdown files. When enabled, sets `scm.diffDecorations` to `none` workspace-wide. ChangeTracks' own change decorations are unaffected. Use the **ChangeTracks: Toggle Git Gutter** command to switch at runtime."
+                },
+                "changetracks.gutterStrategy": {
+                    "type": "string",
+                    "enum": ["auto", "assume-unchanged", "proposed-api", "off"],
+                    "default": "auto",
+                    "markdownDescription": "Controls how ChangeTracks manages gutter diff indicators for markdown files.\n- `auto`: Use proposed API if available (Cursor), otherwise use assume-unchanged\n- `assume-unchanged`: Silence Git's gutter via git index flags. **Note:** flagged files are hidden from `git status`, `git add .`, and `git stash` until all changes are settled.\n- `proposed-api`: Only use proposed registerQuickDiffProvider (no fallback — gutter may be noisy in VS Code stable)\n- `off`: Don't manage gutter — both Git and ChangeTracks decorations show"
+                },
                 "changetracks.commentInsertFormat": {
                     "type": "string",
                     "enum": [
@@ -954,8 +1009,7 @@
         "esbuild": "node esbuild.mjs",
         "watch": "tsc -watch -p ./",
         "package": "npx @vscode/vsce package --no-dependencies --allow-missing-repository",
-        "pretest": "npm run compile && npm run lint",
-        "lint": "eslint src --ext ts",
+        "pretest": "npm run compile",
         "test": "npm run test:features",
         "test:fast": "npm run test:features:fast",
         "test:slow": "npm run test -w @changetracks/tests-vscode -- --tags '@slow and not @visual and not @wip'",
@@ -980,10 +1034,7 @@
         "@types/glob": "^8.1.0",
         "@types/node": "20.2.5",
         "@types/vscode": "^1.80.0",
-        "@typescript-eslint/eslint-plugin": "^5.59.8",
-        "@typescript-eslint/parser": "^5.59.8",
         "esbuild": "^0.27.3",
-        "eslint": "^8.41.0",
         "glob": "^8.1.0",
         "typescript": "^5.1.3"
     }

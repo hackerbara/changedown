@@ -1,5 +1,5 @@
 import { CriticMarkupParser } from '../parser/parser.js';
-import { ChangeType } from '../model/types.js';
+import { changeTypeToAbbrev } from '../model/types.js';
 import { scanMaxCtId, generateFootnoteDefinition } from './footnote-generator.js';
 import { appendFootnote } from '../file-ops.js';
 
@@ -30,18 +30,6 @@ export interface EnsureL2Result {
   promoted: boolean;
 }
 
-/**
- * Maps a ChangeType enum value to the abbreviated type string used in footnotes.
- */
-function changeTypeToAbbrev(type: ChangeType): string {
-  switch (type) {
-    case ChangeType.Insertion: return 'ins';
-    case ChangeType.Deletion: return 'del';
-    case ChangeType.Substitution: return 'sub';
-    case ChangeType.Highlight: return 'hig';
-    case ChangeType.Comment: return 'com';
-  }
-}
 
 /**
  * Ensures a CriticMarkup change at the given offset is at Level 2 (has a

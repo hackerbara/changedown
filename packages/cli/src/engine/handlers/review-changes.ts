@@ -6,6 +6,7 @@ import { resolveAuthor } from '../author.js';
 import { isFileInScope } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
 import { findFootnoteBlock, findDiscussionInsertionIndex, countFootnoteHeadersWithStatus, initHashline, nowTimestamp, applyReview, VALID_DECISIONS, type Decision } from '@changetracks/core';
+import { applyBlockingAnnotation } from '../shared/blocking-annotation.js';
 import { SessionState } from '../state.js';
 import { rerecordState } from '../state-utils.js';
 import { settleAcceptedChanges, settleRejectedChanges } from './settle.js';
@@ -38,12 +39,20 @@ export const reviewChangesTool = {
             },
             decision: {
               type: 'string',
-              enum: ['approve', 'reject', 'request_changes'],
+              enum: ['approve', 'reject', 'request_changes', 'withdraw'],
               description: 'The review decision',
             },
             reason: {
               type: 'string',
               description: 'Why this decision. Required.',
+            },
+            blocking: {
+              type: 'boolean',
+              description: 'When true with request_changes, adds a blocked: line preventing acceptance until withdrawn.',
+            },
+            label: {
+              type: 'string',
+              description: 'Optional label for the review (e.g. "security", "performance").',
             },
           },
           required: ['change_id', 'decision', 'reason'],
@@ -82,6 +91,8 @@ interface ReviewItem {
   change_id: string;
   decision: string;
   reason: string;
+  blocking?: boolean;
+  label?: string;
 }
 
 /**
@@ -189,7 +200,11 @@ export async function handleReviewChanges(
         inputOrderChangeIds.push(changeId!);
         const block = findFootnoteBlock(lines, changeId!);
         withPosition.push({
-          review: { change_id: changeId!, decision: decision!, reason: reason! },
+          review: {
+            change_id: changeId!, decision: decision!, reason: reason!,
+            blocking: rObj.blocking === true ? true : undefined,
+            label: typeof rObj.label === 'string' ? rObj.label : undefined,
+          },
           headerLine: block ? block.headerLine : -1,
         });
       }
@@ -205,7 +220,7 @@ export async function handleReviewChanges(
         if (!VALID_DECISIONS.includes(review.decision as Decision)) {
           resultByChangeId.set(review.change_id, {
             change_id: review.change_id,
-            error: `Invalid decision: "${review.decision}". Must be one of: approve, reject, request_changes`,
+            error: `Invalid decision: "${review.decision}". Must be one of: approve, reject, request_changes, withdraw`,
           });
           continue;
         }
@@ -216,11 +231,19 @@ export async function handleReviewChanges(
           review.decision as Decision,
           review.reason,
           author,
+          config,
         );
 
         if ('error' in applied) {
           resultByChangeId.set(review.change_id, { change_id: review.change_id, error: applied.error });
           continue;
+        }
+
+        // Post-process: add blocked: line for request_changes with blocking/label
+        if (review.decision === 'request_changes' && (review.blocking || review.label)) {
+          const autoBlock = review.label ? (config.review.blocking_labels[review.label] === true) : false;
+          const shouldBlock = review.blocking || autoBlock;
+          applied.updatedContent = applyBlockingAnnotation(applied.updatedContent, review.change_id, author, review.label, shouldBlock);
         }
 
         resultByChangeId.set(review.change_id, applied.result);

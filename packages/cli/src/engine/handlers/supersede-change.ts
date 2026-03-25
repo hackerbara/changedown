@@ -130,7 +130,7 @@ export async function handleSupersedeChange(
     }
 
     // 5. Delegate pure computation to core (reject + propose + cross-link)
-    const result = computeSupersedeResult(fileContent, changeId, {
+    const result = await computeSupersedeResult(fileContent, changeId, {
       newText,
       oldText,
       reason: reasoning,

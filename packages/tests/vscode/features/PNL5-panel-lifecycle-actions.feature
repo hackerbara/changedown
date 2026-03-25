@@ -16,7 +16,7 @@ Feature: PNL5 — Review panel lifecycle actions
     When I build the review panel state
     Then the card for ct-1 shows type "insertion"
     And the card for ct-1 shows status "proposed"
-    And the card for ct-1 shows author "@alice"
+    And the card for ct-1 shows author "alice"
     And the card for ct-1 shows reply count 2
 
   Scenario: PNL5-02 Card without discussion shows zero replies

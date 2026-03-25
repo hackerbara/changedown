@@ -7,8 +7,8 @@ const TS_RE = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z';
 
 describe('applyProposeChange', () => {
   describe('substitution', () => {
-    it('replaces oldText with substitution markup and appends footnote', () => {
-      const result = applyProposeChange({
+    it('replaces oldText with substitution markup and appends footnote', async () => {
+      const result = await applyProposeChange({
         text: 'The quick brown fox jumps over the lazy dog.',
         oldText: 'quick brown',
         newText: 'slow red',
@@ -25,8 +25,8 @@ describe('applyProposeChange', () => {
   });
 
   describe('deletion', () => {
-    it('replaces oldText with deletion markup and appends footnote', () => {
-      const result = applyProposeChange({
+    it('replaces oldText with deletion markup and appends footnote', async () => {
+      const result = await applyProposeChange({
         text: 'The quick brown fox jumps over the lazy dog.',
         oldText: ' brown',
         newText: '',
@@ -43,8 +43,8 @@ describe('applyProposeChange', () => {
   });
 
   describe('insertion', () => {
-    it('inserts text after anchor with insertion markup and appends footnote', () => {
-      const result = applyProposeChange({
+    it('inserts text after anchor with insertion markup and appends footnote', async () => {
+      const result = await applyProposeChange({
         text: 'The quick fox jumps.',
         oldText: '',
         newText: ' brown',
@@ -62,8 +62,8 @@ describe('applyProposeChange', () => {
   });
 
   describe('reasoning', () => {
-    it('includes reason line in footnote when reasoning is provided', () => {
-      const result = applyProposeChange({
+    it('includes reason line in footnote when reasoning is provided', async () => {
+      const result = await applyProposeChange({
         text: 'Hello world.',
         oldText: 'world',
         newText: 'earth',
@@ -79,8 +79,8 @@ describe('applyProposeChange', () => {
       expect(result.modifiedText).toMatch(new RegExp(`@ai:claude-opus-4.6 ${TS_RE}: More specific term`));
     });
 
-    it('omits reason line when reasoning is not provided', () => {
-      const result = applyProposeChange({
+    it('omits reason line when reasoning is not provided', async () => {
+      const result = await applyProposeChange({
         text: 'Hello world.',
         oldText: 'world',
         newText: 'earth',
@@ -93,13 +93,13 @@ describe('applyProposeChange', () => {
   });
 
   describe('footnote placement with existing footnotes', () => {
-    it('appends new footnote after last existing footnote block', () => {
+    it('appends new footnote after last existing footnote block', async () => {
       const text = `Some text with {++an insertion++}[^ct-1] in it.
 
 [^ct-1]: @alice | 2026-02-10 | ins | proposed
     reason: Added for clarity`;
 
-      const result = applyProposeChange({
+      const result = await applyProposeChange({
         text,
         oldText: 'Some',
         newText: 'The',
@@ -112,7 +112,7 @@ describe('applyProposeChange', () => {
       );
     });
 
-    it('ignores footnote definitions inside fenced code blocks and appends at end', () => {
+    it('ignores footnote definitions inside fenced code blocks and appends at end', async () => {
       const text = `## Example
 
 \`\`\`markdown
@@ -124,7 +124,7 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
 
 ## More content`;
 
-      const result = applyProposeChange({
+      const result = await applyProposeChange({
         text,
         oldText: 'More content',
         newText: 'Further content',
@@ -147,8 +147,8 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
   });
 
   describe('error cases', () => {
-    it('throws when oldText is not found in text', () => {
-      expect(() =>
+    it('throws when oldText is not found in text', async () => {
+      await expect(async () =>
         applyProposeChange({
           text: 'Hello world.',
           oldText: 'xyz not here',
@@ -156,11 +156,11 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
         })
-      ).toThrow(/xyz not here/);
+      ).rejects.toThrow(/xyz not here/);
     });
 
-    it('throws when oldText is found multiple times', () => {
-      expect(() =>
+    it('throws when oldText is found multiple times', async () => {
+      await expect(async () =>
         applyProposeChange({
           text: 'the cat and the dog',
           oldText: 'the',
@@ -168,11 +168,11 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
         })
-      ).toThrow(/ambiguous|multiple|context/i);
+      ).rejects.toThrow(/ambiguous|multiple|context/i);
     });
 
-    it('throws when both oldText and newText are empty', () => {
-      expect(() =>
+    it('throws when both oldText and newText are empty', async () => {
+      await expect(async () =>
         applyProposeChange({
           text: 'Hello world.',
           oldText: '',
@@ -180,11 +180,11 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
         })
-      ).toThrow();
+      ).rejects.toThrow();
     });
 
-    it('throws when insertion has no insertAfter anchor', () => {
-      expect(() =>
+    it('throws when insertion has no insertAfter anchor', async () => {
+      await expect(async () =>
         applyProposeChange({
           text: 'Hello world.',
           oldText: '',
@@ -192,7 +192,7 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
           changeId: 'ct-1',
           author: 'ai:claude-opus-4.6',
         })
-      ).toThrow(/insertAfter/i);
+      ).rejects.toThrow(/insertAfter/i);
     });
   });
 });
@@ -283,41 +283,41 @@ describe('replaceUnique with normalization', () => {
 });
 
 describe('applyProposeChange without confusable matching', () => {
-  it('does not match smart quotes against ASCII (no confusables)', () => {
+  it('does not match smart quotes against ASCII (no confusables)', async () => {
     const text = 'The API uses \u201Csmart quotes\u201D for strings.';
     // Without confusables, ASCII double quotes don't match smart quotes.
-    expect(() => applyProposeChange({
+    await expect(async () => applyProposeChange({
       text,
       oldText: '"smart quotes"',  // agent uses ASCII
       newText: '"regular quotes"',
       changeId: 'ct-1',
       author: 'ai:claude-opus-4.6',
-    })).toThrow(/not found/i);
+    })).rejects.toThrow(/not found/i);
   });
 
-  it('does not match smart apostrophe against ASCII (no confusables)', () => {
+  it('does not match smart apostrophe against ASCII (no confusables)', async () => {
     const text = 'Remove Sublime\u2019s text here.';
     // Without confusables, ASCII apostrophe doesn't match smart quote.
-    expect(() => applyProposeChange({
+    await expect(async () => applyProposeChange({
       text,
       oldText: "Sublime's text ",  // agent uses ASCII apostrophe
       newText: '',
       changeId: 'ct-1',
       author: 'ai:claude-opus-4.6',
-    })).toThrow(/not found/i);
+    })).rejects.toThrow(/not found/i);
   });
 
-  it('insertion anchor does not match smart quotes against ASCII (no confusables)', () => {
+  it('insertion anchor does not match smart quotes against ASCII (no confusables)', async () => {
     const text = 'After Sublime\u2019s intro, the content continues.';
     // Without confusables, insertion anchor with ASCII quote won't match.
-    expect(() => applyProposeChange({
+    await expect(async () => applyProposeChange({
       text,
       oldText: '',
       newText: ' INSERTED',
       changeId: 'ct-1',
       author: 'ai:claude-opus-4.6',
       insertAfter: "Sublime's intro",  // ASCII quote
-    })).toThrow(/insertAfter anchor not found/i);
+    })).rejects.toThrow(/insertAfter anchor not found/i);
   });
 });
 
@@ -438,9 +438,9 @@ describe('findUniqueMatch — whitespace-collapsed matching (Level 3)', () => {
 });
 
 describe('applyProposeChange with whitespace-collapsed matching', () => {
-  it('substitution works with different line wrapping', () => {
+  it('substitution works with different line wrapping', async () => {
     const text = 'ground truth; \nprojections derive current state.';
-    const result = applyProposeChange({
+    const result = await applyProposeChange({
       text,
       oldText: 'truth;\nprojections derive current state.',
       newText: 'truth; models predict future state.',
@@ -452,9 +452,9 @@ describe('applyProposeChange with whitespace-collapsed matching', () => {
     expect(result.modifiedText).toContain('{~~truth; \nprojections derive current state.~>truth; models predict future state.~~}');
   });
 
-  it('deletion works with different line wrapping', () => {
+  it('deletion works with different line wrapping', async () => {
     const text = 'remove this \ntext please.';
-    const result = applyProposeChange({
+    const result = await applyProposeChange({
       text,
       oldText: 'this\ntext',
       newText: '',
@@ -466,9 +466,9 @@ describe('applyProposeChange with whitespace-collapsed matching', () => {
     expect(result.modifiedText).toContain('{--this \ntext--}');
   });
 
-  it('insertion anchor matches with different whitespace', () => {
+  it('insertion anchor matches with different whitespace', async () => {
     const text = 'after this\nanchor we insert.';
-    const result = applyProposeChange({
+    const result = await applyProposeChange({
       text,
       oldText: '',
       newText: ' INSERTED',

@@ -18,8 +18,8 @@ export function composeGuide(config: ChangeTracksConfig): string {
   // --- Author section (always included, content varies) ---
   sections.push(composeAuthorSection(config));
 
-  // --- Annotation section (only if reasoning required) ---
-  if (config.protocol.reasoning === 'required') {
+  // --- Annotation section (only if reasoning required for agents) ---
+  if (config.reasoning?.propose?.agent === true) {
     sections.push(
       '**Annotations**: Required on every change. Append `{>>reason` to your `op` string, or include reasoning in your propose call.',
     );
@@ -64,7 +64,7 @@ function composeProtocolSection(
     '  Highlight: `{==text==}`  Comment: `{>>reason`',
   ];
 
-  if (config.protocol.reasoning !== 'required') {
+  if (config.reasoning?.propose?.agent !== true) {
     lines.push('  Annotate: `{~~old~>new~~}{>>reason`  (append {>> to any op)');
   } else {
     lines.push('  Annotate (required): `{~~old~>new~~}{>>reason`  (append {>> to any op)');

@@ -2983,7 +2983,7 @@ var require_compile = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve4.call(this, root, ref);
+      let _sch = resolve5.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -3010,7 +3010,7 @@ var require_compile = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve4(root, ref) {
+    function resolve5(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -3585,7 +3585,7 @@ var require_fast_uri = __commonJS({
       }
       return uri;
     }
-    function resolve4(baseURI, relativeURI, options) {
+    function resolve5(baseURI, relativeURI, options) {
       const schemelessOptions = options ? Object.assign({ scheme: "null" }, options) : { scheme: "null" };
       const resolved = resolveComponent(parse6(baseURI, schemelessOptions), parse6(relativeURI, schemelessOptions), schemelessOptions, true);
       schemelessOptions.skipEscape = true;
@@ -3812,7 +3812,7 @@ var require_fast_uri = __commonJS({
     var fastUri = {
       SCHEMES,
       normalize,
-      resolve: resolve4,
+      resolve: resolve5,
       resolveComponent,
       equal,
       serialize,
@@ -9603,7 +9603,7 @@ var require_compile2 = __commonJS({
       const schOrFunc = root.refs[ref];
       if (schOrFunc)
         return schOrFunc;
-      let _sch = resolve4.call(this, root, ref);
+      let _sch = resolve5.call(this, root, ref);
       if (_sch === void 0) {
         const schema = (_a = root.localRefs) === null || _a === void 0 ? void 0 : _a[ref];
         const { schemaId } = this.opts;
@@ -9630,7 +9630,7 @@ var require_compile2 = __commonJS({
     function sameSchemaEnv(s1, s2) {
       return s1.schema === s2.schema && s1.root === s2.root && s1.baseId === s2.baseId;
     }
-    function resolve4(root, ref) {
+    function resolve5(root, ref) {
       let sch;
       while (typeof (sch = this.refs[ref]) == "string")
         ref = sch;
@@ -12497,8 +12497,64 @@ var require_dist = __commonJS({
 });
 
 // ../../packages/core/dist-esm/config/index.js
+var DEFAULT_CONFIG;
 var init_config = __esm({
   "../../packages/core/dist-esm/config/index.js"() {
+    "use strict";
+    DEFAULT_CONFIG = {
+      tracking: {
+        include: ["**/*.md"],
+        exclude: ["node_modules/**", "dist/**"],
+        default: "tracked",
+        auto_header: true
+      },
+      author: {
+        default: "",
+        enforcement: "optional"
+      },
+      matching: { mode: "normalized" },
+      hashline: { enabled: false, auto_remap: true },
+      settlement: { auto_on_approve: false, auto_on_reject: false },
+      coherence: { threshold: 98 },
+      review: {
+        may_review: { human: true, agent: true },
+        self_acceptance: { human: true, agent: true },
+        cross_withdrawal: { human: false, agent: false },
+        blocking_labels: {}
+      },
+      reasoning: {
+        propose: { human: false, agent: true },
+        review: { human: false, agent: true }
+      },
+      policy: {
+        mode: "safety-net",
+        creation_tracking: "footnote",
+        default_view: "review",
+        view_policy: "suggest"
+      }
+    };
+  }
+});
+
+// ../../packages/core/dist-esm/config/review-permissions.js
+function reviewerType(author) {
+  const stripped = author.startsWith("@") ? author.slice(1) : author;
+  if (stripped.startsWith("ai:") || stripped.startsWith("ci:"))
+    return "agent";
+  return "human";
+}
+function canAccept(reviewer, changeAuthor, config2) {
+  const rt = reviewerType(reviewer);
+  if (!config2.review.may_review[rt]) {
+    return { allowed: false, reason: `${rt} participants cannot review in this project` };
+  }
+  if (!config2.review.self_acceptance[rt] && reviewer === changeAuthor) {
+    return { allowed: false, reason: `${rt} participants cannot accept their own changes in this project` };
+  }
+  return { allowed: true };
+}
+var init_review_permissions = __esm({
+  "../../packages/core/dist-esm/config/review-permissions.js"() {
     "use strict";
   }
 });
@@ -12552,6 +12608,26 @@ var init_timestamp = __esm({
 });
 
 // ../../packages/core/dist-esm/model/types.js
+function changeTypeToAbbrev(type) {
+  switch (type) {
+    case ChangeType.Insertion:
+      return "ins";
+    case ChangeType.Deletion:
+      return "del";
+    case ChangeType.Substitution:
+      return "sub";
+    case ChangeType.Highlight:
+      return "hig";
+    case ChangeType.Comment:
+      return "com";
+  }
+}
+function isGhostNode(change) {
+  return change.anchored === false && change.level >= 2 && !change.consumedBy;
+}
+function nodeStatus(node) {
+  return (node.metadata?.status ?? node.inlineMetadata?.status ?? node.status).toString().toLowerCase();
+}
 var ChangeType, ChangeStatus;
 var init_types = __esm({
   "../../packages/core/dist-esm/model/types.js"() {
@@ -12578,8 +12654,11 @@ var init_document = __esm({
     "use strict";
     init_types();
     VirtualDocument = class _VirtualDocument {
-      constructor(changes = []) {
+      constructor(changes = [], coherenceRate = 100, unresolvedDiagnostics = [], resolvedText) {
         this.changes = changes;
+        this.coherenceRate = coherenceRate;
+        this.unresolvedDiagnostics = unresolvedDiagnostics;
+        this.resolvedText = resolvedText;
       }
       /**
        * Create a VirtualDocument from a pending overlay only (no parse).
@@ -12602,9 +12681,13 @@ var init_document = __esm({
       getChanges() {
         return this.changes;
       }
+      /** Returns L2+ ghost nodes that failed anchor resolution. L0/L1 unanchored nodes are excluded. */
+      getUnresolvedChanges() {
+        return this.changes.filter((c) => isGhostNode(c));
+      }
       changeAtOffset(offset) {
         for (const change of this.changes) {
-          if (offset >= change.range.start && offset <= change.range.end) {
+          if (change.range.start === change.range.end ? offset === change.range.start : offset >= change.range.start && offset < change.range.end) {
             return change;
           }
         }
@@ -12651,30 +12734,6 @@ var init_tokens = __esm({
       TokenType2["CommentOpen"] = "{>>";
       TokenType2["CommentClose"] = "<<}";
     })(TokenType || (TokenType = {}));
-  }
-});
-
-// ../../packages/core/dist-esm/footnote-patterns.js
-function footnoteRefGlobal() {
-  return new RegExp(`\\[\\^${FOOTNOTE_ID_PATTERN}\\]`, "g");
-}
-function footnoteRefNumericGlobal() {
-  return new RegExp(`\\[\\^${FOOTNOTE_ID_NUMERIC_PATTERN}\\]`, "g");
-}
-var FOOTNOTE_ID_PATTERN, FOOTNOTE_ID_NUMERIC_PATTERN, FOOTNOTE_REF_ANCHORED, FOOTNOTE_DEF_START, FOOTNOTE_DEF_START_QUICK, FOOTNOTE_DEF_LENIENT, FOOTNOTE_DEF_STRICT, FOOTNOTE_DEF_STATUS, FOOTNOTE_DEF_STATUS_VALUE, FOOTNOTE_CONTINUATION;
-var init_footnote_patterns = __esm({
-  "../../packages/core/dist-esm/footnote-patterns.js"() {
-    "use strict";
-    FOOTNOTE_ID_PATTERN = "ct-\\d+(?:\\.\\d+)?";
-    FOOTNOTE_ID_NUMERIC_PATTERN = "ct-(\\d+)(?:\\.\\d+)?";
-    FOOTNOTE_REF_ANCHORED = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]`);
-    FOOTNOTE_DEF_START = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:`);
-    FOOTNOTE_DEF_START_QUICK = /^\[\^ct-\d+/;
-    FOOTNOTE_DEF_LENIENT = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s*@(\\S+)\\s*\\|\\s*(\\S+)\\s*\\|\\s*(\\S+)\\s*\\|\\s*(\\S+)`);
-    FOOTNOTE_DEF_STRICT = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s+(?:(@\\S+)\\s+\\|\\s+)?(\\S+)\\s+\\|\\s+(\\S+)\\s+\\|\\s+(\\S+)`);
-    FOOTNOTE_DEF_STATUS = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s+(?:@\\S+\\s+\\|\\s+)?\\S+\\s+\\|\\s+\\S+\\s+\\|\\s+(\\S+)`);
-    FOOTNOTE_DEF_STATUS_VALUE = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:\\s.*\\|\\s*(proposed|accepted|rejected)`);
-    FOOTNOTE_CONTINUATION = /^\s+\S/;
   }
 });
 
@@ -12848,6 +12907,87 @@ var init_code_zones = __esm({
   }
 });
 
+// ../../packages/core/dist-esm/footnote-patterns.js
+function footnoteRefGlobal() {
+  return new RegExp(`\\[\\^${FOOTNOTE_ID_PATTERN}\\]`, "g");
+}
+function footnoteRefNumericGlobal() {
+  return new RegExp(`\\[\\^${FOOTNOTE_ID_NUMERIC_PATTERN}\\]`, "g");
+}
+function isL3Format(text) {
+  const zones = findCodeZones(text);
+  const defRe = new RegExp(FOOTNOTE_DEF_START.source, "gm");
+  let defMatch;
+  let firstFootnote = -1;
+  while ((defMatch = defRe.exec(text)) !== null) {
+    if (!zones.some((z) => defMatch.index >= z.start && defMatch.index < z.end)) {
+      firstFootnote = defMatch.index;
+      break;
+    }
+  }
+  if (firstFootnote < 0)
+    return false;
+  const body = text.slice(0, firstFootnote);
+  const cmRe = /\{\+\+|\{--|\{~~|\{==|\{>>/g;
+  if (cmRe.test(body)) {
+    cmRe.lastIndex = 0;
+    let m;
+    while ((m = cmRe.exec(body)) !== null) {
+      if (!zones.some((z) => m.index >= z.start && m.index < z.end)) {
+        return false;
+      }
+    }
+  }
+  const footnoteSection = text.slice(firstFootnote);
+  return footnoteSection.split("\n").some((line) => FOOTNOTE_L3_EDIT_OP.test(line));
+}
+function unescapeCtxString(s) {
+  return s.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+}
+function splitBodyAndFootnotes(lines) {
+  const text = lines.join("\n");
+  const zones = findCodeZones(text);
+  let firstFootnoteLine = lines.length;
+  let charOffset = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const inCodeZone = zones.some((z) => charOffset >= z.start && charOffset < z.end);
+    if (!inCodeZone && FOOTNOTE_DEF_START.test(lines[i])) {
+      firstFootnoteLine = i;
+      break;
+    }
+    charOffset += lines[i].length + 1;
+  }
+  let bodyEnd = firstFootnoteLine;
+  while (bodyEnd > 0 && lines[bodyEnd - 1].trim() === "") {
+    bodyEnd--;
+  }
+  return {
+    bodyLines: lines.slice(0, bodyEnd),
+    footnoteLines: lines.slice(firstFootnoteLine),
+    bodyEndIndex: bodyEnd
+  };
+}
+var FOOTNOTE_ID_PATTERN, FOOTNOTE_ID_NUMERIC_PATTERN, FOOTNOTE_REF_ANCHORED, FOOTNOTE_DEF_START, FOOTNOTE_DEF_START_QUICK, FOOTNOTE_DEF_LENIENT, FOOTNOTE_DEF_STRICT, FOOTNOTE_DEF_STATUS, FOOTNOTE_DEF_STATUS_VALUE, FOOTNOTE_L3_EDIT_OP, CTX_RE, FOOTNOTE_CONTINUATION, FOOTNOTE_THREAD_REPLY;
+var init_footnote_patterns = __esm({
+  "../../packages/core/dist-esm/footnote-patterns.js"() {
+    "use strict";
+    init_code_zones();
+    FOOTNOTE_ID_PATTERN = "ct-\\d+(?:\\.\\d+)?";
+    FOOTNOTE_ID_NUMERIC_PATTERN = "ct-(\\d+)(?:\\.\\d+)?";
+    FOOTNOTE_REF_ANCHORED = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]`);
+    FOOTNOTE_DEF_START = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:`);
+    FOOTNOTE_DEF_START_QUICK = /^\[\^ct-\d+/;
+    FOOTNOTE_DEF_LENIENT = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s*@(\\S+)\\s*\\|\\s*(\\S+)\\s*\\|\\s*(\\S+)\\s*\\|\\s*(\\S+)`);
+    FOOTNOTE_DEF_STRICT = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s+(?:(@\\S+)\\s+\\|\\s+)?(\\S+)\\s+\\|\\s+(\\S+)\\s+\\|\\s+(\\S+)`);
+    FOOTNOTE_DEF_STATUS = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s+(?:@\\S+\\s+\\|\\s+)?\\S+\\s+\\|\\s+\\S+\\s+\\|\\s+(\\S+)`);
+    FOOTNOTE_DEF_STATUS_VALUE = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:\\s.*\\|\\s*(proposed|accepted|rejected)`);
+    FOOTNOTE_L3_EDIT_OP = /^ {4}(\d+):([0-9a-fA-F]{2,}) (.*)/;
+    CTX_RE = /@ctx:"((?:[^"\\]|\\.)*)"\|\|"((?:[^"\\]|\\.)*)"/;
+    FOOTNOTE_CONTINUATION = /^\s+\S/;
+    FOOTNOTE_THREAD_REPLY = /^\s+@\S+\s+\d{4}-\d{2}-\d{2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?Z?)?:/;
+  }
+});
+
 // ../../packages/core/dist-esm/operations/footnote-generator.js
 function generateFootnoteDefinition(id, type, author, date3) {
   const d = date3 ?? nowTimestamp().date;
@@ -12855,6 +12995,70 @@ function generateFootnoteDefinition(id, type, author, date3) {
   return `
 
 [^${id}]: ${authorPart}${d} | ${type} | proposed`;
+}
+function buildEditOpFromParts(changeType, originalText, currentText) {
+  switch (changeType) {
+    case "insertion":
+      return `{++${currentText}++}`;
+    case "deletion":
+      return `{--${originalText}--}`;
+    case "highlight":
+      return `{==${originalText}==}`;
+    case "comment":
+      return `{>>${originalText}<<}`;
+    default:
+      return `{~~${originalText}~>${currentText}~~}`;
+  }
+}
+function formatL3EditOpLine(lineNumber, hash, editOp) {
+  return `    ${lineNumber}:${hash} ${editOp}`;
+}
+function buildContextualL3EditOp(params) {
+  const { changeType, originalText, currentText, lineContent, lineNumber, hash, column, anchorLen } = params;
+  const rawOp = buildEditOpFromParts(CHANGE_TYPE_KEY[changeType], originalText, currentText);
+  if (!lineContent) {
+    return formatL3EditOpLine(lineNumber, hash, rawOp);
+  }
+  const clampedCol = Math.max(0, Math.min(column, lineContent.length));
+  const clampedEnd = Math.max(clampedCol, Math.min(clampedCol + anchorLen, lineContent.length));
+  let spanStart = clampedCol;
+  let spanEnd = clampedEnd;
+  let expandLeft = false;
+  let unique = false;
+  while (!unique) {
+    if (!expandLeft) {
+      if (spanEnd < lineContent.length)
+        spanEnd++;
+      expandLeft = true;
+    } else {
+      if (spanStart > 0)
+        spanStart--;
+      expandLeft = false;
+    }
+    const candidate = lineContent.slice(spanStart, spanEnd);
+    const first = lineContent.indexOf(candidate);
+    const second = lineContent.indexOf(candidate, first + 1);
+    unique = second === -1;
+    if (spanStart === 0 && spanEnd === lineContent.length) {
+      unique = true;
+    }
+  }
+  const preSnapStart = spanStart;
+  const preSnapEnd = spanEnd;
+  while (spanEnd < lineContent.length && lineContent[spanEnd] !== " ")
+    spanEnd++;
+  while (spanStart > 0 && lineContent[spanStart - 1] !== " ")
+    spanStart--;
+  const snapped = lineContent.slice(spanStart, spanEnd);
+  const snapFirst = lineContent.indexOf(snapped);
+  const snapSecond = lineContent.indexOf(snapped, snapFirst + 1);
+  if (snapSecond !== -1) {
+    spanStart = preSnapStart;
+    spanEnd = preSnapEnd;
+  }
+  const contextBefore = lineContent.slice(spanStart, clampedCol);
+  const contextAfter = lineContent.slice(clampedEnd, spanEnd);
+  return `    ${lineNumber}:${hash} ${contextBefore}${rawOp}${contextAfter}`;
 }
 function scanMaxCtId(text) {
   const pattern = footnoteRefNumericGlobal();
@@ -12868,11 +13072,20 @@ function scanMaxCtId(text) {
   }
   return max;
 }
+var CHANGE_TYPE_KEY;
 var init_footnote_generator = __esm({
   "../../packages/core/dist-esm/operations/footnote-generator.js"() {
     "use strict";
     init_footnote_patterns();
     init_timestamp();
+    init_types();
+    CHANGE_TYPE_KEY = {
+      [ChangeType.Insertion]: "insertion",
+      [ChangeType.Deletion]: "deletion",
+      [ChangeType.Substitution]: "substitution",
+      [ChangeType.Highlight]: "highlight",
+      [ChangeType.Comment]: "comment"
+    };
   }
 });
 
@@ -12896,6 +13109,29 @@ function parseInlineMetadata(raw) {
     }
   }
   return result;
+}
+function applyImageExtraMetadata(def, metadata) {
+  if (!def.extraMetadata)
+    return;
+  const dimStr = def.extraMetadata["image-dimensions"];
+  if (dimStr) {
+    const dimMatch = dimStr.match(/^([\d.]+)in\s*x\s*([\d.]+)in$/);
+    if (dimMatch) {
+      metadata.imageDimensions = {
+        widthIn: parseFloat(dimMatch[1]),
+        heightIn: parseFloat(dimMatch[2])
+      };
+    }
+  }
+  const imageMeta = {};
+  for (const [key, value] of Object.entries(def.extraMetadata)) {
+    if (key.startsWith("image-") && key !== "image-dimensions") {
+      imageMeta[key] = value;
+    }
+  }
+  if (Object.keys(imageMeta).length > 0) {
+    metadata.imageMetadata = imageMeta;
+  }
 }
 var CriticMarkupParser;
 var init_parser = __esm({
@@ -13182,11 +13418,18 @@ var init_parser = __esm({
           searchStart = firstDef + 1;
         }
         const lines = text.substring(searchStart).split(/\r?\n/);
+        let lineOffset2 = 0;
+        for (let k = 0; k < searchStart; k++) {
+          if (text.charCodeAt(k) === 10)
+            lineOffset2++;
+        }
         let currentId = null;
         let currentDef = null;
         let lastDiscussionComment = null;
         let inRevisions = false;
-        for (const line of lines) {
+        for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+          const line = lines[lineIdx];
+          const absLine = lineIdx + lineOffset2;
           const defMatch = line.match(_CriticMarkupParser.FOOTNOTE_DEF);
           if (defMatch) {
             currentId = defMatch[1];
@@ -13194,7 +13437,10 @@ var init_parser = __esm({
               author: defMatch[2],
               date: defMatch[3],
               type: defMatch[4],
-              status: defMatch[5]
+              status: defMatch[5],
+              startLine: absLine,
+              endLine: absLine,
+              replyCount: 0
             };
             map.set(currentId, currentDef);
             lastDiscussionComment = null;
@@ -13214,6 +13460,7 @@ var init_parser = __esm({
             inRevisions = false;
             continue;
           }
+          currentDef.endLine = absLine;
           const rawIndent = line.length - line.replace(/^[\t ]+/, "").length;
           const trimmed = line.trim();
           if (trimmed === "revisions:") {
@@ -13326,10 +13573,19 @@ var init_parser = __esm({
               currentDef.discussion = [];
             currentDef.discussion.push(comment);
             lastDiscussionComment = comment;
+            currentDef.replyCount = (currentDef.replyCount ?? 0) + 1;
             continue;
           }
           if (lastDiscussionComment) {
             lastDiscussionComment.text += "\n" + trimmed;
+            continue;
+          }
+          const kvMatch = trimmed.match(/^([\w-]+):\s+(.*)/);
+          if (kvMatch) {
+            if (!currentDef.extraMetadata)
+              currentDef.extraMetadata = {};
+            currentDef.extraMetadata[kvMatch[1]] = kvMatch[2];
+            lastDiscussionComment = null;
             continue;
           }
         }
@@ -13376,6 +13632,11 @@ var init_parser = __esm({
           if (def.resolution) {
             node.metadata.resolution = def.resolution;
           }
+          applyImageExtraMetadata(def, node.metadata);
+          if (def.startLine !== void 0) {
+            node.footnoteLineRange = { startLine: def.startLine, endLine: def.endLine ?? def.startLine };
+          }
+          node.replyCount = def.replyCount ?? 0;
         }
         if (settledRefs) {
           const claimedIds = new Set(changes.map((c) => c.id));
@@ -13433,6 +13694,11 @@ var init_parser = __esm({
               node.metadata.discussion = def.discussion;
             if (def.resolution)
               node.metadata.resolution = def.resolution;
+            applyImageExtraMetadata(def, node.metadata);
+            if (def.startLine !== void 0) {
+              node.footnoteLineRange = { startLine: def.startLine, endLine: def.endLine ?? def.startLine };
+            }
+            node.replyCount = def.replyCount ?? 0;
             changes.push(node);
           }
           changes.sort((a, b) => a.range.start - b.range.start);
@@ -13504,11 +13770,9 @@ var init_parser = __esm({
 
 // ../../packages/core/dist-esm/footnote-utils.js
 function countFootnoteHeadersWithStatus(content, status) {
-  const lines = content.split("\n");
   let count = 0;
-  for (const line of lines) {
-    const m = line.match(FOOTNOTE_HEADER_STATUS_RE);
-    if (m && m[1] === status)
+  for (const s of extractFootnoteStatuses(content).values()) {
+    if (s === status)
       count++;
   }
   return count;
@@ -13605,16 +13869,69 @@ function findChildFootnoteIds(lines, parentId) {
   }
   return children;
 }
-function resolveChangeById(fileContent, changeId) {
-  const lines = fileContent.split("\n");
-  const footnoteBlock = findFootnoteBlock(lines, changeId);
-  const refPattern = `[^${changeId}]`;
-  const refIndex = fileContent.indexOf(refPattern);
-  const inlineRefOffset = refIndex !== -1 && fileContent[refIndex + refPattern.length] !== ":" ? refIndex : null;
-  if (!footnoteBlock && inlineRefOffset === null) {
-    return null;
+function findFootnoteBlockStart(lines) {
+  let lastDefIdx = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (FOOTNOTE_DEF_START.test(lines[i])) {
+      lastDefIdx = i;
+      break;
+    }
   }
-  return { footnoteBlock, inlineRefOffset };
+  if (lastDefIdx === -1) {
+    return lines.length;
+  }
+  let candidate = lastDefIdx;
+  while (candidate >= 0) {
+    let j = candidate + 1;
+    let isTerminal2 = true;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
+        j++;
+      } else if (line.trim() === "") {
+        j++;
+      } else {
+        isTerminal2 = false;
+        break;
+      }
+    }
+    if (isTerminal2) {
+      lastDefIdx = candidate;
+      break;
+    }
+    candidate--;
+    while (candidate >= 0 && !FOOTNOTE_DEF_START.test(lines[candidate])) {
+      candidate--;
+    }
+  }
+  if (candidate < 0) {
+    return lines.length;
+  }
+  let blockStart = lastDefIdx;
+  for (let i = lastDefIdx - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
+      blockStart = i;
+    } else if (line.trim() === "") {
+      let hasFootnoteBefore = false;
+      for (let k = i - 1; k >= 0; k--) {
+        if (lines[k].trim() === "")
+          continue;
+        if (FOOTNOTE_DEF_START.test(lines[k]) || FOOTNOTE_CONTINUATION.test(lines[k])) {
+          hasFootnoteBefore = true;
+        }
+        break;
+      }
+      if (hasFootnoteBefore) {
+        blockStart = i;
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+  return blockStart;
 }
 function isApprovalOrResolutionLine(trimmed) {
   return trimmed.startsWith("approved:") || trimmed.startsWith("rejected:") || trimmed.startsWith("request-changes:") || trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
@@ -13622,11 +13939,23 @@ function isApprovalOrResolutionLine(trimmed) {
 function isResolutionLine(trimmed) {
   return trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
 }
-var FOOTNOTE_HEADER_STATUS_RE;
+function extractFootnoteStatuses(text) {
+  const statuses = /* @__PURE__ */ new Map();
+  const lines = text.split("\n");
+  for (const line of lines) {
+    const m = FOOTNOTE_ID_AND_STATUS_RE.exec(line);
+    if (m) {
+      statuses.set(m[1], m[2].toLowerCase());
+    }
+  }
+  return statuses;
+}
+var FOOTNOTE_ID_AND_STATUS_RE;
 var init_footnote_utils = __esm({
   "../../packages/core/dist-esm/footnote-utils.js"() {
     "use strict";
-    FOOTNOTE_HEADER_STATUS_RE = /^\[\^ct-\d+(?:\.\d+)?\]:.*\|\s*(\S+)\s*$/;
+    init_footnote_patterns();
+    FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(ct-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
   }
 });
 
@@ -13662,6 +13991,25 @@ function computeRejectParts(change) {
     case ChangeType.Comment:
       return { offset: change.range.start, length: rangeLength, text: "", refId: "" };
   }
+}
+function computeReject(change) {
+  if (change.range.start === change.contentRange.start && change.range.end === change.contentRange.end) {
+    switch (change.type) {
+      case ChangeType.Insertion:
+        return { offset: change.range.start, length: change.range.end - change.range.start, newText: "" };
+      case ChangeType.Deletion:
+        return { offset: change.range.start, length: 0, newText: change.originalText ?? "" };
+      case ChangeType.Substitution:
+        return { offset: change.range.start, length: change.range.end - change.range.start, newText: change.originalText ?? "" };
+      case ChangeType.Highlight:
+        return { offset: change.range.start, length: 0, newText: "" };
+      case ChangeType.Comment:
+        return { offset: change.range.start, length: 0, newText: "" };
+    }
+  }
+  const parts = computeRejectParts(change);
+  const ref = parts.refId ? `[^${parts.refId}]` : "";
+  return { offset: parts.offset, length: parts.length, newText: parts.text + ref };
 }
 var init_accept_reject = __esm({
   "../../packages/core/dist-esm/operations/accept-reject.js"() {
@@ -13739,21 +14087,34 @@ function decisionToKeyword(decision) {
       return "rejected:";
     case "request_changes":
       return "request-changes:";
+    case "withdraw":
+      return "withdrew:";
+    default: {
+      const _exhaustive = decision;
+      return _exhaustive;
+    }
   }
 }
-function changeTypeToAbbrev(type) {
-  switch (type) {
-    case ChangeType.Insertion:
-      return "ins";
-    case ChangeType.Deletion:
-      return "del";
-    case ChangeType.Substitution:
-      return "sub";
-    case ChangeType.Highlight:
-      return "hig";
-    case ChangeType.Comment:
-      return "com";
+function checkBlocks(lines, block) {
+  const blockers = [];
+  const resolved = /* @__PURE__ */ new Set();
+  for (let i = block.headerLine + 1; i <= block.blockEnd; i++) {
+    const line = lines[i].trim();
+    const colonIdx = line.indexOf(":");
+    if (colonIdx < 1)
+      continue;
+    const keyword = line.slice(0, colonIdx);
+    const authorMatch = line.slice(colonIdx + 1).match(/^\s*@(\S+)/);
+    if (!authorMatch)
+      continue;
+    const author = "@" + authorMatch[1];
+    if (keyword === "blocked")
+      blockers.push(author);
+    else if (keyword === "withdrew" || keyword === "approved")
+      resolved.add(author);
   }
+  const unresolvedBlockers = blockers.filter((b) => !resolved.has(b));
+  return { blocked: unresolvedBlockers.length > 0, blockers: unresolvedBlockers };
 }
 function promoteLevel0ToLevel2(fileContent, changeId, author) {
   const parser = new CriticMarkupParser();
@@ -13773,7 +14134,7 @@ function promoteLevel0ToLevel2(fileContent, changeId, author) {
   }
   return result.text;
 }
-function applyReview(fileContent, changeId, decision, reasoning, author) {
+function applyReview(fileContent, changeId, decision, reasoning, author, config2) {
   let lines = fileContent.split("\n");
   let block = findFootnoteBlock(lines, changeId);
   if (!block) {
@@ -13795,6 +14156,12 @@ function applyReview(fileContent, changeId, decision, reasoning, author) {
     };
   }
   const currentStatus = header.status;
+  if (config2 && (decision === "approve" || decision === "reject")) {
+    const acceptCheck = canAccept(author, header.author, config2);
+    if (!acceptCheck.allowed) {
+      return { error: acceptCheck.reason };
+    }
+  }
   if (decision === "approve" && currentStatus === "accepted") {
     return {
       updatedContent: fileContent,
@@ -13806,6 +14173,12 @@ function applyReview(fileContent, changeId, decision, reasoning, author) {
       updatedContent: fileContent,
       result: { change_id: changeId, decision, status_updated: false, reason: "already_rejected" }
     };
+  }
+  if (decision === "approve") {
+    const blockResult = checkBlocks(lines, block);
+    if (blockResult.blocked) {
+      return { error: `Acceptance blocked by unresolved request-changes from ${blockResult.blockers.join(", ")}` };
+    }
   }
   const keyword = decisionToKeyword(decision);
   const ts = nowTimestamp();
@@ -13822,6 +14195,9 @@ function applyReview(fileContent, changeId, decision, reasoning, author) {
     statusUpdated = true;
   } else if (decision === "reject" && currentStatus === "accepted") {
     lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*accepted\s*$/, "| rejected");
+    statusUpdated = true;
+  } else if (decision === "approve" && currentStatus === "rejected") {
+    lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*rejected\s*$/, "| accepted");
     statusUpdated = true;
   } else if (decision === "request_changes") {
     reason = "request_changes_no_status_change";
@@ -13872,7 +14248,8 @@ var init_apply_review = __esm({
     init_footnote_utils();
     init_timestamp();
     init_ensure_l2();
-    VALID_DECISIONS = ["approve", "reject", "request_changes"];
+    init_review_permissions();
+    VALID_DECISIONS = ["approve", "reject", "request_changes", "withdraw"];
   }
 });
 
@@ -13920,21 +14297,25 @@ var init_xxhash_wasm = __esm({
 });
 
 // ../../packages/core/dist-esm/hashline.js
+function getXXHash() {
+  return globalThis[HASHLINE_KEY] ?? null;
+}
 async function initHashline() {
-  if (!xxhash) {
-    xxhash = await e();
+  if (!getXXHash()) {
+    globalThis[HASHLINE_KEY] = await e();
   }
 }
 function stripForHash(line) {
   return line.replace(/\r$/, "").replace(/\[\^ct-[\w.]+\]/g, "").replace(/\s+/g, "");
 }
 function computeLineHash(idx, line, allLines) {
-  if (!xxhash) {
-    throw new Error('xxhash-wasm not initialized. Call `await initHashline()` or `await ensureHashlineReady()` before using hashline functions. If this occurs in tests, add `deps: { inline: ["@changetracks/core"] }` to vitest.config.ts to prevent duplicate module instances.');
+  const h = getXXHash();
+  if (!h) {
+    throw new Error("xxhash-wasm not initialized. Call `await initHashline()` or `await ensureHashlineReady()` before using hashline functions.");
   }
   const stripped = stripForHash(line);
   if (stripped.length > 0 || !allLines) {
-    return DICT[xxhash.h32Raw(encoder.encode(stripped)) % HASH_MOD];
+    return DICT[h.h32Raw(encoder.encode(stripped)) % HASH_MOD];
   }
   let prevNonBlank = "";
   let distFromPrev = 0;
@@ -13957,7 +14338,7 @@ function computeLineHash(idx, line, allLines) {
     }
   }
   const contextKey = prevNonBlank + "\0" + nextNonBlank + "\0" + distFromPrev;
-  return DICT[xxhash.h32Raw(encoder.encode(contextKey)) % HASH_MOD];
+  return DICT[h.h32Raw(encoder.encode(contextKey)) % HASH_MOD];
 }
 function validateLineRef(ref, fileLines) {
   if (ref.line < 1 || ref.line > fileLines.length) {
@@ -13968,7 +14349,7 @@ function validateLineRef(ref, fileLines) {
     throw new HashlineMismatchError([{ line: ref.line, expected: ref.hash, actual: actualHash }], fileLines);
   }
 }
-var HASH_LEN, RADIX, HASH_MOD, DICT, encoder, xxhash, HashlineMismatchError;
+var HASH_LEN, RADIX, HASH_MOD, DICT, encoder, HASHLINE_KEY, HashlineMismatchError;
 var init_hashline = __esm({
   "../../packages/core/dist-esm/hashline.js"() {
     "use strict";
@@ -13978,7 +14359,7 @@ var init_hashline = __esm({
     HASH_MOD = RADIX ** HASH_LEN;
     DICT = Array.from({ length: HASH_MOD }, (_, i) => i.toString(RADIX).padStart(HASH_LEN, "0"));
     encoder = new TextEncoder();
-    xxhash = null;
+    HASHLINE_KEY = "__changetracks_xxhash__";
     HashlineMismatchError = class extends Error {
       constructor(mismatches, fileLines) {
         const CONTEXT = 2;
@@ -14024,266 +14405,182 @@ var init_hashline = __esm({
   }
 });
 
-// ../../packages/core/dist-esm/operations/settled-text.js
-function computeSettledReplace(change) {
-  const rangeLength = change.range.end - change.range.start;
-  if (change.type === ChangeType.Comment) {
-    return { offset: change.range.start, length: rangeLength, newText: "" };
+// ../../packages/core/dist-esm/op-parser.js
+function splitReasoning(op) {
+  const idx = op.lastIndexOf("{>>");
+  if (idx <= 0)
+    return [op, void 0];
+  const afterOpen = op.slice(idx + 3);
+  const closeIdx = afterOpen.indexOf("<<}");
+  if (closeIdx !== -1) {
+    const afterClose = afterOpen.slice(closeIdx + 3).trim();
+    if (afterClose.length > 0) {
+      return [op, void 0];
+    }
+    const reasoning2 = afterOpen.slice(0, closeIdx).trimStart();
+    const editPart2 = op.slice(0, idx).trimEnd();
+    if (reasoning2 === "")
+      return [op, void 0];
+    return [editPart2, reasoning2];
   }
-  if (change.type === ChangeType.Highlight) {
-    return { offset: change.range.start, length: rangeLength, newText: change.originalText ?? "" };
-  }
-  switch (change.type) {
-    case ChangeType.Insertion:
-      return { offset: change.range.start, length: rangeLength, newText: change.modifiedText ?? "" };
-    case ChangeType.Deletion:
-      return { offset: change.range.start, length: rangeLength, newText: "" };
-    case ChangeType.Substitution:
-      return { offset: change.range.start, length: rangeLength, newText: change.modifiedText ?? "" };
-  }
-  throw new Error(`Unknown ChangeType: ${change.type}`);
+  const editPart = op.slice(0, idx).trimEnd();
+  const reasoning = afterOpen.trimStart();
+  if (reasoning === "")
+    return [op, void 0];
+  return [editPart, reasoning];
 }
-function stripFootnoteDefinitions(text, zones) {
-  const lines = text.split("\n");
-  const kept = [];
-  let inFootnote = false;
-  let foundFootnote = false;
-  let charOffset = 0;
-  for (const line of lines) {
-    const inCodeZone = zones.some((z) => charOffset >= z.start && charOffset < z.end);
-    if (!inCodeZone && FOOTNOTE_DEF_START.test(line)) {
-      inFootnote = true;
-      foundFootnote = true;
-      while (kept.length > 0 && kept[kept.length - 1].trim() === "") {
-        kept.pop();
-      }
-      charOffset += line.length + 1;
+function extractBetween(text, opener, closer) {
+  if (!text.startsWith(opener))
+    return null;
+  const closerIdx = text.lastIndexOf(closer);
+  if (closerIdx < opener.length)
+    return null;
+  return text.slice(opener.length, closerIdx);
+}
+function parseOp(op) {
+  if (op === "") {
+    throw new Error("Op string is empty \u2014 nothing to parse.");
+  }
+  if (op.startsWith("{>>")) {
+    let reasoning2 = op.slice(3);
+    if (reasoning2.endsWith("<<}")) {
+      reasoning2 = reasoning2.slice(0, -3);
+    }
+    return {
+      type: "comment",
+      oldText: "",
+      newText: "",
+      reasoning: reasoning2
+    };
+  }
+  const [withoutReasoning, reasoning] = splitReasoning(op);
+  const insContent = extractBetween(withoutReasoning, "{++", "++}");
+  if (insContent !== null) {
+    return {
+      type: "ins",
+      oldText: "",
+      newText: insContent,
+      reasoning
+    };
+  }
+  const delContent = extractBetween(withoutReasoning, "{--", "--}");
+  if (delContent !== null) {
+    return {
+      type: "del",
+      oldText: delContent,
+      newText: "",
+      reasoning
+    };
+  }
+  const subContent = extractBetween(withoutReasoning, "{~~", "~~}");
+  if (subContent !== null) {
+    const arrowIdx = subContent.indexOf("~>");
+    if (arrowIdx === -1) {
+      throw new Error(`Cannot parse op: "${op}". Substitution {~~...~~} requires ~> separator between old and new text.`);
+    }
+    const oldText = subContent.slice(0, arrowIdx);
+    const newText = subContent.slice(arrowIdx + 2);
+    return {
+      type: "sub",
+      oldText,
+      newText,
+      reasoning
+    };
+  }
+  const hlContent = extractBetween(withoutReasoning, "{==", "==}");
+  if (hlContent !== null) {
+    return {
+      type: "highlight",
+      oldText: hlContent,
+      newText: "",
+      reasoning
+    };
+  }
+  throw new Error(`Cannot parse op: "${op}". Expected CriticMarkup syntax: {++text++} (ins), {--text--} (del), {~~old~>new~~} (sub), {==text==} (highlight), {>>comment.`);
+}
+var init_op_parser = __esm({
+  "../../packages/core/dist-esm/op-parser.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/hashline-cleanup.js
+function stripHashlinePrefixes(lines) {
+  if (lines.length === 0)
+    return lines;
+  const nonEmptyLines = lines.filter((l) => l.length > 0);
+  if (nonEmptyLines.length === 0)
+    return lines;
+  const hashlineCount = nonEmptyLines.filter((l) => HASHLINE_PREFIX.test(l)).length;
+  if (hashlineCount >= nonEmptyLines.length / 2) {
+    return lines.map((l) => l.replace(HASHLINE_PREFIX, ""));
+  }
+  const diffCount = nonEmptyLines.filter((l) => DIFF_ADD_PREFIX.test(l)).length;
+  if (diffCount >= nonEmptyLines.length / 2) {
+    return lines.map((l) => l.replace(DIFF_ADD_PREFIX, ""));
+  }
+  return lines;
+}
+function relocateHashRef(ref, fileLines, computeHash) {
+  if (fileLines.length === 0)
+    return null;
+  const lineIdx = ref.line - 1;
+  if (lineIdx >= 0 && lineIdx < fileLines.length) {
+    const currentHash = computeHash(lineIdx, fileLines[lineIdx], fileLines);
+    if (currentHash.toLowerCase() === ref.hash.toLowerCase()) {
+      return null;
+    }
+  }
+  const hashToLine = /* @__PURE__ */ new Map();
+  const duplicateHashes = /* @__PURE__ */ new Set();
+  for (let i = 0; i < fileLines.length; i++) {
+    const h = computeHash(i, fileLines[i], fileLines).toLowerCase();
+    if (duplicateHashes.has(h))
       continue;
-    }
-    if (inFootnote) {
-      if (line.trim() === "" || /^[\t ]/.test(line)) {
-        charOffset += line.length + 1;
-        continue;
-      }
-      inFootnote = false;
-    }
-    kept.push(line);
-    charOffset += line.length + 1;
-  }
-  if (foundFootnote) {
-    while (kept.length > 0 && kept[kept.length - 1].trim() === "") {
-      kept.pop();
+    if (hashToLine.has(h)) {
+      duplicateHashes.add(h);
+      hashToLine.delete(h);
+    } else {
+      hashToLine.set(h, i + 1);
     }
   }
-  return kept.join("\n");
+  const targetHash = ref.hash.toLowerCase();
+  const newLine = hashToLine.get(targetHash);
+  if (newLine === void 0) {
+    return null;
+  }
+  return { relocated: true, newLine };
 }
-function stripInlineFootnoteRefs(text, zones) {
-  return text.replace(footnoteRefGlobal(), (match, offset) => {
-    if (zones.some((z) => offset >= z.start && offset < z.end)) {
-      return match;
-    }
-    return "";
-  });
+function equalsIgnoringWhitespace(a, b) {
+  return a.replace(/\s+/g, "") === b.replace(/\s+/g, "");
 }
-function computeSettledText(text, options) {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
-  const changes = doc.getChanges();
-  if (changes.length === 0) {
-    const zones2 = findCodeZones(text);
-    return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones2), zones2);
+function stripBoundaryEcho(fileLines, startLine, endLine, newLines) {
+  if (newLines.length === 0)
+    return newLines;
+  const originalSpan = endLine - startLine + 1;
+  if (newLines.length <= originalSpan)
+    return newLines;
+  let result = [...newLines];
+  const beforeIdx = startLine - 2;
+  if (beforeIdx >= 0 && result.length > 0) {
+    if (equalsIgnoringWhitespace(result[0], fileLines[beforeIdx])) {
+      result = result.slice(1);
+    }
   }
-  const edits = [...changes].sort((a, b) => b.range.start - a.range.start).map(computeSettledReplace);
-  let result = text;
-  for (const edit of edits) {
-    result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
+  const afterIdx = endLine;
+  if (afterIdx < fileLines.length && result.length > 0) {
+    if (equalsIgnoringWhitespace(result[result.length - 1], fileLines[afterIdx])) {
+      result = result.slice(0, -1);
+    }
   }
-  const zones = findCodeZones(result);
-  result = stripFootnoteDefinitions(result, zones);
-  result = stripInlineFootnoteRefs(result, zones);
   return result;
 }
-function findContainingCodeZone(offset, zones) {
-  for (const zone of zones) {
-    if (offset >= zone.start && offset < zone.end)
-      return zone;
-  }
-  return void 0;
-}
-function buildSegmentsWithZoneAwareness(text, parts, zones) {
-  const segments = [];
-  const deferredRefs = [];
-  let cursor = 0;
-  const lineBreaks = [];
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === "\n")
-      lineBreaks.push(i);
-  }
-  function offsetToLine(offset) {
-    let lo = 0;
-    let hi = lineBreaks.length;
-    while (lo < hi) {
-      const mid = lo + hi >> 1;
-      if (lineBreaks[mid] < offset)
-        lo = mid + 1;
-      else
-        hi = mid;
-    }
-    return lo;
-  }
-  for (const part of parts) {
-    if (part.offset > cursor) {
-      segments.push(text.slice(cursor, part.offset));
-    } else if (part.offset < cursor) {
-      continue;
-    }
-    const ref = part.refId ? `[^${part.refId}]` : "";
-    if (ref && findContainingCodeZone(part.offset, zones)) {
-      segments.push(part.text);
-      deferredRefs.push({ ref, origLineIndex: offsetToLine(part.offset) });
-    } else {
-      segments.push(part.text + ref);
-    }
-    cursor = part.offset + part.length;
-  }
-  if (cursor < text.length) {
-    segments.push(text.slice(cursor));
-  }
-  if (deferredRefs.length === 0) {
-    return segments.join("");
-  }
-  const result = segments.join("");
-  const lines = result.split("\n");
-  const refsByLine = /* @__PURE__ */ new Map();
-  for (const dr of deferredRefs) {
-    const existing = refsByLine.get(dr.origLineIndex) ?? [];
-    existing.push(dr.ref);
-    refsByLine.set(dr.origLineIndex, existing);
-  }
-  for (const [lineIdx, refs] of refsByLine) {
-    if (lineIdx < lines.length) {
-      lines[lineIdx] = lines[lineIdx] + refs.join("");
-    }
-  }
-  return lines.join("\n");
-}
-function settleAcceptedChangesOnly(text) {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text, { skipCodeBlocks: false });
-  const accepted = doc.getChanges().filter((c) => c.status === ChangeStatus.Accepted);
-  const settledIds = accepted.map((c) => c.id);
-  if (accepted.length === 0) {
-    return { settledContent: text, settledIds: [] };
-  }
-  const parts = [...accepted].sort((a, b) => a.range.start - b.range.start).map(computeAcceptParts);
-  const zones = findCodeZones(text);
-  const settledContent = buildSegmentsWithZoneAwareness(text, parts, zones);
-  return { settledContent, settledIds };
-}
-function settleRejectedChangesOnly(text) {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text, { skipCodeBlocks: false });
-  const rejected = doc.getChanges().filter((c) => c.status === ChangeStatus.Rejected);
-  const settledIds = rejected.map((c) => c.id);
-  if (rejected.length === 0) {
-    return { settledContent: text, settledIds: [] };
-  }
-  const parts = [...rejected].sort((a, b) => a.range.start - b.range.start).map(computeRejectParts);
-  const zones = findCodeZones(text);
-  const settledContent = buildSegmentsWithZoneAwareness(text, parts, zones);
-  return { settledContent, settledIds };
-}
-function computeSettledView(rawText) {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(rawText, { skipCodeBlocks: false });
-  const changes = doc.getChanges();
-  const edits = [...changes].sort((a, b) => a.range.start - b.range.start).map(computeSettledReplace);
-  const deltaTable = [];
-  let cumulativeDelta = 0;
-  for (const edit of edits) {
-    deltaTable.push({ rawOffset: edit.offset, delta: cumulativeDelta });
-    const oldLen = edit.length;
-    const newLen = edit.newText.length;
-    cumulativeDelta += newLen - oldLen;
-  }
-  const editsByOffset = new Map(edits.map((e2) => [e2.offset, e2]));
-  function settledOffsetToRawOffset(settledOffset) {
-    let delta = 0;
-    let rawConsumed = 0;
-    let settledConsumed = 0;
-    for (const entry of deltaTable) {
-      const rawGap = entry.rawOffset - rawConsumed;
-      if (settledOffset <= settledConsumed + rawGap) {
-        return rawConsumed + (settledOffset - settledConsumed);
-      }
-      settledConsumed += rawGap;
-      rawConsumed = entry.rawOffset;
-      delta = entry.delta;
-      const edit = editsByOffset.get(entry.rawOffset);
-      if (edit) {
-        const oldLen = edit.length;
-        const newLen = edit.newText.length;
-        if (settledOffset < settledConsumed + newLen) {
-          return rawConsumed;
-        }
-        settledConsumed += newLen;
-        rawConsumed += oldLen;
-      }
-    }
-    return rawConsumed + (settledOffset - settledConsumed);
-  }
-  const settledText = computeSettledText(rawText);
-  const rawLines = rawText.split("\n");
-  const rawLineStarts = [0];
-  for (let i = 0; i < rawLines.length - 1; i++) {
-    rawLineStarts.push(rawLineStarts[i] + rawLines[i].length + 1);
-  }
-  function rawOffsetToLineNum(offset) {
-    let lo = 0;
-    let hi = rawLineStarts.length - 1;
-    while (lo < hi) {
-      const mid = lo + hi + 1 >> 1;
-      if (rawLineStarts[mid] <= offset)
-        lo = mid;
-      else
-        hi = mid - 1;
-    }
-    return lo + 1;
-  }
-  const settledTextLines = settledText.split("\n");
-  const settledLines = [];
-  const settledToRaw = /* @__PURE__ */ new Map();
-  const rawToSettled = /* @__PURE__ */ new Map();
-  let settledCharOffset = 0;
-  for (let i = 0; i < settledTextLines.length; i++) {
-    const settledLineText = settledTextLines[i];
-    const settledLineNum = i + 1;
-    const rawOffset = settledOffsetToRawOffset(settledCharOffset);
-    const rawLineNum = rawOffsetToLineNum(rawOffset);
-    const hash = computeLineHash(settledLineNum - 1, settledLineText, settledTextLines);
-    settledLines.push({
-      settledLineNum,
-      rawLineNum,
-      text: settledLineText,
-      hash
-    });
-    settledToRaw.set(settledLineNum, rawLineNum);
-    if (!rawToSettled.has(rawLineNum)) {
-      rawToSettled.set(rawLineNum, settledLineNum);
-    }
-    settledCharOffset += settledLineText.length + 1;
-  }
-  return { lines: settledLines, settledToRaw, rawToSettled };
-}
-var init_settled_text = __esm({
-  "../../packages/core/dist-esm/operations/settled-text.js"() {
+var HASHLINE_PREFIX, DIFF_ADD_PREFIX;
+var init_hashline_cleanup = __esm({
+  "../../packages/core/dist-esm/hashline-cleanup.js"() {
     "use strict";
-    init_types();
-    init_parser();
-    init_accept_reject();
-    init_hashline();
-    init_footnote_patterns();
-    init_code_zones();
+    HASHLINE_PREFIX = /^\d+:[0-9a-zA-Z]{1,16}\|/;
+    DIFF_ADD_PREFIX = /^\+(?!\+)/;
   }
 });
 
@@ -14426,214 +14723,1183 @@ var init_text_normalizer = __esm({
   }
 });
 
-// ../../packages/core/dist-esm/hashline-cleanup.js
-function stripHashlinePrefixes(lines) {
-  if (lines.length === 0)
-    return lines;
-  const nonEmptyLines = lines.filter((l) => l.length > 0);
-  if (nonEmptyLines.length === 0)
-    return lines;
-  const hashlineCount = nonEmptyLines.filter((l) => HASHLINE_PREFIX.test(l)).length;
-  if (hashlineCount >= nonEmptyLines.length / 2) {
-    return lines.map((l) => l.replace(HASHLINE_PREFIX, ""));
+// ../../packages/core/dist-esm/operations/l2-to-l3.js
+function buildLineStarts(text) {
+  const starts = [0];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "\n")
+      starts.push(i + 1);
   }
-  const diffCount = nonEmptyLines.filter((l) => DIFF_ADD_PREFIX.test(l)).length;
-  if (diffCount >= nonEmptyLines.length / 2) {
-    return lines.map((l) => l.replace(DIFF_ADD_PREFIX, ""));
-  }
-  return lines;
+  return starts;
 }
-function relocateHashRef(ref, fileLines, computeHash) {
-  if (fileLines.length === 0)
-    return null;
-  const lineIdx = ref.line - 1;
-  if (lineIdx >= 0 && lineIdx < fileLines.length) {
-    const currentHash = computeHash(lineIdx, fileLines[lineIdx], fileLines);
-    if (currentHash.toLowerCase() === ref.hash.toLowerCase()) {
-      return null;
-    }
+function offsetToLineNumber(lineStarts, offset) {
+  let lo = 0;
+  let hi = lineStarts.length - 1;
+  while (lo < hi) {
+    const mid = lo + hi + 1 >> 1;
+    if (lineStarts[mid] <= offset)
+      lo = mid;
+    else
+      hi = mid - 1;
   }
-  const hashToLine = /* @__PURE__ */ new Map();
-  const duplicateHashes = /* @__PURE__ */ new Set();
-  for (let i = 0; i < fileLines.length; i++) {
-    const h = computeHash(i, fileLines[i], fileLines).toLowerCase();
-    if (duplicateHashes.has(h))
-      continue;
-    if (hashToLine.has(h)) {
-      duplicateHashes.add(h);
-      hashToLine.delete(h);
-    } else {
-      hashToLine.set(h, i + 1);
-    }
-  }
-  const targetHash = ref.hash.toLowerCase();
-  const newLine = hashToLine.get(targetHash);
-  if (newLine === void 0) {
-    return null;
-  }
-  return { relocated: true, newLine };
+  return lo + 1;
 }
-function equalsIgnoringWhitespace(a, b) {
-  return a.replace(/\s+/g, "") === b.replace(/\s+/g, "");
-}
-function stripBoundaryEcho(fileLines, startLine, endLine, newLines) {
-  if (newLines.length === 0)
-    return newLines;
-  const originalSpan = endLine - startLine + 1;
-  if (newLines.length <= originalSpan)
-    return newLines;
-  let result = [...newLines];
-  const beforeIdx = startLine - 2;
-  if (beforeIdx >= 0 && result.length > 0) {
-    if (equalsIgnoringWhitespace(result[0], fileLines[beforeIdx])) {
-      result = result.slice(1);
-    }
-  }
-  const afterIdx = endLine;
-  if (afterIdx < fileLines.length && result.length > 0) {
-    if (equalsIgnoringWhitespace(result[result.length - 1], fileLines[afterIdx])) {
-      result = result.slice(0, -1);
-    }
-  }
-  return result;
-}
-var HASHLINE_PREFIX, DIFF_ADD_PREFIX;
-var init_hashline_cleanup = __esm({
-  "../../packages/core/dist-esm/hashline-cleanup.js"() {
+var init_l2_to_l3 = __esm({
+  "../../packages/core/dist-esm/operations/l2-to-l3.js"() {
     "use strict";
-    HASHLINE_PREFIX = /^\d+:[0-9a-zA-Z]{1,16}\|/;
-    DIFF_ADD_PREFIX = /^\+(?!\+)/;
+    init_types();
+    init_parser();
+    init_hashline();
+    init_footnote_patterns();
+    init_footnote_generator();
   }
 });
 
-// ../../packages/core/dist-esm/footnote-parser.js
-function parseFootnotes(content) {
-  const lines = content.split("\n");
-  const footnotes = /* @__PURE__ */ new Map();
-  const blockStart = findFootnoteBlockStart(lines);
-  for (let i = blockStart; i < lines.length; i++) {
-    const match = lines[i].match(FOOTNOTE_DEF_LENIENT);
-    if (!match)
-      continue;
-    const info = {
-      id: match[1],
-      author: `@${match[2]}`,
-      date: match[3],
-      timestamp: parseTimestamp(match[3]),
-      type: match[4],
-      status: match[5],
-      reason: "",
-      replyCount: 0,
-      startLine: i,
-      endLine: i
-    };
-    let j = i + 1;
-    while (j < lines.length && (lines[j].match(/^\s+\S/) || lines[j].match(/^\s*$/))) {
-      if (lines[j].match(/^\s*$/)) {
-        let k = j + 1;
-        while (k < lines.length && lines[k].match(/^\s*$/))
-          k++;
-        if (k < lines.length && lines[k].match(/^\s+\S/)) {
-          j++;
-          continue;
-        }
-        break;
+// ../../packages/core/dist-esm/operations/scrub.js
+function stripLineHashPrefix(line) {
+  return line.replace(/^\s*\d+:[a-f0-9]+\s*/, "");
+}
+function isParticipating(op) {
+  return op.status !== "rejected" && op.type !== "highlight" && op.type !== "comment";
+}
+function extractOpTexts(opString) {
+  const ctxParsed = parseContextualEditOp(opString);
+  const parsed = parseOp(ctxParsed ? ctxParsed.opString : opString);
+  return { modifiedText: parsed.newText, originalText: parsed.oldText };
+}
+function searchInLineWindow(lines, targetIdx, searchText, maxDelta) {
+  for (let delta = 0; delta <= maxDelta; delta++) {
+    const deltas = delta === 0 ? [0] : [-delta, delta];
+    for (const d of deltas) {
+      const searchIdx = targetIdx + d;
+      if (searchIdx < 0 || searchIdx >= lines.length)
+        continue;
+      const match = tryFindUniqueMatch(lines[searchIdx], searchText);
+      if (match)
+        return { lineIdx: searchIdx, match };
+    }
+  }
+  return null;
+}
+function applySplice(body, op, offset, direction) {
+  if (direction === "apply") {
+    if (op.type === "insertion")
+      return body.slice(0, offset) + op.modifiedText + body.slice(offset);
+    if (op.type === "deletion")
+      return body.slice(0, offset) + body.slice(offset + op.originalText.length);
+    if (op.type === "substitution")
+      return body.slice(0, offset) + op.modifiedText + body.slice(offset + op.originalText.length);
+  } else {
+    if (op.type === "insertion")
+      return body.slice(0, offset) + body.slice(offset + op.modifiedText.length);
+    if (op.type === "deletion")
+      return body.slice(0, offset) + op.originalText + body.slice(offset);
+    if (op.type === "substitution")
+      return body.slice(0, offset) + op.originalText + body.slice(offset + op.modifiedText.length);
+  }
+  return body;
+}
+function buildSearchTarget(op, parsed) {
+  return op.type === "deletion" ? parsed.contextBefore + parsed.contextAfter : parsed.contextBefore + op.modifiedText + parsed.contextAfter;
+}
+function scrubBackward(body, operations) {
+  const positions = /* @__PURE__ */ new Map();
+  let currentBody = body;
+  const participating = operations.filter(isParticipating);
+  for (let i = participating.length - 1; i >= 0; i--) {
+    const op = participating[i];
+    const stripped = stripLineHashPrefix(op.editOpLine);
+    const parsed = parseContextualEditOp(stripped);
+    const lines = currentBody.split("\n");
+    const lineStarts = buildLineStarts(currentBody);
+    const targetLineIdx = Math.min(Math.max(op.lineNumber - 1, 0), lines.length - 1);
+    let offset = -1;
+    let resolved = false;
+    if (parsed) {
+      const hit = searchInLineWindow(lines, targetLineIdx, buildSearchTarget(op, parsed), MAX_DELTA);
+      if (hit) {
+        offset = lineStarts[hit.lineIdx] + hit.match.index + parsed.contextBefore.length;
+        resolved = true;
       }
-      if (RE_THREAD_REPLY.test(lines[j])) {
-        info.replyCount++;
-      } else {
-        const metaMatch = lines[j].match(RE_FOOTNOTE_META);
-        if (metaMatch && metaMatch[1] === "reason") {
-          info.reason = metaMatch[2];
-        } else if (metaMatch && metaMatch[1] === "image-dimensions") {
-          const dimMatch = metaMatch[2].match(/^([\d.]+)in\s*x\s*([\d.]+)in$/);
-          if (dimMatch) {
-            info.imageDimensions = {
-              widthIn: parseFloat(dimMatch[1]),
-              heightIn: parseFloat(dimMatch[2])
+    }
+    if (!resolved && !parsed && op.modifiedText && (op.type === "insertion" || op.type === "substitution")) {
+      const hit = searchInLineWindow(lines, targetLineIdx, op.modifiedText, MAX_DELTA);
+      if (hit) {
+        offset = lineStarts[hit.lineIdx] + hit.match.index;
+        resolved = true;
+      }
+    }
+    positions.set(op.id, { offset, lineIdx: targetLineIdx, resolved });
+    if (resolved) {
+      currentBody = applySplice(currentBody, op, offset, "unapply");
+    }
+  }
+  return { body0: currentBody, positions };
+}
+function scrubForward(body0, operations, positions) {
+  const anchors = /* @__PURE__ */ new Map();
+  const consumption = /* @__PURE__ */ new Map();
+  const activeSpans = /* @__PURE__ */ new Map();
+  let currentBody = body0;
+  const participating = operations.filter(isParticipating);
+  for (const op of participating) {
+    const pos = positions.get(op.id);
+    if (!pos || !pos.resolved)
+      continue;
+    const offset = pos.offset;
+    let targetStart = offset;
+    let targetEnd = offset;
+    if (op.type === "deletion" || op.type === "substitution") {
+      targetEnd = offset + op.originalText.length;
+    }
+    if (op.type === "deletion" || op.type === "substitution") {
+      for (const [earlierId, span] of activeSpans) {
+        if (span.start >= targetStart && span.end <= targetEnd) {
+          consumption.set(earlierId, { consumedBy: op.id, type: "full" });
+        } else if (span.start < targetEnd && span.end > targetStart) {
+          consumption.set(earlierId, { consumedBy: op.id, type: "partial" });
+        }
+      }
+    }
+    currentBody = applySplice(currentBody, op, offset, "apply");
+    const lines = currentBody.split("\n");
+    const lineStarts = buildLineStarts(currentBody);
+    const lineIdx = offsetToLineNumber(lineStarts, offset) - 1;
+    const lineContent = lines[lineIdx] ?? "";
+    const hash = computeLineHash(lineIdx, lineContent, lines);
+    const lineStartOff = lineIdx > 0 ? lineStarts[lineIdx] : 0;
+    const column = offset - lineStartOff;
+    const anchorLen = op.type === "insertion" || op.type === "substitution" ? op.modifiedText.length : 0;
+    const changeType = op.type === "insertion" ? ChangeType.Insertion : op.type === "deletion" ? ChangeType.Deletion : ChangeType.Substitution;
+    const freshAnchor = buildContextualL3EditOp({
+      changeType,
+      originalText: op.originalText,
+      currentText: op.modifiedText,
+      lineContent,
+      lineNumber: lineIdx + 1,
+      hash,
+      column,
+      anchorLen
+    });
+    anchors.set(op.id, freshAnchor);
+    const spanStart = offset;
+    let spanEnd = offset;
+    if (op.type === "insertion")
+      spanEnd = offset + op.modifiedText.length;
+    else if (op.type === "substitution")
+      spanEnd = offset + op.modifiedText.length;
+    activeSpans.set(op.id, { start: spanStart, end: spanEnd });
+    const lengthDelta = (op.type === "insertion" ? op.modifiedText.length : 0) - (op.type === "deletion" ? op.originalText.length : 0) + (op.type === "substitution" ? op.modifiedText.length - op.originalText.length : 0);
+    if (lengthDelta !== 0) {
+      for (const [id, span] of activeSpans) {
+        if (id === op.id)
+          continue;
+        if (span.start > offset) {
+          span.start += lengthDelta;
+          span.end += lengthDelta;
+        }
+      }
+    }
+  }
+  return { anchors, consumption, finalPositions: activeSpans, finalBody: currentBody };
+}
+function resolveReplayFromParsedFootnotes(bodyText, footnotes) {
+  const operations = [];
+  for (const fn of footnotes) {
+    if (!fn.editOpLine || fn.lineNumber === void 0 || !fn.hash)
+      continue;
+    const opType = ABBREV_TO_TYPE[fn.type] ?? fn.type;
+    let modifiedText = "";
+    let originalText = "";
+    if (fn.opString) {
+      try {
+        ({ modifiedText, originalText } = extractOpTexts(fn.opString));
+      } catch {
+      }
+    }
+    operations.push({
+      id: fn.id,
+      type: opType,
+      modifiedText,
+      originalText,
+      editOpLine: fn.editOpLine,
+      lineNumber: fn.lineNumber,
+      hash: fn.hash,
+      status: fn.status
+    });
+  }
+  const active = operations.filter(isParticipating);
+  if (active.length === 0) {
+    return {
+      freshAnchors: /* @__PURE__ */ new Map(),
+      consumption: /* @__PURE__ */ new Map(),
+      finalPositions: /* @__PURE__ */ new Map()
+    };
+  }
+  const backward = scrubBackward(bodyText, active);
+  const forward = scrubForward(backward.body0, active, backward.positions);
+  return {
+    freshAnchors: forward.anchors,
+    consumption: forward.consumption,
+    finalPositions: forward.finalPositions
+  };
+}
+var MAX_DELTA, ABBREV_TO_TYPE;
+var init_scrub = __esm({
+  "../../packages/core/dist-esm/operations/scrub.js"() {
+    "use strict";
+    init_file_ops();
+    init_footnote_native_parser();
+    init_hashline();
+    init_footnote_generator();
+    init_l2_to_l3();
+    init_types();
+    init_footnote_patterns();
+    init_footnote_utils();
+    init_op_parser();
+    init_format_aware_parse();
+    MAX_DELTA = 5;
+    ABBREV_TO_TYPE = {
+      ins: "insertion",
+      del: "deletion",
+      sub: "substitution",
+      hig: "highlight",
+      com: "comment"
+    };
+  }
+});
+
+// ../../packages/core/dist-esm/comment-syntax.js
+function lineOffset(lines, lineIndex) {
+  let offset = 0;
+  for (let i = 0; i < lineIndex; i++) {
+    offset += lines[i].length + 1;
+  }
+  return offset;
+}
+var init_comment_syntax = __esm({
+  "../../packages/core/dist-esm/comment-syntax.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/parser/footnote-native-parser.js
+function parseContextualEditOp(opString) {
+  let opStart = -1;
+  let opener = "";
+  for (const o of Object.keys(CM_OPENERS)) {
+    const idx = opString.indexOf(o);
+    if (idx !== -1 && (opStart === -1 || idx < opStart)) {
+      opStart = idx;
+      opener = o;
+    }
+  }
+  if (opStart === -1)
+    return null;
+  const contextBefore = opString.slice(0, opStart);
+  const expectedCloser = CM_OPENERS[opener];
+  let opEnd = -1;
+  if (opener === "{~~") {
+    const searchFrom = opStart + opener.length;
+    const closerIdx = opString.indexOf("~~}", searchFrom);
+    opEnd = closerIdx !== -1 ? closerIdx + 3 : -1;
+  } else if (opener === "{>>") {
+    const searchFrom = opStart + opener.length;
+    const closerIdx = opString.indexOf("<<}", searchFrom);
+    if (closerIdx !== -1) {
+      opEnd = closerIdx + 3;
+    } else {
+      opEnd = opString.length;
+    }
+  } else {
+    const searchFrom = opStart + opener.length;
+    const closerIdx = opString.indexOf(expectedCloser, searchFrom);
+    opEnd = closerIdx !== -1 ? closerIdx + expectedCloser.length : -1;
+  }
+  if (opEnd === -1)
+    return null;
+  const extractedOp = opString.slice(opStart, opEnd);
+  const contextAfter = opString.slice(opEnd);
+  if (contextBefore.trim() === "" && contextAfter.trim() === "")
+    return null;
+  if (contextBefore.trim() === "" && contextAfter.trimStart().startsWith("@ctx:"))
+    return null;
+  if (contextBefore.trim() === "" && contextAfter.trimStart().startsWith("{>>"))
+    return null;
+  return { contextBefore, opString: extractedOp, contextAfter };
+}
+function parseDeletionContext(opString) {
+  const closerIdx = opString.indexOf("--}");
+  if (closerIdx < 0)
+    return null;
+  const remainder = opString.slice(closerIdx + 3);
+  const match = remainder.match(CTX_RE);
+  if (!match)
+    return null;
+  return { before: unescapeCtxString(match[1]), after: unescapeCtxString(match[2]) };
+}
+var CM_OPENERS, APPROVED_RE, REJECTED_META_RE, FootnoteNativeParser;
+var init_footnote_native_parser = __esm({
+  "../../packages/core/dist-esm/parser/footnote-native-parser.js"() {
+    "use strict";
+    init_types();
+    init_document();
+    init_op_parser();
+    init_timestamp();
+    init_hashline();
+    init_hashline_cleanup();
+    init_footnote_patterns();
+    init_footnote_utils();
+    init_file_ops();
+    init_text_normalizer();
+    init_scrub();
+    init_comment_syntax();
+    CM_OPENERS = {
+      "{++": "++}",
+      "{--": "--}",
+      "{~~": "~~}",
+      "{==": "==}",
+      "{>>": "<<}"
+      // optional closer for comments
+    };
+    APPROVED_RE = /^ {4}approved:\s+(\S+)\s+(\S+)\s+"([^"]*)"/;
+    REJECTED_META_RE = /^ {4}rejected:\s+(\S+)\s+(\S+)\s+"([^"]*)"/;
+    FootnoteNativeParser = class {
+      parse(text) {
+        const lines = text.split("\n");
+        const { bodyLines, footnoteLines } = splitBodyAndFootnotes(lines);
+        const footnotes = this.parseFootnotes(lines);
+        if (footnotes.length === 0) {
+          return new VirtualDocument([]);
+        }
+        const changes = this.resolveChanges(footnotes, bodyLines);
+        let freshAnchors = /* @__PURE__ */ new Map();
+        if (changes.some((c) => !c.anchored)) {
+          try {
+            const bodyText = bodyLines.join("\n");
+            const replayFootnotes = footnotes.map((fn) => ({
+              id: fn.id,
+              type: fn.type,
+              status: fn.status,
+              lineNumber: fn.lineNumber,
+              hash: fn.hash,
+              opString: fn.opString,
+              editOpLine: fn.opString && fn.lineNumber !== void 0 && fn.hash ? `    ${fn.lineNumber}:${fn.hash} ${fn.opString}` : void 0
+            }));
+            const replay = resolveReplayFromParsedFootnotes(bodyText, replayFootnotes);
+            for (const node of changes) {
+              if (node.anchored)
+                continue;
+              const finalPos = replay.finalPositions.get(node.id);
+              const isConsumed = replay.consumption.has(node.id);
+              if (finalPos && !isConsumed) {
+                node.anchored = true;
+                node.range = { start: finalPos.start, end: finalPos.end };
+                node.contentRange = { ...node.range };
+                node.resolutionPath = "replay";
+              }
+              const freshAnchor = replay.freshAnchors.get(node.id);
+              if (freshAnchor)
+                node.freshAnchor = freshAnchor;
+              const consumed = replay.consumption.get(node.id);
+              if (consumed) {
+                node.consumedBy = consumed.consumedBy;
+                node.consumptionType = consumed.type;
+                if (node.footnoteLineRange) {
+                  const start = lineOffset(lines, node.footnoteLineRange.startLine);
+                  const end = lineOffset(lines, node.footnoteLineRange.endLine) + lines[node.footnoteLineRange.endLine].length;
+                  node.range = { start, end };
+                  node.contentRange = { ...node.range };
+                }
+              }
+            }
+            freshAnchors = replay.freshAnchors;
+          } catch {
+          }
+        }
+        const resolvableCount = changes.length;
+        const resolvedCount = changes.filter((c) => c.anchored || !!c.consumedBy).length;
+        const coherenceRate = resolvableCount > 0 ? Math.round(resolvedCount / resolvableCount * 100) : 100;
+        let resolvedText;
+        if (freshAnchors.size > 0) {
+          const rebuiltFootnotes = [];
+          let anyChanged = false;
+          let fi = 0;
+          while (fi < footnoteLines.length) {
+            const fline = footnoteLines[fi];
+            const idMatch = fline.match(/^\[\^(ct-[\w.]+)\]:/);
+            if (idMatch) {
+              const freshAnchor = freshAnchors.get(idMatch[1]);
+              rebuiltFootnotes.push(fline);
+              fi++;
+              let editOpReplaced = false;
+              while (fi < footnoteLines.length) {
+                const contLine = footnoteLines[fi];
+                if (FOOTNOTE_DEF_START.test(contLine))
+                  break;
+                if (!editOpReplaced && FOOTNOTE_L3_EDIT_OP.test(contLine) && freshAnchor) {
+                  if (freshAnchor !== contLine)
+                    anyChanged = true;
+                  rebuiltFootnotes.push(freshAnchor);
+                  editOpReplaced = true;
+                  fi++;
+                } else if (/^\s/.test(contLine) || contLine.trim() === "") {
+                  rebuiltFootnotes.push(contLine);
+                  fi++;
+                } else {
+                  break;
+                }
+              }
+            } else {
+              rebuiltFootnotes.push(fline);
+              fi++;
+            }
+          }
+          if (anyChanged) {
+            resolvedText = bodyLines.join("\n") + "\n\n" + rebuiltFootnotes.join("\n") + "\n";
+          }
+        }
+        return new VirtualDocument(changes, coherenceRate, [], resolvedText);
+      }
+      parseFootnotes(lines) {
+        const entries = [];
+        let current = null;
+        for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+          const line = lines[lineIdx];
+          if (FOOTNOTE_DEF_START.test(line)) {
+            if (current) {
+              current.endLine = lineIdx - 1;
+              entries.push(current);
+            }
+            const idMatch = line.match(/^\[\^(ct-[\w.]+)\]:/);
+            const header = parseFootnoteHeader(line);
+            if (idMatch && header) {
+              current = {
+                id: idMatch[1],
+                author: "@" + header.author,
+                date: header.date,
+                type: header.type,
+                status: header.status,
+                startLine: lineIdx,
+                replyCount: 0
+              };
+            } else {
+              current = null;
+            }
+            continue;
+          }
+          if (!current)
+            continue;
+          const opMatch = line.match(FOOTNOTE_L3_EDIT_OP);
+          if (opMatch && current.opString === void 0) {
+            current.lineNumber = parseInt(opMatch[1], 10);
+            current.hash = opMatch[2].toLowerCase();
+            current.opString = opMatch[3];
+            continue;
+          }
+          if (FOOTNOTE_THREAD_REPLY.test(line)) {
+            current.replyCount = (current.replyCount ?? 0) + 1;
+            continue;
+          }
+          const approvedMatch = line.match(APPROVED_RE);
+          if (approvedMatch) {
+            if (!current.approvals)
+              current.approvals = [];
+            current.approvals.push({
+              author: approvedMatch[1],
+              date: approvedMatch[2],
+              reason: approvedMatch[3]
+            });
+            continue;
+          }
+          const rejectedMatch = line.match(REJECTED_META_RE);
+          if (rejectedMatch) {
+            if (!current.rejections)
+              current.rejections = [];
+            current.rejections.push({
+              author: rejectedMatch[1],
+              date: rejectedMatch[2],
+              reason: rejectedMatch[3]
+            });
+            continue;
+          }
+          const imageMeta = line.match(/^\s+([\w-]+):\s*(.*)/);
+          if (imageMeta) {
+            const key = imageMeta[1];
+            const value = imageMeta[2].trim();
+            if (key === "image-dimensions") {
+              const dimMatch = value.match(/^([\d.]+)in\s*x\s*([\d.]+)in$/);
+              if (dimMatch) {
+                current.imageDimensions = {
+                  widthIn: parseFloat(dimMatch[1]),
+                  heightIn: parseFloat(dimMatch[2])
+                };
+              }
+            } else if (key.startsWith("image-") || key === "merge-detected") {
+              if (!current.imageMetadata)
+                current.imageMetadata = {};
+              current.imageMetadata[key] = value;
+            }
+            continue;
+          }
+          const trimmed = line.trim();
+          if (trimmed && !current.discussionText) {
+            current.discussionText = trimmed;
+          }
+        }
+        if (current) {
+          let end = lines.length - 1;
+          while (end > (current.startLine ?? 0) && lines[end].trim() === "")
+            end--;
+          current.endLine = end;
+          entries.push(current);
+        }
+        return entries;
+      }
+      resolveChanges(footnotes, bodyLines) {
+        const changes = [];
+        const lineOffsets = [0];
+        for (let i = 0; i < bodyLines.length; i++) {
+          lineOffsets.push(lineOffsets[i] + bodyLines[i].length + 1);
+        }
+        for (const fn of footnotes) {
+          const changeType = this.resolveType(fn.type);
+          if (changeType === null)
+            continue;
+          const status = this.resolveStatus(fn.status);
+          let parsedOp = null;
+          let ctxResult = null;
+          if (fn.opString) {
+            try {
+              ctxResult = parseContextualEditOp(fn.opString);
+              parsedOp = parseOp(ctxResult ? ctxResult.opString : fn.opString);
+            } catch {
+              continue;
+            }
+          }
+          const { range, originalText, modifiedText, comment, anchored, resolutionPath } = this.resolveRangeAndContent(fn, parsedOp, ctxResult, changeType, status, bodyLines, lineOffsets);
+          const node = {
+            id: fn.id,
+            type: changeType,
+            status,
+            range,
+            contentRange: { ...range },
+            // L3: range === contentRange (no delimiters in body)
+            level: 2,
+            // anchored:false means position could not be deterministically resolved (Invariant A).
+            // anchored:true (default) means either resolved uniquely or explicitly OK (deletion line-start).
+            anchored: anchored !== false,
+            metadata: {
+              author: fn.author,
+              date: fn.date,
+              comment: comment ?? parsedOp?.reasoning ?? void 0
+            }
+          };
+          if (originalText !== void 0)
+            node.originalText = originalText;
+          if (modifiedText !== void 0)
+            node.modifiedText = modifiedText;
+          if (fn.startLine !== void 0) {
+            node.footnoteLineRange = { startLine: fn.startLine, endLine: fn.endLine ?? fn.startLine };
+          }
+          node.replyCount = fn.replyCount ?? 0;
+          if (fn.imageDimensions) {
+            node.metadata.imageDimensions = fn.imageDimensions;
+          }
+          if (fn.imageMetadata) {
+            node.metadata.imageMetadata = fn.imageMetadata;
+          }
+          if (resolutionPath !== void 0) {
+            node.resolutionPath = resolutionPath;
+          }
+          if (fn.approvals && fn.approvals.length > 0) {
+            node.metadata.approvals = fn.approvals.map((a) => ({
+              author: a.author,
+              date: a.date,
+              timestamp: parseTimestamp(a.date),
+              reason: a.reason || void 0
+            }));
+          }
+          if (fn.rejections && fn.rejections.length > 0) {
+            node.metadata.rejections = fn.rejections.map((r) => ({
+              author: r.author,
+              date: r.date,
+              timestamp: parseTimestamp(r.date),
+              reason: r.reason || void 0
+            }));
+          }
+          changes.push(node);
+        }
+        changes.sort((a, b) => a.range.start - b.range.start);
+        return changes;
+      }
+      /**
+       * Resolve the character range for a change node in the body text.
+       *
+       * For L3:
+       * - Insertion: search for newText on the target line via findUniqueMatch; range covers the matched text
+       * - Deletion: zero-width range at the anchor point; uses @ctx: field for precise positioning
+       * - Substitution: search for newText (proposed/accepted) or oldText (rejected) on target line
+       * - Highlight: search for the highlighted text on the target line
+       * - Comment: fall back to line start (no text to anchor to)
+       * - Rejected insertion: text is not in body; zero-width range at line start
+       *
+       * DETERMINISTIC ANCHOR RESOLUTION INVARIANTS (spec §11):
+       *
+       * Invariant A — Non-deletion ops (ins, sub, highlight) MUST resolve uniquely via
+       * findUniqueMatch on the hash-resolved line. If the match fails (text not found or
+       * ambiguous), the node is marked anchored:false. There is NO fallback to line-start
+       * for non-deletion ops. Silent fallback produces wrong decoration placement.
+       *
+       * Invariant B — Deletion ops resolve via @ctx:"before"||"after" ONLY. The deleted
+       * text is absent from the body so there is nothing to search for. Line-start fallback
+       * when @ctx is missing is acceptable degradation (not a silent error).
+       *
+       * Invariant C — anchored:false is an error path, not a silent default. Consumers
+       * must not render anchored:false nodes as correctly placed decorations.
+       *
+       * Task 3 enforced Invariant A by removing the fallbackRange branches for
+       * ins/sub/highlight and setting anchored:false + sentinel range {0,0} instead.
+       */
+      resolveRangeAndContent(fn, parsedOp, ctxResult, changeType, status, bodyLines, lineOffsets) {
+        let effectiveLineNumber = fn.lineNumber;
+        let hashMatched = false;
+        if (fn.lineNumber !== void 0 && fn.hash) {
+          const hashCheckIdx = fn.lineNumber - 1;
+          if (hashCheckIdx >= 0 && hashCheckIdx < bodyLines.length) {
+            const actualHash = computeLineHash(hashCheckIdx, bodyLines[hashCheckIdx], bodyLines);
+            if (actualHash.toLowerCase() === fn.hash.toLowerCase()) {
+              hashMatched = true;
+            } else {
+              const relocated = relocateHashRef({ line: fn.lineNumber, hash: fn.hash }, bodyLines, computeLineHash);
+              if (relocated?.relocated) {
+                effectiveLineNumber = relocated.newLine;
+                hashMatched = true;
+              }
+            }
+          }
+        }
+        const lineIdx = (effectiveLineNumber ?? 1) - 1;
+        const lineOffset2 = lineIdx >= 0 && lineIdx < lineOffsets.length ? lineOffsets[lineIdx] : 0;
+        const lineContent = lineIdx >= 0 && lineIdx < bodyLines.length ? bodyLines[lineIdx] : "";
+        const fallbackRange = { start: lineOffset2, end: lineOffset2 };
+        if (!parsedOp) {
+          return { range: fallbackRange, anchored: false, comment: fn.discussionText, resolutionPath: "rejected" };
+        }
+        const findOnLine = (searchText) => {
+          if (!searchText || !lineContent)
+            return null;
+          return tryFindUniqueMatch(lineContent, searchText, defaultNormalizer);
+        };
+        if (ctxResult && parsedOp) {
+          const { contextBefore, contextAfter } = ctxResult;
+          let bodyMatch;
+          switch (changeType) {
+            case ChangeType.Insertion:
+              if (status === ChangeStatus.Rejected) {
+                bodyMatch = contextBefore + contextAfter;
+              } else {
+                bodyMatch = contextBefore + parsedOp.newText + contextAfter;
+              }
+              break;
+            case ChangeType.Deletion:
+              bodyMatch = contextBefore + contextAfter;
+              break;
+            case ChangeType.Substitution:
+              if (status === ChangeStatus.Rejected) {
+                bodyMatch = contextBefore + parsedOp.oldText + contextAfter;
+              } else {
+                bodyMatch = contextBefore + parsedOp.newText + contextAfter;
+              }
+              break;
+            case ChangeType.Highlight:
+              bodyMatch = contextBefore + parsedOp.oldText + contextAfter;
+              break;
+            default:
+              bodyMatch = contextBefore + contextAfter;
+          }
+          const bodyMatchResult = findOnLine(bodyMatch);
+          if (bodyMatchResult) {
+            const matchStart = lineOffset2 + bodyMatchResult.index;
+            const opStart = matchStart + contextBefore.length;
+            let opBodyLength;
+            switch (changeType) {
+              case ChangeType.Insertion:
+                opBodyLength = status === ChangeStatus.Rejected ? 0 : parsedOp.newText.length;
+                break;
+              case ChangeType.Deletion:
+                opBodyLength = 0;
+                break;
+              case ChangeType.Substitution:
+                opBodyLength = status === ChangeStatus.Rejected ? parsedOp.oldText.length : parsedOp.newText.length;
+                break;
+              case ChangeType.Highlight:
+                opBodyLength = parsedOp.oldText.length;
+                break;
+              default:
+                opBodyLength = 0;
+            }
+            const range = { start: opStart, end: opStart + opBodyLength };
+            return {
+              range,
+              originalText: parsedOp.oldText || void 0,
+              modifiedText: parsedOp.newText || void 0,
+              comment: parsedOp.reasoning ?? void 0,
+              // When the hash also matched, label as 'hash' (same semantics as the
+              // old resolve() Phase A: hash gate passed, context match pinpointed position).
+              // When only context matched (hash mismatch or relocation), label as 'context'.
+              resolutionPath: hashMatched ? "hash" : "context"
             };
           }
         }
-      }
-      info.endLine = j;
-      j++;
-    }
-    footnotes.set(info.id, info);
-  }
-  return footnotes;
-}
-function findFootnoteBlockStart(lines) {
-  let lastDefIdx = -1;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (FOOTNOTE_DEF_START.test(lines[i])) {
-      lastDefIdx = i;
-      break;
-    }
-  }
-  if (lastDefIdx === -1) {
-    return lines.length;
-  }
-  let candidate = lastDefIdx;
-  while (candidate >= 0) {
-    let j = candidate + 1;
-    let isTerminal2 = true;
-    while (j < lines.length) {
-      const line = lines[j];
-      if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
-        j++;
-      } else if (line.trim() === "") {
-        j++;
-      } else {
-        isTerminal2 = false;
-        break;
-      }
-    }
-    if (isTerminal2) {
-      lastDefIdx = candidate;
-      break;
-    }
-    candidate--;
-    while (candidate >= 0 && !FOOTNOTE_DEF_START.test(lines[candidate])) {
-      candidate--;
-    }
-  }
-  if (candidate < 0) {
-    return lines.length;
-  }
-  let blockStart = lastDefIdx;
-  for (let i = lastDefIdx - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
-      blockStart = i;
-    } else if (line.trim() === "") {
-      let hasFootnoteBefore = false;
-      for (let k = i - 1; k >= 0; k--) {
-        if (lines[k].trim() === "")
-          continue;
-        if (FOOTNOTE_DEF_START.test(lines[k]) || FOOTNOTE_CONTINUATION.test(lines[k])) {
-          hasFootnoteBefore = true;
+        switch (changeType) {
+          case ChangeType.Insertion: {
+            const text = parsedOp.newText;
+            if (text === "") {
+              return { range: fallbackRange, modifiedText: text, resolutionPath: hashMatched ? "hash" : void 0 };
+            }
+            const match = findOnLine(text);
+            if (!match) {
+              return { range: { start: 0, end: 0 }, modifiedText: text, anchored: false };
+            }
+            const range = {
+              start: lineOffset2 + match.index,
+              end: lineOffset2 + match.index + match.length
+            };
+            return { range, modifiedText: text, resolutionPath: hashMatched ? "hash" : void 0 };
+          }
+          case ChangeType.Deletion: {
+            const text = parsedOp.oldText;
+            const ctx = fn.opString ? parseDeletionContext(fn.opString) : null;
+            if (ctx) {
+              const joined = ctx.before + ctx.after;
+              if (joined.length > 0) {
+                const match = findOnLine(joined);
+                if (match) {
+                  const delPoint = lineOffset2 + match.index + ctx.before.length;
+                  return {
+                    range: { start: delPoint, end: delPoint },
+                    originalText: text,
+                    resolutionPath: hashMatched ? "hash" : void 0
+                  };
+                }
+              }
+            }
+            return { range: fallbackRange, originalText: text, resolutionPath: hashMatched ? "hash" : void 0 };
+          }
+          case ChangeType.Substitution: {
+            const oldText = parsedOp.oldText;
+            const newText = parsedOp.newText;
+            const searchText = newText;
+            const match = searchText ? findOnLine(searchText) : null;
+            if (!match) {
+              return { range: { start: 0, end: 0 }, originalText: oldText, modifiedText: newText, anchored: false };
+            }
+            const range = {
+              start: lineOffset2 + match.index,
+              end: lineOffset2 + match.index + match.length
+            };
+            return { range, originalText: oldText, modifiedText: newText, resolutionPath: hashMatched ? "hash" : void 0 };
+          }
+          case ChangeType.Highlight: {
+            const text = parsedOp.oldText;
+            const comment = parsedOp.reasoning;
+            if (!text) {
+              return { range: fallbackRange, comment };
+            }
+            const match = findOnLine(text);
+            if (!match) {
+              return { range: fallbackRange, comment, resolutionPath: hashMatched ? "hash" : void 0 };
+            }
+            const range = {
+              start: lineOffset2 + match.index,
+              end: lineOffset2 + match.index + match.length
+            };
+            return { range, comment, resolutionPath: hashMatched ? "hash" : void 0 };
+          }
+          case ChangeType.Comment: {
+            const comment = (parsedOp.reasoning || void 0) ?? (parsedOp.oldText || fn.discussionText);
+            return { range: fallbackRange, comment, resolutionPath: hashMatched ? "hash" : void 0 };
+          }
+          default:
+            return { range: fallbackRange, resolutionPath: hashMatched ? "hash" : void 0 };
         }
-        break;
       }
-      if (hasFootnoteBefore) {
-        blockStart = i;
-      } else {
-        break;
+      resolveType(type) {
+        switch (type) {
+          case "ins":
+          case "insertion":
+            return ChangeType.Insertion;
+          case "del":
+          case "deletion":
+            return ChangeType.Deletion;
+          case "sub":
+          case "substitution":
+            return ChangeType.Substitution;
+          case "highlight":
+          case "hi":
+          case "hig":
+            return ChangeType.Highlight;
+          case "comment":
+          case "com":
+            return ChangeType.Comment;
+          default:
+            return null;
+        }
       }
-    } else {
-      break;
-    }
+      resolveStatus(status) {
+        switch (status) {
+          case "accepted":
+            return ChangeStatus.Accepted;
+          case "rejected":
+            return ChangeStatus.Rejected;
+          default:
+            return ChangeStatus.Proposed;
+        }
+      }
+    };
   }
-  return blockStart;
+});
+
+// ../../packages/core/dist-esm/format-aware-parse.js
+function parseForFormat(text, options) {
+  return isL3Format(text) ? l3Parser.parse(text) : l2Parser.parse(text, options);
 }
-var RE_THREAD_REPLY, RE_FOOTNOTE_META;
-var init_footnote_parser = __esm({
-  "../../packages/core/dist-esm/footnote-parser.js"() {
+var l2Parser, l3Parser;
+var init_format_aware_parse = __esm({
+  "../../packages/core/dist-esm/format-aware-parse.js"() {
     "use strict";
     init_footnote_patterns();
-    init_timestamp();
-    RE_THREAD_REPLY = /^\s+@\S+\s+\d{4}-\d{2}-\d{2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?Z?)?:/;
-    RE_FOOTNOTE_META = /^\s+([\w-]+):\s*(.*)/;
+    init_parser();
+    init_footnote_native_parser();
+    init_footnote_utils();
+    init_op_parser();
+    l2Parser = new CriticMarkupParser();
+    l3Parser = new FootnoteNativeParser();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/settled-text.js
+function computeSettledReplace(change) {
+  const rangeLength = change.range.end - change.range.start;
+  if (change.type === ChangeType.Comment) {
+    return { offset: change.range.start, length: rangeLength, newText: "" };
+  }
+  if (change.type === ChangeType.Highlight) {
+    return { offset: change.range.start, length: rangeLength, newText: change.originalText ?? "" };
+  }
+  switch (change.type) {
+    case ChangeType.Insertion:
+      return { offset: change.range.start, length: rangeLength, newText: change.modifiedText ?? "" };
+    case ChangeType.Deletion:
+      return { offset: change.range.start, length: rangeLength, newText: "" };
+    case ChangeType.Substitution:
+      return { offset: change.range.start, length: rangeLength, newText: change.modifiedText ?? "" };
+  }
+  throw new Error(`Unknown ChangeType: ${change.type}`);
+}
+function stripFootnoteDefinitions(text, zones) {
+  const lines = text.split("\n");
+  const kept = [];
+  let inFootnote = false;
+  let foundFootnote = false;
+  let charOffset = 0;
+  for (const line of lines) {
+    const inCodeZone = zones.some((z) => charOffset >= z.start && charOffset < z.end);
+    if (!inCodeZone && FOOTNOTE_DEF_START.test(line)) {
+      inFootnote = true;
+      foundFootnote = true;
+      while (kept.length > 0 && kept[kept.length - 1].trim() === "") {
+        kept.pop();
+      }
+      charOffset += line.length + 1;
+      continue;
+    }
+    if (inFootnote) {
+      if (line.trim() === "" || /^[\t ]/.test(line)) {
+        charOffset += line.length + 1;
+        continue;
+      }
+      inFootnote = false;
+    }
+    kept.push(line);
+    charOffset += line.length + 1;
+  }
+  if (foundFootnote) {
+    while (kept.length > 0 && kept[kept.length - 1].trim() === "") {
+      kept.pop();
+    }
+  }
+  return kept.join("\n");
+}
+function stripInlineFootnoteRefs(text, zones) {
+  return text.replace(footnoteRefGlobal(), (match, offset) => {
+    if (zones.some((z) => offset >= z.start && offset < z.end)) {
+      return match;
+    }
+    return "";
+  });
+}
+function computeSettledTextL3(text) {
+  const { bodyLines } = splitBodyAndFootnotes(text.split("\n"));
+  return bodyLines.join("\n") + "\n";
+}
+function revertChangesInBody(body, changes) {
+  const sorted = [...changes].sort((a, b) => b.range.start - a.range.start);
+  for (const change of sorted) {
+    if (change.anchored === false)
+      continue;
+    switch (change.type) {
+      case ChangeType.Insertion:
+        body = body.slice(0, change.range.start) + body.slice(change.range.end);
+        break;
+      case ChangeType.Deletion:
+        if (change.originalText) {
+          body = body.slice(0, change.range.start) + change.originalText + body.slice(change.range.start);
+        }
+        break;
+      case ChangeType.Substitution:
+        if (change.originalText) {
+          body = body.slice(0, change.range.start) + change.originalText + body.slice(change.range.end);
+        }
+        break;
+    }
+  }
+  return body;
+}
+function computeSettledText(text, options) {
+  if (isL3Format(text)) {
+    return computeSettledTextL3(text);
+  }
+  const doc = parseForFormat(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
+  const changes = doc.getChanges();
+  if (changes.length === 0) {
+    const zones2 = findCodeZones(text);
+    return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones2), zones2);
+  }
+  const edits = [...changes].sort((a, b) => b.range.start - a.range.start).map(computeSettledReplace);
+  let result = text;
+  for (const edit of edits) {
+    result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
+  }
+  const zones = findCodeZones(result);
+  result = stripFootnoteDefinitions(result, zones);
+  result = stripInlineFootnoteRefs(result, zones);
+  return result;
+}
+function findContainingCodeZone(offset, zones) {
+  for (const zone of zones) {
+    if (offset >= zone.start && offset < zone.end)
+      return zone;
+  }
+  return void 0;
+}
+function buildSegmentsWithZoneAwareness(text, parts, zones) {
+  const segments = [];
+  const deferredRefs = [];
+  let cursor = 0;
+  const lineBreaks = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "\n")
+      lineBreaks.push(i);
+  }
+  function offsetToLine(offset) {
+    let lo = 0;
+    let hi = lineBreaks.length;
+    while (lo < hi) {
+      const mid = lo + hi >> 1;
+      if (lineBreaks[mid] < offset)
+        lo = mid + 1;
+      else
+        hi = mid;
+    }
+    return lo;
+  }
+  for (const part of parts) {
+    if (part.offset > cursor) {
+      segments.push(text.slice(cursor, part.offset));
+    } else if (part.offset < cursor) {
+      continue;
+    }
+    const ref = part.refId ? `[^${part.refId}]` : "";
+    if (ref && findContainingCodeZone(part.offset, zones)) {
+      segments.push(part.text);
+      deferredRefs.push({ ref, origLineIndex: offsetToLine(part.offset) });
+    } else {
+      segments.push(part.text + ref);
+    }
+    cursor = part.offset + part.length;
+  }
+  if (cursor < text.length) {
+    segments.push(text.slice(cursor));
+  }
+  if (deferredRefs.length === 0) {
+    return segments.join("");
+  }
+  const result = segments.join("");
+  const lines = result.split("\n");
+  const refsByLine = /* @__PURE__ */ new Map();
+  for (const dr of deferredRefs) {
+    const existing = refsByLine.get(dr.origLineIndex) ?? [];
+    existing.push(dr.ref);
+    refsByLine.set(dr.origLineIndex, existing);
+  }
+  for (const [lineIdx, refs] of refsByLine) {
+    if (lineIdx < lines.length) {
+      lines[lineIdx] = lines[lineIdx] + refs.join("");
+    }
+  }
+  return lines.join("\n");
+}
+function settleAcceptedChangesOnly(text) {
+  if (isL3Format(text)) {
+    return { settledContent: text, settledIds: [] };
+  }
+  const doc = parseForFormat(text, { skipCodeBlocks: false });
+  const accepted = doc.getChanges().filter((c) => c.status === ChangeStatus.Accepted);
+  const settledIds = accepted.map((c) => c.id);
+  if (accepted.length === 0) {
+    return { settledContent: text, settledIds: [] };
+  }
+  const parts = [...accepted].sort((a, b) => a.range.start - b.range.start).map(computeAcceptParts);
+  const zones = findCodeZones(text);
+  const settledContent = buildSegmentsWithZoneAwareness(text, parts, zones);
+  return { settledContent, settledIds };
+}
+function settleRejectedChangesOnly(text) {
+  if (isL3Format(text)) {
+    const doc2 = parseForFormat(text);
+    const rejected2 = doc2.getChanges().filter((c) => c.status === ChangeStatus.Rejected);
+    const settledIds2 = rejected2.map((c) => c.id);
+    if (rejected2.length === 0)
+      return { settledContent: text, settledIds: [] };
+    const { bodyLines, footnoteLines } = splitBodyAndFootnotes(text.split("\n"));
+    const body = revertChangesInBody(bodyLines.join("\n"), rejected2);
+    const settledContent2 = footnoteLines.length > 0 ? body + "\n\n" + footnoteLines.join("\n") : body;
+    return { settledContent: settledContent2, settledIds: settledIds2 };
+  }
+  const doc = parseForFormat(text, { skipCodeBlocks: false });
+  const rejected = doc.getChanges().filter((c) => c.status === ChangeStatus.Rejected);
+  const settledIds = rejected.map((c) => c.id);
+  if (rejected.length === 0) {
+    return { settledContent: text, settledIds: [] };
+  }
+  const parts = [...rejected].sort((a, b) => a.range.start - b.range.start).map(computeRejectParts);
+  const zones = findCodeZones(text);
+  const settledContent = buildSegmentsWithZoneAwareness(text, parts, zones);
+  return { settledContent, settledIds };
+}
+function computeSettledViewL3(rawText) {
+  const { bodyLines } = splitBodyAndFootnotes(rawText.split("\n"));
+  const lines = [];
+  const settledToRaw = /* @__PURE__ */ new Map();
+  const rawToSettled = /* @__PURE__ */ new Map();
+  for (let i = 0; i < bodyLines.length; i++) {
+    const settledNum = i + 1;
+    const rawNum = i + 1;
+    lines.push({
+      settledLineNum: settledNum,
+      rawLineNum: rawNum,
+      text: bodyLines[i],
+      hash: computeLineHash(i, bodyLines[i], bodyLines)
+    });
+    settledToRaw.set(settledNum, rawNum);
+    rawToSettled.set(rawNum, settledNum);
+  }
+  return { lines, settledToRaw, rawToSettled };
+}
+function computeSettledView(rawText, preParsed) {
+  if (isL3Format(rawText)) {
+    return computeSettledViewL3(rawText);
+  }
+  const changes = preParsed ?? parseForFormat(rawText, { skipCodeBlocks: false }).getChanges();
+  const edits = [...changes].sort((a, b) => a.range.start - b.range.start).map(computeSettledReplace);
+  const deltaTable = [];
+  let cumulativeDelta = 0;
+  for (const edit of edits) {
+    deltaTable.push({ rawOffset: edit.offset, delta: cumulativeDelta });
+    const oldLen = edit.length;
+    const newLen = edit.newText.length;
+    cumulativeDelta += newLen - oldLen;
+  }
+  const editsByOffset = new Map(edits.map((e2) => [e2.offset, e2]));
+  function settledOffsetToRawOffset(settledOffset) {
+    let delta = 0;
+    let rawConsumed = 0;
+    let settledConsumed = 0;
+    for (const entry of deltaTable) {
+      const rawGap = entry.rawOffset - rawConsumed;
+      if (settledOffset <= settledConsumed + rawGap) {
+        return rawConsumed + (settledOffset - settledConsumed);
+      }
+      settledConsumed += rawGap;
+      rawConsumed = entry.rawOffset;
+      delta = entry.delta;
+      const edit = editsByOffset.get(entry.rawOffset);
+      if (edit) {
+        const oldLen = edit.length;
+        const newLen = edit.newText.length;
+        if (settledOffset < settledConsumed + newLen) {
+          return rawConsumed;
+        }
+        settledConsumed += newLen;
+        rawConsumed += oldLen;
+      }
+    }
+    return rawConsumed + (settledOffset - settledConsumed);
+  }
+  const settledText = computeSettledText(rawText);
+  const rawLines = rawText.split("\n");
+  const rawLineStarts = [0];
+  for (let i = 0; i < rawLines.length - 1; i++) {
+    rawLineStarts.push(rawLineStarts[i] + rawLines[i].length + 1);
+  }
+  function rawOffsetToLineNum(offset) {
+    let lo = 0;
+    let hi = rawLineStarts.length - 1;
+    while (lo < hi) {
+      const mid = lo + hi + 1 >> 1;
+      if (rawLineStarts[mid] <= offset)
+        lo = mid;
+      else
+        hi = mid - 1;
+    }
+    return lo + 1;
+  }
+  const settledTextLines = settledText.split("\n");
+  const settledLines = [];
+  const settledToRaw = /* @__PURE__ */ new Map();
+  const rawToSettled = /* @__PURE__ */ new Map();
+  let settledCharOffset = 0;
+  for (let i = 0; i < settledTextLines.length; i++) {
+    const settledLineText = settledTextLines[i];
+    const settledLineNum = i + 1;
+    const rawOffset = settledOffsetToRawOffset(settledCharOffset);
+    const rawLineNum = rawOffsetToLineNum(rawOffset);
+    const hash = computeLineHash(settledLineNum - 1, settledLineText, settledTextLines);
+    settledLines.push({
+      settledLineNum,
+      rawLineNum,
+      text: settledLineText,
+      hash
+    });
+    settledToRaw.set(settledLineNum, rawLineNum);
+    if (!rawToSettled.has(rawLineNum)) {
+      rawToSettled.set(rawLineNum, settledLineNum);
+    }
+    settledCharOffset += settledLineText.length + 1;
+  }
+  return { lines: settledLines, settledToRaw, rawToSettled, changes };
+}
+var init_settled_text = __esm({
+  "../../packages/core/dist-esm/operations/settled-text.js"() {
+    "use strict";
+    init_types();
+    init_accept_reject();
+    init_hashline();
+    init_footnote_patterns();
+    init_code_zones();
+    init_format_aware_parse();
   }
 });
 
@@ -14691,21 +15957,9 @@ function containsCriticMarkup(text) {
   return /\{\+\+|\{--|\{~~|\{==|\{>>/.test(text);
 }
 function resolveProposedChanges(text) {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text);
+  const doc = parseForFormat(text);
   const changes = doc.getChanges();
-  const footnotes = parseFootnotes(text);
-  for (const node of changes) {
-    const fnInfo = footnotes.get(node.id);
-    if (fnInfo) {
-      const s = fnInfo.status.toLowerCase();
-      if (s === "accepted")
-        node.status = ChangeStatus.Accepted;
-      else if (s === "rejected")
-        node.status = ChangeStatus.Rejected;
-    }
-  }
-  return { changes, footnotes };
+  return { changes };
 }
 function checkCriticMarkupOverlap(text, matchStart, matchLength) {
   const { changes } = resolveProposedChanges(text);
@@ -14744,7 +15998,7 @@ function checkCriticMarkupOverlap(text, matchStart, matchLength) {
   return null;
 }
 function findAllProposedOverlaps(text, matchStart, matchLength) {
-  const { changes, footnotes } = resolveProposedChanges(text);
+  const { changes } = resolveProposedChanges(text);
   const matchEnd = matchStart + matchLength;
   const results = [];
   for (const node of changes) {
@@ -14775,8 +16029,7 @@ function findAllProposedOverlaps(text, matchStart, matchLength) {
           changeType = "unknown";
           break;
       }
-      const fnInfo = changeId ? footnotes.get(changeId) : void 0;
-      const author = fnInfo?.author;
+      const author = node.metadata?.author;
       results.push({ changeId, changeType, author, spanStart, spanEnd });
     }
   }
@@ -14797,7 +16050,8 @@ function resolveOverlapWithAuthor(text, matchStart, matchLength, author) {
     guardOverlap(text, matchStart, matchLength);
     return null;
   }
-  const allSameAuthor = overlaps.every((o) => o.author === author);
+  const normalizedAuthor = author.startsWith("@") ? author : `@${author}`;
+  const allSameAuthor = overlaps.every((o) => o.author === normalizedAuthor);
   if (!allSameAuthor) {
     guardOverlap(text, matchStart, matchLength);
     return null;
@@ -14919,7 +16173,7 @@ function stripCriticMarkup(text) {
   return stripCriticMarkupWithMap(text).settled;
 }
 function stripCriticMarkupToCommittedWithMap(text) {
-  const footnotes = parseFootnotes(text);
+  const footnotes = extractFootnoteStatuses(text);
   const committed = [];
   const toRaw = [];
   const markupRanges = [];
@@ -14960,7 +16214,7 @@ function stripCriticMarkupToCommittedWithMap(text) {
           const ref = consumeFootnoteRef(constructEnd);
           const refEnd = ref ? ref.end : constructEnd;
           const changeId = ref?.id;
-          const status = changeId ? footnotes.get(changeId)?.status : void 0;
+          const status = changeId ? footnotes.get(changeId) : void 0;
           const isAccepted = status === "accepted";
           markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
           if (isAccepted) {
@@ -14983,7 +16237,7 @@ function stripCriticMarkupToCommittedWithMap(text) {
           const ref = consumeFootnoteRef(constructEnd);
           const refEnd = ref ? ref.end : constructEnd;
           const changeId = ref?.id;
-          const status = changeId ? footnotes.get(changeId)?.status : void 0;
+          const status = changeId ? footnotes.get(changeId) : void 0;
           const isAccepted = status === "accepted";
           markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
           if (!isAccepted) {
@@ -15010,7 +16264,7 @@ function stripCriticMarkupToCommittedWithMap(text) {
             const ref = consumeFootnoteRef(constructEnd);
             const refEnd = ref ? ref.end : constructEnd;
             const changeId = ref?.id;
-            const status = changeId ? footnotes.get(changeId)?.status : void 0;
+            const status = changeId ? footnotes.get(changeId) : void 0;
             const isAccepted = status === "accepted";
             markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
             if (isAccepted) {
@@ -15230,6 +16484,13 @@ Input (first 80 chars): "${preview}"
 ${searchedInLine}
 Hint: Re-read the file for current content, or use LINE:HASH addressing.`);
 }
+function tryFindUniqueMatch(text, target, normalizer) {
+  try {
+    return findUniqueMatch(text, target, normalizer);
+  } catch {
+    return null;
+  }
+}
 function replaceUnique(text, target, replacement, normalizer) {
   const match = findUniqueMatch(text, target, normalizer);
   return text.slice(0, match.index) + replacement + text.slice(match.index + match.length);
@@ -15245,29 +16506,42 @@ function contentZoneText(fullText) {
   }
   return fullText.slice(0, offset);
 }
-function applyProposeChange(params) {
+async function applyProposeChange(params) {
   const { text, oldText, newText, changeId, author, reasoning, insertAfter, level = 2 } = params;
+  const isL3 = level === 3;
+  if (isL3)
+    await initHashline();
+  if (!isL3 && text.includes("[^ct-") && isL3Format(text)) {
+    throw new Error("L3 format detected but level is not 3. Pass level: 3 for L3 text to avoid garbled output.");
+  }
+  let bodyText;
+  if (isL3) {
+    const split = splitBodyAndFootnotes(text.split("\n"));
+    bodyText = split.bodyLines.join("\n");
+  } else {
+    bodyText = text;
+  }
   if (oldText === "" && newText === "") {
     throw new Error("Both oldText and newText are empty \u2014 nothing to change.");
   }
   let changeType;
-  let inlineMarkup;
+  let inlineMarkup = "";
   let modifiedBody;
+  let changeOffset = 0;
   const refSuffix = level === 2 ? `[^${changeId}]` : "";
   if (oldText === "") {
     changeType = "ins";
     if (!insertAfter) {
       throw new Error("Insertion requires an insertAfter anchor to locate where to insert.");
     }
-    const insPad = /^[+\-~]/.test(newText) ? " " : "";
-    inlineMarkup = `{++${insPad}${newText}++}${refSuffix}${level === 1 ? level1Comment(author, "ins") : ""}`;
-    let anchorIndex = text.indexOf(insertAfter);
+    const searchTarget = isL3 ? bodyText : text;
+    let anchorIndex = searchTarget.indexOf(insertAfter);
     let anchorLength = insertAfter.length;
     if (anchorIndex === -1) {
-      anchorIndex = normalizedIndexOf(text, insertAfter, defaultNormalizer);
+      anchorIndex = normalizedIndexOf(searchTarget, insertAfter, defaultNormalizer);
     }
     if (anchorIndex === -1) {
-      const wsMatch = whitespaceCollapsedFind(text, insertAfter);
+      const wsMatch = whitespaceCollapsedFind(searchTarget, insertAfter);
       if (wsMatch !== null) {
         anchorIndex = wsMatch.index;
         anchorLength = wsMatch.length;
@@ -15276,37 +16550,84 @@ function applyProposeChange(params) {
     if (anchorIndex === -1) {
       throw new Error(`insertAfter anchor not found in text: "${insertAfter}"`);
     }
-    guardOverlap(text, anchorIndex, anchorLength);
+    if (!isL3) {
+      guardOverlap(text, anchorIndex, anchorLength);
+    }
     const insertPos = anchorIndex + anchorLength;
-    const charBefore = insertPos > 0 ? text[insertPos - 1] : "\n";
-    const needsNewlineBefore = charBefore !== "\n";
-    const isBlockContent = /^[-#>*\d]/.test(newText) || newText.includes("\n");
-    const prefix = needsNewlineBefore && isBlockContent ? "\n" : "";
-    modifiedBody = text.slice(0, insertPos) + prefix + inlineMarkup + text.slice(insertPos);
+    changeOffset = insertPos;
+    if (isL3) {
+      modifiedBody = text.slice(0, insertPos) + newText + text.slice(insertPos);
+    } else {
+      const insPad = /^[+\-~]/.test(newText) ? " " : "";
+      inlineMarkup = `{++${insPad}${newText}++}${refSuffix}${level === 1 ? level1Comment(author, "ins") : ""}`;
+      const charBefore = insertPos > 0 ? text[insertPos - 1] : "\n";
+      const needsNewlineBefore = charBefore !== "\n";
+      const isBlockContent = /^[-#>*\d]/.test(newText) || newText.includes("\n");
+      const prefix = needsNewlineBefore && isBlockContent ? "\n" : "";
+      modifiedBody = text.slice(0, insertPos) + prefix + inlineMarkup + text.slice(insertPos);
+    }
   } else if (newText === "") {
     changeType = "del";
-    const searchText = contentZoneText(text);
-    const match = findUniqueMatch(searchText, oldText, defaultNormalizer);
-    if (!match.wasSettledMatch && !match.wasCommittedMatch) {
+    const delSearchText = isL3 ? bodyText : contentZoneText(text);
+    const match = findUniqueMatch(delSearchText, oldText, defaultNormalizer);
+    if (!isL3 && !match.wasSettledMatch && !match.wasCommittedMatch) {
       guardOverlap(text, match.index, match.length);
     }
-    const actualOldText = match.originalText;
-    const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
-    const delPad = /^[+\-~]/.test(cleanedOld) ? " " : "";
-    inlineMarkup = `{--${delPad}${cleanedOld}--}${refSuffix}${preservedRefs.join("")}${level === 1 ? level1Comment(author, "del") : ""}`;
-    modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
+    changeOffset = match.index;
+    if (isL3) {
+      modifiedBody = text.slice(0, match.index) + text.slice(match.index + match.length);
+    } else {
+      const actualOldText = match.originalText;
+      const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
+      const delPad = /^[+\-~]/.test(cleanedOld) ? " " : "";
+      inlineMarkup = `{--${delPad}${cleanedOld}--}${refSuffix}${preservedRefs.join("")}${level === 1 ? level1Comment(author, "del") : ""}`;
+      modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
+    }
   } else {
     changeType = "sub";
-    const searchText = contentZoneText(text);
-    const match = findUniqueMatch(searchText, oldText, defaultNormalizer);
-    if (!match.wasSettledMatch && !match.wasCommittedMatch) {
+    const subSearchText = isL3 ? bodyText : contentZoneText(text);
+    const match = findUniqueMatch(subSearchText, oldText, defaultNormalizer);
+    if (!isL3 && !match.wasSettledMatch && !match.wasCommittedMatch) {
       guardOverlap(text, match.index, match.length);
     }
-    const actualOldText = match.originalText;
-    const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
-    const subPad = /^[+\-~]/.test(cleanedOld) ? " " : "";
-    inlineMarkup = `{~~${subPad}${cleanedOld}~>${newText}~~}${refSuffix}${preservedRefs.join("")}${level === 1 ? level1Comment(author, "sub") : ""}`;
-    modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
+    changeOffset = match.index;
+    if (isL3) {
+      modifiedBody = text.slice(0, match.index) + newText + text.slice(match.index + match.length);
+    } else {
+      const actualOldText = match.originalText;
+      const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
+      const subPad = /^[+\-~]/.test(cleanedOld) ? " " : "";
+      inlineMarkup = `{~~${subPad}${cleanedOld}~>${newText}~~}${refSuffix}${preservedRefs.join("")}${level === 1 ? level1Comment(author, "sub") : ""}`;
+      modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
+    }
+  }
+  if (isL3) {
+    const mutatedSplit = splitBodyAndFootnotes(modifiedBody.split("\n"));
+    const mutatedBodyText = mutatedSplit.bodyLines.join("\n");
+    const lineStarts = buildLineStarts(mutatedBodyText);
+    const lineNumber = offsetToLineNumber(lineStarts, changeOffset);
+    const lineIdx = lineNumber - 1;
+    const lineContent = mutatedSplit.bodyLines[lineIdx] ?? "";
+    const hash = computeLineHash(lineIdx, lineContent, mutatedSplit.bodyLines);
+    const column = changeOffset - (lineStarts[lineIdx] ?? 0);
+    const anchorLen = changeType === "del" ? 0 : newText.length;
+    const changeTypeEnum = changeType === "ins" ? ChangeType.Insertion : changeType === "del" ? ChangeType.Deletion : ChangeType.Substitution;
+    const editOpLine = buildContextualL3EditOp({
+      changeType: changeTypeEnum,
+      originalText: oldText,
+      currentText: newText,
+      lineContent,
+      lineNumber,
+      hash,
+      column,
+      anchorLen
+    });
+    const footnoteHeader2 = generateFootnoteDefinition(changeId, changeType, author);
+    const reasonLine2 = reasoning ? `
+    @${author} ${nowTimestamp().raw}: ${reasoning}` : "";
+    const footnoteBlock2 = footnoteHeader2 + "\n" + editOpLine + reasonLine2;
+    const modifiedText2 = appendFootnote(modifiedBody, footnoteBlock2);
+    return { modifiedText: modifiedText2, changeType };
   }
   if (level === 1) {
     return { modifiedText: modifiedBody, changeType };
@@ -15373,7 +16694,7 @@ function appendFootnote(text, footnoteBlock) {
   }
   return before + block;
 }
-function applySingleOperation(params) {
+async function applySingleOperation(params) {
   const { fileContent, oldText, newText, changeId, author, reasoning, insertAfter, afterLine, startLine, endLine } = params;
   if (oldText === "" && newText === "") {
     throw new Error("Both oldText and newText are empty \u2014 nothing to change.");
@@ -15432,7 +16753,7 @@ function applySingleOperation(params) {
     const affectedEnd = Math.min(modifiedText.split("\n").length, effectiveEndLine + 5);
     return { modifiedText, changeType, affectedStartLine: startLine, affectedEndLine: affectedEnd };
   }
-  const applied = applyProposeChange({
+  const applied = await applyProposeChange({
     text: fileContent,
     oldText,
     newText,
@@ -15465,29 +16786,17 @@ var init_file_ops = __esm({
     init_settled_text();
     init_text_normalizer();
     init_hashline_cleanup();
-    init_parser();
+    init_format_aware_parse();
     init_types();
-    init_footnote_parser();
+    init_footnote_utils();
     init_footnote_patterns();
+    init_hashline();
+    init_l2_to_l3();
     init_view_surface();
   }
 });
 
 // ../../packages/core/dist-esm/operations/ensure-l2.js
-function changeTypeToAbbrev2(type) {
-  switch (type) {
-    case ChangeType.Insertion:
-      return "ins";
-    case ChangeType.Deletion:
-      return "del";
-    case ChangeType.Substitution:
-      return "sub";
-    case ChangeType.Highlight:
-      return "hig";
-    case ChangeType.Comment:
-      return "com";
-  }
-}
 function ensureL2(text, changeOffset, opts) {
   if (opts.existingId) {
     return { text, changeId: opts.existingId, promoted: false };
@@ -15504,7 +16813,7 @@ function ensureL2(text, changeOffset, opts) {
   }
   const maxId = scanMaxCtId(text);
   const nextId = `ct-${maxId + 1}`;
-  const typeAbbrev = changeTypeToAbbrev2(change.type) ?? opts.type;
+  const typeAbbrev = changeTypeToAbbrev(change.type) ?? opts.type;
   const insertPos = change.range.end;
   const withRef = text.slice(0, insertPos) + `[^${nextId}]` + text.slice(insertPos);
   const footnoteDef = generateFootnoteDefinition(nextId, typeAbbrev, opts.author);
@@ -15522,184 +16831,18 @@ var init_ensure_l2 = __esm({
 });
 
 // ../../packages/core/dist-esm/operations/amend.js
-function computeAmendEdits(text, changeId, opts) {
-  const { newText, oldText, reason, author } = opts;
-  const resolved = resolveChangeById(text, changeId);
-  if (!resolved || !resolved.footnoteBlock) {
-    return { isError: true, error: `Change ${changeId} not found in file` };
-  }
-  const parsedHeader = parseFootnoteHeader(resolved.footnoteBlock.headerContent);
-  if (!parsedHeader) {
-    return { isError: true, error: `Change ${changeId} not found in file` };
-  }
-  const statusStr = parsedHeader.status;
-  let status;
-  if (statusStr === "accepted") {
-    status = ChangeStatus.Accepted;
-  } else if (statusStr === "rejected") {
-    status = ChangeStatus.Rejected;
-  } else {
-    status = ChangeStatus.Proposed;
-  }
-  if (status !== ChangeStatus.Proposed) {
-    return {
-      isError: true,
-      error: `Cannot amend a ${statusStr} change. Only proposed changes can be amended.`
-    };
-  }
-  const changeAuthor = parsedHeader.author.replace(/^@/, "");
-  const resolvedAuthorNorm = author.replace(/^@/, "");
-  if (changeAuthor && resolvedAuthorNorm !== changeAuthor) {
-    return {
-      isError: true,
-      error: `Cannot amend change ${changeId}: you (${author}) are not the original author (${changeAuthor}). Use supersede_change to propose an alternative.`
-    };
-  }
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text);
-  const change = doc.getChanges().find((c) => c.id === changeId);
-  if (!change) {
-    return { isError: true, error: `Change ${changeId} not found in file` };
-  }
-  const changeType = change.type;
-  const currentProposed = changeType === ChangeType.Substitution || changeType === ChangeType.Insertion || changeType === ChangeType.Comment ? change.modifiedText ?? "" : "";
-  if ((changeType === ChangeType.Substitution || changeType === ChangeType.Insertion || changeType === ChangeType.Comment) && newText === "") {
-    return { isError: true, error: "new_text is required for amend (substitution, insertion, or comment)." };
-  }
-  if (changeType === ChangeType.Deletion || changeType === ChangeType.Highlight) {
-    if (newText.length > 0) {
-      return {
-        isError: true,
-        error: "Deletion changes cannot be amended inline (the deleted text is fixed). To amend reasoning, pass reasoning without new_text. To target different text, reject this change and propose a new one."
-      };
-    }
-  } else {
-    if (CRITIC_DELIMITER_RE.test(newText)) {
-      return { isError: true, error: "new_text cannot contain CriticMarkup delimiters" };
-    }
-    if (changeType === ChangeType.Insertion && newText === "") {
-      return { isError: true, error: "Cannot amend an insertion to empty text. Use reject to remove the change." };
-    }
-    if (newText === currentProposed && !reason) {
-      return { isError: true, error: "new_text is identical to current proposed text and no reasoning provided; nothing to amend" };
-    }
-  }
-  const reasoningOnly = newText === currentProposed;
-  if (oldText && changeType !== ChangeType.Substitution) {
-    return {
-      isError: true,
-      error: "old_text scope expansion is only supported for substitution changes."
-    };
-  }
-  const originalMarkup = text.slice(change.range.start, change.range.end);
-  const refs = originalMarkup.match(/\[\^ct-[\d.]+\]/g) ?? [];
-  const refString = refs.join("");
-  let newMarkup;
-  let previousText = "";
-  let inlineUpdated = false;
-  let expandedStart;
-  let expandedEnd;
-  if (reasoningOnly) {
-    newMarkup = originalMarkup;
-    inlineUpdated = false;
-  } else {
-    switch (changeType) {
-      case ChangeType.Substitution: {
-        if (oldText) {
-          const currentOriginal = change.originalText ?? "";
-          if (!oldText.includes(currentOriginal)) {
-            return {
-              isError: true,
-              error: `old_text must contain the original substitution text "${currentOriginal}" as a substring.`
-            };
-          }
-          const prefixIdx = oldText.indexOf(currentOriginal);
-          const prefix = oldText.slice(0, prefixIdx);
-          const suffix = oldText.slice(prefixIdx + currentOriginal.length);
-          const rawBefore = text.slice(change.range.start - prefix.length, change.range.start);
-          if (rawBefore !== prefix) {
-            return {
-              isError: true,
-              error: `old_text context does not match: expected "${prefix}" before the markup but found "${rawBefore}"`
-            };
-          }
-          const rawAfter = text.slice(change.range.end, change.range.end + suffix.length);
-          if (rawAfter !== suffix) {
-            return {
-              isError: true,
-              error: `old_text context does not match: expected "${suffix}" after the markup but found "${rawAfter}"`
-            };
-          }
-          expandedStart = change.range.start - prefix.length;
-          expandedEnd = change.range.end + suffix.length;
-          newMarkup = `{~~${oldText}~>${newText}~~}${refString}`;
-        } else {
-          newMarkup = `{~~${change.originalText ?? ""}~>${newText}~~}${refString}`;
-        }
-        previousText = change.modifiedText ?? "";
-        inlineUpdated = true;
-        break;
-      }
-      case ChangeType.Insertion:
-        newMarkup = `{++${newText}++}${refString}`;
-        previousText = change.modifiedText ?? "";
-        inlineUpdated = true;
-        break;
-      case ChangeType.Comment:
-        newMarkup = `{>>${newText}<<}${refString}`;
-        previousText = change.modifiedText ?? "";
-        inlineUpdated = true;
-        break;
-      case ChangeType.Deletion:
-      case ChangeType.Highlight:
-        newMarkup = originalMarkup;
-        inlineUpdated = false;
-        break;
-      default:
-        return { isError: true, error: `Unsupported change type for amend: ${changeType}` };
-    }
-  }
-  const replaceStart = expandedStart ?? change.range.start;
-  const replaceEnd = expandedEnd ?? change.range.end;
-  let modifiedContent = text.slice(0, replaceStart) + newMarkup + text.slice(replaceEnd);
-  const lines = modifiedContent.split("\n");
-  const block = findFootnoteBlock(lines, changeId);
-  if (!block) {
-    return { isError: true, error: `Change metadata for ${changeId} not found in file` };
-  }
-  const ts = opts.date ?? nowTimestamp().raw;
-  const authorWithAt = author.startsWith("@") ? author : `@${author}`;
-  const reasonLine = `    revised ${authorWithAt} ${ts}: ${reason ?? "amended proposed text"}`;
-  const insertIdx = findDiscussionInsertionIndex(lines, block.headerLine, block.blockEnd);
-  const toInsert = [reasonLine];
-  if (previousText.length > 0) {
-    const truncated = previousText.length > 100 ? previousText.slice(0, 100) + "..." : previousText;
-    toInsert.push(`    previous: "${truncated.replace(/"/g, '\\"')}"`);
-  }
-  lines.splice(insertIdx + 1, 0, ...toInsert);
-  modifiedContent = lines.join("\n");
-  return {
-    isError: false,
-    text: modifiedContent,
-    changeId,
-    previousText,
-    inlineUpdated
-  };
-}
-var CRITIC_DELIMITER_RE;
 var init_amend = __esm({
   "../../packages/core/dist-esm/operations/amend.js"() {
     "use strict";
-    init_parser();
+    init_format_aware_parse();
     init_types();
     init_footnote_utils();
     init_timestamp();
-    CRITIC_DELIMITER_RE = /\{\+\+|\{--|\{~~|\{==|\{>>/;
   }
 });
 
 // ../../packages/core/dist-esm/operations/supersede.js
-function computeSupersedeResult(text, changeId, opts) {
+async function computeSupersedeResult(text, changeId, opts) {
   const { newText, oldText = "", reason, author, insertAfter } = opts;
   const lines = text.split("\n");
   const block = findFootnoteBlock(lines, changeId);
@@ -15731,29 +16874,83 @@ function computeSupersedeResult(text, changeId, opts) {
       error: `Cannot supersede change "${changeId}": unexpected status "${header.status}". Only proposed changes can be superseded.`
     };
   }
-  const normalizedAuthor = author.startsWith("@") ? author.slice(1) : author;
-  if (header.author === normalizedAuthor) {
-    return {
-      isError: true,
-      error: `Cannot supersede change "${changeId}": authored by the same author (${author}). Use amend_change to modify your own changes.`
-    };
-  }
   const rejectResult = applyReview(text, changeId, "reject", reason ?? "Superseded by new change", author);
   if ("error" in rejectResult) {
     return { isError: true, error: `Failed to reject old change: ${rejectResult.error}` };
   }
   let fileContent = rejectResult.updatedContent;
+  const level = isL3Format(text) ? 3 : 2;
+  const doc = parseForFormat(fileContent);
+  const rejectedChange = doc.getChanges().find((c) => c.id === changeId);
+  const isDirectReplace = rejectedChange && !oldText && !insertAfter && (rejectedChange.type === ChangeType.Insertion || rejectedChange.type === ChangeType.Comment);
+  if (isDirectReplace && rejectedChange) {
+    const maxId2 = scanMaxCtId(fileContent);
+    const newChangeId2 = `ct-${maxId2 + 1}`;
+    let newMarkup;
+    let changeType;
+    if (rejectedChange.type === ChangeType.Comment) {
+      newMarkup = `{>>${newText}<<}[^${newChangeId2}]`;
+      changeType = "com";
+    } else {
+      const insPad = /^[+\-~]/.test(newText) ? " " : "";
+      newMarkup = `{++${insPad}${newText}++}[^${newChangeId2}]`;
+      changeType = "ins";
+    }
+    const rangeStart = rejectedChange.range.start;
+    let rangeEnd = rejectedChange.range.end;
+    const refStr = `[^${changeId}]`;
+    if (fileContent.slice(rangeEnd, rangeEnd + refStr.length) === refStr) {
+      rangeEnd += refStr.length;
+    }
+    fileContent = fileContent.slice(0, rangeStart) + newMarkup + fileContent.slice(rangeEnd);
+    const footnoteHeader = generateFootnoteDefinition(newChangeId2, changeType, author);
+    const reasonLine = reason ? `
+    @${author} ${nowTimestamp().raw}: ${reason}` : "";
+    fileContent = appendFootnote(fileContent, footnoteHeader + reasonLine);
+    const modifiedLines2 = fileContent.split("\n");
+    const newBlock2 = findFootnoteBlock(modifiedLines2, newChangeId2);
+    if (newBlock2) {
+      const supersedesLine = `    supersedes: ${changeId}`;
+      modifiedLines2.splice(newBlock2.headerLine + 1, 0, supersedesLine);
+      fileContent = modifiedLines2.join("\n");
+    }
+    const updatedLines2 = fileContent.split("\n");
+    const origBlock2 = findFootnoteBlock(updatedLines2, changeId);
+    if (origBlock2) {
+      const supersededByLine = `    superseded-by: ${newChangeId2}`;
+      updatedLines2.splice(origBlock2.headerLine + 1, 0, supersededByLine);
+      fileContent = updatedLines2.join("\n");
+    }
+    return {
+      isError: false,
+      text: fileContent,
+      newChangeId: newChangeId2,
+      originalChangeId: changeId
+    };
+  }
+  if (rejectedChange) {
+    const rejectEdit = computeReject(rejectedChange);
+    fileContent = fileContent.slice(0, rejectEdit.offset) + rejectEdit.newText + fileContent.slice(rejectEdit.offset + rejectEdit.length);
+  }
   const maxId = scanMaxCtId(fileContent);
   const newChangeId = `ct-${maxId + 1}`;
-  const proposeOldText = oldText;
-  const proposeResult = applyProposeChange({
+  let proposeOldText = oldText;
+  if (rejectedChange) {
+    if (!proposeOldText) {
+      if (rejectedChange.type === ChangeType.Substitution || rejectedChange.type === ChangeType.Deletion) {
+        proposeOldText = rejectedChange.originalText ?? "";
+      }
+    }
+  }
+  const proposeResult = await applyProposeChange({
     text: fileContent,
     oldText: proposeOldText,
     newText,
     changeId: newChangeId,
     author,
     reasoning: reason,
-    insertAfter
+    insertAfter,
+    level
   });
   fileContent = proposeResult.modifiedText;
   const modifiedLines = fileContent.split("\n");
@@ -15784,6 +16981,11 @@ var init_supersede = __esm({
     init_apply_review();
     init_file_ops();
     init_footnote_generator();
+    init_footnote_patterns();
+    init_format_aware_parse();
+    init_accept_reject();
+    init_types();
+    init_timestamp();
   }
 });
 
@@ -15806,10 +17008,33 @@ var init_level_descent = __esm({
   }
 });
 
-// ../../packages/core/dist-esm/comment-syntax.js
-var init_comment_syntax = __esm({
-  "../../packages/core/dist-esm/comment-syntax.js"() {
+// ../../packages/core/dist-esm/operations/l3-to-l2.js
+var init_l3_to_l2 = __esm({
+  "../../packages/core/dist-esm/operations/l3-to-l2.js"() {
     "use strict";
+    init_types();
+    init_footnote_native_parser();
+    init_hashline();
+    init_footnote_patterns();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/compact.js
+var l3Parser2, RE_SUPERSEDES;
+var init_compact = __esm({
+  "../../packages/core/dist-esm/operations/compact.js"() {
+    "use strict";
+    init_footnote_patterns();
+    init_footnote_generator();
+    init_footnote_native_parser();
+    init_hashline();
+    init_accept_reject();
+    init_types();
+    init_l2_to_l3();
+    init_l3_to_l2();
+    init_scrub();
+    l3Parser2 = new FootnoteNativeParser();
+    RE_SUPERSEDES = new RegExp(`^\\s+supersedes:\\s+(${FOOTNOTE_ID_PATTERN})\\s*$`);
   }
 });
 
@@ -15846,6 +17071,7 @@ var init_workspace = __esm({
     "use strict";
     init_parser();
     init_sidecar_parser();
+    init_footnote_native_parser();
     init_accept_reject();
     init_sidecar_accept_reject();
     init_comment_syntax();
@@ -15853,6 +17079,9 @@ var init_workspace = __esm({
     init_tracking();
     init_comment();
     init_constants();
+    init_footnote_patterns();
+    init_format_aware_parse();
+    init_settled_text();
   }
 });
 
@@ -16036,6 +17265,16 @@ var init_hashline_tracked = __esm({
   }
 });
 
+// ../../packages/core/dist-esm/footnote-parser.js
+var init_footnote_parser = __esm({
+  "../../packages/core/dist-esm/footnote-parser.js"() {
+    "use strict";
+    init_footnote_patterns();
+    init_footnote_utils();
+    init_timestamp();
+  }
+});
+
 // ../../packages/core/dist-esm/committed-text.js
 function resolveStatus(changeId, footnotes) {
   if (!changeId)
@@ -16116,14 +17355,14 @@ function findFootnoteLineIndices(lines) {
   }
   return indices;
 }
-function computeCommittedView(rawText) {
+function computeCommittedView(rawText, preParsed) {
   const rawLines = rawText.split("\n");
-  const footnoteInfos = parseFootnotes(rawText);
+  const changes = preParsed ?? parseForFormat(rawText).getChanges();
   const statusMap = /* @__PURE__ */ new Map();
-  for (const [id, info] of footnoteInfos) {
-    statusMap.set(id, {
-      status: info.status === "accepted" || info.status === "rejected" ? info.status : "proposed",
-      type: info.type
+  for (const node of changes) {
+    const rawStatus = nodeStatus(node);
+    statusMap.set(node.id, {
+      status: rawStatus === "accepted" || rawStatus === "rejected" ? rawStatus : "proposed"
     });
   }
   const footnoteLineIndices = findFootnoteLineIndices(rawLines);
@@ -16171,20 +17410,23 @@ function computeCommittedView(rawText) {
     rawToCommitted.set(pre.rawLineNum, pre.committedLineNum);
   }
   const summary = { proposed: 0, accepted: 0, rejected: 0, clean: cleanCount };
-  for (const info of footnoteInfos.values()) {
-    if (info.status === "proposed")
+  for (const node of changes) {
+    const s = nodeStatus(node);
+    if (s === "proposed")
       summary.proposed++;
-    else if (info.status === "accepted")
+    else if (s === "accepted")
       summary.accepted++;
-    else if (info.status === "rejected")
+    else if (s === "rejected")
       summary.rejected++;
   }
-  return { lines: committedLines, summary, committedToRaw, rawToCommitted };
+  return { lines: committedLines, summary, committedToRaw, rawToCommitted, changes };
 }
 var init_committed_text = __esm({
   "../../packages/core/dist-esm/committed-text.js"() {
     "use strict";
-    init_footnote_parser();
+    init_footnote_utils();
+    init_format_aware_parse();
+    init_types();
     init_hashline();
     init_critic_regex();
     init_footnote_patterns();
@@ -16274,105 +17516,6 @@ var init_at_resolver = __esm({
     init_hashline();
     LINE_HASH_RE = /^(\d+):([0-9a-f]{2})$/;
     DUAL_HASH_RE = /^\d+:[0-9a-f]{2}\.[0-9a-f]{2}$/;
-  }
-});
-
-// ../../packages/core/dist-esm/op-parser.js
-function splitReasoning(op) {
-  const idx = op.lastIndexOf("{>>");
-  if (idx <= 0)
-    return [op, void 0];
-  const afterOpen = op.slice(idx + 3);
-  const closeIdx = afterOpen.indexOf("<<}");
-  if (closeIdx !== -1) {
-    const afterClose = afterOpen.slice(closeIdx + 3).trim();
-    if (afterClose.length > 0) {
-      return [op, void 0];
-    }
-    const reasoning2 = afterOpen.slice(0, closeIdx).trimStart();
-    const editPart2 = op.slice(0, idx).trimEnd();
-    if (reasoning2 === "")
-      return [op, void 0];
-    return [editPart2, reasoning2];
-  }
-  const editPart = op.slice(0, idx).trimEnd();
-  const reasoning = afterOpen.trimStart();
-  if (reasoning === "")
-    return [op, void 0];
-  return [editPart, reasoning];
-}
-function extractBetween(text, opener, closer) {
-  if (!text.startsWith(opener))
-    return null;
-  const closerIdx = text.lastIndexOf(closer);
-  if (closerIdx < opener.length)
-    return null;
-  return text.slice(opener.length, closerIdx);
-}
-function parseOp(op) {
-  if (op === "") {
-    throw new Error("Op string is empty \u2014 nothing to parse.");
-  }
-  if (op.startsWith("{>>")) {
-    let reasoning2 = op.slice(3);
-    if (reasoning2.endsWith("<<}")) {
-      reasoning2 = reasoning2.slice(0, -3);
-    }
-    return {
-      type: "comment",
-      oldText: "",
-      newText: "",
-      reasoning: reasoning2
-    };
-  }
-  const [withoutReasoning, reasoning] = splitReasoning(op);
-  const insContent = extractBetween(withoutReasoning, "{++", "++}");
-  if (insContent !== null) {
-    return {
-      type: "ins",
-      oldText: "",
-      newText: insContent,
-      reasoning
-    };
-  }
-  const delContent = extractBetween(withoutReasoning, "{--", "--}");
-  if (delContent !== null) {
-    return {
-      type: "del",
-      oldText: delContent,
-      newText: "",
-      reasoning
-    };
-  }
-  const subContent = extractBetween(withoutReasoning, "{~~", "~~}");
-  if (subContent !== null) {
-    const arrowIdx = subContent.indexOf("~>");
-    if (arrowIdx === -1) {
-      throw new Error(`Cannot parse op: "${op}". Substitution {~~...~~} requires ~> separator between old and new text.`);
-    }
-    const oldText = subContent.slice(0, arrowIdx);
-    const newText = subContent.slice(arrowIdx + 2);
-    return {
-      type: "sub",
-      oldText,
-      newText,
-      reasoning
-    };
-  }
-  const hlContent = extractBetween(withoutReasoning, "{==", "==}");
-  if (hlContent !== null) {
-    return {
-      type: "highlight",
-      oldText: hlContent,
-      newText: "",
-      reasoning
-    };
-  }
-  throw new Error(`Cannot parse op: "${op}". Expected CriticMarkup syntax: {++text++} (ins), {--text--} (del), {~~old~>new~~} (sub), {==text==} (highlight), {>>comment.`);
-}
-var init_op_parser = __esm({
-  "../../packages/core/dist-esm/op-parser.js"() {
-    "use strict";
   }
 });
 
@@ -16481,20 +17624,22 @@ var init_formatters = __esm({
 
 // ../../packages/core/dist-esm/renderers/view-builder-utils.js
 function buildDeliberationHeader(options) {
-  const { footnotes } = options;
+  const { changes } = options;
   let proposed = 0, accepted = 0, rejected = 0, threadCount = 0;
   const authorSet = /* @__PURE__ */ new Set();
-  for (const fn of footnotes.values()) {
-    if (fn.status === "proposed")
+  for (const node of changes) {
+    const status = nodeStatus(node);
+    if (status === "proposed")
       proposed++;
-    else if (fn.status === "accepted")
+    else if (status === "accepted")
       accepted++;
-    else if (fn.status === "rejected")
+    else if (status === "rejected")
       rejected++;
-    if (fn.replyCount > 0)
+    if ((node.replyCount ?? 0) > 0)
       threadCount++;
-    if (fn.author)
-      authorSet.add(fn.author);
+    const author = node.metadata?.author ?? node.inlineMetadata?.author;
+    if (author)
+      authorSet.add(author);
   }
   return {
     filePath: options.filePath,
@@ -16520,34 +17665,88 @@ function buildLineRefMap(lines) {
   }
   return map;
 }
-function findFootnoteSectionRange(footnotes) {
-  if (footnotes.size === 0)
+function findFootnoteSectionRange(changes) {
+  if (changes.length === 0)
     return null;
   let min = Infinity;
   let max = -Infinity;
-  for (const fn of footnotes.values()) {
-    if (fn.startLine < min)
-      min = fn.startLine;
-    if (fn.endLine > max)
-      max = fn.endLine;
+  for (const node of changes) {
+    if (!node.footnoteLineRange)
+      continue;
+    if (node.footnoteLineRange.startLine < min)
+      min = node.footnoteLineRange.startLine;
+    if (node.footnoteLineRange.endLine > max)
+      max = node.footnoteLineRange.endLine;
   }
+  if (min === Infinity)
+    return null;
   return [min, max];
+}
+function computeContinuationLines(content, preParsed) {
+  const changes = preParsed ?? parseForFormat(content).getChanges();
+  if (changes.length === 0)
+    return /* @__PURE__ */ new Set();
+  const lineStarts = [0];
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === "\n")
+      lineStarts.push(i + 1);
+  }
+  function byteToLine(offset) {
+    let lo = 0, hi = lineStarts.length - 1;
+    while (lo < hi) {
+      const mid = lo + hi + 1 >> 1;
+      if (lineStarts[mid] <= offset)
+        lo = mid;
+      else
+        hi = mid - 1;
+    }
+    return lo;
+  }
+  const continuations = /* @__PURE__ */ new Set();
+  for (const change of changes) {
+    const startLine = byteToLine(change.range.start);
+    const endLine = byteToLine(change.range.end - 1);
+    if (endLine > startLine) {
+      for (let line = startLine + 1; line <= endLine; line++) {
+        continuations.add(line);
+      }
+    }
+  }
+  return continuations;
 }
 var REF_EXTRACT_RE;
 var init_view_builder_utils = __esm({
   "../../packages/core/dist-esm/renderers/view-builder-utils.js"() {
     "use strict";
+    init_format_aware_parse();
+    init_types();
     REF_EXTRACT_RE = /\[\^(ct-\d+(?:\.\d+)?)\]/g;
   }
 });
 
 // ../../packages/core/dist-esm/renderers/view-builders/review.js
 function buildReviewDocument(content, options) {
-  const footnotes = parseFootnotes(content);
+  const committedResult = computeCommittedView(content);
+  const changes = committedResult.changes;
+  const footnoteMap = /* @__PURE__ */ new Map();
+  for (const node of changes) {
+    footnoteMap.set(node.id, node);
+  }
   const rawLines = content.split("\n");
   const allSettled = rawLines.map((l) => settledLine(l));
-  const fnRange = findFootnoteSectionRange(footnotes);
+  const rawToCommittedHash = /* @__PURE__ */ new Map();
+  for (const cl of committedResult.lines) {
+    rawToCommittedHash.set(cl.rawLineNum, cl.hash);
+  }
+  let fnRange = findFootnoteSectionRange(changes);
+  if (!fnRange) {
+    const blockStart = findFootnoteBlockStart(rawLines);
+    if (blockStart < rawLines.length) {
+      fnRange = [blockStart, rawLines.length - 1];
+    }
+  }
   const lineRefMap = buildLineRefMap(rawLines);
+  const continuations = computeContinuationLines(content, changes);
   const outputLines = [];
   for (let i = 0; i < rawLines.length; i++) {
     if (fnRange && i >= fnRange[0] && i <= fnRange[1]) {
@@ -16558,19 +17757,22 @@ function buildReviewDocument(content, options) {
     }
     const rawLine = rawLines[i];
     const lineNum = i + 1;
-    const contentSpans = buildContentSpans(rawLine, footnotes);
+    const contentSpans = buildContentSpans(rawLine, footnoteMap);
     const refIds = lineRefMap.get(i);
-    const metadata = buildLineMetadata(refIds, footnotes);
-    const flags = computeFlags(refIds, footnotes);
-    const hash = computeLineHash(i, rawLine, rawLines);
+    const metadata = buildLineMetadata(refIds, footnoteMap);
+    const flags = computeFlags(refIds, footnoteMap);
+    const rawHash = computeLineHash(i, rawLine, rawLines);
+    const hash = rawToCommittedHash.get(lineNum) ?? rawHash;
     outputLines.push({
       margin: { lineNumber: lineNum, hash, flags },
       content: contentSpans,
       metadata,
       rawLineNumber: lineNum,
+      continuesChange: continuations.has(i) || void 0,
       sessionHashes: {
-        raw: hash,
-        settled: computeSettledLineHash(lineNum, rawLine, allSettled)
+        raw: rawHash,
+        settled: computeSettledLineHash(lineNum, rawLine, allSettled),
+        committed: rawToCommittedHash.get(lineNum)
       }
     });
   }
@@ -16580,7 +17782,7 @@ function buildReviewDocument(content, options) {
     protocolMode: options.protocolMode,
     defaultView: options.defaultView,
     viewPolicy: options.viewPolicy,
-    footnotes
+    changes
   });
   return {
     view: "review",
@@ -16588,7 +17790,7 @@ function buildReviewDocument(content, options) {
     lines: outputLines
   };
 }
-function buildContentSpans(line, footnotes) {
+function buildContentSpans(line, footnoteMap) {
   const spans = [];
   let lastIndex = 0;
   const re = new RegExp(CRITIC_MARKUP_RE.source, "g");
@@ -16596,7 +17798,7 @@ function buildContentSpans(line, footnotes) {
     const matchStart = match.index;
     if (matchStart > lastIndex) {
       const between = line.slice(lastIndex, matchStart);
-      emitPlainAndAnchors(between, footnotes, spans);
+      emitPlainAndAnchors(between, footnoteMap, spans);
     }
     if (match[1] !== void 0) {
       spans.push({ type: "delimiter", text: "{++" });
@@ -16625,25 +17827,25 @@ function buildContentSpans(line, footnotes) {
   }
   if (lastIndex < line.length) {
     const remaining = line.slice(lastIndex);
-    emitPlainAndAnchors(remaining, footnotes, spans);
+    emitPlainAndAnchors(remaining, footnoteMap, spans);
   }
   if (spans.length === 0) {
     spans.push({ type: "plain", text: "" });
   }
   return spans;
 }
-function emitPlainAndAnchors(text, footnotes, spans) {
+function emitPlainAndAnchors(text, footnoteMap, spans) {
   let lastIdx = 0;
   const re = new RegExp(FOOTNOTE_REF_RE.source, "g");
   for (const match of text.matchAll(re)) {
     const matchStart = match.index;
     const id = match[1];
-    const info = footnotes.get(id);
+    const node = footnoteMap.get(id);
     if (matchStart > lastIdx) {
       spans.push({ type: "plain", text: text.slice(lastIdx, matchStart) });
     }
-    if (info) {
-      spans.push({ type: "anchor", text: `[^${info.id}]` });
+    if (node) {
+      spans.push({ type: "anchor", text: `[^${node.id}]` });
     } else {
       spans.push({ type: "plain", text: match[0] });
     }
@@ -16653,36 +17855,39 @@ function emitPlainAndAnchors(text, footnotes, spans) {
     spans.push({ type: "plain", text: text.slice(lastIdx) });
   }
 }
-function buildLineMetadata(refIds, footnotes) {
+function buildLineMetadata(refIds, footnoteMap) {
   if (!refIds)
     return [];
   const metadata = [];
   for (const id of refIds) {
-    const info = footnotes.get(id);
-    if (!info)
+    const node = footnoteMap.get(id);
+    if (!node)
       continue;
+    const status = nodeStatus(node);
+    const reason = node.metadata?.comment || node.metadata?.discussion?.[0]?.text || void 0;
     metadata.push({
-      changeId: info.id,
-      author: info.author,
-      reason: info.reason || void 0,
-      replyCount: info.replyCount > 0 ? info.replyCount : void 0,
-      status: info.status
+      changeId: node.id,
+      author: node.metadata?.author ?? node.inlineMetadata?.author,
+      reason,
+      replyCount: (node.replyCount ?? 0) > 0 ? node.replyCount : void 0,
+      status
     });
   }
   return metadata;
 }
-function computeFlags(refIds, footnotes) {
+function computeFlags(refIds, footnoteMap) {
   if (!refIds)
     return [];
   let hasProposed = false;
   let hasAccepted = false;
   for (const id of refIds) {
-    const info = footnotes.get(id);
-    if (!info)
+    const node = footnoteMap.get(id);
+    if (!node)
       continue;
-    if (info.status === "proposed")
+    const status = nodeStatus(node);
+    if (status === "proposed")
       hasProposed = true;
-    if (info.status === "accepted")
+    if (status === "accepted")
       hasAccepted = true;
   }
   if (hasProposed)
@@ -16695,7 +17900,9 @@ var CRITIC_MARKUP_RE, FOOTNOTE_REF_RE;
 var init_review = __esm({
   "../../packages/core/dist-esm/renderers/view-builders/review.js"() {
     "use strict";
-    init_footnote_parser();
+    init_committed_text();
+    init_footnote_utils();
+    init_types();
     init_hashline();
     init_hashline_tracked();
     init_view_builder_utils();
@@ -16706,8 +17913,8 @@ var init_review = __esm({
 
 // ../../packages/core/dist-esm/renderers/view-builders/changes.js
 function buildChangesDocument(rawContent, options) {
-  const footnotes = parseFootnotes(rawContent);
   const committedResult = computeCommittedView(rawContent);
+  const changes = committedResult.changes;
   const rawLines = rawContent.split("\n");
   const allSettled = rawLines.map((l) => settledLine(l));
   while (committedResult.lines.length > 0 && committedResult.lines[committedResult.lines.length - 1].text.trim() === "") {
@@ -16735,7 +17942,7 @@ function buildChangesDocument(rawContent, options) {
   });
   const header = buildDeliberationHeader({
     ...options,
-    footnotes,
+    changes,
     lineRange: { start: 1, end: lines.length, total: lines.length }
   });
   return { view: "changes", header, lines };
@@ -16746,15 +17953,14 @@ var init_changes = __esm({
     init_committed_text();
     init_hashline();
     init_hashline_tracked();
-    init_footnote_parser();
     init_view_builder_utils();
   }
 });
 
 // ../../packages/core/dist-esm/renderers/view-builders/settled.js
 function buildSettledDocument(rawContent, options) {
-  const footnotes = parseFootnotes(rawContent);
-  const settledResult = computeSettledView(rawContent);
+  const changes = parseForFormat(rawContent, { skipCodeBlocks: false }).getChanges();
+  const settledResult = computeSettledView(rawContent, changes);
   const rawLines = rawContent.split("\n");
   const allSettled = rawLines.map((l) => settledLine(l));
   while (settledResult.lines.length > 0 && settledResult.lines[settledResult.lines.length - 1].text.trim() === "") {
@@ -16778,7 +17984,7 @@ function buildSettledDocument(rawContent, options) {
   }));
   const header = buildDeliberationHeader({
     ...options,
-    footnotes,
+    changes,
     lineRange: { start: 1, end: lines.length, total: lines.length }
   });
   return { view: "settled", header, lines };
@@ -16789,36 +17995,41 @@ var init_settled = __esm({
     init_settled_text();
     init_hashline();
     init_hashline_tracked();
-    init_footnote_parser();
+    init_format_aware_parse();
     init_view_builder_utils();
   }
 });
 
 // ../../packages/core/dist-esm/renderers/view-builders/raw.js
 function buildRawDocument(rawContent, options) {
-  const footnotes = parseFootnotes(rawContent);
+  const changes = parseForFormat(rawContent).getChanges();
   const rawLines = rawContent.split("\n");
   const allSettled = rawLines.map((l) => settledLine(l));
-  const lines = rawLines.map((text, i) => ({
-    margin: {
-      lineNumber: i + 1,
-      hash: computeLineHash(i, text, rawLines),
-      flags: []
-    },
-    content: [{ type: "plain", text }],
-    metadata: [],
-    rawLineNumber: i + 1,
-    sessionHashes: {
-      raw: computeLineHash(i, text, rawLines),
-      settled: computeSettledLineHash(i + 1, text, allSettled)
-    }
-  }));
+  const continuations = computeContinuationLines(rawContent, changes);
+  const lines = rawLines.map((text, i) => {
+    const rawHash = computeLineHash(i, text, rawLines);
+    return {
+      margin: {
+        lineNumber: i + 1,
+        hash: rawHash,
+        flags: []
+      },
+      content: [{ type: "plain", text }],
+      metadata: [],
+      rawLineNumber: i + 1,
+      continuesChange: continuations.has(i) || void 0,
+      sessionHashes: {
+        raw: rawHash,
+        settled: computeSettledLineHash(i + 1, text, allSettled)
+      }
+    };
+  });
   const header = buildDeliberationHeader({
     ...options,
-    footnotes,
+    changes,
     lineRange: { start: 1, end: lines.length, total: lines.length }
   });
-  const fnRange = findFootnoteSectionRange(footnotes);
+  const fnRange = findFootnoteSectionRange(changes);
   const footnoteSection = fnRange ? rawLines.slice(fnRange[0], fnRange[1] + 1).join("\n") : void 0;
   return { view: "raw", header, lines, footnoteSection };
 }
@@ -16827,7 +18038,7 @@ var init_raw = __esm({
     "use strict";
     init_hashline();
     init_hashline_tracked();
-    init_footnote_parser();
+    init_format_aware_parse();
     init_view_builder_utils();
   }
 });
@@ -16904,6 +18115,7 @@ var init_dist_esm = __esm({
   "../../packages/core/dist-esm/index.js"() {
     "use strict";
     init_config();
+    init_review_permissions();
     init_timestamp();
     init_types();
     init_document();
@@ -16923,11 +18135,16 @@ var init_dist_esm = __esm({
     init_supersede();
     init_level_promotion();
     init_level_descent();
+    init_compact();
+    init_l2_to_l3();
+    init_l3_to_l2();
+    init_scrub();
     init_workspace();
     init_comment_syntax();
     init_markdown_annotator();
     init_sidecar_annotator();
     init_sidecar_parser();
+    init_footnote_native_parser();
     init_sidecar_accept_reject();
     init_tracking_header();
     init_text_normalizer();
@@ -16935,6 +18152,7 @@ var init_dist_esm = __esm({
     init_hashline();
     init_hashline_tracked();
     init_hashline_cleanup();
+    init_footnote_utils();
     init_footnote_parser();
     init_committed_text();
     init_constants();
@@ -16953,6 +18171,7 @@ var init_dist_esm = __esm({
     init_edit_boundary();
     init_edit_boundary();
     init_edit_boundary();
+    init_format_aware_parse();
   }
 });
 
@@ -28453,7 +29672,7 @@ var Protocol = class {
           return;
         }
         const pollInterval = task2.pollInterval ?? this._options?.defaultTaskPollInterval ?? 1e3;
-        await new Promise((resolve4) => setTimeout(resolve4, pollInterval));
+        await new Promise((resolve5) => setTimeout(resolve5, pollInterval));
         options?.signal?.throwIfAborted();
       }
     } catch (error2) {
@@ -28470,7 +29689,7 @@ var Protocol = class {
    */
   request(request, resultSchema, options) {
     const { relatedRequestId, resumptionToken, onresumptiontoken, task, relatedTask } = options ?? {};
-    return new Promise((resolve4, reject) => {
+    return new Promise((resolve5, reject) => {
       const earlyReject = (error2) => {
         reject(error2);
       };
@@ -28548,7 +29767,7 @@ var Protocol = class {
           if (!parseResult.success) {
             reject(parseResult.error);
           } else {
-            resolve4(parseResult.data);
+            resolve5(parseResult.data);
           }
         } catch (error2) {
           reject(error2);
@@ -28809,12 +30028,12 @@ var Protocol = class {
       }
     } catch {
     }
-    return new Promise((resolve4, reject) => {
+    return new Promise((resolve5, reject) => {
       if (signal.aborted) {
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
         return;
       }
-      const timeoutId = setTimeout(resolve4, interval);
+      const timeoutId = setTimeout(resolve5, interval);
       signal.addEventListener("abort", () => {
         clearTimeout(timeoutId);
         reject(new McpError(ErrorCode.InvalidRequest, "Request cancelled"));
@@ -29684,18 +30903,21 @@ var StdioServerTransport = class {
     this.onclose?.();
   }
   send(message) {
-    return new Promise((resolve4) => {
+    return new Promise((resolve5) => {
       const json = serializeMessage(message);
       if (this._stdout.write(json)) {
-        resolve4();
+        resolve5();
       } else {
-        this._stdout.once("drain", resolve4);
+        this._stdout.once("drain", resolve5);
       }
     });
   }
 };
 
 // src/index.ts
+init_dist_esm();
+
+// ../../packages/cli/dist/config/index.js
 init_dist_esm();
 
 // ../../node_modules/smol-toml/dist/error.js
@@ -30401,6 +31623,14 @@ function derivePolicyMode(legacyEnforcement) {
     return "safety-net";
   return "safety-net";
 }
+function parseHumanAgentSplit(raw, fallback) {
+  if (!raw || typeof raw !== "object")
+    return { ...fallback };
+  return {
+    human: typeof raw["human"] === "boolean" ? raw["human"] : fallback.human,
+    agent: typeof raw["agent"] === "boolean" ? raw["agent"] : fallback.agent
+  };
+}
 function parseConfigToml(raw) {
   const parsed = parse3(raw);
   const tracking = parsed["tracking"];
@@ -30411,59 +31641,65 @@ function parseConfigToml(raw) {
   const settlement = parsed["settlement"];
   const policy = parsed["policy"];
   const protocol = parsed["protocol"];
-  const meta = parsed["meta"];
   const response = parsed["response"];
   const review = parsed["review"];
-  const reasonRequired = review?.["reason_required"];
+  const reasoning = parsed["reasoning"];
+  const legacyReasonRequired = review?.["reason_required"];
   return {
     tracking: {
-      include: asStringArray(tracking?.["include"]) ?? DEFAULT_CONFIG.tracking.include,
-      exclude: asStringArray(tracking?.["exclude"]) ?? DEFAULT_CONFIG.tracking.exclude,
-      default: tracking?.["default"] === "tracked" || tracking?.["default"] === "untracked" ? tracking["default"] : DEFAULT_CONFIG.tracking.default,
-      auto_header: typeof tracking?.["auto_header"] === "boolean" ? tracking["auto_header"] : DEFAULT_CONFIG.tracking.auto_header
+      include: asStringArray(tracking?.["include"]) ?? DEFAULT_CONFIG2.tracking.include,
+      exclude: asStringArray(tracking?.["exclude"]) ?? DEFAULT_CONFIG2.tracking.exclude,
+      default: tracking?.["default"] === "tracked" || tracking?.["default"] === "untracked" ? tracking["default"] : DEFAULT_CONFIG2.tracking.default,
+      auto_header: typeof tracking?.["auto_header"] === "boolean" ? tracking["auto_header"] : DEFAULT_CONFIG2.tracking.auto_header
     },
     author: {
-      default: typeof author?.["default"] === "string" ? author["default"] : DEFAULT_CONFIG.author.default,
-      enforcement: author?.["enforcement"] === "optional" || author?.["enforcement"] === "required" ? author["enforcement"] : DEFAULT_CONFIG.author.enforcement
+      default: typeof author?.["default"] === "string" ? author["default"] : DEFAULT_CONFIG2.author.default,
+      enforcement: author?.["enforcement"] === "optional" || author?.["enforcement"] === "required" ? author["enforcement"] : DEFAULT_CONFIG2.author.enforcement
     },
     hooks: {
-      enforcement: hooks?.["enforcement"] === "warn" || hooks?.["enforcement"] === "block" ? hooks["enforcement"] : DEFAULT_CONFIG.hooks.enforcement,
-      exclude: asStringArray(hooks?.["exclude"]) ?? DEFAULT_CONFIG.hooks.exclude,
-      intercept_tools: typeof hooks?.["intercept_tools"] === "boolean" ? hooks["intercept_tools"] : DEFAULT_CONFIG.hooks.intercept_tools,
-      intercept_bash: typeof hooks?.["intercept_bash"] === "boolean" ? hooks["intercept_bash"] : DEFAULT_CONFIG.hooks.intercept_bash,
-      patch_wrap_experimental: typeof hooks?.["patch_wrap_experimental"] === "boolean" ? hooks["patch_wrap_experimental"] : DEFAULT_CONFIG.hooks.patch_wrap_experimental
+      enforcement: hooks?.["enforcement"] === "warn" || hooks?.["enforcement"] === "block" ? hooks["enforcement"] : DEFAULT_CONFIG2.hooks.enforcement,
+      exclude: asStringArray(hooks?.["exclude"]) ?? DEFAULT_CONFIG2.hooks.exclude,
+      intercept_tools: typeof hooks?.["intercept_tools"] === "boolean" ? hooks["intercept_tools"] : DEFAULT_CONFIG2.hooks.intercept_tools,
+      intercept_bash: typeof hooks?.["intercept_bash"] === "boolean" ? hooks["intercept_bash"] : DEFAULT_CONFIG2.hooks.intercept_bash,
+      patch_wrap_experimental: typeof hooks?.["patch_wrap_experimental"] === "boolean" ? hooks["patch_wrap_experimental"] : DEFAULT_CONFIG2.hooks.patch_wrap_experimental
     },
     matching: {
-      mode: matching?.["mode"] === "strict" || matching?.["mode"] === "normalized" ? matching["mode"] : DEFAULT_CONFIG.matching.mode
+      mode: matching?.["mode"] === "strict" || matching?.["mode"] === "normalized" ? matching["mode"] : DEFAULT_CONFIG2.matching.mode
     },
     hashline: {
-      enabled: typeof hashline?.["enabled"] === "boolean" ? hashline["enabled"] : DEFAULT_CONFIG.hashline.enabled,
-      auto_remap: typeof hashline?.["auto_remap"] === "boolean" ? hashline["auto_remap"] : DEFAULT_CONFIG.hashline.auto_remap
+      enabled: typeof hashline?.["enabled"] === "boolean" ? hashline["enabled"] : DEFAULT_CONFIG2.hashline.enabled,
+      auto_remap: typeof hashline?.["auto_remap"] === "boolean" ? hashline["auto_remap"] : DEFAULT_CONFIG2.hashline.auto_remap
     },
     settlement: {
-      auto_on_approve: typeof settlement?.["auto_on_approve"] === "boolean" ? settlement["auto_on_approve"] : DEFAULT_CONFIG.settlement.auto_on_approve,
-      auto_on_reject: typeof settlement?.["auto_on_reject"] === "boolean" ? settlement["auto_on_reject"] : DEFAULT_CONFIG.settlement.auto_on_reject
+      auto_on_approve: typeof settlement?.["auto_on_approve"] === "boolean" ? settlement["auto_on_approve"] : DEFAULT_CONFIG2.settlement.auto_on_approve,
+      auto_on_reject: typeof settlement?.["auto_on_reject"] === "boolean" ? settlement["auto_on_reject"] : DEFAULT_CONFIG2.settlement.auto_on_reject
+    },
+    coherence: {
+      threshold: parsed["coherence"] && typeof parsed["coherence"]["threshold"] === "number" ? Math.max(0, Math.min(100, parsed["coherence"]["threshold"])) : DEFAULT_CONFIG2.coherence.threshold
     },
     review: {
-      reasonRequired: {
-        human: typeof reasonRequired?.["human"] === "boolean" ? reasonRequired["human"] : DEFAULT_CONFIG.review.reasonRequired.human,
-        agent: typeof reasonRequired?.["agent"] === "boolean" ? reasonRequired["agent"] : DEFAULT_CONFIG.review.reasonRequired.agent
-      }
+      may_review: parseHumanAgentSplit(review?.["may_review"], DEFAULT_CONFIG2.review.may_review),
+      self_acceptance: parseHumanAgentSplit(review?.["self_acceptance"], DEFAULT_CONFIG2.review.self_acceptance),
+      cross_withdrawal: parseHumanAgentSplit(review?.["cross_withdrawal"], DEFAULT_CONFIG2.review.cross_withdrawal),
+      blocking_labels: review?.["blocking_labels"] && typeof review["blocking_labels"] === "object" ? review["blocking_labels"] : { ...DEFAULT_CONFIG2.review.blocking_labels }
+    },
+    reasoning: {
+      // If explicit [reasoning] section exists, use it.
+      // Otherwise fall back to legacy [review.reason_required] for backward compat.
+      propose: parseHumanAgentSplit(reasoning?.["propose"] ?? legacyReasonRequired, DEFAULT_CONFIG2.reasoning.propose),
+      review: parseHumanAgentSplit(reasoning?.["review"] ?? legacyReasonRequired, DEFAULT_CONFIG2.reasoning.review)
     },
     policy: {
       mode: policy?.["mode"] === "strict" || policy?.["mode"] === "safety-net" || policy?.["mode"] === "permissive" ? policy["mode"] : derivePolicyMode(hooks?.["enforcement"]),
-      creation_tracking: policy?.["creation_tracking"] === "none" || policy?.["creation_tracking"] === "footnote" || policy?.["creation_tracking"] === "inline" ? policy["creation_tracking"] : DEFAULT_CONFIG.policy.creation_tracking,
-      default_view: policy?.["default_view"] === "review" || policy?.["default_view"] === "changes" || policy?.["default_view"] === "settled" ? policy["default_view"] : DEFAULT_CONFIG.policy.default_view,
-      view_policy: policy?.["view_policy"] === "suggest" || policy?.["view_policy"] === "require" ? policy["view_policy"] : DEFAULT_CONFIG.policy.view_policy
+      creation_tracking: policy?.["creation_tracking"] === "none" || policy?.["creation_tracking"] === "footnote" || policy?.["creation_tracking"] === "inline" ? policy["creation_tracking"] : DEFAULT_CONFIG2.policy.creation_tracking,
+      default_view: policy?.["default_view"] === "review" || policy?.["default_view"] === "changes" || policy?.["default_view"] === "settled" ? policy["default_view"] : DEFAULT_CONFIG2.policy.default_view,
+      view_policy: policy?.["view_policy"] === "suggest" || policy?.["view_policy"] === "require" ? policy["view_policy"] : DEFAULT_CONFIG2.policy.view_policy
     },
     protocol: {
-      mode: protocol?.["mode"] === "classic" || protocol?.["mode"] === "compact" ? protocol["mode"] : DEFAULT_CONFIG.protocol.mode,
-      level: protocol?.["level"] === 1 || protocol?.["level"] === 2 ? protocol["level"] : DEFAULT_CONFIG.protocol.level,
-      reasoning: protocol?.["reasoning"] === "optional" || protocol?.["reasoning"] === "required" ? protocol["reasoning"] : DEFAULT_CONFIG.protocol.reasoning,
-      batch_reasoning: protocol?.["batch_reasoning"] === "optional" || protocol?.["batch_reasoning"] === "required" ? protocol["batch_reasoning"] : DEFAULT_CONFIG.protocol.batch_reasoning
-    },
-    meta: {
-      compact_threshold: typeof meta?.["compact_threshold"] === "number" && meta["compact_threshold"] > 0 ? meta["compact_threshold"] : DEFAULT_CONFIG.meta?.compact_threshold ?? 80
+      mode: protocol?.["mode"] === "classic" || protocol?.["mode"] === "compact" ? protocol["mode"] : DEFAULT_CONFIG2.protocol.mode,
+      level: protocol?.["level"] === 1 || protocol?.["level"] === 2 ? protocol["level"] : DEFAULT_CONFIG2.protocol.level,
+      reasoning: protocol?.["reasoning"] === "optional" || protocol?.["reasoning"] === "required" ? protocol["reasoning"] : DEFAULT_CONFIG2.protocol.reasoning,
+      batch_reasoning: protocol?.["batch_reasoning"] === "optional" || protocol?.["batch_reasoning"] === "required" ? protocol["batch_reasoning"] : DEFAULT_CONFIG2.protocol.batch_reasoning
     },
     response: {
       affected_lines: typeof response?.["affected_lines"] === "boolean" ? response["affected_lines"] : false
@@ -30491,20 +31727,20 @@ async function loadConfig(projectDir) {
   const configPath = await findConfigFile(projectDir);
   if (!configPath) {
     console.error(`changetracks: no .changetracks/config.toml found (searched from ${projectDir} to /), using defaults`);
-    return structuredClone(DEFAULT_CONFIG);
+    return structuredClone(DEFAULT_CONFIG2);
   }
   let raw;
   try {
     raw = await fs.readFile(configPath, "utf-8");
   } catch {
     console.error(`changetracks: found ${configPath} but could not read it, using defaults`);
-    return structuredClone(DEFAULT_CONFIG);
+    return structuredClone(DEFAULT_CONFIG2);
   }
   try {
     return parseConfigToml(raw);
   } catch (err) {
     console.error(`changetracks: ${configPath} contains invalid TOML (${err instanceof Error ? err.message : String(err)}), using defaults`);
-    return structuredClone(DEFAULT_CONFIG);
+    return structuredClone(DEFAULT_CONFIG2);
   }
 }
 function resolveProtocolMode(configMode) {
@@ -30527,17 +31763,8 @@ function isFileInScope(filePath, config2, projectDir) {
 }
 
 // ../../packages/cli/dist/config/index.js
-var DEFAULT_CONFIG = {
-  tracking: {
-    include: ["**/*.md"],
-    exclude: ["node_modules/**", "dist/**"],
-    default: "tracked",
-    auto_header: true
-  },
-  author: {
-    default: "",
-    enforcement: "optional"
-  },
+var DEFAULT_CONFIG2 = {
+  ...DEFAULT_CONFIG,
   hooks: {
     enforcement: "warn",
     exclude: [],
@@ -30545,34 +31772,11 @@ var DEFAULT_CONFIG = {
     intercept_bash: false,
     patch_wrap_experimental: false
   },
-  matching: {
-    mode: "normalized"
-  },
-  hashline: {
-    enabled: false,
-    auto_remap: true
-  },
-  settlement: {
-    auto_on_approve: true,
-    auto_on_reject: true
-  },
-  review: {
-    reasonRequired: { human: false, agent: true }
-  },
-  policy: {
-    mode: "safety-net",
-    creation_tracking: "footnote",
-    default_view: "review",
-    view_policy: "suggest"
-  },
   protocol: {
     mode: "classic",
     level: 2,
     reasoning: "optional",
     batch_reasoning: "optional"
-  },
-  meta: {
-    compact_threshold: 80
   }
 };
 
@@ -30630,7 +31834,7 @@ var ConfigResolver = class _ConfigResolver {
       this.watchConfig(projectRoot);
       return { config: config2, projectDir: projectRoot };
     }
-    return { config: structuredClone(DEFAULT_CONFIG), projectDir: this.resolveDir() };
+    return { config: structuredClone(DEFAULT_CONFIG2), projectDir: this.resolveDir() };
   }
   /**
    * Resolve a file path argument from a tool call.
@@ -30727,7 +31931,7 @@ var ConfigResolver = class _ConfigResolver {
       this.watchConfig(projectRoot);
       return config2;
     }
-    return structuredClone(DEFAULT_CONFIG);
+    return structuredClone(DEFAULT_CONFIG2);
   }
   /**
    * Walk up from `startDir` looking for a directory containing `.changetracks/`.
@@ -31066,13 +32270,33 @@ var SessionState = class {
         return void 0;
       return { match: true, rawLineNum: entry.rawLineNum ?? entry.line, view: lastView };
     }
+    let foundLineInAnyView = false;
     for (const [view, hashes] of viewTables) {
       const entry = hashes.find((h) => h.line === line);
       if (!entry)
         continue;
+      foundLineInAnyView = true;
       const expected = expectedHashForView(view, entry);
       if (suppliedHash === expected) {
         return { match: true, rawLineNum: entry.rawLineNum ?? entry.line, view };
+      }
+    }
+    if (foundLineInAnyView) {
+      for (const [view, hashes] of viewTables) {
+        let uniqueMatch;
+        let ambiguous = false;
+        for (const entry of hashes) {
+          if (suppliedHash === expectedHashForView(view, entry)) {
+            if (uniqueMatch) {
+              ambiguous = true;
+              break;
+            }
+            uniqueMatch = entry;
+          }
+        }
+        if (uniqueMatch && !ambiguous) {
+          return { match: true, rawLineNum: uniqueMatch.rawLineNum ?? uniqueMatch.line, view };
+        }
       }
     }
     const lastHashes = viewTables.get(lastView);
@@ -31160,20 +32384,61 @@ var SessionState = class {
 init_dist_esm();
 async function rerecordState(state, filePath, content, config2) {
   if (!state)
-    return;
+    return void 0;
   if (!config2.hashline.enabled) {
     state.resetFile(filePath);
-    return;
+    return void 0;
   }
   await initHashline();
   const lines = content.split("\n");
   const allSettled = lines.map((l) => settledLine(l));
-  const hashes = lines.map((line, i) => ({
-    line: i + 1,
-    raw: computeLineHash(i, line, lines),
-    settled: computeSettledLineHash(i, line, allSettled)
-  }));
+  const lastView = state.getLastReadView(filePath);
+  let hashes;
+  let sv;
+  let cv;
+  if (lastView === "settled") {
+    sv = computeSettledView(content);
+    hashes = sv.lines.map((sl) => ({
+      line: sl.settledLineNum,
+      raw: computeLineHash(sl.rawLineNum - 1, lines[sl.rawLineNum - 1], lines),
+      settled: computeSettledLineHash(sl.rawLineNum - 1, lines[sl.rawLineNum - 1], allSettled),
+      settledView: sl.hash,
+      rawLineNum: sl.rawLineNum
+    }));
+  } else if (lastView === "changes") {
+    cv = computeCommittedView(content);
+    hashes = cv.lines.map((cl) => ({
+      line: cl.committedLineNum,
+      raw: computeLineHash(cl.rawLineNum - 1, lines[cl.rawLineNum - 1], lines),
+      settled: computeSettledLineHash(cl.rawLineNum - 1, lines[cl.rawLineNum - 1], allSettled),
+      committed: cl.hash,
+      rawLineNum: cl.rawLineNum
+    }));
+  } else if (lastView === "review") {
+    cv = computeCommittedView(content);
+    const rawToCommittedHash = /* @__PURE__ */ new Map();
+    for (const cl of cv.lines) {
+      rawToCommittedHash.set(cl.rawLineNum, cl.hash);
+    }
+    hashes = lines.map((line, i) => ({
+      line: i + 1,
+      raw: computeLineHash(i, line, lines),
+      settled: computeSettledLineHash(i, line, allSettled),
+      committed: rawToCommittedHash.get(i + 1)
+    }));
+  } else {
+    hashes = lines.map((line, i) => ({
+      line: i + 1,
+      raw: computeLineHash(i, line, lines),
+      settled: computeSettledLineHash(i, line, allSettled)
+    }));
+  }
   state.rerecordAfterWrite(filePath, content, hashes);
+  if (sv)
+    return { settledView: sv };
+  if (cv)
+    return { committedView: cv };
+  return void 0;
 }
 
 // ../../packages/cli/dist/engine/author.js
@@ -31278,7 +32543,7 @@ function composeGuide(config2) {
   const protocolMode = resolveProtocolMode(config2.protocol.mode);
   sections.push(composeProtocolSection(protocolMode, config2));
   sections.push(composeAuthorSection(config2));
-  if (config2.protocol.reasoning === "required") {
+  if (config2.reasoning?.propose?.agent === true) {
     sections.push("**Annotations**: Required on every change. Append `{>>reason` to your `op` string, or include reasoning in your propose call.");
   }
   sections.push("**Chaining edits**: Each `propose_change` response shows your changes applied. The `applied` array includes `preview` (the line with your edit) and coordinates for follow-up edits. `affected_lines` shows neighboring lines with fresh coordinates. No re-read needed between edits. Re-read only after review (accept/reject).");
@@ -31299,7 +32564,7 @@ function composeProtocolSection(mode, config2) {
     "  Substitute: `{~~old~>new~~}`  Insert: `{++text++}`  Delete: `{--text--}`",
     "  Highlight: `{==text==}`  Comment: `{>>reason`"
   ];
-  if (config2.protocol.reasoning !== "required") {
+  if (config2.reasoning?.propose?.agent !== true) {
     lines.push("  Annotate: `{~~old~>new~~}{>>reason`  (append {>> to any op)");
   } else {
     lines.push("  Annotate (required): `{~~old~>new~~}{>>reason`  (append {>> to any op)");
@@ -31419,6 +32684,26 @@ function errorResult(message) {
 // ../../packages/cli/dist/engine/handlers/review-changes.js
 init_dist_esm();
 
+// ../../packages/cli/dist/engine/shared/blocking-annotation.js
+init_dist_esm();
+function applyBlockingAnnotation(content, changeId, author, label, shouldBlock) {
+  const lines = content.split("\n");
+  const block = findFootnoteBlock(lines, changeId);
+  if (!block)
+    return content;
+  const insertIdx = findReviewInsertionIndex(lines, block.headerLine, block.blockEnd);
+  if (label && insertIdx >= block.headerLine) {
+    const rcLine = lines[insertIdx];
+    if (rcLine.trimStart().startsWith("request-changes:")) {
+      lines[insertIdx] = rcLine + ` [${label}]`;
+    }
+  }
+  if (shouldBlock) {
+    lines.splice(insertIdx + 1, 0, `    blocked: @${author}`);
+  }
+  return lines.join("\n");
+}
+
 // ../../packages/cli/dist/engine/handlers/settle.js
 init_dist_esm();
 function settleAcceptedChanges(fileContent) {
@@ -31493,12 +32778,20 @@ var reviewChangesTool = {
             },
             decision: {
               type: "string",
-              enum: ["approve", "reject", "request_changes"],
+              enum: ["approve", "reject", "request_changes", "withdraw"],
               description: "The review decision"
             },
             reason: {
               type: "string",
               description: "Why this decision. Required."
+            },
+            blocking: {
+              type: "boolean",
+              description: "When true with request_changes, adds a blocked: line preventing acceptance until withdrawn."
+            },
+            label: {
+              type: "string",
+              description: 'Optional label for the review (e.g. "security", "performance").'
             }
           },
           required: ["change_id", "decision", "reason"]
@@ -31596,7 +32889,13 @@ async function handleReviewChanges(args, resolver, state) {
         inputOrderChangeIds.push(changeId);
         const block = findFootnoteBlock(lines, changeId);
         withPosition.push({
-          review: { change_id: changeId, decision, reason },
+          review: {
+            change_id: changeId,
+            decision,
+            reason,
+            blocking: rObj.blocking === true ? true : void 0,
+            label: typeof rObj.label === "string" ? rObj.label : void 0
+          },
           headerLine: block ? block.headerLine : -1
         });
       }
@@ -31606,14 +32905,19 @@ async function handleReviewChanges(args, resolver, state) {
         if (!VALID_DECISIONS.includes(review.decision)) {
           resultByChangeId.set(review.change_id, {
             change_id: review.change_id,
-            error: `Invalid decision: "${review.decision}". Must be one of: approve, reject, request_changes`
+            error: `Invalid decision: "${review.decision}". Must be one of: approve, reject, request_changes, withdraw`
           });
           continue;
         }
-        const applied = applyReview(fileContent, review.change_id, review.decision, review.reason, author);
+        const applied = applyReview(fileContent, review.change_id, review.decision, review.reason, author, config2);
         if ("error" in applied) {
           resultByChangeId.set(review.change_id, { change_id: review.change_id, error: applied.error });
           continue;
+        }
+        if (review.decision === "request_changes" && (review.blocking || review.label)) {
+          const autoBlock = review.label ? config2.review.blocking_labels[review.label] === true : false;
+          const shouldBlock = review.blocking || autoBlock;
+          applied.updatedContent = applyBlockingAnnotation(applied.updatedContent, review.change_id, author, review.label, shouldBlock);
         }
         resultByChangeId.set(review.change_id, applied.result);
         fileContent = applied.updatedContent;
@@ -31900,29 +33204,21 @@ function buildTruncationMessage(effectiveStart, effectiveEnd, totalLines) {
   if (effectiveEnd >= totalLines)
     return null;
   return `
+
 --- showing lines ${effectiveStart}-${effectiveEnd} of ${totalLines} | use offset/limit to paginate ---`;
 }
-function extendToCloseMarkup(lines, effectiveEnd, totalLines) {
-  const openers = ["{++", "{--", "{~~", "{==", "{>>"];
-  const closers = ["++}", "--}", "~~}", "==}", "<<}"];
+function findSafePaginationEnd(lines, effectiveEnd) {
   let end = effectiveEnd;
-  let text = lines.slice(0, end).join("\n");
-  for (let i = 0; i < openers.length; i++) {
-    const openCount = text.split(openers[i]).length - 1;
-    const closeCount = text.split(closers[i]).length - 1;
-    if (openCount > closeCount) {
-      while (end < totalLines) {
-        end++;
-        const nextLine = lines[end - 1];
-        if (nextLine?.includes(closers[i])) {
-          text = lines.slice(0, end).join("\n");
-          const newCloseCount = text.split(closers[i]).length - 1;
-          const newOpenCount = text.split(openers[i]).length - 1;
-          if (newCloseCount >= newOpenCount)
-            break;
-        }
-      }
-    }
+  while (end < lines.length && lines[end]?.continuesChange) {
+    end++;
+  }
+  return end;
+}
+function findSafePaginationEndFromText(contentLines, effectiveEnd, totalLines) {
+  const continuations = computeContinuationLines(contentLines.join("\n"));
+  let end = effectiveEnd;
+  while (end < totalLines && continuations.has(end)) {
+    end++;
   }
   return end;
 }
@@ -32001,8 +33297,7 @@ async function handleReadTrackedFile(args, resolver, state) {
         state.recordAfterRead(filePath, toCanonicalView(effectiveView), sessionHashes2, fileContent);
         const totalLines2 = doc2.lines.length;
         const { effectiveStart: effectiveStart2, effectiveEnd: effectiveEnd2 } = computeEffectiveRange(offset, requestedLimit, totalLines2);
-        const contentStrings2 = doc2.lines.map((l) => l.content.map((s) => s.text).join(""));
-        const adjustedEnd3 = extendToCloseMarkup(contentStrings2, effectiveEnd2, totalLines2);
+        const adjustedEnd3 = findSafePaginationEnd(doc2.lines, effectiveEnd2);
         const paginatedDoc2 = {
           ...doc2,
           lines: doc2.lines.slice(effectiveStart2 - 1, adjustedEnd3),
@@ -32038,7 +33333,7 @@ async function handleReadTrackedFile(args, resolver, state) {
       const allContentLines = contentToShow.split("\n");
       const totalContentLines = allContentLines.length;
       const { effectiveStart: effStart, effectiveEnd: effEnd } = computeEffectiveRange(offset, requestedLimit, totalContentLines);
-      const adjustedEnd2 = extendToCloseMarkup(allContentLines, effEnd, totalContentLines);
+      const adjustedEnd2 = findSafePaginationEndFromText(allContentLines, effEnd, totalContentLines);
       const slicedLines = allContentLines.slice(effStart - 1, adjustedEnd2);
       const lineNumbered = formatLineNumberedContent(slicedLines, effStart);
       const output2 = `${headerWithoutHashlineTip}
@@ -32075,8 +33370,7 @@ ${lineNumbered}`;
     state.recordAfterRead(filePath, canonicalView, sessionHashes, fileContent);
     const totalLines = doc.lines.length;
     const { effectiveStart, effectiveEnd } = computeEffectiveRange(offset, requestedLimit, totalLines);
-    const contentStrings = doc.lines.map((l) => l.content.map((s) => s.text).join(""));
-    const adjustedEnd = extendToCloseMarkup(contentStrings, effectiveEnd, totalLines);
+    const adjustedEnd = findSafePaginationEnd(doc.lines, effectiveEnd);
     const paginatedDoc = {
       ...doc,
       lines: doc.lines.slice(effectiveStart - 1, adjustedEnd),
@@ -32174,7 +33468,16 @@ async function handleAmendChange(args, resolver, state) {
     if (authorError) {
       return errorResult(authorError.message);
     }
-    const result = computeAmendEdits(fileContent, changeId, {
+    const doc = parseForFormat(fileContent);
+    const originalChange = doc.getChanges().find((c) => c.id === changeId);
+    if (originalChange) {
+      const originalAuthor = originalChange.metadata?.author?.replace(/^@/, "") ?? "";
+      const normalizedAuthor = (author ?? "").replace(/^@/, "");
+      if (originalAuthor && normalizedAuthor && originalAuthor !== normalizedAuthor) {
+        return errorResult(`Cannot amend change "${changeId}": you (${normalizedAuthor}) are not the original author (${originalAuthor}). Use supersede_change to propose a replacement by a different author.`);
+      }
+    }
+    const result = await computeSupersedeResult(fileContent, changeId, {
       newText,
       oldText,
       reason: reasoning,
@@ -32187,11 +33490,10 @@ async function handleAmendChange(args, resolver, state) {
     await rerecordState(state, filePath, result.text, config2);
     const responseData = {
       change_id: changeId,
+      new_change_id: result.newChangeId,
       file: toRelativePath(projectDir, filePath),
       amended: true,
-      previous_text: result.previousText,
-      new_text: newText,
-      inline_updated: result.inlineUpdated
+      new_text: newText
     };
     return {
       content: [{ type: "text", text: JSON.stringify(responseData) }]
@@ -32216,7 +33518,7 @@ var TYPE_MAP = {
   [ChangeType.Highlight]: "highlight",
   [ChangeType.Comment]: "comment"
 };
-function offsetToLineNumber(text, offset) {
+function offsetToLineNumber2(text, offset) {
   let line = 1;
   for (let i = 0; i < offset && i < text.length; i++) {
     if (text[i] === "\n")
@@ -32289,8 +33591,8 @@ function buildPreview(change) {
   return preview;
 }
 function buildContextEntry(change, fileContent, lines, summary, contextN) {
-  const startLine = offsetToLineNumber(fileContent, change.range.start);
-  const endLine = offsetToLineNumber(fileContent, change.range.end);
+  const startLine = offsetToLineNumber2(fileContent, change.range.start);
+  const endLine = offsetToLineNumber2(fileContent, change.range.end);
   const markup = fileContent.slice(change.range.start, change.range.end);
   const contextBefore = lines.slice(Math.max(0, startLine - 1 - contextN), startLine - 1);
   const contextAfter = lines.slice(endLine, Math.min(lines.length, endLine + contextN));
@@ -32402,8 +33704,7 @@ async function handleListChanges(args, resolver, _state) {
     } catch {
       return errorResult(`Could not read file: "${filePath}"`);
     }
-    const parser = new CriticMarkupParser();
-    const doc = parser.parse(fileContent);
+    const doc = parseForFormat(fileContent);
     const allChanges = doc.getChanges();
     const lines = fileContent.split("\n");
     const contextN = Math.max(0, contextLines);
@@ -32470,7 +33771,7 @@ async function handleListChanges(args, resolver, _state) {
 }
 function buildSummaryEntry(change, fileContent, lines) {
   const typeStr = TYPE_MAP[change.type];
-  const lineNumber = offsetToLineNumber(fileContent, change.range.start);
+  const lineNumber = offsetToLineNumber2(fileContent, change.range.start);
   let author = "";
   let status = change.status.toLowerCase();
   if (change.id) {
@@ -32491,7 +33792,8 @@ function buildSummaryEntry(change, fileContent, lines) {
     line: lineNumber,
     preview: buildPreview(change),
     level: change.level,
-    anchored: change.anchored
+    anchored: change.anchored,
+    ...change.consumedBy ? { consumed_by: change.consumedBy } : {}
   };
 }
 function buildDetailForLevel(detail, change, fileContent, lines, doc, summary, contextN) {
@@ -32579,7 +33881,7 @@ async function handleSupersedeChange(args, resolver, state) {
     if (authorError) {
       return errorResult(authorError.message);
     }
-    const result = computeSupersedeResult(fileContent, changeId, {
+    const result = await computeSupersedeResult(fileContent, changeId, {
       newText,
       oldText,
       reason: reasoning,
@@ -32624,6 +33926,36 @@ async function handleSupersedeChange(args, resolver, state) {
   }
 }
 
+// ../../packages/cli/dist/engine/handlers/resolve-thread.js
+init_dist_esm();
+var resolveThreadTool = {
+  name: "resolve_thread",
+  description: "Resolve or unresolve a change thread. Resolving marks the discussion as complete.",
+  inputSchema: {
+    type: "object",
+    properties: {
+      file: {
+        type: "string",
+        description: "Path to the file (absolute or relative to project root)"
+      },
+      change_id: {
+        type: "string",
+        description: "e.g., ct-7"
+      },
+      action: {
+        type: "string",
+        enum: ["resolve", "unresolve"],
+        description: "Whether to resolve or unresolve the thread. Defaults to resolve."
+      },
+      author: {
+        type: "string",
+        description: "Who is resolving/unresolving. Recommended: always pass your model/agent identity (e.g. ai:composer) for clear attribution. Required when this project has author enforcement."
+      }
+    },
+    required: ["file", "change_id"]
+  }
+};
+
 // ../../packages/cli/dist/engine/listed-tools.js
 function getListedTools(mode = "classic") {
   const proposeChange = mode === "compact" ? compactProposeChangeSchema : classicProposeChangeSchema;
@@ -32633,7 +33965,8 @@ function getListedTools(mode = "classic") {
     { name: reviewChangesTool.name, description: reviewChangesTool.description, inputSchema: reviewChangesTool.inputSchema },
     { name: amendChangeTool.name, description: amendChangeTool.description, inputSchema: amendChangeTool.inputSchema },
     { name: listChangesTool.name, description: listChangesTool.description, inputSchema: listChangesTool.inputSchema },
-    { name: supersedeChangeTool.name, description: supersedeChangeTool.description, inputSchema: supersedeChangeTool.inputSchema }
+    { name: supersedeChangeTool.name, description: supersedeChangeTool.description, inputSchema: supersedeChangeTool.inputSchema },
+    { name: resolveThreadTool.name, description: resolveThreadTool.description, inputSchema: resolveThreadTool.inputSchema }
   ];
 }
 var AUTHOR_REQUIRED_SUFFIX = " In this project author is required.";
@@ -32851,7 +34184,14 @@ function applyCompactOp(resolved, op, fileContent, fileLines, changeId, author, 
   }
   let target = resolveAt(resolvedAt, fileLines);
   if (op.type !== "ins" && op.type !== "comment") {
-    const supersedeResult = resolveOverlapWithAuthor(fileContent, target.startOffset, target.endOffset - target.startOffset, author);
+    let overlapStart = target.startOffset;
+    let overlapLength = target.endOffset - target.startOffset;
+    if (op.oldText !== "") {
+      const preMatch = findUniqueMatch(contentZoneText(target.content), op.oldText, defaultNormalizer);
+      overlapStart = target.startOffset + preMatch.index;
+      overlapLength = preMatch.length;
+    }
+    const supersedeResult = resolveOverlapWithAuthor(fileContent, overlapStart, overlapLength, author);
     if (supersedeResult) {
       fileContent = supersedeResult.settledContent;
       fileLines = fileContent.split("\n");
@@ -33310,7 +34650,7 @@ async function handleProposeBatch(args, resolver, state) {
           if ((op.afterLine !== void 0 || op.startLine !== void 0) && adjStart === void 0 && adjAfter === void 0) {
             throw new Error(`Operation ${originalIndex}: hashline params require after_line or start_line.`);
           }
-          const applied = applySingleOperation({
+          const applied = await applySingleOperation({
             fileContent: currentText,
             oldText: op.oldText,
             newText: op.newText,
@@ -33434,6 +34774,15 @@ async function handleProposeBatch(args, resolver, state) {
 // ../../packages/cli/dist/engine/handlers/propose-change.js
 init_file_ops2();
 init_dist_esm();
+function checkReasoningRequired(author, reasoning, config2, compact2) {
+  const participantType = reviewerType(author);
+  if (!config2.reasoning?.propose?.[participantType])
+    return null;
+  if (reasoning)
+    return null;
+  const hint = compact2 ? "Append {>>reason to your op string, or include a reason parameter in your propose_change call." : "Include a reason parameter in your propose_change call.";
+  return errorResult3(`This project requires reasoning on proposals. ${hint}`, "REASONING_REQUIRED");
+}
 function hasHashlineParams2(args) {
   return args.start_line !== void 0 || args.start_hash !== void 0 || args.after_line !== void 0 || args.after_hash !== void 0;
 }
@@ -33646,8 +34995,7 @@ async function handleProposeChange(args, resolver, state) {
         file: args.file,
         reason: args.reason,
         author: args.author,
-        changes: changesArray,
-        atomic: true
+        changes: changesArray
       };
       const batchResult = await handleProposeBatch(batchArgs, resolver, state);
       return batchResult;
@@ -33786,6 +35134,9 @@ async function handleProposeChange(args, resolver, state) {
     if (authorError) {
       return errorResult3(authorError.message, "AUTHOR_RESOLUTION_FAILED");
     }
+    const reasoningError = checkReasoningRequired(author, reasoning, config2, false);
+    if (reasoningError)
+      return reasoningError;
     const useLineRange = startLine !== void 0 && startHash !== void 0;
     const useAfterLine = afterLine !== void 0 && afterHash !== void 0;
     const isHashlineMode = useLineRange || useAfterLine;
@@ -33982,7 +35333,7 @@ async function handleProposeChange(args, resolver, state) {
           fileContent = settleResult.content;
         }
       }
-      const result = applyProposeChange({
+      const result = await applyProposeChange({
         text: fileContent,
         oldText,
         newText,
@@ -34005,13 +35356,7 @@ async function handleProposeChange(args, resolver, state) {
         }
       }
       const affStart = Math.max(1, matchLine - 2);
-      let affEnd = Math.min(modLines.length, matchLine + 5);
-      for (let i = modLines.length - 1; i >= affEnd; i--) {
-        if (/^\[\^ct-\d+(?:\.\d+)?\]:/.test(modLines[i])) {
-          affEnd = modLines.length;
-          break;
-        }
-      }
+      const affEnd = Math.min(modLines.length, matchLine + 5);
       try {
         affectedLines = computeAffectedLines(modifiedText, affStart, affEnd, {
           hashlineEnabled: config2.hashline.enabled
@@ -34021,48 +35366,7 @@ async function handleProposeChange(args, resolver, state) {
       }
     }
     await fs10.writeFile(filePath, modifiedText, "utf-8");
-    if (isHashlineMode) {
-      await initHashline();
-      const rerecordLines = modifiedText.split("\n");
-      const allSettledRerecord = rerecordLines.map((l) => settledLine(l));
-      if (viewResolved === "changes") {
-        const committedResult = computeCommittedView(modifiedText);
-        const newHashes = committedResult.lines.map((cl) => ({
-          line: cl.committedLineNum,
-          raw: computeLineHash(cl.rawLineNum - 1, rerecordLines[cl.rawLineNum - 1], rerecordLines),
-          settled: computeSettledLineHash(cl.rawLineNum - 1, rerecordLines[cl.rawLineNum - 1], allSettledRerecord),
-          committed: cl.hash,
-          rawLineNum: cl.rawLineNum
-        }));
-        state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-      } else if (viewResolved === "review") {
-        const newHashes = rerecordLines.map((line, i) => ({
-          line: i + 1,
-          raw: computeLineHash(i, line, rerecordLines),
-          settled: computeSettledLineHash(i, line, allSettledRerecord)
-        }));
-        state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-      } else if (viewResolved === "settled") {
-        const settledResult = computeSettledView(modifiedText);
-        const newHashes = settledResult.lines.map((sl) => ({
-          line: sl.settledLineNum,
-          raw: computeLineHash(sl.rawLineNum - 1, rerecordLines[sl.rawLineNum - 1], rerecordLines),
-          settled: computeSettledLineHash(sl.rawLineNum - 1, rerecordLines[sl.rawLineNum - 1], allSettledRerecord),
-          settledView: sl.hash,
-          rawLineNum: sl.rawLineNum
-        }));
-        state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-      } else {
-        const newHashes = rerecordLines.map((line, i) => ({
-          line: i + 1,
-          raw: computeLineHash(i, line, rerecordLines),
-          settled: computeSettledLineHash(i, line, allSettledRerecord)
-        }));
-        state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-      }
-    } else {
-      state.rerecordAfterWrite(filePath, modifiedText, []);
-    }
+    await rerecordState(state, filePath, modifiedText, config2);
     const responseData = {
       change_id: changeId,
       file: relativePath,
@@ -34168,10 +35472,12 @@ async function handleCompactProposeChange(args, filePath, relativePath, config2,
     return errorResult3(authorError.message, "AUTHOR_RESOLUTION_FAILED");
   }
   const reasoning = parsed.reasoning ?? args.reason;
+  const reasoningError = checkReasoningRequired(author, reasoning, config2, true);
+  if (reasoningError)
+    return reasoningError;
   let modifiedText;
   let changeType;
   const supersededIds = [];
-  let compactViewResolved;
   let applyResult;
   try {
     const op2 = {
@@ -34192,65 +35498,23 @@ async function handleCompactProposeChange(args, filePath, relativePath, config2,
   modifiedText = applyResult.modifiedText;
   changeType = applyResult.changeType;
   supersededIds.push(...applyResult.supersededIds);
-  compactViewResolved = applyResult.viewResolved;
   fileContent = applyResult.modifiedText;
   fileLines = fileContent.split("\n");
   await fs10.writeFile(filePath, modifiedText, "utf-8");
-  const rerecordLines = modifiedText.split("\n");
-  const allSettledRerecord = rerecordLines.map((l) => settledLine(l));
+  const viewResult = await rerecordState(state, filePath, modifiedText, config2);
   let viewProjection;
-  if (compactViewResolved === "changes") {
-    const committedResult = computeCommittedView(modifiedText);
-    const newHashes = committedResult.lines.map((cl) => ({
-      line: cl.committedLineNum,
-      raw: computeLineHash(cl.rawLineNum - 1, rerecordLines[cl.rawLineNum - 1], rerecordLines),
-      settled: computeSettledLineHash(cl.rawLineNum - 1, rerecordLines[cl.rawLineNum - 1], allSettledRerecord),
-      committed: cl.hash,
-      rawLineNum: cl.rawLineNum
-    }));
-    state.rerecordAfterWrite(filePath, modifiedText, newHashes);
+  if (viewResult?.settledView) {
     const rawToViewMap = /* @__PURE__ */ new Map();
-    for (const cl of committedResult.lines) {
-      rawToViewMap.set(cl.rawLineNum, {
-        viewLine: cl.committedLineNum,
-        viewHash: cl.hash,
-        viewContent: cl.text
-      });
-    }
-    viewProjection = { view: "changes", rawToView: rawToViewMap };
-  } else if (compactViewResolved === "review") {
-    const newHashes = rerecordLines.map((line, i) => ({
-      line: i + 1,
-      raw: computeLineHash(i, line, rerecordLines),
-      settled: computeSettledLineHash(i, line, allSettledRerecord)
-    }));
-    state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-  } else if (compactViewResolved === "settled") {
-    const settledResult = computeSettledView(modifiedText);
-    const newHashes = settledResult.lines.map((sl) => ({
-      line: sl.settledLineNum,
-      raw: computeLineHash(sl.rawLineNum - 1, rerecordLines[sl.rawLineNum - 1], rerecordLines),
-      settled: computeSettledLineHash(sl.rawLineNum - 1, rerecordLines[sl.rawLineNum - 1], allSettledRerecord),
-      settledView: sl.hash,
-      rawLineNum: sl.rawLineNum
-    }));
-    state.rerecordAfterWrite(filePath, modifiedText, newHashes);
-    const rawToViewMap = /* @__PURE__ */ new Map();
-    for (const sl of settledResult.lines) {
-      rawToViewMap.set(sl.rawLineNum, {
-        viewLine: sl.settledLineNum,
-        viewHash: sl.hash,
-        viewContent: sl.text
-      });
+    for (const sl of viewResult.settledView.lines) {
+      rawToViewMap.set(sl.rawLineNum, { viewLine: sl.settledLineNum, viewHash: sl.hash, viewContent: sl.text });
     }
     viewProjection = { view: "settled", rawToView: rawToViewMap };
-  } else {
-    const newHashes = rerecordLines.map((line, i) => ({
-      line: i + 1,
-      raw: computeLineHash(i, line, rerecordLines),
-      settled: computeSettledLineHash(i, line, allSettledRerecord)
-    }));
-    state.rerecordAfterWrite(filePath, modifiedText, newHashes);
+  } else if (viewResult?.committedView) {
+    const rawToViewMap = /* @__PURE__ */ new Map();
+    for (const cl of viewResult.committedView.lines) {
+      rawToViewMap.set(cl.rawLineNum, { viewLine: cl.committedLineNum, viewHash: cl.hash, viewContent: cl.text });
+    }
+    viewProjection = { view: "changes", rawToView: rawToViewMap };
   }
   const footnoteCount = (modifiedText.match(/^\[\^ct-\d+(?:\.\d+)?\]:/gm) || []).length;
   const proposedCount = (modifiedText.match(/\|\s*proposed\s*$/gm) || []).length;
@@ -34278,7 +35542,9 @@ async function handleCompactProposeChange(args, filePath, relativePath, config2,
     });
   } catch {
   }
-  responseData.affected_lines = affectedLines;
+  if (affectedLines && config2.response?.affected_lines) {
+    responseData.affected_lines = affectedLines;
+  }
   return {
     content: [{ type: "text", text: JSON.stringify(responseData) }]
   };
@@ -34429,7 +35695,7 @@ async function handleReviewChange(args, resolver, state) {
       return errorResult('Missing required argument: "reason"');
     }
     if (!VALID_DECISIONS.includes(decision)) {
-      return errorResult(`Invalid decision: "${decision}". Must be one of: approve, reject, request_changes`);
+      return errorResult(`Invalid decision: "${decision}". Must be one of: approve, reject, request_changes, withdraw`);
     }
     const typedDecision = decision;
     const filePath = resolver.resolveFilePath(file);
@@ -34448,15 +35714,22 @@ async function handleReviewChange(args, resolver, state) {
     if (authorError) {
       return errorResult(authorError.message);
     }
-    const applied = applyReview(fileContent, changeId, typedDecision, reasoning, author);
+    const applied = applyReview(fileContent, changeId, typedDecision, reasoning, author, config2);
     if ("error" in applied) {
       return errorResult(applied.error);
+    }
+    if (typedDecision === "request_changes") {
+      const blockingArg = args.blocking === true;
+      const labelArg = optionalStrArg(args, "label", "label");
+      const autoBlock = labelArg ? config2.review.blocking_labels[labelArg] === true : false;
+      const shouldBlock = blockingArg || autoBlock;
+      if (labelArg || shouldBlock) {
+        applied.updatedContent = applyBlockingAnnotation(applied.updatedContent, changeId, author, labelArg, shouldBlock);
+      }
     }
     if (applied.updatedContent !== fileContent) {
       fileContent = applied.updatedContent;
       await fs13.writeFile(filePath, fileContent, "utf-8");
-    } else {
-      fileContent = applied.updatedContent;
     }
     let settlementInfo;
     if (config2.settlement.auto_on_approve && typedDecision === "approve") {
@@ -34942,8 +36215,8 @@ async function handleGetChange(args, resolver) {
       return errorResult4(`Change ${changeId} not found in file`);
     }
     const lines = fileContent.split("\n");
-    const startLine = offsetToLineNumber(fileContent, change.range.start);
-    const endLine = offsetToLineNumber(fileContent, change.range.end);
+    const startLine = offsetToLineNumber2(fileContent, change.range.start);
+    const endLine = offsetToLineNumber2(fileContent, change.range.end);
     const contextN = Math.max(0, contextLines);
     const markup = fileContent.slice(change.range.start, change.range.end);
     const contextBefore = lines.slice(Math.max(0, startLine - 1 - contextN), startLine - 1);
@@ -35042,6 +36315,9 @@ function errorResult4(message, code, details) {
     isError: true
   };
 }
+
+// ../../packages/cli/dist/engine/handlers/compact-changes.js
+init_dist_esm();
 
 // src/index.ts
 function rootUrisToPaths(roots) {

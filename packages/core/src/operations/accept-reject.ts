@@ -52,12 +52,44 @@ export function computeRejectParts(change: ChangeNode): AcceptRejectParts {
 }
 
 export function computeAccept(change: ChangeNode): TextEdit {
+  // L3 shape: range === contentRange means no delimiters in body.
+  // The body already shows the accepted state for all change types:
+  // - Insertion: text is already present
+  // - Deletion: text is already absent (zero-width range)
+  // - Substitution: modified text is already present
+  // Only the footnote status update is needed (handled separately).
+  if (change.range.start === change.contentRange.start && change.range.end === change.contentRange.end) {
+    return { offset: change.range.start, length: 0, newText: '' };
+  }
+  // L2 path (CriticMarkup delimiters present)
   const parts = computeAcceptParts(change);
   const ref = parts.refId ? `[^${parts.refId}]` : '';
   return { offset: parts.offset, length: parts.length, newText: parts.text + ref };
 }
 
 export function computeReject(change: ChangeNode): TextEdit {
+  // L3 shape: range === contentRange means no delimiters in body.
+  // Rejecting requires reverting the body to its pre-change state.
+  if (change.range.start === change.contentRange.start && change.range.end === change.contentRange.end) {
+    switch (change.type) {
+      case ChangeType.Insertion:
+        // Remove the inserted text from the body
+        return { offset: change.range.start, length: change.range.end - change.range.start, newText: '' };
+      case ChangeType.Deletion:
+        // Restore deleted text at the zero-width anchor point
+        return { offset: change.range.start, length: 0, newText: change.originalText ?? '' };
+      case ChangeType.Substitution:
+        // Replace modified text with original text
+        return { offset: change.range.start, length: change.range.end - change.range.start, newText: change.originalText ?? '' };
+      case ChangeType.Highlight:
+        // Highlight rejection is decorative only — no body edit needed
+        return { offset: change.range.start, length: 0, newText: '' };
+      case ChangeType.Comment:
+        // Comments are not in the body for L3 — no-op
+        return { offset: change.range.start, length: 0, newText: '' };
+    }
+  }
+  // L2 path (CriticMarkup delimiters present)
   const parts = computeRejectParts(change);
   const ref = parts.refId ? `[^${parts.refId}]` : '';
   return { offset: parts.offset, length: parts.length, newText: parts.text + ref };

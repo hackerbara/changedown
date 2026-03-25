@@ -143,12 +143,12 @@ export function formatReadRedirect(
   config: ReadRedirectConfig,
 ): string {
   const view = config.policy?.default_view ?? 'review';
-  return `This file is tracked (strict mode). Use read_tracked_file for tracked content:
+  return `Markdown files are tracked in this project. Direct reads and writes to tracked files are blocked. You must use ChangeTracks tools to read and edit these files.
+
+Use this read tool and you'll be given the file content along with everything you need to use the tools effectively:
 
   read_tracked_file(
     file="${filePath}",
     view="${view}"
-  )
-
-This provides change metadata, hashline coordinates, and deliberation context.`;
+  )`;
 }

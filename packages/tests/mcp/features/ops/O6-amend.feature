@@ -14,8 +14,9 @@ Feature: Amend a proposed change
       | new_text  | gRPC    |
       | reasoning | gRPC better for internal services |
     Then the inline markup changes from "{~~REST~>GraphQL~~}" to "{~~REST~>gRPC~~}"
-    And the footnote contains "revised @ai:test-agent"
-    And the footnote contains previous text "GraphQL"
+    And the footnote for ct-1 has status "rejected"
+    And the footnote contains "superseded-by: ct-2"
+    And the footnote contains "supersedes: ct-1"
 
   Scenario: Amend only reasoning (no text change for deletion)
     Given a proposed deletion ct-2 by "ai:test-agent"
@@ -23,12 +24,16 @@ Feature: Amend a proposed change
       | change_id | ct-2    |
       | reasoning | Updated rationale |
     Then the inline markup is unchanged
-    And the footnote contains "revised @ai:test-agent"
+    And the footnote for ct-2 has status "rejected"
+    And the footnote contains "superseded-by: ct-3"
+    And the footnote contains "supersedes: ct-2"
 
-  Scenario: Cross-author amendment is rejected
+  Scenario: Cross-author amendment creates alternative via supersede
     When I call amend_change with author "ai:other-agent"
-    Then the response is an error
-    And the error mentions "author mismatch"
+    Then the response is not an error
+    And the footnote for ct-1 has status "rejected"
+    And the footnote contains "superseded-by: ct-2"
+    And the footnote contains "supersedes: ct-1"
 
   Scenario: Amending accepted change is rejected
     Given ct-1 has been accepted

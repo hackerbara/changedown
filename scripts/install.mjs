@@ -6,12 +6,12 @@
 //   1. Detect editors (Cursor, VS Code)
 //   2. Uninstall + reinstall .vsix extension
 //   3. Detect agents (Claude Code, OpenCode)
-//   4. Claude Code: register marketplace + enable plugin
+//   4. Claude Code: marketplace add (local) + plugin install via CLI
 //   5. Cursor: MCP config, hooks, skill
-//   6. Plugin cache sync (dev workflow — only if cache dir exists)
+//   6. Plugin cache sync (overwrite dist/ so rebuilds take effect)
 //   7. OpenCode guidance
 
-import { existsSync, mkdirSync, writeFileSync, readFileSync, copyFileSync, cpSync, readdirSync, lstatSync, rmSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, copyFileSync, cpSync, lstatSync, rmSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
@@ -52,8 +52,8 @@ if (values.help) {
   Installs:
     - VS Code / Cursor extension (.vsix)
     - Cursor MCP config, hooks, and skill
-    - Claude Code marketplace + plugin registration
-    - Plugin cache sync (dev workflow, conditional)
+    - Claude Code plugin (marketplace add + install via CLI)
+    - Plugin cache sync (dist/ refresh after rebuild)
 `);
   process.exit(0);
 }
@@ -172,13 +172,20 @@ for (const ed of editorDefs) {
 // --- 2. Uninstall + install .vsix ---
 const extPkgJson = JSON.parse(readFileSync(join(SC_ROOT, 'packages', 'vscode-extension', 'package.json'), 'utf8'));
 const vsixPath = join(SC_ROOT, 'packages', 'vscode-extension', `changetracks-vscode-${extPkgJson.version}.vsix`);
+const localExtId = `${extPkgJson.publisher}.${extPkgJson.name}`;
+const publishedExtId = 'hackerbara.changetracks-vscode';
+const extIds = localExtId === publishedExtId ? [publishedExtId] : [localExtId, publishedExtId];
 if (editors.length > 0 && existsSync(vsixPath)) {
-  // Pass 1: Uninstall from all editors (clean slate)
+  // Pass 1: Uninstall from all editors (clean slate — both local dev and published versions)
   console.log('\n  Uninstalling old extension...');
   for (const ed of editors) {
+    const removed = [];
+    for (const id of extIds) {
+      if (run(`${ed.cmd} --uninstall-extension ${id}`)) removed.push(id);
+    }
     process.stdout.write(`    ${ed.name}... `);
-    if (run(`${ed.cmd} --uninstall-extension hackerbara.changetracks-vscode`)) {
-      process.stdout.write(`${green('ok')}\n`);
+    if (removed.length > 0) {
+      process.stdout.write(`${green('ok')} (${removed.join(', ')})\n`);
     } else {
       process.stdout.write(`${dim('not installed')}\n`);
     }
@@ -213,19 +220,28 @@ if (opencodePath) console.log(`    ${green('✓')} OpenCode (opencode)`);
 else console.log(`    ${dim('✗')} OpenCode — not found on PATH`);
 
 // --- 4. Claude Code plugin ---
+// Uses `claude plugin` CLI for proper marketplace registration and plugin install.
+// The marketplace source is the local dev repo so the plugin loads from local builds.
+// On subsequent runs (after rebuild), step 6 syncs fresh artifacts to the cache
+// without needing `claude plugin update`.
 if (claudePath) {
   console.log('\n  Setting up Claude Code plugin...');
 
-  const claudeSettingsPath = join(home, '.claude', 'settings.json');
+  // 4a. Register marketplace from local dev repo
+  process.stdout.write('    Marketplace... ');
+  if (run(`claude plugin marketplace add "${SC_ROOT}"`)) {
+    console.log(`${green('ok')} (hackerbara → ${SC_ROOT})`);
+  } else {
+    console.log(`${red('FAIL')} — run manually: claude plugin marketplace add "${SC_ROOT}"`);
+  }
 
-  mergeJsonFile(claudeSettingsPath, {
-    extraKnownMarketplaces: {
-      'hackerbara': {
-        source: { source: 'github', repo: 'hackerbara/changetracks' }
-      }
-    },
-    enabledPlugins: { 'changetracks@hackerbara': true }
-  }, 'Marketplace registered + plugin enabled in ~/.claude/settings.json');
+  // 4b. Install plugin (idempotent — reinstalls if already present)
+  process.stdout.write('    Plugin install... ');
+  if (run(`claude plugin install changetracks@hackerbara`)) {
+    console.log(`${green('ok')} (changetracks@hackerbara)`);
+  } else {
+    console.log(`${red('FAIL')} — run manually: claude plugin install changetracks@hackerbara`);
+  }
 }
 
 // --- 5. Cursor MCP + hooks + skill ---
@@ -280,90 +296,93 @@ if (hasCursor) {
   }
 }
 
-// --- 6. Plugin cache sync (dev workflow) ---
-// Only fires if the local plugin cache exists — the directory's existence
-// is the signal that this is a developer who loaded the plugin locally.
-// End users installing via marketplace won't have this directory.
-const pluginVersion = (() => {
+// --- 6. Plugin cache sync (dev rebuild) ---
+// After `claude plugin install` (step 4), the plugin lives in a cache directory.
+// On subsequent builds we sync fresh dist/ artifacts into that cache so changes
+// take effect on next Claude Code restart — without needing `claude plugin update`.
+// The cache path is read from installed_plugins.json (set by step 4).
+if (claudePath) {
+  const installedPluginsPath = join(home, '.claude', 'plugins', 'installed_plugins.json');
+  let pluginCache = null;
   try {
-    const mcpPkg = JSON.parse(readFileSync(join(SC_ROOT, 'changetracks-plugin', 'mcp-server', 'package.json'), 'utf8'));
-    return mcpPkg.version || '0.1.0';
-  } catch { return '0.1.0'; }
-})();
-const PLUGIN_CACHE = join(home, '.claude', 'plugins', 'cache', 'local', 'changetracks', pluginVersion);
-if (existsSync(PLUGIN_CACHE)) {
-  console.log('\n  Syncing to plugin cache (dev workflow)...');
-
-  // Sync compiled output
-  process.stdout.write('    mcp-server/dist... ');
-  syncDir(
-    join(SC_ROOT, 'changetracks-plugin', 'mcp-server', 'dist'),
-    join(PLUGIN_CACHE, 'mcp-server', 'dist')
-  );
-  console.log(`${green('ok')}`);
-
-  process.stdout.write('    hooks-impl/dist... ');
-  syncDir(
-    join(SC_ROOT, 'changetracks-plugin', 'hooks-impl', 'dist'),
-    join(PLUGIN_CACHE, 'hooks-impl', 'dist')
-  );
-  console.log(`${green('ok')}`);
-
-  process.stdout.write('    hooks/ (matcher config)... ');
-  syncDir(
-    join(SC_ROOT, 'changetracks-plugin', 'hooks'),
-    join(PLUGIN_CACHE, 'hooks')
-  );
-  console.log(`${green('ok')}`);
-
-  process.stdout.write('    skills... ');
-  syncDir(
-    join(SC_ROOT, 'changetracks-plugin', 'skills'),
-    join(PLUGIN_CACHE, 'skills')
-  );
-  console.log(`${green('ok')}`);
-
-  // Sync workspace-linked @changetracks/* dependencies (resolving symlinks)
-  // so cached node_modules stays in sync when new packages are added.
-  for (const pkg of ['core', 'cli']) {
-    const pkgSrc = join(SC_ROOT, 'packages', pkg);
-    if (!existsSync(pkgSrc)) continue;
-
-    for (const subDir of ['mcp-server', 'hooks-impl']) {
-      const dest = pkg === 'cli'
-        ? join(PLUGIN_CACHE, subDir, 'node_modules', 'changetracks')
-        : join(PLUGIN_CACHE, subDir, 'node_modules', '@changetracks', pkg);
-
-      // Replace symlinks (left by npm install) with real directories
-      if (existsSync(dest) && lstatSync(dest).isSymbolicLink()) {
-        if (!dryRun) rmSync(dest);
-      }
-
-      if (!dryRun) {
-        mkdirSync(dest, { recursive: true });
-        // Copy package.json
-        if (existsSync(join(pkgSrc, 'package.json'))) {
-          copyFileSync(join(pkgSrc, 'package.json'), join(dest, 'package.json'));
-        }
-        // Copy dist/
-        if (existsSync(join(pkgSrc, 'dist'))) {
-          syncDir(join(pkgSrc, 'dist'), join(dest, 'dist'));
-        }
-        // Copy dist-esm/ if present
-        if (existsSync(join(pkgSrc, 'dist-esm'))) {
-          syncDir(join(pkgSrc, 'dist-esm'), join(dest, 'dist-esm'));
-        }
-      }
+    const installed = JSON.parse(readFileSync(installedPluginsPath, 'utf8'));
+    const entry = installed.plugins?.['changetracks@hackerbara']?.[0];
+    if (entry?.installPath && existsSync(entry.installPath)) {
+      pluginCache = entry.installPath;
     }
-    const displayName = pkg === 'cli' ? 'changetracks' : `@changetracks/${pkg}`;
-    process.stdout.write(`    ${displayName}... `);
-    console.log(`${green('ok')}`);
-  }
+  } catch { /* not installed yet — step 4 may have been skipped or failed */ }
 
-  console.log(`    ${dim('Restart Cursor/Claude Code to pick up MCP server + hook changes.')}`);
-} else {
-  console.log(`\n  ${dim('No plugin cache found at ' + PLUGIN_CACHE + ' — skipping sync.')}`);
-  console.log(`  ${dim('Restart Claude Code to pick up MCP server + hook changes.')}`);
+  if (pluginCache) {
+    console.log('\n  Syncing build artifacts to plugin cache...');
+    console.log(`    ${dim(pluginCache)}`);
+
+    // Plugin manifest + MCP config
+    process.stdout.write('    .claude-plugin/... ');
+    syncDir(join(SC_ROOT, 'changetracks-plugin', '.claude-plugin'), join(pluginCache, '.claude-plugin'));
+    console.log(`${green('ok')}`);
+
+    process.stdout.write('    .mcp.json... ');
+    const mcpJsonSrc = join(SC_ROOT, 'changetracks-plugin', '.mcp.json');
+    if (existsSync(mcpJsonSrc) && !dryRun) {
+      copyFileSync(mcpJsonSrc, join(pluginCache, '.mcp.json'));
+    }
+    console.log(`${green('ok')}`);
+
+    // Compiled output
+    for (const sub of ['mcp-server', 'hooks-impl']) {
+      process.stdout.write(`    ${sub}/dist... `);
+      syncDir(
+        join(SC_ROOT, 'changetracks-plugin', sub, 'dist'),
+        join(pluginCache, sub, 'dist')
+      );
+      console.log(`${green('ok')}`);
+    }
+
+    // Hook matcher config + skills
+    process.stdout.write('    hooks/... ');
+    syncDir(join(SC_ROOT, 'changetracks-plugin', 'hooks'), join(pluginCache, 'hooks'));
+    console.log(`${green('ok')}`);
+
+    process.stdout.write('    skills/... ');
+    syncDir(join(SC_ROOT, 'changetracks-plugin', 'skills'), join(pluginCache, 'skills'));
+    console.log(`${green('ok')}`);
+
+    // Sync workspace-linked @changetracks/* dependencies (resolving symlinks)
+    // so cached node_modules stays in sync when new packages are added.
+    for (const pkg of ['core', 'cli']) {
+      const pkgSrc = join(SC_ROOT, 'packages', pkg);
+      if (!existsSync(pkgSrc)) continue;
+
+      for (const subDir of ['mcp-server', 'hooks-impl']) {
+        const dest = pkg === 'cli'
+          ? join(pluginCache, subDir, 'node_modules', 'changetracks')
+          : join(pluginCache, subDir, 'node_modules', '@changetracks', pkg);
+
+        if (existsSync(dest) && lstatSync(dest).isSymbolicLink()) {
+          if (!dryRun) rmSync(dest);
+        }
+        if (!dryRun) {
+          mkdirSync(dest, { recursive: true });
+          if (existsSync(join(pkgSrc, 'package.json'))) {
+            copyFileSync(join(pkgSrc, 'package.json'), join(dest, 'package.json'));
+          }
+          if (existsSync(join(pkgSrc, 'dist'))) {
+            syncDir(join(pkgSrc, 'dist'), join(dest, 'dist'));
+          }
+          if (existsSync(join(pkgSrc, 'dist-esm'))) {
+            syncDir(join(pkgSrc, 'dist-esm'), join(dest, 'dist-esm'));
+          }
+        }
+      }
+      const displayName = pkg === 'cli' ? 'changetracks' : `@changetracks/${pkg}`;
+      process.stdout.write(`    ${displayName}... `);
+      console.log(`${green('ok')}`);
+    }
+
+    console.log(`    ${dim('Restart Claude Code to pick up changes.')}`);
+  } else {
+    console.log(`\n  ${dim('No plugin cache found — run step 4 first (claude plugin install).')}`);
+  }
 }
 
 // --- 7. OpenCode ---

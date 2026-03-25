@@ -110,6 +110,9 @@ export function registerChangeCommands(
         vscode.commands.registerCommand('changetracks.requestChanges', async (changeId?: string) => {
             await controller.requestChangesAtCursor(changeId);
         }),
+        vscode.commands.registerCommand('changetracks.withdrawRequest', async (changeId?: string) => {
+            await controller.withdrawRequestAtCursor(changeId);
+        }),
         vscode.commands.registerCommand('changetracks.amendChange', async (changeId?: string) => {
             await controller.amendChangeAtCursor(changeId);
         }),

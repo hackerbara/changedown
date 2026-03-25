@@ -29,6 +29,21 @@ export function derivePolicyMode(
 }
 
 // ---------------------------------------------------------------------------
+// Helper: parse a {human, agent} split from TOML
+// ---------------------------------------------------------------------------
+
+function parseHumanAgentSplit(
+  raw: Record<string, unknown> | undefined,
+  fallback: { human: boolean; agent: boolean },
+): { human: boolean; agent: boolean } {
+  if (!raw || typeof raw !== 'object') return { ...fallback };
+  return {
+    human: typeof raw['human'] === 'boolean' ? raw['human'] : fallback.human,
+    agent: typeof raw['agent'] === 'boolean' ? raw['agent'] : fallback.agent,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // TOML → ChangeTracksConfig (pure parsing, no I/O)
 // ---------------------------------------------------------------------------
 
@@ -51,10 +66,12 @@ export function parseConfigToml(raw: string): ChangeTracksConfig {
   const settlement = parsed['settlement'] as Record<string, unknown> | undefined;
   const policy = parsed['policy'] as Record<string, unknown> | undefined;
   const protocol = parsed['protocol'] as Record<string, unknown> | undefined;
-  const meta = parsed['meta'] as Record<string, unknown> | undefined;
   const response = parsed['response'] as Record<string, unknown> | undefined;
   const review = parsed['review'] as Record<string, unknown> | undefined;
-  const reasonRequired = review?.['reason_required'] as Record<string, unknown> | undefined;
+  const reasoning = parsed['reasoning'] as Record<string, unknown> | undefined;
+
+  // Backward compat: review.reason_required maps to the reasoning section
+  const legacyReasonRequired = review?.['reason_required'] as Record<string, unknown> | undefined;
 
   return {
     tracking: {
@@ -111,15 +128,39 @@ export function parseConfigToml(raw: string): ChangeTracksConfig {
         ? settlement['auto_on_reject']
         : DEFAULT_CONFIG.settlement.auto_on_reject,
     },
+    coherence: {
+      threshold: (parsed['coherence'] && typeof (parsed['coherence'] as Record<string, unknown>)['threshold'] === 'number')
+        ? Math.max(0, Math.min(100, (parsed['coherence'] as Record<string, unknown>)['threshold'] as number))
+        : DEFAULT_CONFIG.coherence.threshold,
+    },
     review: {
-      reasonRequired: {
-        human: typeof reasonRequired?.['human'] === 'boolean'
-          ? reasonRequired['human']
-          : DEFAULT_CONFIG.review.reasonRequired.human,
-        agent: typeof reasonRequired?.['agent'] === 'boolean'
-          ? reasonRequired['agent']
-          : DEFAULT_CONFIG.review.reasonRequired.agent,
-      },
+      may_review: parseHumanAgentSplit(
+        review?.['may_review'] as Record<string, unknown> | undefined,
+        DEFAULT_CONFIG.review.may_review,
+      ),
+      self_acceptance: parseHumanAgentSplit(
+        review?.['self_acceptance'] as Record<string, unknown> | undefined,
+        DEFAULT_CONFIG.review.self_acceptance,
+      ),
+      cross_withdrawal: parseHumanAgentSplit(
+        review?.['cross_withdrawal'] as Record<string, unknown> | undefined,
+        DEFAULT_CONFIG.review.cross_withdrawal,
+      ),
+      blocking_labels: (review?.['blocking_labels'] && typeof review['blocking_labels'] === 'object')
+        ? review['blocking_labels'] as Record<string, boolean>
+        : { ...DEFAULT_CONFIG.review.blocking_labels },
+    },
+    reasoning: {
+      // If explicit [reasoning] section exists, use it.
+      // Otherwise fall back to legacy [review.reason_required] for backward compat.
+      propose: parseHumanAgentSplit(
+        (reasoning?.['propose'] as Record<string, unknown> | undefined) ?? legacyReasonRequired,
+        DEFAULT_CONFIG.reasoning.propose,
+      ),
+      review: parseHumanAgentSplit(
+        (reasoning?.['review'] as Record<string, unknown> | undefined) ?? legacyReasonRequired,
+        DEFAULT_CONFIG.reasoning.review,
+      ),
     },
     policy: {
       mode: policy?.['mode'] === 'strict' || policy?.['mode'] === 'safety-net' || policy?.['mode'] === 'permissive'
@@ -148,11 +189,6 @@ export function parseConfigToml(raw: string): ChangeTracksConfig {
       batch_reasoning: protocol?.['batch_reasoning'] === 'optional' || protocol?.['batch_reasoning'] === 'required'
         ? protocol['batch_reasoning']
         : DEFAULT_CONFIG.protocol.batch_reasoning,
-    },
-    meta: {
-      compact_threshold: typeof meta?.['compact_threshold'] === 'number' && meta['compact_threshold'] > 0
-        ? meta['compact_threshold']
-        : DEFAULT_CONFIG.meta?.compact_threshold ?? 80,
     },
     response: {
       affected_lines: typeof response?.['affected_lines'] === 'boolean'

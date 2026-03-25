@@ -3,9 +3,9 @@ import { getListedTools, getListedToolsWithConfig } from '@changetracks/mcp/inte
 import type { ChangeTracksConfig } from '@changetracks/mcp/internals';
 
 describe('getListedTools (MCP tool surface)', () => {
-  it('returns exactly 6 tools (final surface)', () => {
+  it('returns exactly 7 tools (final surface)', () => {
     const tools = getListedTools();
-    expect(tools).toHaveLength(6);
+    expect(tools).toHaveLength(7);
   });
 
   it('does not include deprecated/internal tools in the list', () => {
@@ -29,6 +29,7 @@ describe('getListedTools (MCP tool surface)', () => {
     expect(names).toContain('amend_change');
     expect(names).toContain('list_changes');
     expect(names).toContain('supersede_change');
+    expect(names).toContain('resolve_thread');
   });
 
   it('keeps tool descriptions concise for context-window efficiency', () => {

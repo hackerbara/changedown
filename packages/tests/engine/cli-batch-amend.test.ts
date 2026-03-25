@@ -136,13 +136,14 @@ describe('sc amend', () => {
     expect(result.data).toHaveProperty('change_id', 'ct-1');
     expect(result.data).toHaveProperty('amended', true);
     expect(result.data).toHaveProperty('new_text', 'fast');
-    expect(result.data).toHaveProperty('previous_text', 'slow');
+    expect(result.data).toHaveProperty('new_change_id');
 
-    // Verify file was updated
+    // Verify file was updated — amend now routes through supersede:
+    // original change rejected, new substitution proposed
     const content = await fs.readFile(filePath, 'utf-8');
     expect(content).toContain('{~~quick~>fast~~}');
     expect(content).not.toContain('{~~quick~>slow~~}');
-    expect(content).toContain('revised @ai:test');
+    expect(content).toContain('supersedes: ct-1');
     expect(content).toContain('better word choice');
   });
 

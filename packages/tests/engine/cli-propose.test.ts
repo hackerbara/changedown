@@ -32,7 +32,7 @@ describe('sc propose', () => {
 
     const result = await runCommand(
       'propose',
-      [filePath, '--old', 'quick brown', '--new', 'slow red'],
+      [filePath, '--old', 'quick brown', '--new', 'slow red', '--reason', 'test'],
       { outputFormat: 'json', projectDir: tmpDir },
     );
 
@@ -50,7 +50,7 @@ describe('sc propose', () => {
 
     const result = await runCommand(
       'propose',
-      [filePath, '--new', ' brown', '--insert-after', 'quick'],
+      [filePath, '--new', ' brown', '--insert-after', 'quick', '--reason', 'test'],
       { outputFormat: 'json', projectDir: tmpDir },
     );
 
@@ -68,7 +68,7 @@ describe('sc propose', () => {
 
     const result = await runCommand(
       'propose',
-      [filePath, '--old', ' brown', '--new', ''],
+      [filePath, '--old', ' brown', '--new', '', '--reason', 'test'],
       { outputFormat: 'json', projectDir: tmpDir },
     );
 
@@ -103,7 +103,7 @@ describe('sc propose', () => {
 
     const result = await runCommand(
       'propose',
-      [filePath, '--old', 'world', '--new', 'earth', '--author', 'ai:custom-agent'],
+      [filePath, '--old', 'world', '--new', 'earth', '--author', 'ai:custom-agent', '--reason', 'test'],
       { outputFormat: 'json', projectDir: tmpDir },
     );
 

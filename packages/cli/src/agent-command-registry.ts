@@ -24,6 +24,7 @@ import {
   handleBeginChangeGroup,
   handleEndChangeGroup,
   handleRawEdit,
+  handleCompactChanges,
 } from './engine/index.js';
 import { handleCliBatch } from './cli-batch-handler.js';
 
@@ -206,6 +207,19 @@ Flags:
   --old TEXT           Text to replace (required)
   --new TEXT           Replacement text (required)
   --reason TEXT        Why this edit must bypass tracking (required)
+`;
+
+const COMPACT_USAGE = `Usage: sc compact <file> [flags]
+
+Compact decided (accepted/rejected) footnotes from a tracked file.
+
+Removes targeted footnote blocks, applies body mutations for rejected
+proposed changes, and inserts a compaction-boundary footnote.
+
+Flags:
+  --targets JSON       JSON array of change IDs or "all-decided" (required)
+  --undecided-policy   Policy for undecided changes: accept or reject (default: accept)
+  --boundary-meta JSON Optional metadata for the compaction-boundary footnote
 `;
 
 // ---------------------------------------------------------------------------
@@ -397,5 +411,41 @@ export const COMMANDS: Record<string, CommandDef> = {
     positionals: ['path'],
     requiredPositionals: [],  // path is optional (defaults to project root)
     usage: FILES_USAGE,
+  },
+
+  compact: {
+    handler: handleCompactChanges,
+    positionals: ['file'],
+    flagMapping: { 'undecided-policy': 'undecided_policy' },
+    customParsers: {
+      targets: (v) => {
+        const raw = stringFlag(v);
+        if (!raw) return undefined;
+        if (raw === 'all-decided') return 'all-decided';
+        try {
+          const arr = JSON.parse(raw);
+          if (!Array.isArray(arr)) throw new Error();
+          return arr;
+        } catch {
+          throw new ParseError(
+            'Invalid --targets: provide a JSON array of change IDs or "all-decided".',
+            'INVALID_JSON',
+          );
+        }
+      },
+      boundary_meta: (v) => {
+        const raw = stringFlag(v);
+        if (!raw) return undefined;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          throw new ParseError(
+            'Invalid --boundary-meta: provide a valid JSON object.',
+            'INVALID_JSON',
+          );
+        }
+      },
+    },
+    usage: COMPACT_USAGE,
   },
 };

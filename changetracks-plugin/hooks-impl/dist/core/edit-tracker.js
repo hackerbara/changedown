@@ -1,6 +1,6 @@
 import { appendPendingEdit } from '../pending.js';
 export function classifyEdit(toolName, oldText, newText) {
-    if (toolName === 'Write')
+    if (toolName.toLowerCase() === 'write')
         return 'creation';
     if (oldText === '' && newText !== '')
         return 'insertion';

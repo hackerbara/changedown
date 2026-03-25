@@ -264,9 +264,10 @@ describe('handleReadTrackedFile', () => {
     expect(text).toContain('## lines: 2-4 of 5');
 
     // Should only contain lines 2-4
-    const parts = text.split('\n\n');
-    const hashlineContent = parts[parts.length - 1];
-    const lines = hashlineContent.split('\n');
+    // Content is between the --- header separator and the truncation message
+    const contentMatch = text.match(/---\n\n([\s\S]*?)(?:\n\n---|\s*$)/);
+    expect(contentMatch).toBeTruthy();
+    const lines = contentMatch![1].split('\n');
     expect(lines).toHaveLength(3);
     expect(lines[0]).toMatch(/^\s*2:[0-9a-f]{2}\s+\| Line 2$/);
     expect(lines[1]).toMatch(/^\s*3:[0-9a-f]{2}\s+\| Line 3$/);
@@ -312,9 +313,9 @@ describe('handleReadTrackedFile', () => {
 
     expect(text).toContain('## lines: 1-2 of 5');
 
-    const parts = text.split('\n\n');
-    const hashlineContent = parts[parts.length - 1];
-    const lines = hashlineContent.split('\n');
+    const contentMatch = text.match(/---\n\n([\s\S]*?)(?:\n\n---|\s*$)/);
+    expect(contentMatch).toBeTruthy();
+    const lines = contentMatch![1].split('\n');
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatch(/^\s*1:[0-9a-f]{2}\s+\| Line 1$/);
     expect(lines[1]).toMatch(/^\s*2:[0-9a-f]{2}\s+\| Line 2$/);
@@ -700,9 +701,9 @@ describe('handleReadTrackedFile', () => {
     // Settled text has fewer lines (footnotes stripped), pagination is in settled-space
     expect(text).toMatch(/## lines: 2-3 of 4/);
 
-    const parts = text.split('\n\n');
-    const hashlineContent = parts[parts.length - 1];
-    const lines = hashlineContent.split('\n');
+    const contentMatch = text.match(/---\n\n([\s\S]*?)(?:\n\n---|\s*$)/);
+    expect(contentMatch).toBeTruthy();
+    const lines = contentMatch![1].split('\n');
     expect(lines).toHaveLength(2);
     // Line 2 settled = "Hello world." — unified format: "N:HH  | content"
     expect(lines[0]).toMatch(/\| Hello world\.$/);

@@ -12,7 +12,12 @@
     "esModuleInterop": true,
     "paths": {
       "changetracks/config": ["../cli/dist/config/index.d.ts"]
-    }
+    },
+    // TODO: enable after fixing violations
+    // "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
   },
   "references": [
     { "path": "../core" }

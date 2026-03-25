@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { stripCriticMarkupToCommittedWithMap, findUniqueMatch } from '@changetracks/core';
+import { extractFootnoteStatuses } from '@changetracks/core/internals';
 
 describe('stripCriticMarkupToCommittedWithMap', () => {
   it('reverts proposed insertion (removes inserted text)', () => {
@@ -73,6 +74,33 @@ describe('stripCriticMarkupToCommittedWithMap', () => {
     const result = stripCriticMarkupToCommittedWithMap(raw);
     // No footnote → unknown → treated as proposed → revert to old
     expect(result.committed).toContain('The quick fox.');
+  });
+});
+
+describe('extractFootnoteStatuses', () => {
+  it('extracts statuses matching parser output', () => {
+    const text = [
+      'Hello {++world++}[^ct-1] and {--gone--}[^ct-2]',
+      '',
+      '[^ct-1]: @alice | 2026-03-23 | ins | proposed',
+      '[^ct-2]: @bob | 2026-03-23 | del | accepted',
+    ].join('\n');
+    const regexResult = extractFootnoteStatuses(text);
+    expect(regexResult.get('ct-1')).toBe('proposed');
+    expect(regexResult.get('ct-2')).toBe('accepted');
+  });
+
+  it('returns empty map for text without footnotes', () => {
+    expect(extractFootnoteStatuses('plain text')).toEqual(new Map());
+  });
+
+  it('extracts status from ai: author without @ prefix', () => {
+    const text = [
+      '{~~quick~>slow~~}[^ct-1]',
+      '',
+      '[^ct-1]: ai:test | 2026-02-25 | sub | accepted',
+    ].join('\n');
+    expect(extractFootnoteStatuses(text).get('ct-1')).toBe('accepted');
   });
 });
 

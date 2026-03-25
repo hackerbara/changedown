@@ -29,7 +29,9 @@ export function registerHoverProvider(
                 const offset = positionToOffset(text, position);
                 const changes = controller.getChangesForDocument(document);
                 const change = changes.find(
-                    (c) => offset >= c.range.start && offset < c.range.end
+                    (c) => (c.range.start === c.range.end)
+                        ? offset === c.range.start  // zero-width: exact match (L3 deletions)
+                        : offset >= c.range.start && offset < c.range.end
                 );
                 if (!change) {
                     // No change at position — no hover hint.

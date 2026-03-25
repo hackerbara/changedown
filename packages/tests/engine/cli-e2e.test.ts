@@ -84,7 +84,7 @@ describe('CLI end-to-end workflow', () => {
     await fs.writeFile(filePath, 'hello world');
 
     const result = await runCommand('propose', [
-      filePath, '--old', 'hello', '--new', 'goodbye',
+      filePath, '--old', 'hello', '--new', 'goodbye', '--reason', 'test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     expect(result.success).toBe(true);

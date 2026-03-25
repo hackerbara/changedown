@@ -172,7 +172,7 @@ describe('unified propose_change with changes array', () => {
         new_text: 'Line two is great.',
         // Changes array (should take precedence)
         changes: [
-          { old_text: 'tpyo', new_text: 'typo' },
+          { old_text: 'tpyo', new_text: 'typo', reason: 'test' },
         ],
       },
       resolver,

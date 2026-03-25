@@ -43,7 +43,7 @@ Feature: LSP-LF — Lifecycle LSP custom requests
     When I send changetracks/amendChange with changeId "ct-1", newText "improved text", reason "Better wording", author "@alice"
     Then the response contains an edit
     And the edit text contains "{++improved text++}"
-    And the edit text contains "revised"
+    And the edit text contains "supersedes:"
     And the edit text contains "Better wording"
 
   Scenario: LSP-LF-06 amendChange rejects wrong-author

@@ -1,4 +1,4 @@
-import { CriticMarkupParser, ChangeNode, ChangeType } from '@changetracks/core';
+import { CriticMarkupParser, Workspace, ChangeNode, ChangeType, splitBodyAndFootnotes } from '@changetracks/core';
 import { buildReplacements, PreviewOptions } from './replacements';
 import { escapeHtml, sanitizeContentHtml } from './escape-html';
 
@@ -33,7 +33,7 @@ function fenceChangeToHtml(change: ChangeNode, src: string): string {
         case ChangeType.Substitution: {
             const original = change.originalText ?? '';
             const modified = change.modifiedText ?? '';
-            return `<del class="ct-sub-del ${sc}">${sanitizeContentHtml(original)}</del><span class="ct-sub-sep">\u2192</span><ins class="ct-sub-ins ${sc}">${sanitizeContentHtml(modified)}</ins>`;
+            return `<del class="ct-sub-del ${sc}">${sanitizeContentHtml(original)}</del><ins class="ct-sub-ins ${sc}">${sanitizeContentHtml(modified)}</ins>`;
         }
         case ChangeType.Highlight: {
             const text = change.originalText ?? src.slice(change.contentRange.start, change.contentRange.end);
@@ -59,6 +59,9 @@ function fenceChangeToHtml(change: ChangeNode, src: string): string {
  * code fences require all text to be HTML-safe.
  */
 export function renderFenceWithCriticMarkup(content: string, lang: string): string {
+    // Code fences contain example CriticMarkup text, not real tracked changes.
+    // L3 format (footnote-native) uses clean body text and never appears inside
+    // a code fence, so CriticMarkupParser is the correct parser here.
     const parser = new CriticMarkupParser();
     const doc = parser.parse(content);
     const changes = doc.getChanges();
@@ -152,7 +155,7 @@ const SKIP_LANGS = new Set(['changetracks', 'criticmarkup']);
 export function changetracksPlugin(md: any, getConfig?: () => PluginConfig): void {
     const resolveConfig = getConfig ?? getVSCodeConfig;
 
-    const parser = new CriticMarkupParser();
+    const workspace = new Workspace();
 
     // --- Core rule: rewrite state.src BEFORE block tokenization ---
     // Must run before 'block' rule so state.src changes take effect.
@@ -160,17 +163,28 @@ export function changetracksPlugin(md: any, getConfig?: () => PluginConfig): voi
         const config = resolveConfig();
         if (!config.enabled) return;
 
-        const doc = parser.parse(state.src);
+        const doc = workspace.parse(state.src);
         const changes = doc.getChanges();
         if (changes.length > 0) {
+            const isL3 = workspace.isFootnoteNative(state.src);
+            // For L3 documents, strip the footnote block before building replacements.
+            // L3 footnotes are metadata (LINE:HASH edit-ops), not user-readable content.
+            // Change offsets produced by FootnoteNativeParser reference body positions only,
+            // so stripping the trailing footnote block does not affect offset alignment.
+            const sourceForReplacements = isL3
+                ? splitBodyAndFootnotes(state.src.split('\n')).bodyLines.join('\n') + '\n'
+                : state.src;
+
             const options: PreviewOptions = {
-                showFootnotes: config.showFootnotes,
+                // L3 footnotes are metadata, not content — suppress from preview output.
+                // Non-L3 footnotes (L2) are user-visible deliberation panels.
+                showFootnotes: config.showFootnotes && !isL3,
                 showComments: config.showComments,
                 metadataDetail: config.metadataDetail,
                 authorColors: config.authorColors,
                 isDarkTheme: config.isDarkTheme,
             };
-            state.src = buildReplacements(state.src, changes, options);
+            state.src = buildReplacements(sourceForReplacements, changes, options);
         }
     });
 

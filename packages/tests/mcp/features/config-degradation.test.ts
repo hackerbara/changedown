@@ -49,7 +49,8 @@ describe('Config Graceful Degradation', () => {
       await writeConfig(tmpDir, '');
       const config = await loadConfig(tmpDir);
       // Empty TOML parses to {} — every section is undefined, so all defaults apply
-      expect(config).toEqual(DEFAULT_CONFIG);
+      // parseConfigToml adds response section even when not in TOML
+      expect(config).toEqual({ ...DEFAULT_CONFIG, response: { affected_lines: false } });
     });
 
     it('uses defaults when config contains malformed TOML', async () => {
@@ -230,7 +231,7 @@ exclude = [42, true]
 # Just comments
 `);
       const config = await loadConfig(tmpDir);
-      expect(config).toEqual(DEFAULT_CONFIG);
+      expect(config).toEqual({ ...DEFAULT_CONFIG, response: { affected_lines: false } });
     });
 
     it('handles config with unknown sections gracefully', async () => {
@@ -244,7 +245,7 @@ x = true
 `);
       const config = await loadConfig(tmpDir);
       // Unknown sections are ignored; all known sections use defaults
-      expect(config).toEqual(DEFAULT_CONFIG);
+      expect(config).toEqual({ ...DEFAULT_CONFIG, response: { affected_lines: false } });
     });
 
     it('handles config with mix of valid and invalid fields in same section', async () => {
@@ -284,8 +285,8 @@ enforcement = "nonsense"
       await fs.writeFile(dummyFile, '# test', 'utf-8');
 
       const { config } = await resolver.forFile(dummyFile);
-      // Empty TOML → all defaults from loadConfig (DEFAULT_CONFIG from config-types)
-      expect(config).toEqual(DEFAULT_CONFIG);
+      // Empty TOML → parseConfigToml produces all defaults including response section
+      expect(config).toEqual({ ...DEFAULT_CONFIG, response: { affected_lines: false } });
       resolver.dispose();
     });
 

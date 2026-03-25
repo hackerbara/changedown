@@ -345,12 +345,34 @@ export class SessionState {
     }
 
     // Try all stored views to find a match
+    let foundLineInAnyView = false;
     for (const [view, hashes] of viewTables) {
       const entry = hashes.find((h) => h.line === line);
       if (!entry) continue;
+      foundLineInAnyView = true;
       const expected = expectedHashForView(view, entry);
       if (suppliedHash === expected) {
         return { match: true, rawLineNum: entry.rawLineNum ?? entry.line, view };
+      }
+    }
+
+    // Content-addressed scan: find this hash at ANY line, not just the expected one.
+    // Only triggered when the line was recorded in at least one view (hash mismatch due to shift),
+    // not when the line number was never valid.
+    // Mirrors relocateHashRef's uniqueness guarantee — only returns if exactly one entry matches.
+    if (foundLineInAnyView) {
+      for (const [view, hashes] of viewTables) {
+        let uniqueMatch: (typeof hashes)[0] | undefined;
+        let ambiguous = false;
+        for (const entry of hashes) {
+          if (suppliedHash === expectedHashForView(view, entry)) {
+            if (uniqueMatch) { ambiguous = true; break; }
+            uniqueMatch = entry;
+          }
+        }
+        if (uniqueMatch && !ambiguous) {
+          return { match: true, rawLineNum: uniqueMatch.rawLineNum ?? uniqueMatch.line, view };
+        }
       }
     }
 

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
+import assert from 'node:assert';
 import { initHashline, buildReviewDocument } from '@changetracks/core/internals';
 
 beforeAll(async () => { await initHashline(); });
@@ -217,5 +218,65 @@ describe('buildReviewDocument', () => {
     for (const line of doc.lines) {
       expect(line.rawLineNumber).toBe(line.margin.lineNumber);
     }
+  });
+
+  // ─── Committed hash tests ─────────────────────────────────────────────────
+
+  it('stores committed hash in sessionHashes for lines with proposals', () => {
+    const content = 'Hello {++an insertion++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const doc = buildReviewDocument(content, {
+      filePath: 'test.md', trackingStatus: 'tracked',
+      protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
+    });
+    const hashes = doc.lines[0].sessionHashes!;
+    assert.ok(hashes.committed !== undefined, 'committed hash should be defined');
+    assert.notStrictEqual(hashes.committed, hashes.raw,
+      'committed hash should differ from raw hash (CriticMarkup stripped)');
+  });
+
+  it('committed hash is present for lines without proposals', () => {
+    // Two-line doc: line 1 has CriticMarkup, line 2 is plain
+    const content = 'Hello {++world++}[^ct-1].\nPlain line here.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const doc = buildReviewDocument(content, {
+      filePath: 'test.md', trackingStatus: 'tracked',
+      protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
+    });
+    // Line 2 (index 1) has no CriticMarkup
+    const hashes = doc.lines[1].sessionHashes!;
+    assert.ok(hashes.committed !== undefined, 'committed hash should be defined for plain lines');
+    // For a plain line the committed text equals the raw text, but committed hash
+    // is computed in the committed-view context (different neighbor lines) so it
+    // may or may not equal the raw hash. The key property is that it IS defined.
+    // Actually: raw hash uses raw lines array, committed hash uses committed lines array.
+    // The context differs, so they CAN differ even for identical line text.
+    // What we really verify: committed hash is present and is a 2-char hex string.
+    assert.strictEqual(hashes.committed!.length, 2, 'committed hash should be 2 hex chars');
+  });
+
+  it('margin hash is the committed hash, not the raw hash', () => {
+    const content = 'Hello {++an insertion++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const doc = buildReviewDocument(content, {
+      filePath: 'test.md', trackingStatus: 'tracked',
+      protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
+    });
+    const line = doc.lines[0];
+    const hashes = line.sessionHashes!;
+    assert.strictEqual(line.margin.hash, hashes.committed,
+      'margin.hash should use the committed hash');
+  });
+
+  it('entirely-pending-insertion line falls back to raw hash', () => {
+    // A line that is ENTIRELY a pending insertion: committed view strips it entirely
+    const content = '{++new text++}[^ct-1]\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const doc = buildReviewDocument(content, {
+      filePath: 'test.md', trackingStatus: 'tracked',
+      protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
+    });
+    const line = doc.lines[0];
+    const hashes = line.sessionHashes!;
+    assert.strictEqual(hashes.committed, undefined,
+      'committed hash should be undefined for entirely-pending line');
+    assert.strictEqual(line.margin.hash, hashes.raw,
+      'margin.hash should fall back to raw hash');
   });
 });

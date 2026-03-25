@@ -7,8 +7,10 @@ import {
   formatTrackedHeader,
   buildViewDocument,
   formatPlainText,
+  computeContinuationLines,
   type ThreeZoneViewName,
   type ThreeZoneDocument,
+  type ThreeZoneLine,
 } from '@changetracks/core';
 import { errorResult } from '../shared/error-result.js';
 import { optionalStrArg } from '../args.js';
@@ -177,40 +179,37 @@ function buildTruncationMessage(
   totalLines: number,
 ): string | null {
   if (effectiveEnd >= totalLines) return null;
-  return `\n--- showing lines ${effectiveStart}-${effectiveEnd} of ${totalLines} | use offset/limit to paginate ---`;
+  return `\n\n--- showing lines ${effectiveStart}-${effectiveEnd} of ${totalLines} | use offset/limit to paginate ---`;
 }
 
 /**
- * Extend the end boundary to avoid truncating inside an open CriticMarkup block.
- * Scans from effectiveEnd forward until all open delimiters are closed or EOF.
- * Returns the adjusted end (may exceed MAX_LIMIT slightly for correctness).
+ * Find a safe pagination end that doesn't truncate mid-CriticMarkup block.
+ * Uses the `continuesChange` flag set by view builders, which is derived from
+ * the parser (handles code blocks, ignores false-positive delimiters in strings).
  */
-function extendToCloseMarkup(lines: string[], effectiveEnd: number, totalLines: number): number {
-  const openers = ['{++', '{--', '{~~', '{==', '{>>'];
-  const closers = ['++}', '--}', '~~}', '==}', '<<}'];
-
+function findSafePaginationEnd(lines: ThreeZoneLine[], effectiveEnd: number): number {
   let end = effectiveEnd;
-  let text = lines.slice(0, end).join('\n');
-
-  for (let i = 0; i < openers.length; i++) {
-    const openCount = text.split(openers[i]).length - 1;
-    const closeCount = text.split(closers[i]).length - 1;
-    if (openCount > closeCount) {
-      // Extend forward line by line until balanced
-      while (end < totalLines) {
-        end++;
-        const nextLine = lines[end - 1]; // 0-indexed
-        if (nextLine?.includes(closers[i])) {
-          // Re-check balance with extended text
-          text = lines.slice(0, end).join('\n');
-          const newCloseCount = text.split(closers[i]).length - 1;
-          const newOpenCount = text.split(openers[i]).length - 1;
-          if (newCloseCount >= newOpenCount) break;
-        }
-      }
-    }
+  // lines[end] (0-indexed) is the first line AFTER our slice.
+  // If it continues a multi-line change, include it.
+  while (end < lines.length && lines[end]?.continuesChange) {
+    end++;
   }
+  return end;
+}
 
+/**
+ * Fallback for code paths without a ThreeZoneDocument (non-hashline settled/raw).
+ * Uses computeContinuationLines from the parser — same correctness guarantees.
+ */
+function findSafePaginationEndFromText(contentLines: string[], effectiveEnd: number, totalLines: number): number {
+  const continuations = computeContinuationLines(contentLines.join('\n'));
+  let end = effectiveEnd;
+  // effectiveEnd is 1-indexed; continuations uses 0-indexed line numbers.
+  // continuations.has(end) checks 0-indexed line `end`, which is 1-indexed line `end+1`
+  // — the first line AFTER the included slice.
+  while (end < totalLines && continuations.has(end)) {
+    end++;
+  }
   return end;
 }
 
@@ -319,8 +318,7 @@ export async function handleReadTrackedFile(
 
         const totalLines = doc.lines.length;
         const { effectiveStart, effectiveEnd } = computeEffectiveRange(offset, requestedLimit, totalLines);
-        const contentStrings = doc.lines.map(l => l.content.map((s: { text: string }) => s.text).join(''));
-        const adjustedEnd = extendToCloseMarkup(contentStrings, effectiveEnd, totalLines);
+        const adjustedEnd = findSafePaginationEnd(doc.lines, effectiveEnd);
 
         const paginatedDoc: ThreeZoneDocument = {
           ...doc,
@@ -371,7 +369,7 @@ export async function handleReadTrackedFile(
 
       // Apply pagination
       const { effectiveStart: effStart, effectiveEnd: effEnd } = computeEffectiveRange(offset, requestedLimit, totalContentLines);
-      const adjustedEnd = extendToCloseMarkup(allContentLines, effEnd, totalContentLines);
+      const adjustedEnd = findSafePaginationEndFromText(allContentLines, effEnd, totalContentLines);
       const slicedLines = allContentLines.slice(effStart - 1, adjustedEnd);
 
       const lineNumbered = formatLineNumberedContent(slicedLines, effStart);
@@ -412,8 +410,7 @@ export async function handleReadTrackedFile(
     // 8. Apply pagination by slicing doc.lines
     const totalLines = doc.lines.length;
     const { effectiveStart, effectiveEnd } = computeEffectiveRange(offset, requestedLimit, totalLines);
-    const contentStrings = doc.lines.map(l => l.content.map((s: { text: string }) => s.text).join(''));
-    const adjustedEnd = extendToCloseMarkup(contentStrings, effectiveEnd, totalLines);
+    const adjustedEnd = findSafePaginationEnd(doc.lines, effectiveEnd);
 
     const paginatedDoc: ThreeZoneDocument = {
       ...doc,

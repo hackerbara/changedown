@@ -1,5 +1,5 @@
 import * as fs from 'node:fs/promises';
-import { computeAmendEdits } from '@changetracks/core';
+import { computeSupersedeResult, parseForFormat } from '@changetracks/core';
 import { errorResult } from '../shared/error-result.js';
 import { strArg, optionalStrArg } from '../args.js';
 import { resolveAuthor } from '../author.js';
@@ -102,8 +102,22 @@ export async function handleAmendChange(
       return errorResult(authorError.message);
     }
 
+    // Same-author enforcement: amend is restricted to the original change's author
+    const doc = parseForFormat(fileContent);
+    const originalChange = doc.getChanges().find(c => c.id === changeId);
+    if (originalChange) {
+      const originalAuthor = originalChange.metadata?.author?.replace(/^@/, '') ?? '';
+      const normalizedAuthor = (author ?? '').replace(/^@/, '');
+      if (originalAuthor && normalizedAuthor && originalAuthor !== normalizedAuthor) {
+        return errorResult(
+          `Cannot amend change "${changeId}": you (${normalizedAuthor}) are not the original author (${originalAuthor}). ` +
+          `Use supersede_change to propose a replacement by a different author.`
+        );
+      }
+    }
+
     // Delegate pure computation to core
-    const result = computeAmendEdits(fileContent, changeId, {
+    const result = await computeSupersedeResult(fileContent, changeId, {
       newText,
       oldText,
       reason: reasoning,
@@ -120,11 +134,10 @@ export async function handleAmendChange(
 
     const responseData: Record<string, unknown> = {
       change_id: changeId,
+      new_change_id: result.newChangeId,
       file: toRelativePath(projectDir, filePath),
       amended: true,
-      previous_text: result.previousText,
       new_text: newText,
-      inline_updated: result.inlineUpdated,
     };
 
     return {

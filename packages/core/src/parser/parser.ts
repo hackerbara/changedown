@@ -39,6 +39,38 @@ interface FootnoteDefinition {
   revisions?: Revision[];
   discussion?: DiscussionComment[];
   resolution?: Resolution;
+  /** 0-based line index of the footnote definition header */
+  startLine?: number;
+  /** 0-based line index (inclusive) of the last line of this footnote definition */
+  endLine?: number;
+  /** Number of thread reply lines in the footnote body */
+  replyCount?: number;
+  /** Unrecognized key: value body lines (ADR-A 1b extension surface) */
+  extraMetadata?: Record<string, string>;
+}
+
+/** Propagate extraMetadata image fields from a FootnoteDefinition to ChangeNode.metadata. */
+function applyImageExtraMetadata(def: FootnoteDefinition, metadata: NonNullable<ChangeNode['metadata']>): void {
+  if (!def.extraMetadata) return;
+  const dimStr = def.extraMetadata['image-dimensions'];
+  if (dimStr) {
+    const dimMatch = dimStr.match(/^([\d.]+)in\s*x\s*([\d.]+)in$/);
+    if (dimMatch) {
+      metadata.imageDimensions = {
+        widthIn: parseFloat(dimMatch[1]),
+        heightIn: parseFloat(dimMatch[2]),
+      };
+    }
+  }
+  const imageMeta: Record<string, string> = {};
+  for (const [key, value] of Object.entries(def.extraMetadata)) {
+    if (key.startsWith('image-') && key !== 'image-dimensions') {
+      imageMeta[key] = value;
+    }
+  }
+  if (Object.keys(imageMeta).length > 0) {
+    metadata.imageMetadata = imageMeta;
+  }
 }
 
 export interface ParseOptions {
@@ -375,12 +407,19 @@ export class CriticMarkupParser {
     }
 
     const lines = text.substring(searchStart).split(/\r?\n/);
+    // Compute absolute line offset: count newlines in text before searchStart
+    let lineOffset = 0;
+    for (let k = 0; k < searchStart; k++) {
+      if (text.charCodeAt(k) === 10) lineOffset++;
+    }
     let currentId: string | null = null;
     let currentDef: FootnoteDefinition | null = null;
     let lastDiscussionComment: DiscussionComment | null = null;
     let inRevisions = false;
 
-    for (const line of lines) {
+    for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+      const line = lines[lineIdx];
+      const absLine = lineIdx + lineOffset;
       // New footnote definition header
       const defMatch = line.match(CriticMarkupParser.FOOTNOTE_DEF);
       if (defMatch) {
@@ -390,6 +429,9 @@ export class CriticMarkupParser {
           date: defMatch[3],
           type: defMatch[4],
           status: defMatch[5],
+          startLine: absLine,
+          endLine: absLine,
+          replyCount: 0,
         };
         map.set(currentId, currentDef);
         lastDiscussionComment = null;
@@ -417,6 +459,9 @@ export class CriticMarkupParser {
         inRevisions = false;
         continue;
       }
+
+      // This indented line extends the current footnote body
+      currentDef.endLine = absLine;
 
       // Strip leading whitespace, but measure raw indent first
       const rawIndent = line.length - line.replace(/^[\t ]+/, '').length;
@@ -526,7 +571,7 @@ export class CriticMarkupParser {
         continue;
       }
 
-      // @author date [label]: text — discussion comment
+      // @author date [label]: text — discussion comment (counts as thread reply)
       const discMatch = trimmed.match(CriticMarkupParser.DISCUSSION_RE);
       if (discMatch) {
         const depth = Math.max(0, Math.floor((rawIndent - 4) / 2));
@@ -543,12 +588,25 @@ export class CriticMarkupParser {
         if (!currentDef.discussion) currentDef.discussion = [];
         currentDef.discussion.push(comment);
         lastDiscussionComment = comment;
+        currentDef.replyCount = (currentDef.replyCount ?? 0) + 1;
         continue;
       }
 
       // Continuation line — append to last discussion comment
       if (lastDiscussionComment) {
         lastDiscussionComment.text += '\n' + trimmed;
+        continue;
+      }
+
+      // Generic key: value metadata (ADR-A 1b extension surface)
+      // ORDERING: MUST appear after all recognized patterns (REASON_RE, APPROVAL_RE,
+      // RESOLVED_RE, OPEN_RE, DISCUSSION_RE, CONTEXT_RE) AND after the continuation
+      // check, to avoid capturing recognized patterns or discussion continuation lines.
+      const kvMatch = trimmed.match(/^([\w-]+):\s+(.*)/);
+      if (kvMatch) {
+        if (!currentDef.extraMetadata) currentDef.extraMetadata = {};
+        currentDef.extraMetadata[kvMatch[1]] = kvMatch[2];
+        lastDiscussionComment = null;
         continue;
       }
 
@@ -609,6 +667,14 @@ export class CriticMarkupParser {
       if (def.resolution) {
         node.metadata.resolution = def.resolution;
       }
+
+      applyImageExtraMetadata(def, node.metadata);
+
+      // Propagate footnote line range and reply count
+      if (def.startLine !== undefined) {
+        node.footnoteLineRange = { startLine: def.startLine, endLine: def.endLine ?? def.startLine };
+      }
+      node.replyCount = def.replyCount ?? 0;
     }
 
     // Synthesize ChangeNodes for settled refs (post-Layer-1 settlement)
@@ -661,6 +727,14 @@ export class CriticMarkupParser {
         if (def.revisions) node.metadata!.revisions = def.revisions;
         if (def.discussion) node.metadata!.discussion = def.discussion;
         if (def.resolution) node.metadata!.resolution = def.resolution;
+
+        applyImageExtraMetadata(def, node.metadata!);
+
+        // Propagate footnote line range and reply count
+        if (def.startLine !== undefined) {
+          node.footnoteLineRange = { startLine: def.startLine, endLine: def.endLine ?? def.startLine };
+        }
+        node.replyCount = def.replyCount ?? 0;
 
         changes.push(node);
       }

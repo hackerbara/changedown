@@ -1,5 +1,6 @@
 import type { HookInput } from '../shared.js';
 export interface PostToolUseResult {
+    logged?: boolean;
     hookSpecificOutput?: {
         hookEventName: string;
         additionalContext?: string;

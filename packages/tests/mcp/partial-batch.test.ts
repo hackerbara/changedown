@@ -242,7 +242,7 @@ describe('partial batch semantics (Bug 10)', () => {
   // ── handleProposeChange delegation tests (partial passes through) ──
 
   describe('handleProposeChange batch delegation', () => {
-    it('propose_change(changes=[...]) is atomic: mixed valid/invalid fails entire call', async () => {
+    it('propose_change(changes=[...]) uses partial semantics: good ops applied, bad ops reported', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       await fs.writeFile(
         filePath,
@@ -262,13 +262,17 @@ describe('partial batch semantics (Bug 10)', () => {
         state,
       );
 
-      expect(result.isError).toBe(true);
-      const errPayload = result.content[1]?.text ? JSON.parse(result.content[1].text) : {};
-      expect((errPayload.error?.message ?? result.content[0].text)).toBeDefined();
-      // No change IDs created; file unchanged (atomic rollback)
+      // Partial success — same semantics as propose_batch: not an error, reports applied+failed
+      expect(result.isError).toBeUndefined();
+      const data = JSON.parse(result.content[0].text);
+      expect(data.applied).toHaveLength(1);
+      expect(data.failed).toHaveLength(1);
+      expect(data.failed[0].index).toBe(1);
+      // Successful op IS written to file (partial mode, no rollback)
       const written = await fs.readFile(filePath, 'utf-8');
-      expect(written).toContain('Hello world.');
-      expect(written).not.toContain('Hi world.');
+      // The substitution markup wraps old→new: {~~Hello world.~>Hi world.~~}
+      expect(written).toContain('Hi world.');
+      expect(written).toContain('{~~Hello world.~>Hi world.~~}');
     });
 
     it('propose_change with all valid changes applies both', async () => {

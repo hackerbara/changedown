@@ -292,4 +292,36 @@ describe('list_changes tool', () => {
     expect(bare.anchored).toBe(false);
     expect(bare.change_id).toMatch(/^ct-/);
   });
+
+  // ─── Consumed ops ──────────────────────────────────────────────────────
+
+  it('includes consumed_by field for consumed changes', async () => {
+    // L3 document: ct-1 inserts "very " then ct-2 deletes it → ct-1 consumed by ct-2
+    const consumedFile = path.join(tmpDir, 'consumed.md');
+    await fs.writeFile(consumedFile, [
+      'The lazy dog',
+      '',
+      '[^ct-1]: agent | 2026-03-23 | ins | proposed',
+      '    1:ab The {++very ++}lazy dog',
+      '[^ct-2]: agent | 2026-03-23 | del | proposed',
+      '    1:cd The {--very --}lazy dog',
+    ].join('\n'));
+
+    const result = await handleListChanges({ file: consumedFile }, resolver, state);
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
+    const consumed = data.changes.find((c: any) => c.consumed_by);
+    expect(consumed).toBeDefined();
+    expect(consumed.consumed_by).toMatch(/^ct-/);
+    expect(consumed.anchored).toBe(false);
+  });
+
+  it('omits consumed_by field for non-consumed changes', async () => {
+    // Standard L2 doc from beforeEach — no consumption
+    const result = await handleListChanges({ file: filePath }, resolver, state);
+    const data = JSON.parse(result.content[0].text);
+    for (const change of data.changes) {
+      expect(change.consumed_by).toBeUndefined();
+    }
+  });
 });

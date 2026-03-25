@@ -537,6 +537,10 @@ const integrationConfig: ChangeTracksConfig = {
   policy: { mode: 'safety-net', creation_tracking: 'footnote', default_view: 'review', view_policy: 'suggest' },
   protocol: { mode: 'compact', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
   review: { reasonRequired: { human: false, agent: false } },
+  reasoning: {
+    propose: { human: false, agent: false },
+    review: { human: false, agent: false },
+  },
 };
 
 describe('settled-view batch (friction report scenario)', () => {
@@ -900,14 +904,17 @@ describe('batch atomicity regression (spec regression 1)', () => {
       resolver, state,
     );
 
-    // Batch must fail (second op has bad hash)
-    expect(batchResult.isError).toBe(true);
+    // With partial-success batch semantics, the batch succeeds overall
+    // but reports the failed op. The first op (valid hash) applies, the second fails.
+    expect(batchResult.isError).toBeUndefined();
+    const parsed = JSON.parse(batchResult.content[0].text);
+    expect(parsed.applied.length).toBe(1);
+    expect(parsed.failed.length).toBe(1);
 
-    // File must be UNCHANGED — no partial writes (atomicity)
+    // First op was applied — file contains the substitution
     const afterContent = await fs.readFile(filePath, 'utf-8');
-    expect(afterContent).toBe(fileContent);
-    expect(afterContent).not.toContain('{~~');
-    expect(afterContent).toContain('First line');
+    expect(afterContent).toContain('{~~First line~>Line 1~~}');
+    // Second op failed — original text is still present
     expect(afterContent).toContain('Second line');
   });
 });

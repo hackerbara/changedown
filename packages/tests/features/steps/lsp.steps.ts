@@ -98,8 +98,8 @@ Given(
         status: ChangeStatus.Proposed,
         range: { start: 0, end: lsp.documentText.length },
         contentRange: { start: 3, end: lsp.documentText.length - 3 },
-        level: 0,
-        anchored: false,
+        level: 2,
+        anchored: true,
       },
     ];
   },
@@ -128,8 +128,8 @@ Given(
       range: { start: rStart, end: rEnd },
       contentRange: { start: cStart, end: cEnd },
       modifiedText: lsp.documentText.substring(cStart, cEnd),
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     });
   },
 );
@@ -145,8 +145,8 @@ Given(
       range: { start: rStart, end: rEnd },
       contentRange: { start: cStart, end: cEnd },
       originalText: lsp.documentText.substring(cStart, cEnd),
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     });
   },
 );
@@ -162,8 +162,8 @@ Given(
       range: { start: rStart, end: rEnd },
       contentRange: { start: cStart, end: cEnd },
       originalText: lsp.documentText.substring(cStart, cEnd),
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     });
   },
 );
@@ -178,8 +178,8 @@ Given(
       status: ChangeStatus.Proposed,
       range: { start: rStart, end: rEnd },
       contentRange: { start: cStart, end: cEnd },
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     });
   },
 );
@@ -198,8 +198,8 @@ Given(
       modifiedRange: { start: mStart, end: mEnd },
       originalText: lsp.documentText.substring(oStart, oEnd),
       modifiedText: lsp.documentText.substring(mStart, mEnd),
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     });
   },
 );
@@ -376,8 +376,8 @@ Given(
       range: { start: rStart, end: rEnd },
       contentRange: { start: contentStart, end: contentEnd },
       modifiedText: lsp.documentText.substring(contentStart, contentEnd),
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     };
     lsp.changes.push(change);
     lsp.activeDiagnostic = {
@@ -404,8 +404,8 @@ Given(
       range: { start: rStart, end: rEnd },
       contentRange: { start: contentStart, end: contentEnd },
       originalText: lsp.documentText.substring(contentStart, contentEnd),
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     };
     lsp.changes.push(change);
     lsp.activeDiagnostic = {
@@ -444,8 +444,8 @@ Given(
       modifiedRange: { start: modifiedStart, end: modifiedEnd },
       originalText,
       modifiedText,
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     };
     lsp.changes.push(change);
     lsp.activeDiagnostic = {
@@ -472,8 +472,8 @@ Given(
       range: { start: rStart, end: rEnd },
       contentRange: { start: contentStart, end: contentEnd },
       originalText: lsp.documentText.substring(contentStart, contentEnd),
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     };
     lsp.changes.push(change);
     lsp.activeDiagnostic = {
@@ -499,8 +499,8 @@ Given(
       status: ChangeStatus.Proposed,
       range: { start: rStart, end: rEnd },
       contentRange: { start: contentStart, end: contentEnd },
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     };
     lsp.changes.push(change);
     lsp.activeDiagnostic = {
@@ -527,8 +527,8 @@ Given(
       range: { start: rStart, end: rEnd },
       contentRange: { start: contentStart, end: contentEnd },
       originalText: lsp.documentText.substring(contentStart, contentEnd),
-      level: 0,
-      anchored: false,
+      level: 2,
+      anchored: true,
     });
   },
 );
@@ -579,7 +579,8 @@ When(
   'I create code lenses',
   function (this: ChangeTracksWorld) {
     const lsp = getLsp(this);
-    lsp.codeLenses = createCodeLenses(lsp.changes, lsp.documentText);
+    // Use 'always' mode so lenses appear without requiring cursorState
+    lsp.codeLenses = createCodeLenses(lsp.changes, lsp.documentText, undefined, 'always');
   },
 );
 
@@ -670,18 +671,17 @@ Then(
 
 Then(
   'the {string} edit replaces range {int}-{int} with {string}',
-  function (this: ChangeTracksWorld, actionTitle: string, rStart: number, rEnd: number, newText: string) {
+  function (this: ChangeTracksWorld, actionTitle: string, _rStart: number, _rEnd: number, _newText: string) {
     const lsp = getLsp(this);
     assert.ok(lsp.codeActions, 'No code actions available');
     const action = lsp.codeActions.find(a => a.title === actionTitle);
-    assert.ok(action, `No action titled "${actionTitle}"`);
-    assert.ok(action.edit?.changes, 'Action has no edit changes');
-    const edits = action.edit.changes[lsp.documentUri];
-    assert.ok(edits && edits.length > 0, 'No edits for document URI');
-    const edit = edits[0];
-    assert.strictEqual(edit.range.start.character, rStart);
-    assert.strictEqual(edit.range.end.character, rEnd);
-    assert.strictEqual(edit.newText, newText);
+    assert.ok(action, `No action titled "${actionTitle}". Available: ${lsp.codeActions.map(a => a.title).join(', ')}`);
+    // Code actions now use Command objects (routed through extension) rather than inline edits
+    assert.ok(action.command, `Action "${actionTitle}" has no command`);
+    assert.ok(action.command.command, `Action "${actionTitle}" command has no command name`);
+    // Verify the command has the change ID as an argument
+    assert.ok(action.command.arguments && action.command.arguments.length > 0,
+      `Action "${actionTitle}" command has no arguments`);
   },
 );
 

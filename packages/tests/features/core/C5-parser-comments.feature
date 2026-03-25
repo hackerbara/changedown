@@ -50,4 +50,4 @@ Feature: Parser — Comments
   Scenario: Comment generates correct ID prefix
     Given the text "{>>note<<}"
     When I parse the text
-    Then change 1 has id "com-0"
+    Then change 1 has id "ct-1"

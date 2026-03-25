@@ -12,20 +12,20 @@ Feature: D7 -- Per-author decorations cleared on view mode switch
     And markup text "Hello World"
     And a change of type "insertion" by "alice" at offset 0 to 5
     When I decorate the manual changes in markup mode
-    Then total setDecorations calls is 20
+    Then total setDecorations calls is 23
     When I re-decorate the manual changes in final mode
-    Then total setDecorations calls is 20
-    And author decoration call 19 has 0 ranges
+    Then total setDecorations calls is 23
+    And author decoration call 22 has 0 ranges
 
   Scenario: Markup → Original clears per-author decoration types
     Given author colors mode "always"
     And markup text "Hello World"
     And a change of type "insertion" by "alice" at offset 0 to 5
     When I decorate the manual changes in markup mode
-    Then total setDecorations calls is 20
+    Then total setDecorations calls is 23
     When I re-decorate the manual changes in original mode
-    Then total setDecorations calls is 20
-    And author decoration call 19 has 0 ranges
+    Then total setDecorations calls is 23
+    And author decoration call 22 has 0 ranges
 
   Scenario: Two authors in markup → Final clears both author types
     Given author colors mode "always"
@@ -33,11 +33,11 @@ Feature: D7 -- Per-author decorations cleared on view mode switch
     And a change of type "insertion" by "alice" at offset 0 to 5
     And a change of type "insertion" by "bob" at offset 6 to 11
     When I decorate the manual changes in markup mode
-    Then total setDecorations calls is 21
+    Then total setDecorations calls is 24
     When I re-decorate the manual changes in final mode
-    Then total setDecorations calls is 21
-    And author decoration call 19 has 0 ranges
-    And author decoration call 20 has 0 ranges
+    Then total setDecorations calls is 24
+    And author decoration call 22 has 0 ranges
+    And author decoration call 22 has 0 ranges
 
   Scenario: Auto mode two authors → Final clears author types
     Given author colors mode "auto"
@@ -45,11 +45,11 @@ Feature: D7 -- Per-author decorations cleared on view mode switch
     And a change of type "insertion" by "alice" at offset 0 to 5
     And a change of type "insertion" by "bob" at offset 6 to 11
     When I decorate the manual changes in markup mode
-    Then total setDecorations calls is 21
+    Then total setDecorations calls is 24
     When I re-decorate the manual changes in final mode
-    Then total setDecorations calls is 21
-    And author decoration call 19 has 0 ranges
-    And author decoration call 20 has 0 ranges
+    Then total setDecorations calls is 24
+    And author decoration call 22 has 0 ranges
+    And author decoration call 22 has 0 ranges
 
   Scenario: Markup → Simple clears per-author decorations (settled-base, cursor far away)
     Given author colors mode "always"
@@ -57,18 +57,18 @@ Feature: D7 -- Per-author decorations cleared on view mode switch
     And a change of type "insertion" by "alice" at offset 0 to 5
     And a change of type "insertion" by "bob" at offset 6 to 11
     When I decorate the manual changes in markup mode
-    Then total setDecorations calls is 21
+    Then total setDecorations calls is 24
     When I re-decorate the manual changes in smart view mode
-    Then total setDecorations calls is 21
-    And author decoration call 19 has 0 ranges
-    And author decoration call 20 has 0 ranges
+    Then total setDecorations calls is 24
+    And author decoration call 22 has 0 ranges
+    And author decoration call 22 has 0 ranges
 
   Scenario: Final → Markup restores per-author decorations after clearing
     Given author colors mode "always"
     And markup text "Hello World"
     And a change of type "insertion" by "alice" at offset 0 to 5
     When I decorate the manual changes in final mode
-    Then total setDecorations calls is 19
+    Then total setDecorations calls is 22
     When I re-decorate the manual changes in markup mode
-    Then total setDecorations calls is 20
-    And author decoration call 19 has 1 ranges
+    Then total setDecorations calls is 23
+    And author decoration call 22 has 1 ranges

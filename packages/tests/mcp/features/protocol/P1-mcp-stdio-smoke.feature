@@ -10,7 +10,7 @@ Feature: MCP stdio transport smoke tests
   Scenario: Server initializes and lists tools
     When I send a JSON-RPC "tools/list" request
     Then I receive a valid response with at least 7 tools
-    And the tools include: read_tracked_file, propose_change, review_changes, get_change, amend_change, list_changes, supersede_change
+    And the tools include: read_tracked_file, propose_change, review_changes, resolve_thread, amend_change, list_changes, supersede_change
 
   Scenario: Full round-trip via stdio -- read -> propose -> review
     When I send read_tracked_file for a tracked file

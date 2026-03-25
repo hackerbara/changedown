@@ -33,13 +33,14 @@ describe('Notifications', () => {
         }
       ];
 
-      sendDecorationData(connection, uri, changes);
+      sendDecorationData(connection, uri, changes, 0);
 
       expect(connection.notifications).toHaveLength(1);
       expect(connection.notifications[0].method).toBe('changetracks/decorationData');
       expect(connection.notifications[0].params).toStrictEqual({
         uri,
-        changes
+        changes,
+        documentVersion: 0
       });
     });
 
@@ -48,13 +49,14 @@ describe('Notifications', () => {
       const uri = 'file:///test.md';
       const changes: ChangeNode[] = [];
 
-      sendDecorationData(connection, uri, changes);
+      sendDecorationData(connection, uri, changes, 0);
 
       expect(connection.notifications).toHaveLength(1);
       expect(connection.notifications[0].method).toBe('changetracks/decorationData');
       expect(connection.notifications[0].params).toStrictEqual({
         uri,
-        changes: []
+        changes: [],
+        documentVersion: 0
       });
     });
 
@@ -81,10 +83,19 @@ describe('Notifications', () => {
         }
       ];
 
-      sendDecorationData(connection, uri, changes);
+      sendDecorationData(connection, uri, changes, 0);
 
       expect(connection.notifications).toHaveLength(1);
       expect(connection.notifications[0].params.changes[0]).toStrictEqual(changes[0]);
+    });
+
+    it('sendDecorationData includes documentVersion', () => {
+      const connection = createSpyConnection();
+      const changes: ChangeNode[] = [];
+
+      sendDecorationData(connection, 'file:///test.md', changes, 42);
+
+      expect(connection.notifications[0].params.documentVersion).toBe(42);
     });
   });
 

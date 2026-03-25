@@ -6,6 +6,7 @@ import {
   FALLBACK_WIDTH_INCHES, FALLBACK_HEIGHT_INCHES,
   inchesToPixels, pixelsToInches,
 } from '../shared/image-types.js';
+import type { ImagePositionMetadata } from '../shared/image-types.js';
 
 export interface DimensionResolutionInput {
   footnoteDimensions?: ImageDimensions;
@@ -77,6 +78,7 @@ function parseInches(value: string): number {
 
 /**
  * Build a docx ImageRun from image data and resolved dimensions.
+ * Optionally applies floating/anchor positioning for round-trip fidelity.
  */
 export function buildImageRun(
   data: Buffer,
@@ -84,8 +86,9 @@ export function buildImageRun(
   dims: ImageDimensions,
   dpi: number = DEFAULT_DPI,
   altText?: { name: string; description: string; title: string },
+  position?: ImagePositionMetadata,
 ): ImageRun {
-  return new ImageRun({
+  const options: Record<string, unknown> = {
     type: format,
     data,
     transformation: {
@@ -93,5 +96,55 @@ export function buildImageRun(
       height: inchesToPixels(dims.heightIn, dpi),
     },
     ...(altText && { altText }),
-  });
+  };
+
+  if (position?.float === 'anchor') {
+    options.floating = {
+      horizontalPosition: {
+        relative: position.hAnchor as string,
+        offset: position.hOffset,
+        align: position.hAlign as string,
+      },
+      verticalPosition: {
+        relative: position.vAnchor as string,
+        offset: position.vOffset,
+        align: position.vAlign as string,
+      },
+      behindDocument: position.behindDocument,
+      margins: {
+        top: position.distT,
+        bottom: position.distB,
+        left: position.distL,
+        right: position.distR,
+      },
+      ...(position.wrapType && position.wrapType !== 'wrapNone' ? {
+        wrap: {
+          type: mapWrapType(position.wrapType),
+          side: position.wrapSide ? mapWrapSide(position.wrapSide) : undefined,
+        },
+      } : {}),
+    };
+  }
+
+  return new ImageRun(options as ConstructorParameters<typeof ImageRun>[0]);
+}
+
+function mapWrapType(wt: string): number {
+  const map: Record<string, number> = {
+    wrapSquare: 1,       // TextWrappingType.SQUARE
+    wrapTight: 2,        // TextWrappingType.TIGHT
+    wrapTopAndBottom: 3, // TextWrappingType.TOP_AND_BOTTOM
+  };
+  return map[wt] ?? 0;
+}
+
+function mapWrapSide(ws: string): string {
+  // TextWrappingSide uses string values in the docx library
+  const map: Record<string, string> = {
+    bothSides: 'bothSides',
+    left: 'left',
+    right: 'right',
+    largest: 'largest',
+  };
+  return map[ws] ?? 'bothSides';
 }

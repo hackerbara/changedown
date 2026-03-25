@@ -36,6 +36,21 @@ export interface MediaInjection {
   contentType: string;
 }
 
+/** Floating/anchor positioning metadata for image round-trip fidelity. */
+export interface ImagePositionMetadata {
+  float?: 'anchor';
+  hAnchor?: string;
+  hOffset?: number;
+  hAlign?: string;
+  vAnchor?: string;
+  vOffset?: number;
+  vAlign?: string;
+  wrapType?: string;
+  wrapSide?: string;
+  behindDocument?: boolean;
+  distT?: number; distB?: number; distL?: number; distR?: number;
+}
+
 // ---- Conversion helpers ----
 export function inchesToPixels(inches: number, dpi: number = DEFAULT_DPI): number {
   return Math.round(inches * dpi);
@@ -47,6 +62,10 @@ export function pixelsToInches(pixels: number, dpi: number = DEFAULT_DPI): numbe
 
 export function inchesToEmu(inches: number): number {
   return Math.round(inches * EMU_PER_INCH);
+}
+
+export function emuToInches(emu: number): number {
+  return emu / EMU_PER_INCH;
 }
 
 // ---- Format helpers ----

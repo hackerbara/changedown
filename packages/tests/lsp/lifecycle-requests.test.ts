@@ -273,11 +273,11 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
   // ── 2D: amendChange ───────────────────────────────────────────────────────
 
   describe('changetracks/amendChange (2D)', () => {
-    it('amends a proposed insertion', () => {
+    it('amends a proposed substitution via supersede', async () => {
       const { server } = setupServer();
-      openDoc(server, URI, L2_INSERTION_DOC);
+      openDoc(server, URI, L2_SUBSTITUTION_DOC);
 
-      const result = server.handleAmendChange({
+      const result = await server.handleAmendChange({
         uri: URI,
         changeId: 'ct-1',
         newText: 'amended text',
@@ -287,16 +287,17 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       expect('edit' in result).toBe(true);
       const edit = (result as { edit: TextEdit }).edit;
-      expect(edit.newText).toContain('{++amended text++}');
-      expect(edit.newText).toContain('revised');
-      expect(edit.newText).toContain('Improved wording');
+      // Original change is rejected and a new superseding change is created
+      expect(edit.newText).toContain('| rejected');
+      expect(edit.newText).toContain('supersedes:');
+      expect(edit.newText).toContain('superseded-by:');
     });
 
-    it('returns error when amending accepted change', () => {
+    it('returns error when amending accepted change', async () => {
       const { server } = setupServer();
       openDoc(server, URI, ACCEPTED_DOC);
 
-      const result = server.handleAmendChange({
+      const result = await server.handleAmendChange({
         uri: URI,
         changeId: 'ct-1',
         newText: 'new text',
@@ -307,10 +308,10 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
       expect((result as { error: string }).error).toContain('accepted');
     });
 
-    it('returns error for missing document', () => {
+    it('returns error for missing document', async () => {
       const { server } = setupServer();
 
-      const result = server.handleAmendChange({
+      const result = await server.handleAmendChange({
         uri: 'file:///nonexistent.md',
         changeId: 'ct-1',
         newText: 'new text',
@@ -325,11 +326,11 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
   // ── 2E: supersedeChange ───────────────────────────────────────────────────
 
   describe('changetracks/supersedeChange (2E)', () => {
-    it('supersedes a proposed substitution', () => {
+    it('supersedes a proposed substitution', async () => {
       const { server } = setupServer();
       openDoc(server, URI, L2_SUBSTITUTION_DOC);
 
-      const result = server.handleSupersedeChange({
+      const result = await server.handleSupersedeChange({
         uri: URI,
         changeId: 'ct-1',
         newText: 'better text',
@@ -347,11 +348,11 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
       expect(typed.edit.newText).toContain('superseded-by:');
     });
 
-    it('returns error for accepted change', () => {
+    it('returns error for accepted change', async () => {
       const { server } = setupServer();
       openDoc(server, URI, ACCEPTED_DOC);
 
-      const result = server.handleSupersedeChange({
+      const result = await server.handleSupersedeChange({
         uri: URI,
         changeId: 'ct-1',
         newText: 'new text',

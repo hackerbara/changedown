@@ -252,7 +252,7 @@ Monitoring is done via server logs.
     expect(footnoteData.raw_text).toBeDefined();
     expect(footnoteData.raw_text as string).toContain('rollback support');
 
-    // ── Step 4: Agent amends ct-1 incorporating feedback ─────────────
+    // ── Step 4: Agent amends ct-1 incorporating feedback (supersede) ──
     const amendResult = await ctx.amend(filePath, 'ct-1', {
       new_text: 'CI/CD pipeline with automated rollback',
       reason: 'Incorporated human feedback about rollback support',
@@ -262,29 +262,29 @@ Monitoring is done via server logs.
 
     const amendData = ctx.parseResult(amendResult);
     expect(amendData.change_id).toBe('ct-1');
+    expect(amendData.new_change_id).toBeDefined();
     expect(amendData.amended).toBe(true);
-    expect(amendData.inline_updated).toBe(true);
-    expect(amendData.previous_text).toBe('CI/CD pipeline');
+    const newChangeId = amendData.new_change_id as string;
 
-    // Verify disk: inline markup updated, amendment recorded
+    // Verify disk: new change proposes amended text, original is rejected
     const disk3 = await ctx.readDisk(filePath);
     expect(disk3).toContain('{~~manual processes~>CI/CD pipeline with automated rollback~~}');
-    expect(disk3).not.toContain('{~~manual processes~>CI/CD pipeline~~}');
     expect(disk3).toContain('Incorporated human feedback about rollback support');
-    expect(disk3).toContain('previous: "CI/CD pipeline"');
+    expect(disk3).toContain(`superseded-by: ${newChangeId}`);
+    expect(disk3).toContain('supersedes: ct-1');
 
-    // ── Step 5: Human accepts the amended ct-1 via core accept ───────
+    // ── Step 5: Human accepts the NEW change via core accept ─────────
     const parser = new CriticMarkupParser();
     const doc = parser.parse(disk3);
     const changes = doc.getChanges();
-    const sc1 = changes.find(c => c.id === 'ct-1');
-    expect(sc1).toBeDefined();
-    expect(sc1!.type).toBe(ChangeType.Substitution);
-    expect(sc1!.modifiedText).toBe('CI/CD pipeline with automated rollback');
+    const sc = changes.find(c => c.id === newChangeId);
+    expect(sc).toBeDefined();
+    expect(sc!.type).toBe(ChangeType.Substitution);
+    expect(sc!.modifiedText).toBe('CI/CD pipeline with automated rollback');
 
     // Apply accept + status edits
-    const acceptEdit = computeAccept(sc1!);
-    const statusEdits = computeFootnoteStatusEdits(disk3, ['ct-1'], 'accepted');
+    const acceptEdit = computeAccept(sc!);
+    const statusEdits = computeFootnoteStatusEdits(disk3, [newChangeId], 'accepted');
     const allEdits = [acceptEdit, ...statusEdits];
     const acceptedContent = applyEdits(disk3, allEdits);
     await fs.writeFile(filePath, acceptedContent, 'utf-8');
@@ -292,20 +292,16 @@ Monitoring is done via server logs.
     // ── Step 6: Verify final state ───────────────────────────────────
     const finalDisk = await ctx.readDisk(filePath);
 
-    // File body is clean — no CriticMarkup delimiters around the text
+    // File body is clean — no CriticMarkup delimiters around the accepted change
     expect(finalDisk).toContain('CI/CD pipeline with automated rollback');
-    expect(finalDisk).not.toContain('{~~');
-    expect(finalDisk).not.toContain('~>');
-    expect(finalDisk).not.toContain('~~}');
 
-    // Footnote status is accepted
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+    // New change footnote status is accepted
+    await ctx.assertFootnoteStatus(filePath, newChangeId, 'accepted');
 
-    // Full deliberation trail preserved in footnote
-    expect(finalDisk).toContain('Automate deployments');                              // original reasoning
-    expect(finalDisk).toContain('rollback support');                                  // human comment
-    expect(finalDisk).toContain('Incorporated human feedback about rollback support'); // amendment reasoning
-    expect(finalDisk).toContain('previous: "CI/CD pipeline"');                        // revision history
+    // Full deliberation trail preserved across footnotes
+    expect(finalDisk).toContain('Automate deployments');                              // original reasoning (ct-1)
+    expect(finalDisk).toContain('rollback support');                                  // human comment (ct-1)
+    expect(finalDisk).toContain('Incorporated human feedback about rollback support'); // amendment reasoning (new change)
 
     // Agent can verify clean state via MCP read
     const readResult = await ctx.read(filePath, { view: 'meta' });

@@ -170,7 +170,7 @@ describe('Navigation', () => {
       expect(previousChange(doc, 0)).toBeNull();
     });
 
-    it('returns the closer change when cursor is between two adjacent changes', () => {
+    it('skips change containing cursor and returns the previous one', () => {
       // Two changes next to each other: {++a++}{--b--}
       // {++a++} range [0,7), {--b--} range [7,14)
       const doc = parser.parse('{++a++}{--b--}');
@@ -179,14 +179,15 @@ describe('Navigation', () => {
       expect(changes[0].range.end).toBe(7);
       expect(changes[1].range.start).toBe(7);
 
-      // Cursor at 8 is inside the second change.
-      // Iterating backwards: second change start=7, 7 < 8 is true => returns second (deletion).
+      // Cursor at 8 is inside the second change {--b--}.
+      // previousChange skips changes containing the cursor, so it returns
+      // the first change {++a++} (the previous change before the one the cursor is in).
       const result = previousChange(doc, 8);
       expect(result).not.toBe(null);
-      expect(result!.originalText).toBe('b');
+      expect(result!.modifiedText).toBe('a');
 
-      // Cursor exactly at boundary (7): second change start=7, 7 < 7 is false.
-      // First change start=0, 0 < 7 is true => returns first (insertion).
+      // Cursor exactly at boundary (7): second change range [7,14), 7 >= 7 && 7 < 14 is true,
+      // so second change is skipped. First change start=0, 0 < 7 is true => returns first.
       const atBoundary = previousChange(doc, 7);
       expect(atBoundary).not.toBe(null);
       expect(atBoundary!.modifiedText).toBe('a');

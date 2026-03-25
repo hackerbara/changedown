@@ -69,7 +69,7 @@ Feature: Parser — Insertions
     Given the text "{++text++}"
     When I parse the text
     Then there is 1 change
-    And change 1 has id "ins-0"
+    And change 1 has id "ct-1"
 
   Scenario: All insertions have Proposed status by default
     Given the text "{++a++}{++b++}"
@@ -79,4 +79,4 @@ Feature: Parser — Insertions
   Scenario: Insertion generates correct ID prefix
     Given the text "{++a++}{--b--}{~~c~>d~~}"
     When I parse the text
-    Then change 1 has id "ins-0"
+    Then change 1 has id "ct-1"

@@ -75,8 +75,10 @@ export class ChangeComments implements vscode.Disposable {
     const text = doc.getText();
     const cursorOffset = positionToOffset(text, editor.selection.active);
     const changes = this.controller.getChangesForDocument(doc);
-    const change = changes.find(
-      (c) => cursorOffset >= c.contentRange.start && cursorOffset < c.contentRange.end
+    const change = changes.find((c) =>
+      c.contentRange.start === c.contentRange.end
+        ? cursorOffset === c.contentRange.start  // zero-width: exact match
+        : cursorOffset >= c.contentRange.start && cursorOffset < c.contentRange.end
     );
     if (!change || change.level < 1) {
       // Cursor outside any change — collapse all open threads
@@ -120,8 +122,10 @@ export class ChangeComments implements vscode.Disposable {
     const text = doc.getText();
     const cursorOffset = positionToOffset(text, editor.selection.active);
     const changes = this.controller.getChangesForDocument(doc);
-    const change = changes.find(
-      (c) => cursorOffset >= c.contentRange.start && cursorOffset < c.contentRange.end
+    const change = changes.find((c) =>
+      c.contentRange.start === c.contentRange.end
+        ? cursorOffset === c.contentRange.start  // zero-width: exact match
+        : cursorOffset >= c.contentRange.start && cursorOffset < c.contentRange.end
     );
     if (!change || change.level < 1) return false;
 

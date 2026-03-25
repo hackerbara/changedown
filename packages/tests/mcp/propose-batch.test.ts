@@ -54,6 +54,7 @@ describe('propose_batch batch primitive', () => {
       settlement: { auto_on_approve: true, auto_on_reject: true },
       policy: { mode: 'safety-net', creation_tracking: 'footnote' },
       protocol: { mode: 'classic', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
+      response: { affected_lines: true },
     };
     resolver = await createTestResolver(tmpDir, config);
   });

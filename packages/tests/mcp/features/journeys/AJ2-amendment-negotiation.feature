@@ -23,17 +23,16 @@ Feature: Amendment negotiation cycle
     When agent "ai:reviewer" responds to ct-1 thread with "OAuth2 is good but we need to specify the grant type. Consider Authorization Code flow." label "suggestion"
     Then the footnote for ct-1 has 2 discussion entries (original + response)
 
-    # Step 3: Original author amends
+    # Step 3: Original author amends (supersede semantics)
     When agent "ai:proposer" amends ct-1 with new_text "OAuth2 with Authorization Code flow" and reasoning "Incorporated reviewer suggestion"
-    Then the inline markup shows the amended substitution
-    And the footnote contains "revised @ai:proposer"
-    And the footnote shows previous text "OAuth2"
-    And the change ID is still ct-1
+    Then the amend created a new superseding change
+    And the original change ct-1 is now rejected
+    And the superseding change has "supersedes: ct-1" in its footnote
+    And the original change has "superseded-by" in its footnote
 
-    # Step 4: Reviewer approves amended version
-    When agent "ai:reviewer" approves ct-1 with reasoning "Looks good with grant type specified"
-    Then the footnote status is "accepted"
-    And the footnote contains "approved: @ai:reviewer"
+    # Step 4: Reviewer approves the superseding change (ct-2)
+    When agent "ai:reviewer" approves the superseding change with reasoning "Looks good with grant type specified"
+    Then the superseding change has status "accepted"
 
     # Step 5: Settle
     When I call review_changes with settle = true
@@ -44,12 +43,12 @@ Feature: Amendment negotiation cycle
   Scenario: Multiple amendment rounds before acceptance
     When agent "ai:proposer" proposes a change (ct-1)
     And agent "ai:reviewer" requests changes on ct-1
-    And agent "ai:proposer" amends ct-1 (round 1)
-    And agent "ai:reviewer" requests changes again on ct-1
-    And agent "ai:proposer" amends ct-1 (round 2)
-    And agent "ai:reviewer" approves ct-1
-    Then the footnote contains 2 "revised" entries
-    And the footnote contains 2 "request-changes" entries
+    And agent "ai:proposer" amends the latest change (round 1 supersede)
+    And agent "ai:reviewer" requests changes on the latest superseding change
+    And agent "ai:proposer" amends the latest change (round 2 supersede)
+    And agent "ai:reviewer" approves the latest superseding change
+    Then the supersede chain has 2 rejected predecessors
+    And the latest superseding change has status "accepted"
     And the final inline text reflects round 2 amendment
 
   Scenario: Amendment rejected -- original author proposes new change instead

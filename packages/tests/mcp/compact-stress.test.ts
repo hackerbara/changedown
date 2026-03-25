@@ -33,6 +33,10 @@ const compactConfig: ChangeTracksConfig = {
   settlement: { auto_on_approve: true, auto_on_reject: true },
   policy: { mode: 'safety-net', creation_tracking: 'footnote' },
   protocol: { mode: 'compact', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
+  reasoning: {
+    propose: { human: false, agent: false },
+    review: { human: false, agent: false },
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -306,7 +310,7 @@ describe('propose_change compact stress', () => {
 
     const hash = hashForLine(content, 1);
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: '{~~first~>FIRST~~}' },
+      { file: filePath, at: `1:${hash}`, op: '{~~first~>FIRST~~}', reason: 'test' },
       resolver, state,
     );
 
@@ -323,7 +327,7 @@ describe('propose_change compact stress', () => {
 
     const hash = hashForLine(content, 3);
     const result = await handleProposeChange(
-      { file: filePath, at: `3:${hash}`, op: '{~~three~>THREE~~}' },
+      { file: filePath, at: `3:${hash}`, op: '{~~three~>THREE~~}', reason: 'test' },
       resolver, state,
     );
 
@@ -339,7 +343,7 @@ describe('propose_change compact stress', () => {
 
     const hash = hashForLine(content, 1);
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: '{--only content here--}' },
+      { file: filePath, at: `1:${hash}`, op: '{--only content here--}', reason: 'test' },
       resolver, state,
     );
 
@@ -356,7 +360,7 @@ describe('propose_change compact stress', () => {
 
     const hash = hashForLine(content, 2);
     const result = await handleProposeChange(
-      { file: filePath, at: `2:${hash}`, op: '{++\nnew final line++}' },
+      { file: filePath, at: `2:${hash}`, op: '{++\nnew final line++}', reason: 'test' },
       resolver, state,
     );
 
@@ -373,7 +377,7 @@ describe('propose_change compact stress', () => {
 
     const hash = hashForLine(content, 1);
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: '{~~hello~>h\u00e9llo~~}' },
+      { file: filePath, at: `1:${hash}`, op: '{~~hello~>h\u00e9llo~~}', reason: 'test' },
       resolver, state,
     );
 
@@ -389,7 +393,7 @@ describe('propose_change compact stress', () => {
 
     const hash = hashForLine(content, 1);
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: '{~~\u660e\u5929~>\u4eca\u5929~~}' },
+      { file: filePath, at: `1:${hash}`, op: '{~~\u660e\u5929~>\u4eca\u5929~~}', reason: 'test' },
       resolver, state,
     );
 
@@ -406,7 +410,7 @@ describe('propose_change compact stress', () => {
     const longReplacement = 'a very long replacement string '.repeat(50).trim();
     const hash = hashForLine(content, 1);
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: `{~~short~>${longReplacement}~~}` },
+      { file: filePath, at: `1:${hash}`, op: `{~~short~>${longReplacement}~~}`, reason: 'test' },
       resolver, state,
     );
 
@@ -422,7 +426,7 @@ describe('propose_change compact stress', () => {
 
     const hash = hashForLine(content, 1);
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: '{~~this is a very long line with many words and characters~>x~~}' },
+      { file: filePath, at: `1:${hash}`, op: '{~~this is a very long line with many words and characters~>x~~}', reason: 'test' },
       resolver, state,
     );
 
@@ -441,7 +445,7 @@ describe('propose_change compact stress', () => {
     // findUniqueMatch throws for ambiguous matches; the outer try/catch
     // in handleProposeChange catches it and returns an isError result.
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: '{~~the~>THE~~}' },
+      { file: filePath, at: `1:${hash}`, op: '{~~the~>THE~~}', reason: 'test' },
       resolver, state,
     );
 

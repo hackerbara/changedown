@@ -3,10 +3,8 @@ import * as path from 'path';
 import * as os from 'os';
 import type { ImportOptions, ImportStats } from '../types.js';
 import { runPandoc } from './pandoc-runner.js';
-import {
-  extractComments,
-  extractCommentRanges,
-} from './comment-extractor.js';
+import { extractMetadata } from './xml-metadata-extractor.js';
+import { buildEnrichmentMap } from './correlation-engine.js';
 import { astToMarkup } from './ast-to-markup.js';
 import {
   extractMedia,
@@ -45,26 +43,20 @@ export async function importDocx(
     ast = runPandoc(docxPath, options?.pandocPath).ast;
   }
 
-  // Step 3: Extract comments from DOCX ZIP (if comments enabled)
-  // Read the file once and pass the buffer to both extractors
+  // Step 3: Extract metadata from DOCX ZIP for enrichment (formatting,
+  // image positioning) and optionally comments.  Always extracted because
+  // the enrichment map handles formatting and image positioning regardless
+  // of comment settings.
+  const fileBuffer = fs.readFileSync(docxPath);
+  const metadata = await extractMetadata(fileBuffer);
+  const enrichmentMap = buildEnrichmentMap(ast, metadata);
+
   let commentData:
-    | {
-        allComments: Map<string, import('./comment-extractor.js').DocxComment>;
-        rangedIds: Set<string>;
-        replies: Map<string, string[]>;
-      }
+    | import('./xml-metadata-extractor.js').CommentData
     | undefined;
 
-  if (comments) {
-    const fileBuffer = fs.readFileSync(docxPath);
-    const allComments = await extractComments(fileBuffer);
-    if (allComments.size > 0) {
-      const { rangedIds, replies } = await extractCommentRanges(
-        fileBuffer,
-        allComments
-      );
-      commentData = { allComments, rangedIds, replies };
-    }
+  if (comments && metadata.comments.allComments.size > 0) {
+    commentData = metadata.comments;
   }
 
   // Step 4: Convert AST to CriticMarkup
@@ -72,6 +64,7 @@ export async function importDocx(
     mergeSubstitutions,
     comments,
     commentData,
+    enrichment: enrichmentMap,
   });
 
   // Step 5: Rewrite image paths from absolute pandoc temp paths to relative media folder paths.

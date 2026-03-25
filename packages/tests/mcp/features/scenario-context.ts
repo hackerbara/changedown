@@ -70,6 +70,7 @@ export class ScenarioContext {
     if (config?.settlement) this.config.settlement = { ...DEFAULT_CONFIG.settlement, ...config.settlement };
     if (config?.policy) this.config.policy = { ...DEFAULT_CONFIG.policy, ...config.policy };
     if (config?.protocol) this.config.protocol = { ...DEFAULT_CONFIG.protocol, ...config.protocol };
+    if (config?.response) this.config.response = { ...this.config.response, ...config.response };
     this.prefix = prefix;
   }
 
@@ -96,6 +97,7 @@ export class ScenarioContext {
     if (overrides.settlement) this.config.settlement = { ...this.config.settlement, ...overrides.settlement };
     if (overrides.policy) this.config.policy = { ...this.config.policy, ...overrides.policy };
     if (overrides.protocol) this.config.protocol = { ...this.config.protocol, ...overrides.protocol };
+    if (overrides.response) this.config.response = { ...this.config.response, ...overrides.response };
     // Rebuild the resolver with the new config (same tmpDir)
     this.resolver = await createTestResolver(this.tmpDir, this.config);
   }

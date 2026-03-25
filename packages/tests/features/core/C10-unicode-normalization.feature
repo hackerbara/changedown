@@ -1,8 +1,7 @@
 Feature: C10 - Unicode Normalization
-  The text normalizer provides NFKC normalization plus a thin confusables layer
-  for matching user text. Smart quotes, NBSP, and en dashes are mapped to their
-  ASCII equivalents. This enables reliable matching when LLMs produce visually
-  similar but distinct Unicode characters.
+  The text normalizer provides NFKC normalization for matching user text.
+  NFKC handles fullwidth characters and NBSP. Smart quotes and en dashes
+  are preserved as distinct characters (ADR-061: confusable normalization removed).
 
   # --- defaultNormalizer ---
 
@@ -10,21 +9,21 @@ Feature: C10 - Unicode Normalization
     When I normalize "\uFF28\uFF45\uFF4C\uFF4C\uFF4F"
     Then the normalized text is "Hello"
 
-  Scenario: Smart single quotes to ASCII apostrophe
+  Scenario: Smart single quotes are preserved
     When I normalize "\u2018hello\u2019"
-    Then the normalized text is "'hello'"
+    Then the normalized text is "\u2018hello\u2019"
 
-  Scenario: Smart double quotes to ASCII double quote
+  Scenario: Smart double quotes are preserved
     When I normalize "\u201Chello\u201D"
-    Then the normalized text is '"hello"'
+    Then the normalized text is "\u201Chello\u201D"
 
   Scenario: NBSP to regular space
     When I normalize "hello\u00A0world"
     Then the normalized text is "hello world"
 
-  Scenario: En dash to hyphen-minus
+  Scenario: En dash is preserved
     When I normalize "2020\u20132025"
-    Then the normalized text is "2020-2025"
+    Then the normalized text is "2020\u20132025"
 
   Scenario: Plain ASCII text is unchanged
     When I normalize "hello world"
@@ -32,9 +31,9 @@ Feature: C10 - Unicode Normalization
 
   # --- normalizedIndexOf ---
 
-  Scenario: Find text with smart quotes using normalized matching
+  Scenario: Smart quotes do not match ASCII quotes
     When I find "\u2018word\u2019" in "some 'word' here"
-    Then the normalized index is 5
+    Then the normalized index is -1
 
   Scenario: Find NBSP-separated text using normalized matching
     When I find "hello\u00A0world" in "say hello world now"

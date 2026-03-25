@@ -13,13 +13,16 @@
  *   Zone 3 (Metadata): LineMetadata[] from footnotes referenced on this line
  */
 
-import { parseFootnotes, type FootnoteInfo } from '../../footnote-parser.js';
+import { computeCommittedView } from '../../committed-text.js';
+import { findFootnoteBlockStart } from '../../footnote-utils.js';
+import { nodeStatus, type ChangeNode } from '../../model/types.js';
 import { computeLineHash } from '../../hashline.js';
 import { computeSettledLineHash, settledLine } from '../../hashline-tracked.js';
 import {
   buildDeliberationHeader,
   buildLineRefMap,
   findFootnoteSectionRange,
+  computeContinuationLines,
   type BuildHeaderOptions,
 } from '../view-builder-utils.js';
 import type {
@@ -83,15 +86,37 @@ export function buildReviewDocument(
   content: string,
   options: ReviewBuildOptions,
 ): ThreeZoneDocument {
-  const footnotes = parseFootnotes(content);
+  // Compute committed view for stable cross-batch hashes.
+  // Committed hashes survive proposal insertions (pending CriticMarkup is stripped).
+  const committedResult = computeCommittedView(content);
+  const changes = committedResult.changes;
+  const footnoteMap = new Map<string, ChangeNode>();
+  for (const node of changes) {
+    footnoteMap.set(node.id, node);
+  }
   const rawLines = content.split('\n');
   const allSettled = rawLines.map(l => settledLine(l));
 
-  // Determine footnote section range to exclude
-  const fnRange = findFootnoteSectionRange(footnotes);
+  const rawToCommittedHash = new Map<number, string>();
+  for (const cl of committedResult.lines) {
+    rawToCommittedHash.set(cl.rawLineNum, cl.hash);
+  }
+
+  // Determine footnote section range to exclude.
+  // findFootnoteSectionRange uses ChangeNode.footnoteLineRange, which may be
+  // undefined when the L2 parser has no inline CriticMarkup body references.
+  // Fall back to findFootnoteBlockStart for terminal footnote block detection.
+  let fnRange = findFootnoteSectionRange(changes);
+  if (!fnRange) {
+    const blockStart = findFootnoteBlockStart(rawLines);
+    if (blockStart < rawLines.length) {
+      fnRange = [blockStart, rawLines.length - 1];
+    }
+  }
 
   // Build line-to-footnote-ID map for Zone 3 and flag computation
   const lineRefMap = buildLineRefMap(rawLines);
+  const continuations = computeContinuationLines(content, changes);
 
   // Process each line
   const outputLines: ThreeZoneLine[] = [];
@@ -111,24 +136,27 @@ export function buildReviewDocument(
     const lineNum = i + 1; // 1-indexed
 
     // Build Zone 2: typed content spans
-    const contentSpans = buildContentSpans(rawLine, footnotes);
+    const contentSpans = buildContentSpans(rawLine, footnoteMap);
 
     // Build Zone 3: metadata from footnotes referenced on this line
     const refIds = lineRefMap.get(i);
-    const metadata = buildLineMetadata(refIds, footnotes);
+    const metadata = buildLineMetadata(refIds, footnoteMap);
 
     // Build Zone 1: margin with flags
-    const flags = computeFlags(refIds, footnotes);
-    const hash = computeLineHash(i, rawLine, rawLines);
+    const flags = computeFlags(refIds, footnoteMap);
+    const rawHash = computeLineHash(i, rawLine, rawLines);
+    const hash = rawToCommittedHash.get(lineNum) ?? rawHash;
 
     outputLines.push({
       margin: { lineNumber: lineNum, hash, flags },
       content: contentSpans,
       metadata,
       rawLineNumber: lineNum,
+      continuesChange: continuations.has(i) || undefined,
       sessionHashes: {
-        raw: hash,
+        raw: rawHash,
         settled: computeSettledLineHash(lineNum, rawLine, allSettled),
+        committed: rawToCommittedHash.get(lineNum),
       },
     });
   }
@@ -140,7 +168,7 @@ export function buildReviewDocument(
     protocolMode: options.protocolMode,
     defaultView: options.defaultView,
     viewPolicy: options.viewPolicy,
-    footnotes,
+    changes,
   });
 
   return {
@@ -162,7 +190,7 @@ export function buildReviewDocument(
  */
 function buildContentSpans(
   line: string,
-  footnotes: Map<string, FootnoteInfo>,
+  footnoteMap: Map<string, ChangeNode>,
 ): ContentSpan[] {
   const spans: ContentSpan[] = [];
   let lastIndex = 0;
@@ -176,7 +204,7 @@ function buildContentSpans(
     // Emit plain/anchor spans for text between last match and this match
     if (matchStart > lastIndex) {
       const between = line.slice(lastIndex, matchStart);
-      emitPlainAndAnchors(between, footnotes, spans);
+      emitPlainAndAnchors(between, footnoteMap, spans);
     }
 
     // Determine which CriticMarkup type matched and emit typed spans
@@ -215,7 +243,7 @@ function buildContentSpans(
   // Emit any remaining text after the last match
   if (lastIndex < line.length) {
     const remaining = line.slice(lastIndex);
-    emitPlainAndAnchors(remaining, footnotes, spans);
+    emitPlainAndAnchors(remaining, footnoteMap, spans);
   }
 
   // If the line was empty or produced no spans, emit a single empty plain span
@@ -232,7 +260,7 @@ function buildContentSpans(
  */
 function emitPlainAndAnchors(
   text: string,
-  footnotes: Map<string, FootnoteInfo>,
+  footnoteMap: Map<string, ChangeNode>,
   spans: ContentSpan[],
 ): void {
   let lastIdx = 0;
@@ -241,16 +269,16 @@ function emitPlainAndAnchors(
   for (const match of text.matchAll(re)) {
     const matchStart = match.index!;
     const id = match[1];
-    const info = footnotes.get(id);
+    const node = footnoteMap.get(id);
 
     // Plain text before this ref
     if (matchStart > lastIdx) {
       spans.push({ type: 'plain', text: text.slice(lastIdx, matchStart) });
     }
 
-    if (info) {
+    if (node) {
       // Known footnote: emit [^ct-N] anchor (preserving caret for raw-file consistency)
-      spans.push({ type: 'anchor', text: `[^${info.id}]` });
+      spans.push({ type: 'anchor', text: `[^${node.id}]` });
     } else {
       // Unknown ref: keep as plain text
       spans.push({ type: 'plain', text: match[0] });
@@ -272,20 +300,26 @@ function emitPlainAndAnchors(
  */
 function buildLineMetadata(
   refIds: Set<string> | undefined,
-  footnotes: Map<string, FootnoteInfo>,
+  footnoteMap: Map<string, ChangeNode>,
 ): LineMetadata[] {
   if (!refIds) return [];
 
   const metadata: LineMetadata[] = [];
   for (const id of refIds) {
-    const info = footnotes.get(id);
-    if (!info) continue;
+    const node = footnoteMap.get(id);
+    if (!node) continue;
+    const status = nodeStatus(node);
+    // Extract reason: metadata.comment for inline comments, or the first
+    // discussion comment text (the L2 parser maps "reason:" lines to discussion[0])
+    const reason = node.metadata?.comment
+      || node.metadata?.discussion?.[0]?.text
+      || undefined;
     metadata.push({
-      changeId: info.id,
-      author: info.author,
-      reason: info.reason || undefined,
-      replyCount: info.replyCount > 0 ? info.replyCount : undefined,
-      status: info.status as LineMetadata['status'],
+      changeId: node.id,
+      author: node.metadata?.author ?? node.inlineMetadata?.author,
+      reason,
+      replyCount: (node.replyCount ?? 0) > 0 ? node.replyCount : undefined,
+      status: status as LineMetadata['status'],
     });
   }
   return metadata;
@@ -300,7 +334,7 @@ function buildLineMetadata(
  */
 function computeFlags(
   refIds: Set<string> | undefined,
-  footnotes: Map<string, FootnoteInfo>,
+  footnoteMap: Map<string, ChangeNode>,
 ): LineFlag[] {
   if (!refIds) return [];
 
@@ -308,10 +342,11 @@ function computeFlags(
   let hasAccepted = false;
 
   for (const id of refIds) {
-    const info = footnotes.get(id);
-    if (!info) continue;
-    if (info.status === 'proposed') hasProposed = true;
-    if (info.status === 'accepted') hasAccepted = true;
+    const node = footnoteMap.get(id);
+    if (!node) continue;
+    const status = nodeStatus(node);
+    if (status === 'proposed') hasProposed = true;
+    if (status === 'accepted') hasAccepted = true;
   }
 
   // P takes priority over A

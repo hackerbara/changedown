@@ -1,14 +1,12 @@
 /**
  * Shared utilities for footnote block parsing and manipulation.
  *
- * Distinct from footnote-parser.ts which does full parsing into FootnoteInfo.
- * This module provides block-level operations: finding footnote blocks by ID,
- * parsing header fields, finding insertion indices for discussion/review lines,
- * and finding child footnotes.
+ * Provides block-level operations: detecting the terminal footnote block start,
+ * finding footnote blocks by ID, parsing header fields, finding insertion indices
+ * for discussion/review lines, and finding child footnotes.
  */
 
-/** Matches a footnote definition header line; status is the fourth pipe-separated field. */
-const FOOTNOTE_HEADER_STATUS_RE = /^\[\^ct-\d+(?:\.\d+)?\]:.*\|\s*(\S+)\s*$/;
+import { FOOTNOTE_DEF_START, FOOTNOTE_CONTINUATION } from './footnote-patterns.js';
 
 /**
  * Counts footnote definition lines that have the given status.
@@ -19,11 +17,9 @@ export function countFootnoteHeadersWithStatus(
   content: string,
   status: 'proposed' | 'accepted' | 'rejected'
 ): number {
-  const lines = content.split('\n');
   let count = 0;
-  for (const line of lines) {
-    const m = line.match(FOOTNOTE_HEADER_STATUS_RE);
-    if (m && m[1] === status) count++;
+  for (const s of extractFootnoteStatuses(content).values()) {
+    if (s === status) count++;
   }
   return count;
 }
@@ -210,6 +206,98 @@ export function resolveChangeById(
   return { footnoteBlock, inlineRefOffset };
 }
 
+/**
+ * Find the 0-based line index where the terminal footnote block starts.
+ * Returns `lines.length` if no footnote definitions exist.
+ *
+ * Uses a backward scan from end-of-file, exploiting the structural invariant
+ * that real footnotes are always a contiguous block at the end. This avoids
+ * false positives from [^ct- patterns inside code blocks, CriticMarkup, or
+ * literal body text.
+ *
+ * Uses FOOTNOTE_DEF_START (matches `[^ct-N]:` at column 0) rather than
+ * FOOTNOTE_DEF_LENIENT for resilience against malformed trailing footnotes.
+ */
+export function findFootnoteBlockStart(lines: string[]): number {
+
+  // Phase 1: Find the last footnote definition (scanning backward)
+  let lastDefIdx = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (FOOTNOTE_DEF_START.test(lines[i])) {
+      lastDefIdx = i;
+      break;
+    }
+  }
+
+  if (lastDefIdx === -1) {
+    return lines.length; // No footnotes
+  }
+
+  // Phase 1b: Verify the block containing lastDefIdx is truly terminal.
+  // Walk forward from lastDefIdx through footnote defs, continuations, and
+  // blank lines. If we encounter non-blank, non-footnote body content before
+  // reaching EOF, this "footnote" is inside body text (e.g. a code fence) and
+  // we must scan backward for the next candidate.
+  let candidate = lastDefIdx;
+  while (candidate >= 0) {
+    let j = candidate + 1;
+    let isTerminal = true;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
+        j++;
+      } else if (line.trim() === '') {
+        j++;
+      } else {
+        isTerminal = false;
+        break;
+      }
+    }
+    if (isTerminal) {
+      lastDefIdx = candidate;
+      break;
+    }
+    // Not terminal — scan backward for the next candidate
+    candidate--;
+    while (candidate >= 0 && !FOOTNOTE_DEF_START.test(lines[candidate])) {
+      candidate--;
+    }
+  }
+
+  if (candidate < 0) {
+    return lines.length; // No terminal footnote block
+  }
+
+  // Phase 2: Scan backward from lastDefIdx through the contiguous block.
+  // Blank lines are included only if a footnote def or continuation appears before them.
+  let blockStart = lastDefIdx;
+  for (let i = lastDefIdx - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
+      blockStart = i;
+    } else if (line.trim() === '') {
+      // Include this blank only if there is a footnote def or continuation before it
+      let hasFootnoteBefore = false;
+      for (let k = i - 1; k >= 0; k--) {
+        if (lines[k].trim() === '') continue;
+        if (FOOTNOTE_DEF_START.test(lines[k]) || FOOTNOTE_CONTINUATION.test(lines[k])) {
+          hasFootnoteBefore = true;
+        }
+        break;
+      }
+      if (hasFootnoteBefore) {
+        blockStart = i;
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+
+  return blockStart;
+}
+
 function isApprovalOrResolutionLine(trimmed: string): boolean {
   return trimmed.startsWith('approved:') ||
     trimmed.startsWith('rejected:') ||
@@ -225,4 +313,28 @@ function isResolutionLine(trimmed: string): boolean {
     trimmed.startsWith('open --') ||
     trimmed.startsWith('open ') ||
     trimmed === 'open';
+}
+
+/**
+ * Lightweight footnote status extractor. Scans footnote definition headers
+ * for change IDs and their statuses using regex — no full AST parse needed.
+ *
+ * Uses the last pipe-delimited field as the status, handling all author formats
+ * (with or without @ prefix, ai: prefix, etc.).
+ *
+ * Returns Map<changeId, statusString> where statusString is lowercase
+ * (e.g. "proposed", "accepted", "rejected").
+ */
+const FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(ct-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
+
+export function extractFootnoteStatuses(text: string): Map<string, string> {
+  const statuses = new Map<string, string>();
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const m = FOOTNOTE_ID_AND_STATUS_RE.exec(line);
+    if (m) {
+      statuses.set(m[1], m[2].toLowerCase());
+    }
+  }
+  return statuses;
 }

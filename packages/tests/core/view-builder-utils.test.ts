@@ -2,24 +2,46 @@ import { describe, it, expect } from 'vitest';
 import {
   buildDeliberationHeader,
   buildLineRefMap,
-  FootnoteInfo,
-  parseTimestamp,
+  computeContinuationLines,
+  parseForFormat,
+  ChangeType,
+  ChangeStatus,
 } from '@changetracks/core/internals';
 
 describe('view-builder-utils', () => {
   describe('buildDeliberationHeader', () => {
     it('produces correct counts from footnotes', () => {
-      const footnotes = new Map<string, FootnoteInfo>([
-        ['ct-1', { id: 'ct-1', author: '@alice', date: '2026-01-01', timestamp: parseTimestamp('2026-01-01'), type: 'ins', status: 'proposed', reason: '', replyCount: 0, startLine: 10, endLine: 10 }],
-        ['ct-2', { id: 'ct-2', author: '@bob', date: '2026-01-01', timestamp: parseTimestamp('2026-01-01'), type: 'del', status: 'accepted', reason: '', replyCount: 2, startLine: 11, endLine: 13 }],
-      ]);
+      const ct1Node = {
+        id: 'ct-1',
+        type: ChangeType.Insertion,
+        status: ChangeStatus.Proposed,
+        range: { start: 0, end: 10 },
+        contentRange: { start: 0, end: 10 },
+        level: 2 as const,
+        anchored: true,
+        metadata: { author: '@alice', date: '2026-01-01', status: 'proposed' },
+        replyCount: 0,
+        footnoteLineRange: { startLine: 10, endLine: 10 },
+      };
+      const ct2Node = {
+        id: 'ct-2',
+        type: ChangeType.Deletion,
+        status: ChangeStatus.Accepted,
+        range: { start: 0, end: 10 },
+        contentRange: { start: 0, end: 10 },
+        level: 2 as const,
+        anchored: true,
+        metadata: { author: '@bob', date: '2026-01-01', status: 'accepted' },
+        replyCount: 2,
+        footnoteLineRange: { startLine: 11, endLine: 13 },
+      };
       const header = buildDeliberationHeader({
         filePath: 'test.md',
         trackingStatus: 'tracked',
         protocolMode: 'classic',
         defaultView: 'review',
         viewPolicy: 'suggest',
-        footnotes,
+        changes: [ct1Node, ct2Node],
       });
       expect(header.counts.proposed).toBe(1);
       expect(header.counts.accepted).toBe(1);
@@ -35,10 +57,20 @@ describe('view-builder-utils', () => {
         protocolMode: 'compact',
         defaultView: 'review',
         viewPolicy: 'suggest',
-        footnotes: new Map(),
+        changes: [],
       });
       expect(header.counts.proposed).toBe(0);
       expect(header.authors).toStrictEqual([]);
+    });
+  });
+
+  describe('computeContinuationLines', () => {
+    it('produces identical output with preParsed changes', () => {
+      const content = 'Hello {++world\nfoo++}[^ct-1]\n\n[^ct-1]: @alice | 2026-03-23 | ins | proposed';
+      const withoutPreParsed = computeContinuationLines(content);
+      const changes = parseForFormat(content).getChanges();
+      const withPreParsed = computeContinuationLines(content, changes);
+      expect(withPreParsed).toEqual(withoutPreParsed);
     });
   });
 

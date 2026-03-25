@@ -104,7 +104,7 @@ describe('handleSupersedeChange', () => {
     await fs.writeFile(filePath, 'The quick brown fox.');
 
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test', reason: 'test' },
       resolver,
       state
     );
@@ -140,7 +140,7 @@ describe('handleSupersedeChange', () => {
     await fs.writeFile(filePath, 'The quick brown fox.');
 
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test', reason: 'test' },
       noSettleResolver,
       state
     );
@@ -200,7 +200,7 @@ describe('handleSupersedeChange', () => {
     await fs.writeFile(filePath, 'The quick brown fox.');
 
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test', reason: 'test' },
       resolver,
       state
     );
@@ -231,7 +231,7 @@ describe('handleSupersedeChange', () => {
     await fs.writeFile(filePath, 'The quick brown fox.');
 
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test', reason: 'test' },
       resolver,
       state
     );
@@ -296,7 +296,7 @@ describe('handleSupersedeChange', () => {
 
     // Propose a deletion
     await handleProposeChange(
-      { file: filePath, old_text: ' brown', new_text: '', author: 'ai:test' },
+      { file: filePath, old_text: ' brown', new_text: '', author: 'ai:test', reason: 'test' },
       resolver,
       state
     );
@@ -331,7 +331,7 @@ describe('handleSupersedeChange', () => {
 
     // Propose an insertion
     await handleProposeChange(
-      { file: filePath, old_text: '', new_text: ' quick', insert_after: 'The', author: 'ai:test' },
+      { file: filePath, old_text: '', new_text: ' quick', insert_after: 'The', author: 'ai:test', reason: 'test' },
       resolver,
       state
     );
@@ -362,7 +362,7 @@ describe('handleSupersedeChange', () => {
     await fs.writeFile(filePath, 'The quick brown fox.');
 
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test', reason: 'test' },
       resolver,
       state
     );
@@ -392,7 +392,7 @@ describe('handleSupersedeChange', () => {
     await fs.writeFile(filePath, 'The quick brown fox.');
 
     await handleProposeChange(
-      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test' },
+      { file: filePath, old_text: 'quick', new_text: 'slow', author: 'ai:test', reason: 'test' },
       resolver,
       state
     );

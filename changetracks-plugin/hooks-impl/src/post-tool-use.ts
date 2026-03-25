@@ -14,8 +14,8 @@ import { handlePostToolUse } from './adapters/claude-code/post-tool-use.js';
 
 async function main(): Promise<void> {
   const input = await readStdin();
-  await handlePostToolUse(input);
-  writeStdout({});
+  const result = await handlePostToolUse(input);
+  writeStdout(result as Record<string, unknown>);
 }
 
 main().catch((err) => {

@@ -8,37 +8,8 @@
  */
 
 import { Connection } from 'vscode-languageserver';
-import { ChangeNode, ChangeType } from '@changetracks/core';
-
-/**
- * Payload for decorationData notification
- */
-export interface DecorationDataParams {
-  uri: string;
-  changes: ChangeNode[];
-}
-
-/**
- * Payload for changeCount notification
- */
-export interface ChangeCountParams {
-  uri: string;
-  counts: {
-    insertions: number;
-    deletions: number;
-    substitutions: number;
-    highlights: number;
-    comments: number;
-    total: number;
-  };
-}
-
-/**
- * Payload for allChangesResolved notification
- */
-export interface AllChangesResolvedParams {
-  uri: string;
-}
+import { ChangeNode, ChangeType, isGhostNode } from '@changetracks/core';
+import type { DecorationDataParams, ChangeCountParams, AllChangesResolvedParams, CoherenceStatusParams } from '@changetracks/core';
 
 /**
  * Send decoration data notification to client.
@@ -53,10 +24,26 @@ export interface AllChangesResolvedParams {
 export function sendDecorationData(
   connection: Connection,
   uri: string,
-  changes: ChangeNode[]
+  changes: ChangeNode[],
+  documentVersion: number
 ): void {
-  const params: DecorationDataParams = { uri, changes };
+  const filtered = changes.filter(c => !isGhostNode(c));
+  const params: DecorationDataParams = { uri, changes: filtered, documentVersion };
   connection.sendNotification('changetracks/decorationData', params);
+}
+
+/**
+ * Send coherence status notification to client.
+ */
+export function sendCoherenceStatus(
+  connection: Connection,
+  uri: string,
+  coherenceRate: number,
+  unresolvedCount: number,
+  threshold: number,
+): void {
+  const params: CoherenceStatusParams = { uri, coherenceRate, unresolvedCount, threshold };
+  connection.sendNotification('changetracks/coherenceStatus', params);
 }
 
 /**

@@ -7,6 +7,7 @@ import {
   computeLineHash,
   type FootnoteStatus,
 } from '@changetracks/core/internals';
+import { parseForFormat } from '@changetracks/core/internals';
 
 describe('computeCommittedLine', () => {
   // Helper to build footnote maps quickly
@@ -317,6 +318,24 @@ describe('computeCommittedView', () => {
 
     expect(result.summary.clean).toBe(3);
     expect(result.summary.proposed).toBe(0);
+  });
+
+  it('returns parsed changes in result', () => {
+    const input = 'Hello {++world++}[^ct-1]\n\n[^ct-1]: @alice | 2026-03-23 | ins | proposed';
+    const result = computeCommittedView(input);
+    expect(result.changes).toBeDefined();
+    expect(result.changes.length).toBe(1);
+    expect(result.changes[0].id).toBe('ct-1');
+  });
+
+  it('uses preParsed changes when provided', () => {
+    const input = 'Hello {++world++}[^ct-1]\n\n[^ct-1]: @alice | 2026-03-23 | ins | proposed';
+    const changes = parseForFormat(input).getChanges();
+    const withPreParsed = computeCommittedView(input, changes);
+    const withoutPreParsed = computeCommittedView(input);
+    expect(withPreParsed.lines).toEqual(withoutPreParsed.lines);
+    expect(withPreParsed.summary).toEqual(withoutPreParsed.summary);
+    expect(withPreParsed.changes).toEqual(changes);
   });
 });
 

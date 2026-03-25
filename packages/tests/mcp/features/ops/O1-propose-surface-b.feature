@@ -131,6 +131,7 @@ Feature: Propose changes via Surface B (classic MCP)
   Scenario: Single-change affected_lines returns bounded window in classic mode
     Given a tracked file with 50+ lines
     And the config has hashline.enabled = false
+    And the config has response.affected_lines = true
     When I call propose_change substituting one word in the middle of the file
     Then affected_lines contains fewer than 20 entries
     And affected_lines includes the edit region with context

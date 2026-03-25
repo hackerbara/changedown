@@ -20,19 +20,17 @@ Feature: Multi-agent deliberation
     When agent "ai:performance" responds to ct-1 thread with "Benchmarks show 2x latency for cross-region queries. Consider the trade-off." label "thought"
     Then the footnote has 3 entries total (reasoning + 2 responses)
 
-    # Agent A cannot amend with Agent B's identity
+    # Agent B proposes alternative via cross-author amend (supersede)
     When agent "ai:security" tries to amend ct-1
-    Then the response is an error (cross-author amendment blocked)
+    Then the cross-author amend succeeds as a supersede
+    And the original change ct-1 is now rejected
+    And the superseding change has "supersedes: ct-1" in its footnote
 
-    # Original author amends based on feedback
-    When agent "ai:architect" amends ct-1 to "CockroachDB with encryption-at-rest enabled"
-    Then the amended text is reflected
-
-    # Agent B approves, Agent C approves
-    When agent "ai:security" approves ct-1
-    And agent "ai:performance" approves ct-1
-    Then the footnote contains 2 approval entries
-    And the footnote status is "accepted"
+    # Agent B and Agent C approve the superseding change
+    When agent "ai:security" approves the superseding change
+    And agent "ai:performance" approves the superseding change
+    Then the footnote contains 2 approval entries for the superseding change
+    And the superseding change has status "accepted"
 
   Scenario: Competing proposals -- one accepted, one rejected
     When agent "ai:architect" proposes ct-1: change "monolith" to "microservices"

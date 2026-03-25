@@ -2003,8 +2003,9 @@ describe('CriticMarkupParser', () => {
       // Range covers exactly the [^ct-1] ref
       const ref = '[^ct-1]';
       expect(c.range.end - c.range.start).toBe(ref.length);
-      // contentRange is empty (no inline content)
-      expect(c.contentRange.start).toBe(c.contentRange.end);
+      // contentRange covers the [^ct-N] ref (same as range for settled refs)
+      expect(c.contentRange.start).toBe(c.range.start);
+      expect(c.contentRange.end).toBe(c.range.end);
     });
 
     it('does not synthesize when [^ct-N] is attached to CriticMarkup', () => {

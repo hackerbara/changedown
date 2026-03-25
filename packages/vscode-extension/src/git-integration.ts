@@ -16,17 +16,19 @@ interface GitAPI {
     getRepository(uri: vscode.Uri): Repository | null;
 }
 
-interface Repository {
+export interface Repository {
     rootUri: vscode.Uri;
     show(ref: string, path: string): Promise<string>;
     log(options?: { maxEntries?: number; path?: string }): Promise<Commit[]>;
     diffWithHEAD(path?: string): Promise<Change[]>;
     state: RepositoryState;
+    onDidCheckout?: vscode.Event<void>;
 }
 
 interface RepositoryState {
     // eslint-disable-next-line @typescript-eslint/naming-convention
     HEAD: { name?: string; commit?: string } | undefined;
+    onDidChange: vscode.Event<void>;
 }
 
 interface Commit {
@@ -109,12 +111,17 @@ async function fileHasUncommittedChanges(repo: Repository, uri: vscode.Uri): Pro
     }
 }
 
-function getRepository(uri: vscode.Uri): Repository | null {
-    const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git');
-    if (!gitExtension?.isActive) {
-        return null;
-    }
+let cachedGitApi: GitAPI | null = null;
 
-    const api = gitExtension.exports.getAPI(1);
-    return api.getRepository(uri);
+export function getGitRepository(uri: vscode.Uri): Repository | null {
+    if (!cachedGitApi) {
+        const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git');
+        if (!gitExtension?.isActive) return null;
+        cachedGitApi = gitExtension.exports.getAPI(1);
+    }
+    return cachedGitApi.getRepository(uri);
+}
+
+function getRepository(uri: vscode.Uri): Repository | null {
+    return getGitRepository(uri);
 }

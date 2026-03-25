@@ -672,7 +672,7 @@ export async function handleProposeBatch(
             throw new Error(`Operation ${originalIndex}: hashline params require after_line or start_line.`);
           }
 
-          const applied = applySingleOperation({
+          const applied = await applySingleOperation({
             fileContent: currentText,
             oldText: op.oldText,
             newText: op.newText,

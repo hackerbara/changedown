@@ -12,7 +12,9 @@
  * hashes each committed line, builds committed<->raw line mapping.
  */
 
-import { parseFootnotes, findFootnoteBlockStart } from './footnote-parser.js';
+import { findFootnoteBlockStart } from './footnote-utils.js';
+import { parseForFormat } from './format-aware-parse.js';
+import { nodeStatus, type ChangeNode } from './model/types.js';
 import { computeLineHash } from './hashline.js';
 import {
   multiLineSubstitution,
@@ -31,7 +33,6 @@ import {
 
 export interface FootnoteStatus {
   status: 'proposed' | 'accepted' | 'rejected';
-  type: string;
 }
 
 export interface CommittedLineResult {
@@ -147,6 +148,7 @@ export interface CommittedViewResult {
   summary: { proposed: number; accepted: number; rejected: number; clean: number };
   committedToRaw: Map<number, number>;  // committed line num → raw line num
   rawToCommitted: Map<number, number>;  // raw line num → committed line num
+  changes: ChangeNode[];
 }
 
 export interface FormatOptions {
@@ -216,20 +218,18 @@ function findFootnoteLineIndices(lines: string[]): Set<number> {
  * 5. Assigns sequential committed line numbers and computes hashes
  * 6. Builds bidirectional line mapping
  */
-export function computeCommittedView(rawText: string): CommittedViewResult {
+export function computeCommittedView(rawText: string, preParsed?: ChangeNode[]): CommittedViewResult {
   const rawLines = rawText.split('\n');
 
-  // 1. Parse footnotes → Map<id, FootnoteInfo>
-  const footnoteInfos = parseFootnotes(rawText);
+  // 1. Parse via unified parser → ChangeNode[]
+  const changes = preParsed ?? parseForFormat(rawText).getChanges();
 
-  // 2. Build Map<id, FootnoteStatus> from parsed footnotes
+  // 2. Build Map<id, FootnoteStatus> from ChangeNode metadata
   const statusMap = new Map<string, FootnoteStatus>();
-  for (const [id, info] of footnoteInfos) {
-    statusMap.set(id, {
-      status: (info.status === 'accepted' || info.status === 'rejected')
-        ? info.status
-        : 'proposed',
-      type: info.type,
+  for (const node of changes) {
+    const rawStatus = nodeStatus(node);
+    statusMap.set(node.id, {
+      status: (rawStatus === 'accepted' || rawStatus === 'rejected') ? rawStatus : 'proposed',
     });
   }
 
@@ -304,15 +304,16 @@ export function computeCommittedView(rawText: string): CommittedViewResult {
     rawToCommitted.set(pre.rawLineNum, pre.committedLineNum);
   }
 
-  // 5. Build summary counts from footnotes
+  // 5. Build summary counts from changes
   const summary = { proposed: 0, accepted: 0, rejected: 0, clean: cleanCount };
-  for (const info of footnoteInfos.values()) {
-    if (info.status === 'proposed') summary.proposed++;
-    else if (info.status === 'accepted') summary.accepted++;
-    else if (info.status === 'rejected') summary.rejected++;
+  for (const node of changes) {
+    const s = nodeStatus(node);
+    if (s === 'proposed') summary.proposed++;
+    else if (s === 'accepted') summary.accepted++;
+    else if (s === 'rejected') summary.rejected++;
   }
 
-  return { lines: committedLines, summary, committedToRaw, rawToCommitted };
+  return { lines: committedLines, summary, committedToRaw, rawToCommitted, changes };
 }
 
 // ─── Format output ──────────────────────────────────────────────────────────

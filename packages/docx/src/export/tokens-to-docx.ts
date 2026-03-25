@@ -17,6 +17,8 @@ import {
   ExternalHyperlink,
   HighlightColor,
   ImageRun,
+  BookmarkStart,
+  BookmarkEnd,
   type ICommentOptions,
   type ParagraphChild,
 } from 'docx';
@@ -25,8 +27,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import {
-  CriticMarkupParser,
+  parseForFormat,
   ChangeType,
+  ChangeStatus,
   computeSettledText,
   settleAcceptedChangesOnly,
   settleRejectedChangesOnly,
@@ -36,7 +39,7 @@ import {
 import { buildCommentChain, type CommentReply } from './comment-builder.js';
 import type { CommentPatchInfo } from './word-online-patch.js';
 import { resolveImageDimensions, buildImageRun } from './image-builder.js';
-import { type ImagePatchInfo, type ImageDimensions, detectFormat } from '../shared/image-types.js';
+import { type ImagePatchInfo, type ImageDimensions, type ImagePositionMetadata, detectFormat } from '../shared/image-types.js';
 import { toDocxAuthor } from '../shared/author-mapper.js';
 import { toIsoString } from '../shared/date-utils.js';
 
@@ -76,9 +79,12 @@ export interface DocxConversionResult {
 function createCounters() {
   let revisionIdCounter = 1;
   let commentIdCounter = 0;
+  let bookmarkIdCounter = 1;
   return {
     nextRevId(): number { return revisionIdCounter++; },
     nextCommentId(): number { return commentIdCounter++; },
+    advanceCommentId(nextId: number): void { if (nextId > commentIdCounter) commentIdCounter = nextId; },
+    nextBookmarkId(): number { return bookmarkIdCounter++; },
   };
 }
 
@@ -93,6 +99,29 @@ const IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g;
 const STANDALONE_IMAGE_REGEX = /^!\[([^\]]*)\]\(([^)]+)\)$/;
 
 const SUPPORTED_IMAGE_FORMATS = new Set(['png', 'jpg', 'gif', 'bmp']);
+
+// ============================================================================
+// Image positioning metadata (for floating/anchored images round-trip)
+// ============================================================================
+
+function parseImagePosition(meta: Record<string, string>): ImagePositionMetadata | undefined {
+  if (meta['image-float'] !== 'anchor') return undefined;
+  const pos: ImagePositionMetadata = { float: 'anchor' };
+  if (meta['image-h-anchor']) pos.hAnchor = meta['image-h-anchor'];
+  if (meta['image-h-offset']) pos.hOffset = parseInt(meta['image-h-offset'], 10);
+  if (meta['image-h-align']) pos.hAlign = meta['image-h-align'];
+  if (meta['image-v-anchor']) pos.vAnchor = meta['image-v-anchor'];
+  if (meta['image-v-offset']) pos.vOffset = parseInt(meta['image-v-offset'], 10);
+  if (meta['image-v-align']) pos.vAlign = meta['image-v-align'];
+  if (meta['image-wrap']) pos.wrapType = meta['image-wrap'];
+  if (meta['image-wrap-side']) pos.wrapSide = meta['image-wrap-side'];
+  if (meta['image-z']) pos.behindDocument = meta['image-z'] === 'background';
+  if (meta['image-dist']) {
+    const parts = meta['image-dist'].split(/\s+/).map(Number);
+    if (parts.length === 4) [pos.distT, pos.distB, pos.distL, pos.distR] = parts;
+  }
+  return pos;
+}
 
 /**
  * Resolve an image path against a media directory.
@@ -117,6 +146,7 @@ function tryBuildImageRun(
   dpi?: number,
   maxWidthInches?: number,
   sentinelName?: string,
+  position?: ImagePositionMetadata,
 ): ImageRun | null {
   try {
     const resolvedPath = resolveImagePath(imgPath, mediaDir);
@@ -131,6 +161,7 @@ function tryBuildImageRun(
       dims,
       dpi,
       sentinelName ? { name: sentinelName, description: '', title: '' } : undefined,
+      position,
     );
   } catch {
     return null;
@@ -281,6 +312,8 @@ interface ConversionContext {
   includeComments: boolean;
   nextRevId: () => number;
   nextCommentId: () => number;
+  advanceCommentId: (nextId: number) => void;
+  nextBookmarkId: () => number;
 }
 
 function getMetaAuthorDate(node: ChangeNode): { displayName: string; date: string } {
@@ -311,6 +344,30 @@ function buildRepliesFromDiscussion(node: ChangeNode): CommentReply[] {
 }
 
 /**
+ * Shared image detection + dimension resolution from a ChangeNode.
+ * Used by both tracked images (ins/del sentinel path) and highlight images (direct emit).
+ */
+function tryBuildImageFromNode(
+  content: string,
+  node: ChangeNode,
+  ctx: ConversionContext,
+): ImageRun | null {
+  const imgMatch = content.match(STANDALONE_IMAGE_REGEX);
+  if (!imgMatch) return null;
+
+  const imgPath = imgMatch[2];
+  const footnoteDims = node.metadata?.imageDimensions;
+  const imageMetaBag = node.metadata?.imageMetadata;
+  const position = imageMetaBag ? parseImagePosition(imageMetaBag) : undefined;
+
+  return tryBuildImageRun(
+    imgPath, ctx.mediaDir, footnoteDims, ctx.defaultDpi, ctx.maxWidthInches,
+    undefined,
+    position,
+  );
+}
+
+/**
  * Try to handle image content inside a tracked change node.
  * Returns the ImageRun if successful, null if content is not an image.
  */
@@ -327,9 +384,12 @@ function tryHandleTrackedImage(
 
   const imgPath = imgMatch[2];
   const sentinelName = `_ct_tracked_img_${ctx.imagePatchInfos.length}_${changeType}`;
-  const footnoteDims = (node.metadata as Record<string, unknown> | undefined)?.imageDimensions as ImageDimensions | undefined;
+  const metaBag = node.metadata as Record<string, unknown> | undefined;
+  const footnoteDims = metaBag?.imageDimensions as ImageDimensions | undefined;
+  const imageMetaBag = metaBag?.imageMetadata as Record<string, string> | undefined;
+  const position = imageMetaBag ? parseImagePosition(imageMetaBag) : undefined;
   const imageRun = tryBuildImageRun(
-    imgPath, ctx.mediaDir, footnoteDims, ctx.defaultDpi, ctx.maxWidthInches, sentinelName
+    imgPath, ctx.mediaDir, footnoteDims, ctx.defaultDpi, ctx.maxWidthInches, sentinelName, position
   );
   if (!imageRun) return null;
 
@@ -357,7 +417,7 @@ function changeNodeToDocxChildren(
 
   switch (node.type) {
     case ChangeType.Insertion: {
-      const content = node.modifiedText || '';
+      const content = node.modifiedText || (node.status === ChangeStatus.Proposed ? '\u200B' : '');
       if (!content) break;
 
       const trackedImg = tryHandleTrackedImage(content, 'ins', ctx, displayName, date, node);
@@ -385,7 +445,7 @@ function changeNodeToDocxChildren(
     }
 
     case ChangeType.Deletion: {
-      const content = node.originalText || '';
+      const content = node.originalText || (node.status === ChangeStatus.Proposed ? '\u200B' : '');
       if (!content) break;
 
       const trackedImg = tryHandleTrackedImage(content, 'del', ctx, displayName, date, node);
@@ -413,10 +473,11 @@ function changeNodeToDocxChildren(
     }
 
     case ChangeType.Substitution: {
+      const zwsFallback = node.status === ChangeStatus.Proposed ? '\u200B' : '';
       ctx.stats.substitutions++;
       ctx.stats.authorSet.add(displayName);
-      if (node.originalText) {
-        const oldFmt = extractFormatting(node.originalText);
+      const oldFmt = extractFormatting(node.originalText || zwsFallback);
+      if (oldFmt.text) {
         children.push(
           new DeletedTextRun({
             text: oldFmt.text,
@@ -428,8 +489,8 @@ function changeNodeToDocxChildren(
           })
         );
       }
-      if (node.modifiedText) {
-        const newFmt = extractFormatting(node.modifiedText);
+      const newFmt = extractFormatting(node.modifiedText || zwsFallback);
+      if (newFmt.text) {
         children.push(
           new InsertedTextRun({
             text: newFmt.text,
@@ -449,6 +510,13 @@ function changeNodeToDocxChildren(
       // metadata.comment for an attached {>>comment<<} (merged into node).
       const highlightContent = node.originalText || node.modifiedText || '';
 
+      // Image inside highlight — emit ImageRun with metadata (no tracked change wrapping)
+      const highlightImageRun = tryBuildImageFromNode(highlightContent, node, ctx);
+      if (highlightImageRun) {
+        children.push(highlightImageRun);
+        break;
+      }
+
       if (!ctx.includeComments) {
         // Just emit the highlighted text without comment wrapping
         if (highlightContent) {
@@ -465,7 +533,7 @@ function changeNodeToDocxChildren(
         const commentMeta = getMetaAuthorDate(node);
         const replies = buildRepliesFromDiscussion(node);
 
-        buildCommentChain(
+        const chainResult = buildCommentChain(
           cId,
           commentText,
           commentMeta.displayName,
@@ -474,6 +542,7 @@ function changeNodeToDocxChildren(
           ctx.commentPatchInfos,
           replies.length > 0 ? replies : undefined
         );
+        ctx.advanceCommentId(chainResult.id);
         ctx.stats.comments++;
 
         children.push(new CommentRangeStart(cId));
@@ -491,7 +560,7 @@ function changeNodeToDocxChildren(
         const commentMeta = getMetaAuthorDate(nextChangeNode.metadata?.author ? nextChangeNode : node);
         const replies = buildRepliesFromDiscussion(nextChangeNode.metadata?.discussion ? nextChangeNode : node);
 
-        buildCommentChain(
+        const chainResult = buildCommentChain(
           cId,
           commentText,
           commentMeta.displayName,
@@ -500,6 +569,7 @@ function changeNodeToDocxChildren(
           ctx.commentPatchInfos,
           replies.length > 0 ? replies : undefined
         );
+        ctx.advanceCommentId(chainResult.id);
         ctx.stats.comments++;
 
         children.push(new CommentRangeStart(cId));
@@ -523,7 +593,7 @@ function changeNodeToDocxChildren(
           depth: d.depth,
         }));
 
-        buildCommentChain(
+        const chainResult = buildCommentChain(
           cId,
           rootText,
           rootAuthor,
@@ -532,6 +602,7 @@ function changeNodeToDocxChildren(
           ctx.commentPatchInfos,
           replies.length > 0 ? replies : undefined
         );
+        ctx.advanceCommentId(chainResult.id);
         ctx.stats.comments++;
 
         children.push(new CommentRangeStart(cId));
@@ -552,19 +623,43 @@ function changeNodeToDocxChildren(
 
       // Standalone comment (not attached to a highlight)
       const cId = ctx.nextCommentId();
-      const commentText = node.modifiedText?.trim() || '';
-      const commentMeta = getMetaAuthorDate(node);
-      const replies = buildRepliesFromDiscussion(node);
+      // For footnote-style comments, text lives in metadata.discussion[0].text.
+      // For inline {>>text<<} comments, text lives in metadata.comment or modifiedText.
+      const disc = node.metadata?.discussion;
+      let commentText: string;
+      let commentAuthor: string;
+      let commentDate: string;
+      let commentReplies: CommentReply[];
+      if (disc && disc.length > 0) {
+        commentText = disc[0].text;
+        commentAuthor = toDocxAuthor(disc[0].author).displayName;
+        commentDate = disc[0].date || '';
+        commentReplies = disc.slice(1).map((d) => ({
+          author: toDocxAuthor(d.author).displayName,
+          date: d.date || '',
+          text: d.text,
+          depth: d.depth,
+        }));
+      } else {
+        commentText = node.metadata?.comment?.trim() || node.modifiedText?.trim() || '';
+        const commentMeta = getMetaAuthorDate(node);
+        commentAuthor = commentMeta.displayName;
+        commentDate = commentMeta.date;
+        commentReplies = buildRepliesFromDiscussion(node);
+      }
 
-      buildCommentChain(
+      const chainResult = buildCommentChain(
         cId,
         commentText,
-        commentMeta.displayName,
-        commentMeta.date,
+        commentAuthor,
+        commentDate,
         ctx.commentDefs,
         ctx.commentPatchInfos,
-        replies.length > 0 ? replies : undefined
+        commentReplies.length > 0 ? commentReplies : undefined
       );
+      // Advance the comment ID counter past all IDs consumed by this chain
+      // (root + replies) to prevent collisions with subsequent comments.
+      ctx.advanceCommentId(chainResult.id);
       ctx.stats.comments++;
 
       // Zero-width comment range at this position
@@ -611,6 +706,10 @@ function lineToDocxChildren(
   let pos = lineStart;
   const skipNext = { value: false };
 
+  // Track last emitted revision run type/author for bookmark separation
+  let lastRunType: ChangeType | null = null;
+  let lastRunAuthor: string | null = null;
+
   for (let i = 0; i < lineChanges.length; i++) {
     if (skipNext.value) {
       skipNext.value = false;
@@ -627,11 +726,42 @@ function lineToDocxChildren(
       if (plainEnd > plainStart) {
         const plain = text.substring(plainStart, plainEnd);
         children.push(...parseInlineMarkdown(plain, ctx.mediaDir));
+        lastRunType = null;
+        lastRunAuthor = null;
       }
+    }
+
+    const { displayName } = getMetaAuthorDate(change);
+    let thisRunType: ChangeType | null = null;
+    if (change.type === ChangeType.Insertion || change.type === ChangeType.Deletion) {
+      thisRunType = change.type;
+    }
+
+    // Insert bookmark separator if same type+author as previous run
+    if (
+      thisRunType !== null &&
+      thisRunType === lastRunType &&
+      displayName === lastRunAuthor
+    ) {
+      const sepId = ctx.nextBookmarkId();
+      children.push(new BookmarkStart(`ct-sep-${sepId}`, sepId));
+      children.push(new BookmarkEnd(sepId));
     }
 
     // Emit the change
     children.push(...changeNodeToDocxChildren(change, ctx, nextChange, skipNext));
+
+    if (change.type === ChangeType.Substitution) {
+      // Substitution ends with an InsertedTextRun
+      lastRunType = ChangeType.Insertion;
+      lastRunAuthor = displayName;
+    } else if (thisRunType !== null) {
+      lastRunType = thisRunType;
+      lastRunAuthor = displayName;
+    } else {
+      lastRunType = null;
+      lastRunAuthor = null;
+    }
 
     pos = change.range.end;
   }
@@ -657,7 +787,7 @@ function isSkippableLine(line: string): boolean {
   if (/^\[\^sc-/.test(line)) return true;
   // Skip footnote continuation lines (indented lines following [^ct-N]: definitions)
   if (/^\s{4}@/.test(line)) return true;
-  if (/^\s{4}(approved|rejected|revised|previous|image-dimensions):/.test(line)) return true;
+  if (/^\s{4}(approved|rejected|revised|previous|image-dimensions|image-[\w-]+|merge-detected):/.test(line)) return true;
   return false;
 }
 
@@ -744,8 +874,7 @@ export function changesToDocxParagraphs(
   }
 
   // Step 2: Parse with core parser
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text);
+  const doc = parseForFormat(text);
   const changes = doc.getChanges();
 
   const includeComments = options.comments !== 'none';
@@ -763,6 +892,8 @@ export function changesToDocxParagraphs(
     includeComments,
     nextRevId: counters.nextRevId,
     nextCommentId: counters.nextCommentId,
+    advanceCommentId: counters.advanceCommentId,
+    nextBookmarkId: counters.nextBookmarkId,
   };
 
   // Step 3: Process line by line

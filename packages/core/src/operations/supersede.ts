@@ -9,9 +9,14 @@
  */
 
 import { findFootnoteBlock, parseFootnoteHeader } from '../footnote-utils.js';
-import { applyReview, type Decision } from './apply-review.js';
-import { applyProposeChange } from '../file-ops.js';
-import { scanMaxCtId } from './footnote-generator.js';
+import { applyReview } from './apply-review.js';
+import { applyProposeChange, appendFootnote } from '../file-ops.js';
+import { scanMaxCtId, generateFootnoteDefinition } from './footnote-generator.js';
+import { isL3Format } from '../footnote-patterns.js';
+import { parseForFormat } from '../format-aware-parse.js';
+import { computeReject } from './accept-reject.js';
+import { ChangeType } from '../model/types.js';
+import { nowTimestamp } from '../timestamp.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -60,11 +65,11 @@ export type SupersedeResult = SupersedeSuccess | SupersedeError;
  * Constraints enforced:
  * - Only `proposed` changes can be superseded
  */
-export function computeSupersedeResult(
+export async function computeSupersedeResult(
   text: string,
   changeId: string,
   opts: SupersedeOptions,
-): SupersedeResult {
+): Promise<SupersedeResult> {
   const { newText, oldText = '', reason, author, insertAfter } = opts;
 
   // --- 1. Validate: find change, check status, check different-author ---
@@ -101,20 +106,11 @@ export function computeSupersedeResult(
     };
   }
 
-  // Same-author guard: supersede is for different authors. Use amend for own changes.
-  const normalizedAuthor = author.startsWith('@') ? author.slice(1) : author;
-  if (header.author === normalizedAuthor) {
-    return {
-      isError: true,
-      error: `Cannot supersede change "${changeId}": authored by the same author (${author}). Use amend_change to modify your own changes.`,
-    };
-  }
-
   // --- 2. Reject the original change ---
   const rejectResult = applyReview(
     text,
     changeId,
-    'reject' as Decision,
+    'reject',
     reason ?? 'Superseded by new change',
     author,
   );
@@ -125,16 +121,106 @@ export function computeSupersedeResult(
 
   let fileContent = rejectResult.updatedContent;
 
-  // --- 3. Allocate next ID ---
+  // --- 3. Revert body to reflect rejection (both L2 and L3) ---
+  const level = isL3Format(text) ? 3 : 2;
+  const doc = parseForFormat(fileContent);
+  const rejectedChange = doc.getChanges().find(c => c.id === changeId);
+
+  // For insertions and comments (amend use case, no explicit oldText/insertAfter),
+  // use direct markup replacement instead of revert-and-reinsert. This avoids
+  // anchor resolution issues when surrounding text contains other CriticMarkup.
+  const isDirectReplace = rejectedChange && !oldText && !insertAfter &&
+    (rejectedChange.type === ChangeType.Insertion || rejectedChange.type === ChangeType.Comment);
+
+  if (isDirectReplace && rejectedChange) {
+    // --- Direct replacement path for insertions and comments ---
+    // Replace the old CriticMarkup with new markup inline, avoiding body reversion.
+    const maxId = scanMaxCtId(fileContent);
+    const newChangeId = `ct-${maxId + 1}`;
+
+    // Build replacement markup
+    let newMarkup: string;
+    let changeType: string;
+    if (rejectedChange.type === ChangeType.Comment) {
+      newMarkup = `{>>${newText}<<}[^${newChangeId}]`;
+      changeType = 'com';
+    } else {
+      const insPad = /^[+\-~]/.test(newText) ? ' ' : '';
+      newMarkup = `{++${insPad}${newText}++}[^${newChangeId}]`;
+      changeType = 'ins';
+    }
+
+    // Replace the old markup span (range covers {++...++} or {>>...<<}) and its ref [^ct-N]
+    const rangeStart = rejectedChange.range.start;
+    let rangeEnd = rejectedChange.range.end;
+    // Include the [^ct-N] reference if present after the markup
+    const refStr = `[^${changeId}]`;
+    if (fileContent.slice(rangeEnd, rangeEnd + refStr.length) === refStr) {
+      rangeEnd += refStr.length;
+    }
+    fileContent = fileContent.slice(0, rangeStart) + newMarkup + fileContent.slice(rangeEnd);
+
+    // Append new footnote
+    const footnoteHeader = generateFootnoteDefinition(newChangeId, changeType, author);
+    const reasonLine = reason ? `\n    @${author} ${nowTimestamp().raw}: ${reason}` : '';
+    fileContent = appendFootnote(fileContent, footnoteHeader + reasonLine);
+
+    // Update original footnote status to rejected
+    // (applyReview already did this, so just add cross-references)
+
+    // --- Add `supersedes: ct-N` to the new change's footnote ---
+    const modifiedLines = fileContent.split('\n');
+    const newBlock = findFootnoteBlock(modifiedLines, newChangeId);
+    if (newBlock) {
+      const supersedesLine = `    supersedes: ${changeId}`;
+      modifiedLines.splice(newBlock.headerLine + 1, 0, supersedesLine);
+      fileContent = modifiedLines.join('\n');
+    }
+
+    // --- Add `superseded-by: ct-M` to the original change's footnote ---
+    const updatedLines = fileContent.split('\n');
+    const origBlock = findFootnoteBlock(updatedLines, changeId);
+    if (origBlock) {
+      const supersededByLine = `    superseded-by: ${newChangeId}`;
+      updatedLines.splice(origBlock.headerLine + 1, 0, supersededByLine);
+      fileContent = updatedLines.join('\n');
+    }
+
+    return {
+      isError: false,
+      text: fileContent,
+      newChangeId,
+      originalChangeId: changeId,
+    };
+  }
+
+  // --- Standard path: revert body and re-propose ---
+  if (rejectedChange) {
+    const rejectEdit = computeReject(rejectedChange);
+    fileContent = fileContent.slice(0, rejectEdit.offset) +
+      rejectEdit.newText +
+      fileContent.slice(rejectEdit.offset + rejectEdit.length);
+  }
+
+  // --- 4. Allocate next ID ---
   const maxId = scanMaxCtId(fileContent);
   const newChangeId = `ct-${maxId + 1}`;
 
-  // --- 4. Create replacement change via applyProposeChange ---
+  // --- 5. Create replacement change via applyProposeChange ---
   // Determine oldText for propose: if caller provided oldText, use it.
-  // If empty and no insertAfter, we need to target something. The handler
-  // uses the caller's old_text/new_text, so we pass through.
-  const proposeOldText = oldText;
-  const proposeResult = applyProposeChange({
+  // If not provided (amend use case), derive from the original change:
+  // after body reversion, the original text is back in the body.
+  let proposeOldText = oldText;
+
+  if (rejectedChange) {
+    if (!proposeOldText) {
+      if (rejectedChange.type === ChangeType.Substitution || rejectedChange.type === ChangeType.Deletion) {
+        proposeOldText = rejectedChange.originalText ?? '';
+      }
+    }
+  }
+
+  const proposeResult = await applyProposeChange({
     text: fileContent,
     oldText: proposeOldText,
     newText,
@@ -142,10 +228,11 @@ export function computeSupersedeResult(
     author,
     reasoning: reason,
     insertAfter,
+    level,
   });
   fileContent = proposeResult.modifiedText;
 
-  // --- 5. Add `supersedes: ct-N` to the new change's footnote ---
+  // --- 6. Add `supersedes: ct-N` to the new change's footnote ---
   const modifiedLines = fileContent.split('\n');
   const newBlock = findFootnoteBlock(modifiedLines, newChangeId);
   if (newBlock) {
@@ -154,7 +241,7 @@ export function computeSupersedeResult(
     fileContent = modifiedLines.join('\n');
   }
 
-  // --- 6. Add `superseded-by: ct-M` to the original change's footnote ---
+  // --- 7. Add `superseded-by: ct-M` to the original change's footnote ---
   const updatedLines = fileContent.split('\n');
   const origBlock = findFootnoteBlock(updatedLines, changeId);
   if (origBlock) {

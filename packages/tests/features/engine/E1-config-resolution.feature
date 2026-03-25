@@ -78,18 +78,18 @@ Feature: E1 - Config Resolution
     When I load config from the project directory
     Then the config hashline.enabled is true
 
-  Scenario: Settlement section defaults auto_on_approve to true
+  Scenario: Settlement section defaults auto_on_approve to false
     When I load config from an empty directory
-    Then the config settlement.auto_on_approve is true
+    Then the config settlement.auto_on_approve is false
 
   Scenario: Settlement section can override auto_on_approve
     Given a config.toml with:
       """
       [settlement]
-      auto_on_approve = false
+      auto_on_approve = true
       """
     When I load config from the project directory
-    Then the config settlement.auto_on_approve is false
+    Then the config settlement.auto_on_approve is true
 
   Scenario: Policy section defaults to safety-net
     Given a config.toml with:

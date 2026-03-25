@@ -80,7 +80,7 @@ describe('quick_fix field in hashline errors', () => {
       await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\n# Title\n\nSome content here.\n');
 
       const result = await handleProposeChange(
-        { file: filePath, at: '4:de', op: '{~~Some~>Other~~}', author: 'ai:test' },
+        { file: filePath, at: '4:de', op: '{~~Some~>Other~~}', author: 'ai:test', reason: 'test' },
         resolver, state,
       );
       expect(result.isError).toBe(true);
@@ -96,7 +96,7 @@ describe('quick_fix field in hashline errors', () => {
       await fs.writeFile(filePath, content);
 
       const result = await handleProposeChange(
-        { file: filePath, at: '4:de', op: '{~~Some~>Other~~}', author: 'ai:test' },
+        { file: filePath, at: '4:de', op: '{~~Some~>Other~~}', author: 'ai:test', reason: 'test' },
         resolver, state,
       );
       expect(result.isError).toBe(true);
@@ -125,6 +125,7 @@ describe('quick_fix field in hashline errors', () => {
           start_line: 2,
           start_hash: 'zz', // Wrong hash
           author: 'ai:test',
+          reason: 'test',
         },
         resolver, state,
       );
@@ -153,6 +154,7 @@ describe('quick_fix field in hashline errors', () => {
           end_line: 3,
           end_hash: 'zz', // Wrong hash
           author: 'ai:test',
+          reason: 'test',
         },
         resolver, state,
       );
@@ -177,6 +179,7 @@ describe('quick_fix field in hashline errors', () => {
           after_line: 2,
           after_hash: 'zz', // Wrong hash
           author: 'ai:test',
+          reason: 'test',
         },
         resolver, state,
       );
@@ -201,6 +204,7 @@ describe('quick_fix field in hashline errors', () => {
           start_line: 99,
           start_hash: 'ab',
           author: 'ai:test',
+          reason: 'test',
         },
         resolver, state,
       );
@@ -232,6 +236,7 @@ describe('quick_fix field in hashline errors', () => {
           start_line: 2,
           start_hash: 'zz', // Wrong committed hash
           author: 'ai:test',
+          reason: 'test',
         },
         resolver, state,
       );

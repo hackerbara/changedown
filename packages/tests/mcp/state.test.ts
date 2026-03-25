@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SessionState } from '@changetracks/mcp/internals';
+import { rerecordState } from 'changetracks/engine';
+import { initHashline } from '@changetracks/core';
+import type { ChangeTracksConfig } from '@changetracks/mcp/internals';
 
 describe('SessionState', () => {
   let state: SessionState;
@@ -356,5 +359,85 @@ describe('per-view hash retention', () => {
     const resolved = state.resolveHash('test.md', 1, 'wrong-hash');
     // Should still return match:false with the lastReadView's expected hash for the error message
     expect(resolved).toEqual({ match: false, expectedHash: 'c1', view: 'review' });
+  });
+});
+
+describe('rerecordState: review view computes committed hashes', () => {
+  const config: ChangeTracksConfig = {
+    hashline: { enabled: true, auto_remap: false },
+    tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: true },
+    author: { default: 'Test Author', enforcement: 'optional' },
+    hooks: { enforcement: 'optional', exclude: [] },
+    matching: { mode: 'standard' },
+    settlement: { auto_on_approve: false, auto_on_reject: false },
+  };
+
+  // Content with CriticMarkup: line 2 has a pending insertion
+  const criticContent = [
+    '<!-- ctrcks.com/v1: tracked -->',
+    'Line one with {++inserted phrase++} here.',
+    'Line two is plain.',
+  ].join('\n');
+
+  it('stores committed hashes for review view after rerecordState', async () => {
+    await initHashline();
+    const state = new SessionState();
+
+    // Record an initial read in review view so lastReadView = 'review'
+    state.recordAfterRead('test.md', 'review', [
+      { line: 1, raw: 'r1', settled: 's1', committed: 'c1', rawLineNum: 1 },
+      { line: 2, raw: 'r2', settled: 's2', committed: 'c2', rawLineNum: 2 },
+      { line: 3, raw: 'r3', settled: 's3', committed: 'c3', rawLineNum: 3 },
+    ], 'original content');
+
+    // Call rerecordState with CriticMarkup content
+    await rerecordState(state, 'test.md', criticContent, config);
+
+    // Hashes should have been re-recorded
+    const hashes = state.getRecordedHashes('test.md');
+    expect(hashes).toBeDefined();
+    expect(hashes!.length).toBeGreaterThan(0);
+
+    // All hashes should include committed field (not undefined)
+    for (const h of hashes!) {
+      expect(h.committed).toBeDefined();
+    }
+  });
+
+  it('committed hash differs from raw hash for line with CriticMarkup', async () => {
+    await initHashline();
+    const state = new SessionState();
+
+    state.recordAfterRead('test.md', 'review', [], 'original');
+
+    await rerecordState(state, 'test.md', criticContent, config);
+
+    const hashes = state.getRecordedHashes('test.md');
+    expect(hashes).toBeDefined();
+
+    // Line 2 (1-indexed) has CriticMarkup — its committed hash should differ from raw hash
+    // because committed strips the markup and reverts the pending insertion
+    const line2 = hashes!.find(h => h.line === 2);
+    expect(line2).toBeDefined();
+    expect(line2!.committed).toBeDefined();
+    expect(line2!.committed).not.toBe(line2!.raw);
+  });
+
+  it('raw view does not compute committed hashes', async () => {
+    await initHashline();
+    const state = new SessionState();
+
+    // Record a read in raw view — committed hashes should NOT be computed
+    state.recordAfterRead('test.md', 'raw', [], 'original');
+
+    await rerecordState(state, 'test.md', criticContent, config);
+
+    const hashes = state.getRecordedHashes('test.md');
+    expect(hashes).toBeDefined();
+
+    // Raw view: no committed field expected
+    for (const h of hashes!) {
+      expect(h.committed).toBeUndefined();
+    }
   });
 });

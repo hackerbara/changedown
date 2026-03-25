@@ -1,9 +1,9 @@
 import { ChangeNode, ChangeType, ChangeStatus, TextEdit } from '../model/types.js';
-import { CriticMarkupParser } from '../parser/parser.js';
-import { computeAccept, computeReject, computeAcceptParts, computeRejectParts, AcceptRejectParts } from './accept-reject.js';
+import { computeReject, computeAcceptParts, computeRejectParts, AcceptRejectParts } from './accept-reject.js';
 import { computeLineHash } from '../hashline.js';
-import { FOOTNOTE_DEF_START, footnoteRefGlobal } from '../footnote-patterns.js';
+import { FOOTNOTE_DEF_START, footnoteRefGlobal, isL3Format, splitBodyAndFootnotes } from '../footnote-patterns.js';
 import { findCodeZones, CodeZone } from '../parser/code-zones.js';
+import { parseForFormat } from '../format-aware-parse.js';
 
 /**
  * Computes a TextEdit that "settles" a single CriticMarkup change node using
@@ -118,6 +118,67 @@ export interface SettledTextOptions {
 }
 
 /**
+ * Computes the settled state of an L3 (footnote-native) document.
+ * L3 body already contains the accepted state — just strip the footnote block.
+ */
+function computeSettledTextL3(text: string): string {
+  const { bodyLines } = splitBodyAndFootnotes(text.split('\n'));
+  return bodyLines.join('\n') + '\n';
+}
+
+/**
+ * Computes the original (reject-all) view of an L3 document.
+ *
+ * For L3, the body reflects the current state (proposed changes applied).
+ * To get the "original" view: undo all proposed changes.
+ * - Proposed insertion → remove from body (text was added, undo it)
+ * - Proposed deletion → restore originalText (text was removed, put it back)
+ * - Proposed substitution → revert to originalText
+ * - Accepted/rejected changes are already resolved in the body — leave as-is
+ */
+/**
+ * Revert changes in body text by undoing their effects. Processes changes
+ * in reverse offset order to preserve positions. Used by both
+ * computeOriginalTextL3 and settleRejectedChangesOnly.
+ */
+function revertChangesInBody(body: string, changes: ChangeNode[]): string {
+  const sorted = [...changes].sort((a, b) => b.range.start - a.range.start);
+  for (const change of sorted) {
+    if (change.anchored === false) continue;
+    switch (change.type) {
+      case ChangeType.Insertion:
+        body = body.slice(0, change.range.start) + body.slice(change.range.end);
+        break;
+      case ChangeType.Deletion:
+        if (change.originalText) {
+          body = body.slice(0, change.range.start) + change.originalText + body.slice(change.range.start);
+        }
+        break;
+      case ChangeType.Substitution:
+        if (change.originalText) {
+          body = body.slice(0, change.range.start) + change.originalText + body.slice(change.range.end);
+        }
+        break;
+    }
+  }
+  return body;
+}
+
+function computeOriginalTextL3(text: string): string {
+  const doc = parseForFormat(text);
+  const proposed = doc.getChanges().filter(c => c.status === ChangeStatus.Proposed);
+
+  const { bodyLines } = splitBodyAndFootnotes(text.split('\n'));
+  let body = bodyLines.join('\n');
+
+  if (proposed.length > 0) {
+    body = revertChangesInBody(body, proposed);
+  }
+
+  return body + '\n';
+}
+
+/**
  * Computes the "settled state" of a CriticMarkup document using accept-all semantics.
  *
  * The settled text represents what the document would look like if every proposed
@@ -130,6 +191,10 @@ export interface SettledTextOptions {
  * - Footnote definitions are stripped
  * - Orphaned inline footnote references are stripped
  *
+ * For L3 (footnote-native) format, the body already reflects the accepted state,
+ * so this function routes to computeSettledTextL3 which simply strips the footnote
+ * block. This gives SCM QuickDiff and all other consumers free L3 support.
+ *
  * Per V1 view model design doc §5: settled = "document as it would be if all
  * proposals were approved". The committed view (separate function) handles
  * status-aware rendering.
@@ -137,8 +202,14 @@ export interface SettledTextOptions {
  * This is a pure function: it does not modify the input string.
  */
 export function computeSettledText(text: string, options?: SettledTextOptions): string {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
+  // L3 format: footnote-native body is already the settled state.
+  // Auto-detect: has [^ct-N]: footnote defs, no inline CriticMarkup in body,
+  // and at least one L3 footnote body line (LINE:HASH {op}).
+  if (isL3Format(text)) {
+    return computeSettledTextL3(text);
+  }
+
+  const doc = parseForFormat(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
   const changes = doc.getChanges();
 
   if (changes.length === 0) {
@@ -174,8 +245,11 @@ export function computeSettledText(text: string, options?: SettledTextOptions): 
  * Substitutions keep the original (pre-change) text.
  */
 export function computeOriginalText(text: string, options?: SettledTextOptions): string {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
+  if (isL3Format(text)) {
+    return computeOriginalTextL3(text);
+  }
+
+  const doc = parseForFormat(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
   const changes = doc.getChanges();
 
   if (changes.length === 0) {
@@ -311,13 +385,22 @@ function buildSegmentsWithZoneAwareness(
  * are left untouched. Uses parser range information (no regex replacement) so
  * substitution text that looks like CriticMarkup is handled correctly.
  *
- * This implements Layer 1 settlement: removes inline CriticMarkup delimiters
- * but keeps footnote references [^ct-N] and footnote definition blocks with
- * their 'accepted' status. This preserves the audit trail for accepted changes.
+ * For L2: removes inline CriticMarkup delimiters but keeps footnote references
+ * [^ct-N] and footnote definition blocks with their 'accepted' status.
+ *
+ * For L3: no-op. The body is already the Current projection (accepted text
+ * present), and edit-op lines must be preserved per ADR-C §2.
  */
 export function settleAcceptedChangesOnly(text: string): { settledContent: string; settledIds: string[] } {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text, { skipCodeBlocks: false });
+  // L3 accepted settlement is a no-op per ADR-C §2 / Compaction spec §1:
+  // the body is already the Current projection (accepted text present),
+  // and edit-op lines must be preserved for coherence verification.
+  // Only the status field changed (done by applyReview). Nothing else to do.
+  if (isL3Format(text)) {
+    return { settledContent: text, settledIds: [] };
+  }
+
+  const doc = parseForFormat(text, { skipCodeBlocks: false });
   const accepted = doc.getChanges().filter((c) => c.status === ChangeStatus.Accepted);
   const settledIds = accepted.map((c) => c.id);
 
@@ -342,15 +425,34 @@ export function settleAcceptedChangesOnly(text: string): { settledContent: strin
  * are left untouched. Uses parser range information (no regex replacement) so
  * substitution text that looks like CriticMarkup is handled correctly.
  *
- * This implements Layer 1 settlement for rejections:
- * - Rejected insertion: remove {++text++} (footnote ref stays)
- * - Rejected deletion: restore original text (footnote ref stays)
- * - Rejected substitution: restore original text (footnote ref stays)
- * - Proposed and accepted changes are not touched.
+ * For L2: removes rejected inline CriticMarkup (insertions removed, deletions
+ * and substitutions reverted to original text). Footnote refs stay.
+ *
+ * For L3: reverts the body (removes rejected insertions, restores rejected
+ * deletions/substitutions) but preserves edit-op lines per ADR-C §2.
  */
 export function settleRejectedChangesOnly(text: string): { settledContent: string; settledIds: string[] } {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text, { skipCodeBlocks: false });
+  // L3 rejected settlement: revert the body (remove rejected insertions,
+  // restore rejected deletions/substitutions) but preserve edit-op lines
+  // per ADR-C §2. The edit-op anchors become stale after body reversion —
+  // this is expected. The Resolution Protocol handles stale anchors via
+  // fast-path exits and intermediate-state replay.
+  if (isL3Format(text)) {
+    const doc = parseForFormat(text);
+    const rejected = doc.getChanges().filter((c) => c.status === ChangeStatus.Rejected);
+    const settledIds = rejected.map((c) => c.id);
+    if (rejected.length === 0) return { settledContent: text, settledIds: [] };
+
+    const { bodyLines, footnoteLines } = splitBodyAndFootnotes(text.split('\n'));
+    const body = revertChangesInBody(bodyLines.join('\n'), rejected);
+
+    const settledContent = footnoteLines.length > 0
+      ? body + '\n\n' + footnoteLines.join('\n')
+      : body;
+    return { settledContent, settledIds };
+  }
+
+  const doc = parseForFormat(text, { skipCodeBlocks: false });
   const rejected = doc.getChanges().filter((c) => c.status === ChangeStatus.Rejected);
   const settledIds = rejected.map((c) => c.id);
 
@@ -381,9 +483,36 @@ export interface SettledViewResult {
   lines: SettledLine[];
   settledToRaw: Map<number, number>;  // settled line num → raw line num
   rawToSettled: Map<number, number>;  // raw line num → settled line num
+  changes?: ChangeNode[];
 }
 
 // ─── Settled view computation ────────────────────────────────────────────────
+
+/**
+ * L3 fast-path: body is already the settled view (1:1 line mapping).
+ * Strip footnote section and build line mappings directly.
+ */
+function computeSettledViewL3(rawText: string): SettledViewResult {
+  const { bodyLines } = splitBodyAndFootnotes(rawText.split('\n'));
+  const lines: SettledLine[] = [];
+  const settledToRaw = new Map<number, number>();
+  const rawToSettled = new Map<number, number>();
+
+  for (let i = 0; i < bodyLines.length; i++) {
+    const settledNum = i + 1;  // 1-indexed
+    const rawNum = i + 1;      // 1:1 mapping for body lines
+    lines.push({
+      settledLineNum: settledNum,
+      rawLineNum: rawNum,
+      text: bodyLines[i],
+      hash: computeLineHash(i, bodyLines[i], bodyLines),
+    });
+    settledToRaw.set(settledNum, rawNum);
+    rawToSettled.set(rawNum, settledNum);
+  }
+
+  return { lines, settledToRaw, rawToSettled };
+}
 
 /**
  * Compute the settled view for an entire file using accept-all semantics.
@@ -405,11 +534,14 @@ export interface SettledViewResult {
  * inline-ref stripping are line-level operations that preserve the character-to-line
  * correspondence established by the CriticMarkup edits.
  */
-export function computeSettledView(rawText: string): SettledViewResult {
+export function computeSettledView(rawText: string, preParsed?: ChangeNode[]): SettledViewResult {
+  // L3 early-return: body is already the settled view
+  if (isL3Format(rawText)) {
+    return computeSettledViewL3(rawText);
+  }
+
   // 1. Get parser edits for CriticMarkup settlement
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(rawText, { skipCodeBlocks: false });
-  const changes = doc.getChanges();
+  const changes = preParsed ?? parseForFormat(rawText, { skipCodeBlocks: false }).getChanges();
 
   // 2. Apply CriticMarkup edits and build offset delta table
   // Each entry: { rawOffset, delta } where delta = cumulative shift
@@ -532,5 +664,5 @@ export function computeSettledView(rawText: string): SettledViewResult {
     settledCharOffset += settledLineText.length + 1; // +1 for newline
   }
 
-  return { lines: settledLines, settledToRaw, rawToSettled };
+  return { lines: settledLines, settledToRaw, rawToSettled, changes };
 }

@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { ChangeType } from '@changetracks/core';
+import { ChangeType, parseForFormat } from '@changetracks/core';
 import { renderMarkdownToHtml } from './docx-preview-renderer';
 import { buildAnnotationCards } from './annotation-extractor';
 import { buildLoadingHtml, buildErrorHtml, buildChoiceHtml, buildPreviewHtml } from './docx-preview-html';
@@ -199,9 +199,7 @@ export class DocxEditorProvider implements vscode.CustomReadonlyEditorProvider {
     viewMode: string = 'allMarkup',
     mediaDir?: string
   ): Promise<void> {
-    const { CriticMarkupParser } = await import('@changetracks/core');
-    const parser = new CriticMarkupParser();
-    const doc = parser.parse(markdown);
+    const doc = parseForFormat(markdown);
     const changes = doc.getChanges();
 
     const isDark = vscode.window.activeColorTheme?.kind === 2

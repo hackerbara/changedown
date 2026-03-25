@@ -114,7 +114,7 @@ describe('protocol modes end-to-end', () => {
 
     // Insert after line 1
     const proposeResult = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: '{++\ninserted between lines++}' },
+      { file: filePath, at: `1:${hash}`, op: '{++\ninserted between lines++}', reason: 'test' },
       resolver,
       state,
     );
@@ -160,7 +160,7 @@ describe('protocol modes end-to-end', () => {
 
     // Delete text on line 2
     const proposeResult = await handleProposeChange(
-      { file: filePath, at: `2:${hash}`, op: '{--remove this--}' },
+      { file: filePath, at: `2:${hash}`, op: '{--remove this--}', reason: 'test' },
       resolver,
       state,
     );
@@ -193,7 +193,7 @@ describe('protocol modes end-to-end', () => {
     expect(hash1Match).not.toBeNull();
 
     const propose1 = await handleProposeChange(
-      { file: filePath, at: `1:${hash1Match![1]}`, op: '{~~alpha~>ALPHA~~}' },
+      { file: filePath, at: `1:${hash1Match![1]}`, op: '{~~alpha~>ALPHA~~}', reason: 'test' },
       resolver,
       state,
     );
@@ -212,7 +212,7 @@ describe('protocol modes end-to-end', () => {
     const gammaHash = gammaLineMatch![2];
 
     const propose2 = await handleProposeChange(
-      { file: filePath, at: `${gammaLine}:${gammaHash}`, op: '{~~gamma~>GAMMA~~}' },
+      { file: filePath, at: `${gammaLine}:${gammaHash}`, op: '{~~gamma~>GAMMA~~}', reason: 'test' },
       resolver,
       state,
     );
@@ -260,7 +260,7 @@ describe('protocol modes end-to-end', () => {
       const contentLines = content.split('\n');
       const hash = computeLineHash(0, contentLines[0], contentLines);
       const compactResult = await handleProposeChange(
-        { file: filePath, at: `1:${hash}`, op: '{~~hello~>goodbye~~}' },
+        { file: filePath, at: `1:${hash}`, op: '{~~hello~>goodbye~~}', reason: 'test' },
         resolver,
         state,
       );

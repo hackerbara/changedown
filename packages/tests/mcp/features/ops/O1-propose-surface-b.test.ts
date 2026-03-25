@@ -299,6 +299,7 @@ describe('O1: Propose changes via Surface B (classic MCP)', () => {
       const classicCtx = new ScenarioContext({
         protocol: { mode: 'classic', level: 2, reasoning: 'optional', batch_reasoning: 'required' },
         hashline: { enabled: false, auto_remap: false },
+        response: { affected_lines: true },
       });
       await classicCtx.setup();
 

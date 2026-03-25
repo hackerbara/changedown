@@ -79,9 +79,22 @@ function configToToml(config: ChangeTracksConfig): string {
     lines.push('');
   }
 
-  if (config.meta) {
-    lines.push('[meta]');
-    lines.push(`compact_threshold = ${config.meta.compact_threshold}`);
+  if (config.reasoning) {
+    lines.push('[reasoning.propose]');
+    lines.push(`human = ${config.reasoning.propose.human}`);
+    lines.push(`agent = ${config.reasoning.propose.agent}`);
+    lines.push('');
+    lines.push('[reasoning.review]');
+    lines.push(`human = ${config.reasoning.review.human}`);
+    lines.push(`agent = ${config.reasoning.review.agent}`);
+    lines.push('');
+  }
+
+  if (config.response) {
+    lines.push('[response]');
+    if (config.response.affected_lines !== undefined) {
+      lines.push(`affected_lines = ${config.response.affected_lines}`);
+    }
     lines.push('');
   }
 

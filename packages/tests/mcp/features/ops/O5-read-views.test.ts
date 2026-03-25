@@ -220,13 +220,15 @@ describe('O5: Read tracked file views', () => {
 
     const text = ctx.resultText(result);
 
-    // Header + blank line + content
+    // Header + blank line + content + optional truncation message
     const parts = text.split('\n\n');
     const header = parts[0];
-    const contentSection = parts.slice(1).join('\n\n');
+    // Content is between header separator and truncation message (if any)
+    const contentMatch = text.match(/---\n\n([\s\S]*?)(?:\n\n---|\s*$)/);
+    expect(contentMatch).toBeTruthy();
 
     // Only 1 line in content (the first line with alpha substitution)
-    const contentLines = contentSection.split('\n').filter(l => l.trim().length > 0);
+    const contentLines = contentMatch![1].split('\n').filter(l => l.trim().length > 0);
     expect(contentLines).toHaveLength(1);
 
     // Hashline coordinates present

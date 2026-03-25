@@ -130,6 +130,12 @@ Given(
     } catch {
       // Already not set
     }
+    // Isolate from global git config so resolveIdentity won't find a global user.name
+    state.savedEnv = state.savedEnv || {};
+    state.savedEnv.GIT_CONFIG_GLOBAL = process.env.GIT_CONFIG_GLOBAL;
+    state.savedEnv.GIT_CONFIG_SYSTEM = process.env.GIT_CONFIG_SYSTEM;
+    process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+    process.env.GIT_CONFIG_SYSTEM = '/dev/null';
   },
 );
 

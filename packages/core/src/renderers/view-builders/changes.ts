@@ -1,7 +1,6 @@
 import { computeCommittedView } from '../../committed-text.js';
 import { computeLineHash } from '../../hashline.js';
 import { computeSettledLineHash, settledLine } from '../../hashline-tracked.js';
-import { parseFootnotes } from '../../footnote-parser.js';
 import { buildDeliberationHeader } from '../view-builder-utils.js';
 import type { ThreeZoneDocument, ThreeZoneLine, LineFlag, LineMetadata, ViewName } from '../three-zone-types.js';
 
@@ -17,8 +16,8 @@ export function buildChangesDocument(
   rawContent: string,
   options: ChangesViewOptions,
 ): ThreeZoneDocument {
-  const footnotes = parseFootnotes(rawContent);
   const committedResult = computeCommittedView(rawContent);
+  const changes = committedResult.changes;
   const rawLines = rawContent.split('\n');
   const allSettled = rawLines.map(l => settledLine(l));
 
@@ -54,7 +53,7 @@ export function buildChangesDocument(
 
   const header = buildDeliberationHeader({
     ...options,
-    footnotes,
+    changes,
     lineRange: { start: 1, end: lines.length, total: lines.length },
   });
 

@@ -85,6 +85,40 @@ describe('applyReview (core)', () => {
     }
   });
 
+  it('approve overrides prior rejected status', () => {
+    const rejectedDoc = baseDoc.replace('| proposed', '| rejected');
+    const result = applyReview(rejectedDoc, 'ct-1', 'approve', 'Reconsidered', 'carol');
+    expect('error' in result && result.error).toBeFalsy();
+    if ('updatedContent' in result) {
+      expect(result.updatedContent).toContain('| accepted');
+      expect(result.updatedContent).toContain('approved:');
+      expect(result.updatedContent).toContain('@carol');
+      expect(result.updatedContent).toContain('"Reconsidered"');
+      expect(result.result.status_updated).toBe(true);
+    }
+  });
+
+  it('cascade: approving rejected parent cascades to proposed children', () => {
+    const rejectedParentDoc = [
+      'Hello {++world++}[^ct-1] and {++more++}[^ct-1.1] text',
+      '',
+      '[^ct-1]: @alice | 2026-03-09 | ins | rejected',
+      '    reason: Parent change',
+      '    rejected: @bob 2026-03-10 "Not needed"',
+      '',
+      '[^ct-1.1]: @alice | 2026-03-09 | ins | proposed',
+      '    reason: Child change',
+      '',
+    ].join('\n');
+    const result = applyReview(rejectedParentDoc, 'ct-1', 'approve', 'Reconsidered', 'carol');
+    expect('error' in result && result.error).toBeFalsy();
+    if ('updatedContent' in result) {
+      expect(result.updatedContent).toMatch(/\[.ct-1\]:.*\| accepted/);
+      expect(result.updatedContent).toMatch(/\[.ct-1\.1\]:.*\| accepted/);
+      expect(result.result.cascaded_children).toEqual(['ct-1.1']);
+    }
+  });
+
   it('auto-promotes L0 bare change before reviewing', () => {
     const bareDoc = 'Hello {++world++} more text\n';
     // The parser assigns ct-1 to the first L0 change

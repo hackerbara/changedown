@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { handleProposeBatch } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changetracks/mcp/internals';
 import { SessionState } from '@changetracks/mcp/internals';
 import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
 import { ConfigResolver } from '@changetracks/mcp/internals';
@@ -292,5 +293,28 @@ describe('batch error granularity — operation_index in error responses', () =>
     expect(data.failed.length).toBe(1);
     // Failure reason uses "Operation N:" format
     expect(data.failed[0].reason).toContain('Operation 1:');
+  });
+
+  it('propose_change(changes=[...]) reports all validation failures, not just the first', async () => {
+    const content = '<!-- ctrcks.com/v1: tracked -->\nLine one.\nLine two.\nLine three.\n';
+    const filePath = path.join(tmpDir, 'multi-fail.md');
+    await fs.writeFile(filePath, content);
+
+    const result = await handleProposeChange({
+      file: filePath,
+      author: 'ai:test',
+      changes: [
+        { old_text: 'Line one.', new_text: 'Changed one.', start_line: 2, start_hash: 'ff', reason: 'stale hash 1' },
+        { old_text: 'Line two.', new_text: 'Changed two.', start_line: 3, start_hash: 'ff', reason: 'stale hash 2' },
+      ],
+    }, resolver, state);
+
+    // Should report failures for BOTH operations, not just the first.
+    // The response is an all-failed partial batch: isError=true, with failed[].index for each op.
+    expect(result.isError).toBe(true);
+    const data = JSON.parse(result.content[1].text);
+    expect(data.error.failed).toHaveLength(2);
+    expect(data.error.failed[0].index).toBe(0);
+    expect(data.error.failed[1].index).toBe(1);
   });
 });

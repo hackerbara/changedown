@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
+import { execSync } from 'child_process';
 import { _electron as electron } from 'playwright';
 import type { ElectronApplication, Page } from 'playwright';
 
@@ -78,7 +79,32 @@ async function launchVSCodeInternal(
         "editor.codeLens": false,
         // Show CriticMarkup delimiters so D1/D2 decoration tests can distinguish view modes
         "changetracks.showDelimiters": true,
+        // Suppress walkthroughs
+        "workbench.welcomePage.walkthroughs.openOnInstall": false,
+        "workbench.startupEditor": "none",
     };
+
+    // Pre-seed VS Code global state database to mark walkthroughs as completed.
+    // Without this, VS Code opens the walkthrough tab over the editor on first launch.
+    const stateDbDir = path.join(userDataDir, 'User', 'globalStorage');
+    fs.mkdirSync(stateDbDir, { recursive: true });
+    const stateDbPath = path.join(stateDbDir, 'state.vscdb');
+    try {
+        execSync(`sqlite3 "${stateDbPath}" "` +
+            `CREATE TABLE IF NOT EXISTS ItemTable (key TEXT UNIQUE ON CONFLICT REPLACE, value BLOB);` +
+            `INSERT INTO ItemTable VALUES ('workbench.welcomePageStartup', '\\\"none\\\"');` +
+            `INSERT INTO ItemTable VALUES ('workbench.welcome.hasShownWelcome', 'true');` +
+            `INSERT INTO ItemTable VALUES ('workbench.welcomePageHasBeenShown', '1');` +
+            `INSERT INTO ItemTable VALUES ('workbench.welcomePage.walkthroughHasBeenShown', 'true');` +
+            `INSERT INTO ItemTable VALUES ('workbench.welcomePageSetup.hasRun', 'true');` +
+            `INSERT INTO ItemTable VALUES ('workbench.welcomePageSetup.dismissed', 'true');` +
+            `INSERT INTO ItemTable VALUES ('workbench.getStarted.dismissed', 'true');` +
+            `INSERT INTO ItemTable VALUES ('workbench.activity.pinnedViewlets2', '[]');` +
+            `"`, { timeout: 5000 });
+        console.log('  Pre-seeded state.vscdb for visual test (walkthrough suppressed)');
+    } catch (e: any) {
+        console.log(`  Warning: Could not pre-seed state.vscdb: ${e.message}`);
+    }
 
     // Apply theme if specified
     if (options.theme === 'light') {

@@ -55,9 +55,9 @@ Feature: Parser — Deletions
   Scenario: Deletion generates correct ID prefix
     Given the text "{--x--}{--y--}{--z--}"
     When I parse the text
-    Then change 1 has id "del-0"
-    And change 2 has id "del-1"
-    And change 3 has id "del-2"
+    Then change 1 has id "ct-1"
+    And change 2 has id "ct-2"
+    And change 3 has id "ct-3"
 
   Scenario: Three consecutive deletions
     Given the text "{--x--}{--y--}{--z--}"

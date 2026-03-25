@@ -748,5 +748,60 @@ describe('Semantic Tokens', () => {
         expect(modifiers & 32).toBe(32);
       });
     });
+
+    describe('consumed op modifier', () => {
+      it('should apply deprecated modifier to consumed op tokens', () => {
+        const changes: ChangeNode[] = [{
+          id: 'ct-3',
+          type: ChangeType.Insertion,
+          status: ChangeStatus.Proposed,
+          range: { start: 0, end: 14 },
+          contentRange: { start: 3, end: 11 },
+          level: 2, anchored: false,
+          consumedBy: 'ct-5',
+        }];
+
+        const result = buildSemanticTokens(changes, testText, 'review');
+        expect(result.data.length).toBeGreaterThan(0);
+        // deprecated is bit 1 (value 2) in TOKEN_MODIFIERS
+        const modifierBits = result.data[4]; // 5th element is modifiers
+        expect(modifierBits & 2).toBe(2); // deprecated bit set
+      });
+
+      it('should apply deprecated modifier to consumed deletion tokens', () => {
+        const changes: ChangeNode[] = [{
+          id: 'ct-4',
+          type: ChangeType.Deletion,
+          status: ChangeStatus.Proposed,
+          range: { start: 0, end: 14 },
+          contentRange: { start: 3, end: 11 },
+          level: 2, anchored: false,
+          consumedBy: 'ct-6',
+        }];
+
+        const result = buildSemanticTokens(changes, testText, 'review');
+        expect(result.data.length).toBeGreaterThan(0);
+        const modifierBits = result.data[4];
+        // Deletion already has deprecated(2); consumedBy should also set it (idempotent)
+        expect(modifierBits & 2).toBe(2);
+      });
+
+      it('should not apply deprecated modifier when consumedBy is absent', () => {
+        const changes: ChangeNode[] = [{
+          id: 'ct-7',
+          type: ChangeType.Insertion,
+          status: ChangeStatus.Proposed,
+          range: { start: 0, end: 14 },
+          contentRange: { start: 3, end: 11 },
+          level: 0, anchored: false,
+        }];
+
+        const result = buildSemanticTokens(changes, testText, 'review');
+        expect(result.data.length).toBeGreaterThan(0);
+        const modifierBits = result.data[4];
+        // modification(1) | proposed(4) = 5, no deprecated bit
+        expect(modifierBits & 2).toBe(0);
+      });
+    });
   });
 });

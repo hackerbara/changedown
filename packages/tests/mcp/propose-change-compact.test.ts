@@ -33,6 +33,11 @@ describe('propose_change compact mode', () => {
     settlement: { auto_on_approve: true, auto_on_reject: true },
     policy: { mode: 'safety-net', creation_tracking: 'footnote' },
     protocol: { mode: 'compact', level: 2, reasoning: 'optional', batch_reasoning: 'required' },
+    reasoning: {
+      propose: { human: false, agent: false },
+      review: { human: false, agent: false },
+    },
+    response: { affected_lines: true },
   };
 
   beforeAll(async () => {
@@ -56,7 +61,7 @@ describe('propose_change compact mode', () => {
 
     const hash = hashForLine(content, 1);
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: '{~~quick brown~>slow red~~}' },
+      { file: filePath, at: `1:${hash}`, op: '{~~quick brown~>slow red~~}', reason: 'test' },
       resolver,
       state,
     );
@@ -74,7 +79,7 @@ describe('propose_change compact mode', () => {
 
     const hash = hashForLine(content, 1);
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: '{++\nnew line after first++}' },
+      { file: filePath, at: `1:${hash}`, op: '{++\nnew line after first++}', reason: 'test' },
       resolver,
       state,
     );
@@ -92,7 +97,7 @@ describe('propose_change compact mode', () => {
 
     const hash = hashForLine(content, 2);
     const result = await handleProposeChange(
-      { file: filePath, at: `2:${hash}`, op: '{--delete this line--}' },
+      { file: filePath, at: `2:${hash}`, op: '{--delete this line--}', reason: 'test' },
       resolver,
       state,
     );
@@ -162,7 +167,7 @@ describe('propose_change compact mode', () => {
 
     const hash = hashForLine(content, 1);
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${hash}`, op: '{~~one~>1~~}' },
+      { file: filePath, at: `1:${hash}`, op: '{~~one~>1~~}', reason: 'test' },
       resolver,
       state,
     );
@@ -376,6 +381,7 @@ describe('propose_change compact mode', () => {
           file: filePath,
           at: `${settledLineNum}:${settledHash}`,
           op: '{~~Line three~>Line three (updated)~~}',
+          reason: 'test',
         },
         resolver,
         state,
@@ -416,6 +422,7 @@ describe('propose_change compact mode', () => {
           file: filePath,
           at: '3:00',  // wrong hash
           op: '{~~Line three~>updated~~}',
+          reason: 'test',
         },
         resolver,
         state,
@@ -445,6 +452,7 @@ describe('propose_change compact mode', () => {
           file: filePath,
           at: `1:${rawHash}`,
           op: '{~~Just~>Only~~}',
+          reason: 'test',
         },
         resolver,
         state,
@@ -497,6 +505,7 @@ describe('propose_change compact mode', () => {
           at: `${settledLineNum}:${settledHash}`,
           op: '{~~Line three~>Line three (updated)~~}',
           author: 'ai:test-model',
+          reason: 'test',
         },
         resolver,
         state,
@@ -548,6 +557,7 @@ describe('propose_change compact mode', () => {
             at: `${unchainedLine.line}:${unchainedLine.hash}`,
             op: '{~~one~>ONE~~}',
             author: 'ai:test-model',
+            reason: 'test',
           },
           resolver,
           state,

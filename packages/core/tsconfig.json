@@ -10,7 +10,12 @@
     "skipLibCheck": true,
     "declaration": true,
     "esModuleInterop": true,
-    "composite": true
+    "composite": true,
+    // TODO: enable after fixing 337+ violations
+    // "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist", "test"]

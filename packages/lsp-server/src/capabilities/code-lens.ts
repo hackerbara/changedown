@@ -6,7 +6,7 @@
  */
 
 import { CodeLens, Command, Range } from 'vscode-languageserver';
-import { ChangeNode, ChangeStatus } from '@changetracks/core';
+import { ChangeNode, ChangeStatus, isGhostNode } from '@changetracks/core';
 import type { ViewName } from '@changetracks/core';
 import { offsetToPosition } from '../converters';
 
@@ -27,6 +27,7 @@ export interface CursorState {
  * @param viewMode Current view mode — CodeLens is suppressed in settled/raw
  * @param codeLensMode Display mode: cursor, always, or off
  * @param cursorState Current cursor position (for cursor mode)
+ * @param coherenceRate Optional coherence percentage (0–100); triggers document-level lens when < 100
  * @returns Array of CodeLens objects
  */
 export function createCodeLenses(
@@ -34,24 +35,42 @@ export function createCodeLenses(
   text: string,
   viewMode?: ViewName,
   codeLensMode?: CodeLensMode,
-  cursorState?: CursorState
+  cursorState?: CursorState,
+  coherenceRate?: number
 ): CodeLens[] {
-  // Off mode or clean preview modes
-  if (codeLensMode === 'off') return [];
-  if (viewMode === 'settled' || viewMode === 'raw') return [];
+  const lenses: CodeLens[] = [];
+
+  // Document-level coherence lens — appears in all modes except raw and off
+  if (coherenceRate !== undefined && coherenceRate < 100 && viewMode !== 'raw' && codeLensMode !== 'off') {
+    const unresolvedCount = changes.filter(isGhostNode).length;
+    if (unresolvedCount > 0) {
+      lenses.push({
+        range: Range.create(0, 0, 0, 0),
+        command: Command.create(
+          `⚠ ${unresolvedCount} unresolved anchor${unresolvedCount === 1 ? '' : 's'}`,
+          'changetracks.inspectUnresolved'
+        ),
+      });
+    }
+  }
+
+  // Off mode or clean preview modes — return early with document-level lenses only
+  if (codeLensMode === 'off') return lenses;
+  if (viewMode === 'settled' || viewMode === 'raw') return lenses;
 
   const mode = codeLensMode ?? 'cursor';
 
-  // Filter to only actionable (proposed, unsettled) changes
-  const actionable = changes.filter(c => !c.settled && c.status === ChangeStatus.Proposed);
-  if (actionable.length === 0) return [];
+  const resolved = changes.filter(c => !isGhostNode(c));
+  // Filter to actionable (proposed, unsettled) changes — ghost nodes already excluded above
+  const actionable = resolved.filter(c => !c.settled && c.status === ChangeStatus.Proposed && !c.consumedBy);
+  if (actionable.length === 0) return lenses;
 
   if (mode === 'always') {
-    return buildAlwaysModeLenses(actionable, text);
+    return lenses.concat(buildAlwaysModeLenses(actionable, text));
   }
 
   // Cursor mode
-  return buildCursorModeLenses(actionable, text, cursorState);
+  return lenses.concat(buildCursorModeLenses(actionable, text, cursorState));
 }
 
 /**

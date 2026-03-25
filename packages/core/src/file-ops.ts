@@ -5,7 +5,7 @@
  * They operate on strings and return strings (or structured results).
  */
 
-import { generateFootnoteDefinition } from './operations/footnote-generator.js';
+import { generateFootnoteDefinition, buildContextualL3EditOp } from './operations/footnote-generator.js';
 import { nowTimestamp } from './timestamp.js';
 import { applyReview } from './operations/apply-review.js';
 import { settleRejectedChangesOnly } from './operations/settled-text.js';
@@ -21,10 +21,12 @@ import {
   stripHashlinePrefixes,
   stripBoundaryEcho,
 } from './hashline-cleanup.js';
-import { CriticMarkupParser } from './parser/parser.js';
+import { parseForFormat } from './format-aware-parse.js';
 import { ChangeType, ChangeStatus } from './model/types.js';
-import { parseFootnotes, findFootnoteBlockStart } from './footnote-parser.js';
-import { FOOTNOTE_DEF_START, FOOTNOTE_CONTINUATION } from './footnote-patterns.js';
+import { findFootnoteBlockStart, extractFootnoteStatuses } from './footnote-utils.js';
+import { FOOTNOTE_DEF_START, FOOTNOTE_CONTINUATION, isL3Format, splitBodyAndFootnotes } from './footnote-patterns.js';
+import { computeLineHash, initHashline } from './hashline.js';
+import { buildLineStarts, offsetToLineNumber } from './operations/l2-to-l3.js';
 import { viewAwareFind } from './view-surface.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -37,8 +39,8 @@ export interface ProposeChangeParams {
   author: string;        // e.g., "ai:claude-opus-4.6"
   reasoning?: string;    // optional why
   insertAfter?: string;  // anchor for insertions (when oldText is empty)
-  /** 1 = adjacent comment only (Level 1); 2 = footnote (Level 2). Default 2. */
-  level?: 1 | 2;
+  /** 1 = adjacent comment only (Level 1); 2 = footnote (Level 2); 3 = L3 clean body + footnote with LINE:HASH edit-op. Default 2. */
+  level?: 1 | 2 | 3;
 }
 
 export interface ProposeChangeResult {
@@ -136,25 +138,15 @@ function containsCriticMarkup(text: string): boolean {
 // ─── Overlap detection ──────────────────────────────────────────────────────
 
 /**
- * Shared helper: parse CriticMarkup and resolve footnote statuses.
- * Returns the change nodes with status resolved from footnotes, plus the footnote map.
+ * Shared helper: parse CriticMarkup with status already resolved from footnotes.
+ * Returns the change nodes with status set by the unified parser.
  */
 function resolveProposedChanges(text: string) {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text);
+  const doc = parseForFormat(text);
   const changes = doc.getChanges();
-
-  const footnotes = parseFootnotes(text);
-  for (const node of changes) {
-    const fnInfo = footnotes.get(node.id);
-    if (fnInfo) {
-      const s = fnInfo.status.toLowerCase();
-      if (s === 'accepted') node.status = ChangeStatus.Accepted;
-      else if (s === 'rejected') node.status = ChangeStatus.Rejected;
-    }
-  }
-
-  return { changes, footnotes };
+  // parseForFormat() already resolves status from footnotes for both L2 and L3 content.
+  // No need for a separate parseFootnotes() call.
+  return { changes };
 }
 
 /**
@@ -230,7 +222,7 @@ export function findAllProposedOverlaps(
   matchStart: number,
   matchLength: number,
 ): ProposedOverlap[] {
-  const { changes, footnotes } = resolveProposedChanges(text);
+  const { changes } = resolveProposedChanges(text);
   const matchEnd = matchStart + matchLength;
   const results: ProposedOverlap[] = [];
 
@@ -254,9 +246,8 @@ export function findAllProposedOverlaps(
         default: changeType = 'unknown'; break;
       }
 
-      // Resolve author from footnote definition
-      const fnInfo = changeId ? footnotes.get(changeId) : undefined;
-      const author = fnInfo?.author;
+      // Resolve author from ChangeNode metadata (populated by parseForFormat)
+      const author = node.metadata?.author;
 
       results.push({ changeId, changeType, author, spanStart, spanEnd });
     }
@@ -322,8 +313,11 @@ export function resolveOverlapWithAuthor(
     return null; // unreachable, satisfies TS
   }
 
+  // Normalize author to @-prefixed form (footnote parser always stores @-prefixed)
+  const normalizedAuthor = author.startsWith('@') ? author : `@${author}`;
+
   // Check if ALL overlapping proposals are from same author
-  const allSameAuthor = overlaps.every(o => o.author === author);
+  const allSameAuthor = overlaps.every(o => o.author === normalizedAuthor);
   if (!allSameAuthor) {
     guardOverlap(text, matchStart, matchLength); // will throw with first overlap info
     return null; // unreachable
@@ -531,8 +525,8 @@ export interface CommittedMapResult {
  * Level 0 changes (no footnote ref) are treated as proposed.
  */
 export function stripCriticMarkupToCommittedWithMap(text: string): CommittedMapResult {
-  // Parse footnotes first to look up status for each change ID
-  const footnotes = parseFootnotes(text);
+  // Build status map from footnote headers (lightweight regex, no full AST parse)
+  const footnotes = extractFootnoteStatuses(text);
 
   const committed: string[] = [];
   const toRaw: number[] = [];
@@ -590,7 +584,7 @@ export function stripCriticMarkupToCommittedWithMap(text: string): CommittedMapR
           const ref = consumeFootnoteRef(constructEnd);
           const refEnd = ref ? ref.end : constructEnd;
           const changeId = ref?.id;
-          const status = changeId ? footnotes.get(changeId)?.status : undefined;
+          const status = changeId ? footnotes.get(changeId) : undefined;
           const isAccepted = status === 'accepted';
 
           markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
@@ -621,7 +615,7 @@ export function stripCriticMarkupToCommittedWithMap(text: string): CommittedMapR
           const ref = consumeFootnoteRef(constructEnd);
           const refEnd = ref ? ref.end : constructEnd;
           const changeId = ref?.id;
-          const status = changeId ? footnotes.get(changeId)?.status : undefined;
+          const status = changeId ? footnotes.get(changeId) : undefined;
           const isAccepted = status === 'accepted';
 
           markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
@@ -656,7 +650,7 @@ export function stripCriticMarkupToCommittedWithMap(text: string): CommittedMapR
             const ref = consumeFootnoteRef(constructEnd);
             const refEnd = ref ? ref.end : constructEnd;
             const changeId = ref?.id;
-            const status = changeId ? footnotes.get(changeId)?.status : undefined;
+            const status = changeId ? footnotes.get(changeId) : undefined;
             const isAccepted = status === 'accepted';
 
             markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
@@ -973,6 +967,19 @@ export function findUniqueMatch(
   );
 }
 
+/** Non-throwing wrapper around findUniqueMatch. Returns null on failure/ambiguity. */
+export function tryFindUniqueMatch(
+  text: string,
+  target: string,
+  normalizer?: TextNormalizer,
+): UniqueMatch | null {
+  try {
+    return findUniqueMatch(text, target, normalizer);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Replaces `target` in `text` exactly once. Throws if target is not found
  * or appears more than once.
@@ -1030,8 +1037,26 @@ export function contentZoneText(fullText: string): string {
  * Appends a footnote definition at the end of the file (or after the last
  * existing footnote block).
  */
-export function applyProposeChange(params: ProposeChangeParams): ProposeChangeResult {
+export async function applyProposeChange(params: ProposeChangeParams): Promise<ProposeChangeResult> {
   const { text, oldText, newText, changeId, author, reasoning, insertAfter, level = 2 } = params;
+
+  const isL3 = level === 3;
+  if (isL3) await initHashline();
+
+  // Safety check: prevent L2 logic on L3 text.
+  // Cheap pre-check avoids the expensive isL3Format scan for documents without footnotes.
+  if (!isL3 && text.includes('[^ct-') && isL3Format(text)) {
+    throw new Error('L3 format detected but level is not 3. Pass level: 3 for L3 text to avoid garbled output.');
+  }
+
+  // L3: search the body only (footnotes are not searchable body text)
+  let bodyText: string;
+  if (isL3) {
+    const split = splitBodyAndFootnotes(text.split('\n'));
+    bodyText = split.bodyLines.join('\n');
+  } else {
+    bodyText = text;
+  }
 
   // Validate: both empty is invalid
   if (oldText === '' && newText === '') {
@@ -1039,8 +1064,9 @@ export function applyProposeChange(params: ProposeChangeParams): ProposeChangeRe
   }
 
   let changeType: 'ins' | 'del' | 'sub';
-  let inlineMarkup: string;
+  let inlineMarkup = '';
   let modifiedBody: string;
+  let changeOffset = 0;
 
   const refSuffix = level === 2 ? `[^${changeId}]` : '';
 
@@ -1050,17 +1076,15 @@ export function applyProposeChange(params: ProposeChangeParams): ProposeChangeRe
     if (!insertAfter) {
       throw new Error('Insertion requires an insertAfter anchor to locate where to insert.');
     }
-    // Pad with a space when content starts with '+' to avoid the visually ambiguous '{+++' sequence.
-    const insPad = /^[+\-~]/.test(newText) ? ' ' : '';
-    inlineMarkup = `{++${insPad}${newText}++}${refSuffix}${level === 1 ? level1Comment(author, 'ins') : ''}`;
     // Anchor matching: exact first, then normalized fallback, then whitespace-collapsed
-    let anchorIndex = text.indexOf(insertAfter);
+    const searchTarget = isL3 ? bodyText : text;
+    let anchorIndex = searchTarget.indexOf(insertAfter);
     let anchorLength = insertAfter.length;
     if (anchorIndex === -1) {
-      anchorIndex = normalizedIndexOf(text, insertAfter, defaultNormalizer);
+      anchorIndex = normalizedIndexOf(searchTarget, insertAfter, defaultNormalizer);
     }
     if (anchorIndex === -1) {
-      const wsMatch = whitespaceCollapsedFind(text, insertAfter);
+      const wsMatch = whitespaceCollapsedFind(searchTarget, insertAfter);
       if (wsMatch !== null) {
         anchorIndex = wsMatch.index;
         anchorLength = wsMatch.length;
@@ -1069,51 +1093,105 @@ export function applyProposeChange(params: ProposeChangeParams): ProposeChangeRe
     if (anchorIndex === -1) {
       throw new Error(`insertAfter anchor not found in text: "${insertAfter}"`);
     }
-    // Guard: anchor must not resolve inside existing CriticMarkup
-    guardOverlap(text, anchorIndex, anchorLength);
+    if (!isL3) {
+      // Guard: anchor must not resolve inside existing CriticMarkup
+      guardOverlap(text, anchorIndex, anchorLength);
+    }
     const insertPos = anchorIndex + anchorLength;
-    const charBefore = insertPos > 0 ? text[insertPos - 1] : '\n';
-    const needsNewlineBefore = charBefore !== '\n';
-    // Only prepend a newline when the inserted content looks like a block element
-    // (starts with a list marker, heading, blockquote, ordered list, or contains a newline).
-    // Inline insertions like adding a word within a sentence should not get a newline.
-    const isBlockContent = /^[-#>*\d]/.test(newText) || newText.includes('\n');
-    const prefix = needsNewlineBefore && isBlockContent ? '\n' : '';
-    modifiedBody = text.slice(0, insertPos) + prefix + inlineMarkup + text.slice(insertPos);
+    changeOffset = insertPos;
+    if (isL3) {
+      modifiedBody = text.slice(0, insertPos) + newText + text.slice(insertPos);
+    } else {
+      // Pad with a space when content starts with '+' to avoid the visually ambiguous '{+++' sequence.
+      const insPad = /^[+\-~]/.test(newText) ? ' ' : '';
+      inlineMarkup = `{++${insPad}${newText}++}${refSuffix}${level === 1 ? level1Comment(author, 'ins') : ''}`;
+      const charBefore = insertPos > 0 ? text[insertPos - 1] : '\n';
+      const needsNewlineBefore = charBefore !== '\n';
+      // Only prepend a newline when the inserted content looks like a block element
+      // (starts with a list marker, heading, blockquote, ordered list, or contains a newline).
+      // Inline insertions like adding a word within a sentence should not get a newline.
+      const isBlockContent = /^[-#>*\d]/.test(newText) || newText.includes('\n');
+      const prefix = needsNewlineBefore && isBlockContent ? '\n' : '';
+      modifiedBody = text.slice(0, insertPos) + prefix + inlineMarkup + text.slice(insertPos);
+    }
   } else if (newText === '') {
     // --- Deletion ---
     changeType = 'del';
-    const searchText = contentZoneText(text);
-    const match = findUniqueMatch(searchText, oldText, defaultNormalizer);
+    const delSearchText = isL3 ? bodyText : contentZoneText(text);
+    const match = findUniqueMatch(delSearchText, oldText, defaultNormalizer);
     // Skip overlap guard for settled/committed-text matches -- the match already resolved
     // CriticMarkup and the raw range intentionally covers existing constructs.
-    if (!match.wasSettledMatch && !match.wasCommittedMatch) {
+    if (!isL3 && !match.wasSettledMatch && !match.wasCommittedMatch) {
       guardOverlap(text, match.index, match.length);
     }
-    const actualOldText = match.originalText;
-    // Strip footnote refs so they don't end up inside CriticMarkup delimiters
-    const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
-    // Pad with a space when content starts with '-' to avoid the visually ambiguous '{---' sequence.
-    const delPad = /^[+\-~]/.test(cleanedOld) ? ' ' : '';
-    inlineMarkup = `{--${delPad}${cleanedOld}--}${refSuffix}${preservedRefs.join('')}${level === 1 ? level1Comment(author, 'del') : ''}`;
-    modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
+    changeOffset = match.index;
+    if (isL3) {
+      modifiedBody = text.slice(0, match.index) + text.slice(match.index + match.length);
+    } else {
+      const actualOldText = match.originalText;
+      // Strip footnote refs so they don't end up inside CriticMarkup delimiters
+      const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
+      // Pad with a space when content starts with '-' to avoid the visually ambiguous '{---' sequence.
+      const delPad = /^[+\-~]/.test(cleanedOld) ? ' ' : '';
+      inlineMarkup = `{--${delPad}${cleanedOld}--}${refSuffix}${preservedRefs.join('')}${level === 1 ? level1Comment(author, 'del') : ''}`;
+      modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
+    }
   } else {
     // --- Substitution ---
     changeType = 'sub';
-    const searchText = contentZoneText(text);
-    const match = findUniqueMatch(searchText, oldText, defaultNormalizer);
+    const subSearchText = isL3 ? bodyText : contentZoneText(text);
+    const match = findUniqueMatch(subSearchText, oldText, defaultNormalizer);
     // Skip overlap guard for settled/committed-text matches -- the match already resolved
     // CriticMarkup and the raw range intentionally covers existing constructs.
-    if (!match.wasSettledMatch && !match.wasCommittedMatch) {
+    if (!isL3 && !match.wasSettledMatch && !match.wasCommittedMatch) {
       guardOverlap(text, match.index, match.length);
     }
-    const actualOldText = match.originalText;
-    // Strip footnote refs so they don't end up inside CriticMarkup delimiters
-    const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
-    // Pad with a space when old content starts with '~' to avoid the visually ambiguous '{~~~' sequence.
-    const subPad = /^[+\-~]/.test(cleanedOld) ? ' ' : '';
-    inlineMarkup = `{~~${subPad}${cleanedOld}~>${newText}~~}${refSuffix}${preservedRefs.join('')}${level === 1 ? level1Comment(author, 'sub') : ''}`;
-    modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
+    changeOffset = match.index;
+    if (isL3) {
+      modifiedBody = text.slice(0, match.index) + newText + text.slice(match.index + match.length);
+    } else {
+      const actualOldText = match.originalText;
+      // Strip footnote refs so they don't end up inside CriticMarkup delimiters
+      const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
+      // Pad with a space when old content starts with '~' to avoid the visually ambiguous '{~~~' sequence.
+      const subPad = /^[+\-~]/.test(cleanedOld) ? ' ' : '';
+      inlineMarkup = `{~~${subPad}${cleanedOld}~>${newText}~~}${refSuffix}${preservedRefs.join('')}${level === 1 ? level1Comment(author, 'sub') : ''}`;
+      modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
+    }
+  }
+
+  if (isL3) {
+    const mutatedSplit = splitBodyAndFootnotes(modifiedBody.split('\n'));
+    const mutatedBodyText = mutatedSplit.bodyLines.join('\n');
+    const lineStarts = buildLineStarts(mutatedBodyText);
+    const lineNumber = offsetToLineNumber(lineStarts, changeOffset);
+    const lineIdx = lineNumber - 1;
+    const lineContent = mutatedSplit.bodyLines[lineIdx] ?? '';
+    const hash = computeLineHash(lineIdx, lineContent, mutatedSplit.bodyLines);
+
+    const column = changeOffset - (lineStarts[lineIdx] ?? 0);
+    const anchorLen = changeType === 'del' ? 0 : newText.length;
+
+    const changeTypeEnum = changeType === 'ins' ? ChangeType.Insertion
+      : changeType === 'del' ? ChangeType.Deletion
+      : ChangeType.Substitution;
+
+    const editOpLine = buildContextualL3EditOp({
+      changeType: changeTypeEnum,
+      originalText: oldText,
+      currentText: newText,
+      lineContent,
+      lineNumber,
+      hash,
+      column,
+      anchorLen,
+    });
+
+    const footnoteHeader = generateFootnoteDefinition(changeId, changeType, author);
+    const reasonLine = reasoning ? `\n    @${author} ${nowTimestamp().raw}: ${reasoning}` : '';
+    const footnoteBlock = footnoteHeader + '\n' + editOpLine + reasonLine;
+    const modifiedText = appendFootnote(modifiedBody, footnoteBlock);
+    return { modifiedText, changeType };
   }
 
   if (level === 1) {
@@ -1229,7 +1307,7 @@ export function appendFootnote(text: string, footnoteBlock: string): string {
  * or line-range substitution/deletion. Appends footnote. Does not validate, write to disk, or allocate IDs.
  * Hashline params must be already validated and adjusted (e.g. by propose_batch loop).
  */
-export function applySingleOperation(params: ApplySingleOperationParams): ApplySingleOperationResult {
+export async function applySingleOperation(params: ApplySingleOperationParams): Promise<ApplySingleOperationResult> {
   const {
     fileContent,
     oldText,
@@ -1322,7 +1400,7 @@ export function applySingleOperation(params: ApplySingleOperationParams): ApplyS
     return { modifiedText, changeType, affectedStartLine: startLine, affectedEndLine: affectedEnd };
   }
 
-  const applied = applyProposeChange({
+  const applied = await applyProposeChange({
     text: fileContent,
     oldText,
     newText,

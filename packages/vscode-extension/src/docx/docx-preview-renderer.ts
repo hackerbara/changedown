@@ -1,5 +1,5 @@
 import MarkdownIt = require('markdown-it');
-import { CriticMarkupParser, ChangeType } from '@changetracks/core';
+import { parseForFormat, ChangeType } from '@changetracks/core';
 import { changetracksPlugin, PluginConfig } from '../preview/plugin';
 
 /**
@@ -38,8 +38,7 @@ export function renderMarkdownToHtml(
 
     // For Original/Final modes, pre-process to strip one side of changes
     if (isResolved) {
-        const parser = new CriticMarkupParser();
-        const doc = parser.parse(src);
+        const doc = parseForFormat(src);
         const changes = [...doc.getChanges()].sort((a, b) => b.range.start - a.range.start);
 
         for (const c of changes) {

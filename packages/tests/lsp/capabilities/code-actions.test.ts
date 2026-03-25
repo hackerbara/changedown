@@ -34,38 +34,25 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions (QuickFix kind)
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      expect(perChangeActions).toHaveLength(2);
+      expect(perChangeActions).toHaveLength(4);
 
       // Accept action
       const acceptAction = perChangeActions[0];
       expect(acceptAction.title).toBe('Accept insertion');
       expect(acceptAction.kind).toBe(CodeActionKind.QuickFix);
-      expect(acceptAction.edit).toBeTruthy();
-      expect(acceptAction.edit.changes).toBeTruthy();
-
-      // Should remove delimiters, keep content
-      const acceptEdits = acceptAction.edit.changes!['file:///test.md'];
-      expect(acceptEdits).toHaveLength(1);
-      expect(acceptEdits[0].newText).toBe('world');
-      expect(acceptEdits[0].range).toStrictEqual({
-        start: { line: 0, character: 6 },
-        end: { line: 0, character: 17 }
-      });
+      expect(acceptAction.command).toBeDefined();
+      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.command!.arguments).toContain('change-1');
+      expect(acceptAction.edit).toBeUndefined();
 
       // Reject action
       const rejectAction = perChangeActions[1];
       expect(rejectAction.title).toBe('Reject insertion');
       expect(rejectAction.kind).toBe(CodeActionKind.QuickFix);
-      expect(rejectAction.edit).toBeTruthy();
-
-      // Should remove entire markup
-      const rejectEdits = rejectAction.edit.changes!['file:///test.md'];
-      expect(rejectEdits).toHaveLength(1);
-      expect(rejectEdits[0].newText).toBe('');
-      expect(rejectEdits[0].range).toStrictEqual({
-        start: { line: 0, character: 6 },
-        end: { line: 0, character: 17 }
-      });
+      expect(rejectAction.command).toBeDefined();
+      expect(rejectAction.command!.command).toBe('changetracks.rejectChange');
+      expect(rejectAction.command!.arguments).toContain('change-1');
+      expect(rejectAction.edit).toBeUndefined();
     });
   });
 
@@ -96,19 +83,21 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      expect(perChangeActions).toHaveLength(2);
+      expect(perChangeActions).toHaveLength(4);
 
-      // Accept action - should remove entire markup including content
+      // Accept action
       const acceptAction = perChangeActions[0];
       expect(acceptAction.title).toBe('Accept deletion');
-      const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      expect(acceptEdits[0].newText).toBe('');
+      expect(acceptAction.command).toBeDefined();
+      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.edit).toBeUndefined();
 
-      // Reject action - should remove delimiters, keep content
+      // Reject action
       const rejectAction = perChangeActions[1];
       expect(rejectAction.title).toBe('Reject deletion');
-      const rejectEdits = rejectAction.edit!.changes!['file:///test.md'];
-      expect(rejectEdits[0].newText).toBe('world');
+      expect(rejectAction.command).toBeDefined();
+      expect(rejectAction.command!.command).toBe('changetracks.rejectChange');
+      expect(rejectAction.edit).toBeUndefined();
     });
   });
 
@@ -142,19 +131,21 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      expect(perChangeActions).toHaveLength(2);
+      expect(perChangeActions).toHaveLength(4);
 
-      // Accept action - should replace with modified text
+      // Accept action
       const acceptAction = perChangeActions[0];
       expect(acceptAction.title).toBe('Accept substitution');
-      const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      expect(acceptEdits[0].newText).toBe('universe');
+      expect(acceptAction.command).toBeDefined();
+      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.edit).toBeUndefined();
 
-      // Reject action - should replace with original text
+      // Reject action
       const rejectAction = perChangeActions[1];
       expect(rejectAction.title).toBe('Reject substitution');
-      const rejectEdits = rejectAction.edit!.changes!['file:///test.md'];
-      expect(rejectEdits[0].newText).toBe('world');
+      expect(rejectAction.command).toBeDefined();
+      expect(rejectAction.command!.command).toBe('changetracks.rejectChange');
+      expect(rejectAction.edit).toBeUndefined();
     });
 
     it('should handle substitution with short text', () => {
@@ -186,14 +177,12 @@ describe('Code Actions', () => {
 
       // Filter for per-change actions
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
-      expect(perChangeActions).toHaveLength(2);
+      expect(perChangeActions).toHaveLength(4);
 
-      // Should use originalText/modifiedText from the change node
-      const acceptEdits = perChangeActions[0].edit!.changes!['file:///test.md'];
-      expect(acceptEdits[0].newText).toBe('new');
-
-      const rejectEdits = perChangeActions[1].edit!.changes!['file:///test.md'];
-      expect(rejectEdits[0].newText).toBe('old');
+      expect(perChangeActions[0].command!.command).toBe('changetracks.acceptChange');
+      expect(perChangeActions[0].command!.arguments).toContain('change-4');
+      expect(perChangeActions[1].command!.command).toBe('changetracks.rejectChange');
+      expect(perChangeActions[1].command!.arguments).toContain('change-4');
     });
   });
 
@@ -226,11 +215,12 @@ describe('Code Actions', () => {
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
       expect(perChangeActions).toHaveLength(1);
 
-      // Accept action - remove markup, keep content
+      // Accept action
       const acceptAction = perChangeActions[0];
       expect(acceptAction.title).toBe('Remove highlight');
-      const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      expect(acceptEdits[0].newText).toBe('world');
+      expect(acceptAction.command).toBeDefined();
+      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.edit).toBeUndefined();
     });
 
     it('should create accept action for comment', () => {
@@ -260,11 +250,12 @@ describe('Code Actions', () => {
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
       expect(perChangeActions).toHaveLength(1);
 
-      // Accept action - remove entire comment
+      // Accept action
       const acceptAction = perChangeActions[0];
       expect(acceptAction.title).toBe('Remove comment');
-      const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      expect(acceptEdits[0].newText).toBe('');
+      expect(acceptAction.command).toBeDefined();
+      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.edit).toBeUndefined();
     });
   });
 
@@ -309,18 +300,9 @@ describe('Code Actions', () => {
       const bulkAccept = actions.find(a => a.title === 'Accept all changes');
       expect(bulkAccept).toBeTruthy();
       expect(bulkAccept!.kind).toBe(CodeActionKind.Source);
-
-      // Should process in reverse order to preserve ranges
-      const edits = bulkAccept!.edit!.changes!['file:///test.md'];
-      expect(edits).toHaveLength(2);
-
-      // First edit should be for the deletion (later in document)
-      expect(edits[0].range.start.character).toBe(18);
-      expect(edits[0].newText).toBe('');
-
-      // Second edit should be for the insertion
-      expect(edits[1].range.start.character).toBe(0);
-      expect(edits[1].newText).toBe('insert');
+      expect(bulkAccept!.command).toBeDefined();
+      expect(bulkAccept!.command!.command).toBe('changetracks.acceptAll');
+      expect(bulkAccept!.edit).toBeUndefined();
     });
 
     it('should create bulk reject all action', () => {
@@ -360,18 +342,9 @@ describe('Code Actions', () => {
       const bulkReject = actions.find(a => a.title === 'Reject all changes');
       expect(bulkReject).toBeTruthy();
       expect(bulkReject!.kind).toBe(CodeActionKind.Source);
-
-      // Should process in reverse order
-      const edits = bulkReject!.edit!.changes!['file:///test.md'];
-      expect(edits).toHaveLength(2);
-
-      // First edit should be for the deletion (reject = keep content)
-      expect(edits[0].range.start.character).toBe(18);
-      expect(edits[0].newText).toBe('delete');
-
-      // Second edit should be for the insertion (reject = remove all)
-      expect(edits[1].range.start.character).toBe(0);
-      expect(edits[1].newText).toBe('');
+      expect(bulkReject!.command).toBeDefined();
+      expect(bulkReject!.command!.command).toBe('changetracks.rejectAll');
+      expect(bulkReject!.edit).toBeUndefined();
     });
 
     it('should handle bulk operations with substitutions', () => {
@@ -403,10 +376,190 @@ describe('Code Actions', () => {
 
       const bulkAccept = actions.find(a => a.title === 'Accept all changes');
       expect(bulkAccept).toBeTruthy();
+      expect(bulkAccept!.command).toBeDefined();
+      expect(bulkAccept!.command!.command).toBe('changetracks.acceptAll');
+      expect(bulkAccept!.edit).toBeUndefined();
+    });
+  });
 
-      const edits = bulkAccept!.edit!.changes!['file:///test.md'];
-      expect(edits).toHaveLength(1);
-      expect(edits[0].newText).toBe('new');
+  describe('request-changes code action', () => {
+    it('creates request-changes action for proposed insertion', () => {
+      const change: ChangeNode = {
+        id: 'change-1',
+        type: ChangeType.Insertion,
+        status: ChangeStatus.Proposed,
+        range: { start: 6, end: 17 },
+        contentRange: { start: 9, end: 14 },
+        modifiedText: 'world',
+        level: 0, anchored: false
+      };
+      const text = 'Hello {++world++}!';
+      const diagnostic: Diagnostic = {
+        range: { start: { line: 0, character: 6 }, end: { line: 0, character: 17 } },
+        severity: DiagnosticSeverity.Information,
+        source: 'changetracks',
+        message: 'Insertion: world',
+        code: 'change-1',
+        data: { changeId: 'change-1' }
+      };
+      const actions = createCodeActions(diagnostic, [change], text, 'file:///test.md');
+      const rcAction = actions.find(a => a.title === 'Request changes');
+      expect(rcAction).toBeDefined();
+      expect(rcAction!.command!.command).toBe('changetracks.requestChanges');
+      expect(rcAction!.command!.arguments).toContain('change-1');
+    });
+  });
+
+  describe('withdraw code action', () => {
+    it('creates withdraw action for proposed changes', () => {
+      const change: ChangeNode = {
+        id: 'change-1',
+        type: ChangeType.Insertion,
+        status: ChangeStatus.Proposed,
+        range: { start: 6, end: 17 },
+        contentRange: { start: 9, end: 14 },
+        modifiedText: 'world',
+        level: 0, anchored: false
+      };
+      const text = 'Hello {++world++}!';
+      const diagnostic: Diagnostic = {
+        range: { start: { line: 0, character: 6 }, end: { line: 0, character: 17 } },
+        severity: DiagnosticSeverity.Information,
+        source: 'changetracks',
+        message: 'Insertion: world',
+        code: 'change-1',
+        data: { changeId: 'change-1' }
+      };
+      const actions = createCodeActions(diagnostic, [change], text, 'file:///test.md');
+      const withdrawAction = actions.find(a => a.title === 'Withdraw request');
+      expect(withdrawAction).toBeDefined();
+      expect(withdrawAction!.command!.command).toBe('changetracks.withdrawRequest');
+      expect(withdrawAction!.command!.arguments).toContain('change-1');
+    });
+  });
+
+  describe('createCodeActions - Consumed ops', () => {
+    const text = 'Some document text with changes';
+    const uri = 'file:///test.md';
+
+    it('offers navigate and compact actions for consumed op diagnostic', () => {
+      const changes: ChangeNode[] = [{
+        id: 'ct-3',
+        type: ChangeType.Insertion,
+        status: ChangeStatus.Proposed,
+        anchored: false,
+        level: 2,
+        consumedBy: 'ct-5',
+        range: { start: 100, end: 120 },
+        contentRange: { start: 103, end: 117 },
+        modifiedText: 'some text',
+      }];
+      const diagnostic: Diagnostic = {
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+        severity: DiagnosticSeverity.Information,
+        source: 'changetracks',
+        message: 'Consumed by ct-5',
+        code: 'ct-3',
+        data: { changeId: 'ct-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'ct-5' },
+      };
+      const actions = createCodeActions(diagnostic, changes, text, uri);
+      const titles = actions.map(a => a.title);
+
+      // Should offer navigation to consuming change
+      expect(titles.some(t => /Go to.*ct-5/.test(t))).toBe(true);
+      // Should offer compact action
+      expect(titles.some(t => /Compact/i.test(t))).toBe(true);
+      // No per-change accept/reject for consumed ops (bulk actions excluded from check)
+      const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix || a.kind === 'refactor.rewrite');
+      const perChangeTitles = perChangeActions.map(a => a.title);
+      expect(perChangeTitles.some(t => /Accept/i.test(t))).toBe(false);
+      expect(perChangeTitles.some(t => /Reject/i.test(t))).toBe(false);
+    });
+
+    it('omits compact action when change has active discussion thread', () => {
+      const changes: ChangeNode[] = [{
+        id: 'ct-3',
+        type: ChangeType.Insertion,
+        status: ChangeStatus.Proposed,
+        anchored: false,
+        level: 2,
+        consumedBy: 'ct-5',
+        replyCount: 2,
+        range: { start: 100, end: 120 },
+        contentRange: { start: 103, end: 117 },
+        modifiedText: 'some text',
+      }];
+      const diagnostic: Diagnostic = {
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+        severity: DiagnosticSeverity.Information,
+        source: 'changetracks',
+        message: 'Consumed by ct-5',
+        code: 'ct-3',
+        data: { changeId: 'ct-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'ct-5' },
+      };
+      const actions = createCodeActions(diagnostic, changes, text, uri);
+      const titles = actions.map(a => a.title);
+
+      // Should still offer navigation
+      expect(titles.some(t => /Go to.*ct-5/.test(t))).toBe(true);
+      // Should NOT offer compact when thread is active
+      expect(titles.some(t => /Compact/i.test(t))).toBe(false);
+    });
+
+    it('routes consumed op through navigate command to consuming change', () => {
+      const changes: ChangeNode[] = [{
+        id: 'ct-3',
+        type: ChangeType.Insertion,
+        status: ChangeStatus.Proposed,
+        anchored: false,
+        level: 2,
+        consumedBy: 'ct-5',
+        range: { start: 100, end: 120 },
+        contentRange: { start: 103, end: 117 },
+        modifiedText: 'some text',
+      }];
+      const diagnostic: Diagnostic = {
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+        severity: DiagnosticSeverity.Information,
+        source: 'changetracks',
+        message: 'Consumed by ct-5',
+        code: 'ct-3',
+        data: { changeId: 'ct-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'ct-5' },
+      };
+      const actions = createCodeActions(diagnostic, changes, text, uri);
+      const navigateAction = actions.find(a => /Go to/.test(a.title));
+
+      expect(navigateAction).toBeDefined();
+      expect(navigateAction!.command!.command).toBe('changetracks.jumpToFootnote');
+      expect(navigateAction!.command!.arguments).toContain('ct-5');
+    });
+
+    it('routes compact action to compactChange command', () => {
+      const changes: ChangeNode[] = [{
+        id: 'ct-3',
+        type: ChangeType.Insertion,
+        status: ChangeStatus.Proposed,
+        anchored: false,
+        level: 2,
+        consumedBy: 'ct-5',
+        range: { start: 100, end: 120 },
+        contentRange: { start: 103, end: 117 },
+        modifiedText: 'some text',
+      }];
+      const diagnostic: Diagnostic = {
+        range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
+        severity: DiagnosticSeverity.Information,
+        source: 'changetracks',
+        message: 'Consumed by ct-5',
+        code: 'ct-3',
+        data: { changeId: 'ct-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'ct-5' },
+      };
+      const actions = createCodeActions(diagnostic, changes, text, uri);
+      const compactAction = actions.find(a => /Compact/i.test(a.title));
+
+      expect(compactAction).toBeDefined();
+      expect(compactAction!.command!.command).toBe('changetracks.compactChange');
+      expect(compactAction!.command!.arguments).toContain('ct-3');
     });
   });
 
@@ -440,8 +593,10 @@ describe('Code Actions', () => {
       expect(perChangeActions.length >= 2).toBeTruthy();
 
       const acceptAction = perChangeActions[0];
-      const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      expect(acceptEdits[0].newText).toBe('Line 2\nLine 3');
+      expect(acceptAction.command).toBeDefined();
+      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.command!.arguments).toContain('change-12');
+      expect(acceptAction.edit).toBeUndefined();
     });
 
     it('should handle CRLF line endings', () => {
@@ -473,8 +628,9 @@ describe('Code Actions', () => {
       expect(perChangeActions.length >= 2).toBeTruthy();
 
       const acceptAction = perChangeActions[0];
-      const acceptEdits = acceptAction.edit!.changes!['file:///test.md'];
-      expect(acceptEdits[0].newText).toBe('Line 2');
+      expect(acceptAction.command).toBeDefined();
+      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.edit).toBeUndefined();
     });
 
     it('should return empty array for unknown change type', () => {
@@ -493,8 +649,12 @@ describe('Code Actions', () => {
 
       // Should still have bulk actions
       expect(actions.length >= 2).toBeTruthy();
-      expect(actions.find(a => a.title === 'Accept all changes')).toBeTruthy();
-      expect(actions.find(a => a.title === 'Reject all changes')).toBeTruthy();
+      const bulkAccept = actions.find(a => a.title === 'Accept all changes');
+      const bulkReject = actions.find(a => a.title === 'Reject all changes');
+      expect(bulkAccept).toBeTruthy();
+      expect(bulkReject).toBeTruthy();
+      expect(bulkAccept!.command!.command).toBe('changetracks.acceptAll');
+      expect(bulkReject!.command!.command).toBe('changetracks.rejectAll');
     });
   });
 });

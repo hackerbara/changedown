@@ -36,6 +36,10 @@ function createMockConnection(): Connection {
         on: (handler: any) => { handlers.semanticTokens = handler; }
       }
     },
+    console: { log: () => {}, error: () => {}, warn: () => {}, info: () => {} },
+    client: { register: async () => {} },
+    workspace: { applyEdit: async () => ({ applied: false }) },
+    onDidChangeWatchedFiles: () => {},
     listen: () => {},
     _handlers: handlers, // For test access
     _notifications: notifications, // For test access
@@ -110,11 +114,11 @@ describe('Server', () => {
       }).not.toThrow();
     });
 
-    it('should parse document on open', () => {
+    it('should parse document on open', async () => {
       const uri = 'file:///test.md';
       const text = '{++addition++}';
 
-      server.handleDocumentOpen(uri, text);
+      await server.handleDocumentOpen(uri, text);
 
       const parseResult = server.getParseResult(uri);
       expect(parseResult).toBeTruthy();
@@ -123,16 +127,18 @@ describe('Server', () => {
       expect(change.type).toBe(ChangeType.Insertion);
     });
 
-    it('should update parse result on document change', () => {
+    it('should update parse result on document change', async () => {
       const uri = 'file:///test.md';
       const initialText = 'plain text';
-      const updatedText = '{++addition++}';
+      // Use L3 format (footnote-native) so handleDocumentChange does not
+      // attempt L2-to-L3 re-promotion which requires workspace.applyEdit.
+      const updatedText = '{++addition++}[^ct-1]\n\n[^ct-1]: ins | proposed | @test | 2026-01-01';
 
       server.handleDocumentOpen(uri, initialText);
       let parseResult = server.getParseResult(uri);
       expect(parseResult?.getChanges()).toHaveLength(0);
 
-      server.handleDocumentChange(uri, updatedText);
+      await server.handleDocumentChange(uri, updatedText);
       parseResult = server.getParseResult(uri);
       expect(parseResult).toBeTruthy();
       expect(parseResult.getChanges()).toHaveLength(1);
@@ -140,14 +146,14 @@ describe('Server', () => {
       expect(change.type).toBe(ChangeType.Insertion);
     });
 
-    it('should cache parse results by URI', () => {
+    it('should cache parse results by URI', async () => {
       const uri1 = 'file:///test1.md';
       const uri2 = 'file:///test2.md';
       const text1 = '{++doc1++}';
       const text2 = '{--doc2--}';
 
-      server.handleDocumentOpen(uri1, text1);
-      server.handleDocumentOpen(uri2, text2);
+      await server.handleDocumentOpen(uri1, text1);
+      await server.handleDocumentOpen(uri2, text2);
 
       const result1 = server.getParseResult(uri1);
       const result2 = server.getParseResult(uri2);
@@ -159,18 +165,19 @@ describe('Server', () => {
       expect(result2.getChanges()[0].type).toBe(ChangeType.Deletion);
     });
 
-    it('should handle multiple changes to same document', () => {
+    it('should handle multiple changes to same document', async () => {
       const uri = 'file:///test.md';
 
       server.handleDocumentOpen(uri, 'plain text');
       expect(server.getParseResult(uri)?.getChanges()).toHaveLength(0);
 
-      server.handleDocumentChange(uri, '{++addition++}');
+      // Use L3 format to avoid L2-to-L3 re-promotion path
+      await server.handleDocumentChange(uri, '{++addition++}[^ct-1]\n\n[^ct-1]: ins | proposed | @test | 2026-01-01');
       const result1 = server.getParseResult(uri);
       expect(result1).toBeTruthy();
       expect(result1.getChanges()).toHaveLength(1);
 
-      server.handleDocumentChange(uri, '{++add1++} and {--del1--}');
+      await server.handleDocumentChange(uri, '{++add1++}[^ct-1] and {--del1--}[^ct-2]\n\n[^ct-1]: ins | proposed | @test | 2026-01-01\n[^ct-2]: del | proposed | @test | 2026-01-01');
       const result2 = server.getParseResult(uri);
       expect(result2).toBeTruthy();
       expect(result2.getChanges()).toHaveLength(2);
@@ -181,7 +188,7 @@ describe('Server', () => {
       expect(result).toBeUndefined();
     });
 
-    it('should parse complex CriticMarkup syntax', () => {
+    it('should parse complex CriticMarkup syntax', async () => {
       const uri = 'file:///test.md';
       const text = `Plain text here.
 {++This is an addition++}
@@ -191,7 +198,7 @@ describe('Server', () => {
 {>>a comment<<}
 {==highlight with comment==}{>>attached comment<<}`;
 
-      server.handleDocumentOpen(uri, text);
+      await server.handleDocumentOpen(uri, text);
       const parseResult = server.getParseResult(uri);
 
       expect(parseResult).toBeTruthy();
@@ -217,6 +224,9 @@ describe('Server', () => {
       const uri = 'file:///test.md';
       const text = 'Plain text with no changes';
 
+      // Set codeLensMode to 'always' so lenses are returned without cursor state
+      (server as any).codeLensMode = 'always';
+
       server.handleDocumentOpen(uri, text);
 
       const lenses = server.handleCodeLens({ textDocument: { uri } });
@@ -224,23 +234,19 @@ describe('Server', () => {
       expect(lenses).toHaveLength(0);
     });
 
-    it('should return code lenses for document with changes', () => {
+    it('should return code lenses for document with changes', async () => {
       const uri = 'file:///test.md';
       const text = '{++addition++} and {--deletion--}';
 
-      server.handleDocumentOpen(uri, text);
+      // Set codeLensMode to 'always' so lenses are returned without cursor state
+      (server as any).codeLensMode = 'always';
+
+      await server.handleDocumentOpen(uri, text);
 
       const lenses = server.handleCodeLens({ textDocument: { uri } });
       expect(Array.isArray(lenses)).toBeTruthy();
-      // Should have 2 document-level lenses + 2 changes × 2 lenses each = 6 total
-      expect(lenses).toHaveLength(6);
-
-      // Check that we have document-level lenses
-      const docLenses = lenses.filter(lens =>
-        lens.command?.title.startsWith('Accept All') ||
-        lens.command?.title.startsWith('Reject All')
-      );
-      expect(docLenses).toHaveLength(2);
+      // In 'always' mode: 2 changes x 2 per-change lenses = 4 total
+      expect(lenses).toHaveLength(4);
 
       // Check that we have per-change lenses
       const perChangeLenses = lenses.filter(lens =>
@@ -257,7 +263,7 @@ describe('Server', () => {
       expect(lenses).toHaveLength(0);
     });
 
-    it('should provide semantic tokens capability in initialization', () => {
+    it('should provide semantic tokens capability in initialization', async () => {
       const params: InitializeParams = {
         processId: null,
         rootUri: null,
@@ -265,17 +271,17 @@ describe('Server', () => {
         workspaceFolders: null
       };
 
-      const result = server.handleInitialize(params);
+      const result = await server.handleInitialize(params);
       expect(result.capabilities.semanticTokensProvider).toBeTruthy();
       expect(result.capabilities.semanticTokensProvider.legend).toBeTruthy();
       expect(result.capabilities.semanticTokensProvider.full).toBeTruthy();
     });
 
-    it('should return semantic tokens for parsed document', () => {
+    it('should return semantic tokens for parsed document', async () => {
       const uri = 'file:///test.md';
       const text = '{++addition++}';
 
-      server.handleDocumentOpen(uri, text);
+      await server.handleDocumentOpen(uri, text);
 
       const semanticTokens = server.handleSemanticTokens({
         textDocument: { uri }
@@ -295,11 +301,11 @@ describe('Server', () => {
       expect(semanticTokens.data).toHaveLength(0);
     });
 
-    it('should parse markdown file with CriticMarkup when languageId is markdown', () => {
+    it('should parse markdown file with CriticMarkup when languageId is markdown', async () => {
       const uri = 'file:///test.md';
       const text = '{++addition++}';
 
-      server.handleDocumentOpen(uri, text, 'markdown');
+      await server.handleDocumentOpen(uri, text, 'markdown');
 
       const parseResult = server.getParseResult(uri);
       expect(parseResult).toBeTruthy();
@@ -308,7 +314,7 @@ describe('Server', () => {
       expect(change.type).toBe(ChangeType.Insertion);
     });
 
-    it('should parse Python file with sidecar annotations when languageId is python', () => {
+    it('should parse Python file with sidecar annotations when languageId is python', async () => {
       const uri = 'file:///test.py';
       const text = `def greet(name):  # ct-1
     return "Hello"
@@ -318,7 +324,7 @@ describe('Server', () => {
 # type: insertion
 # -- ChangeTracks ---`;
 
-      server.handleDocumentOpen(uri, text, 'python');
+      await server.handleDocumentOpen(uri, text, 'python');
 
       const parseResult = server.getParseResult(uri);
       expect(parseResult).toBeTruthy();
@@ -328,7 +334,7 @@ describe('Server', () => {
       expect(change.id).toBe('ct-1');
     });
 
-    it('should parse JavaScript file with sidecar annotations when languageId is javascript', () => {
+    it('should parse JavaScript file with sidecar annotations when languageId is javascript', async () => {
       const uri = 'file:///test.js';
       const text = `function greet(name) {  // ct-1
     return "Hello";
@@ -339,7 +345,7 @@ describe('Server', () => {
 // type: insertion
 // -- ChangeTracks ---`;
 
-      server.handleDocumentOpen(uri, text, 'javascript');
+      await server.handleDocumentOpen(uri, text, 'javascript');
 
       const parseResult = server.getParseResult(uri);
       expect(parseResult).toBeTruthy();
@@ -349,7 +355,7 @@ describe('Server', () => {
       expect(change.id).toBe('ct-1');
     });
 
-    it('should parse TypeScript file with sidecar annotations when languageId is typescript', () => {
+    it('should parse TypeScript file with sidecar annotations when languageId is typescript', async () => {
       const uri = 'file:///test.ts';
       const text = `function greet(name: string): string {  // ct-1
     return "Hello";
@@ -360,7 +366,7 @@ describe('Server', () => {
 // type: insertion
 // -- ChangeTracks ---`;
 
-      server.handleDocumentOpen(uri, text, 'typescript');
+      await server.handleDocumentOpen(uri, text, 'typescript');
 
       const parseResult = server.getParseResult(uri);
       expect(parseResult).toBeTruthy();
@@ -370,19 +376,19 @@ describe('Server', () => {
       expect(change.id).toBe('ct-1');
     });
 
-    it('should handle code file without sidecar annotations', () => {
+    it('should handle code file without sidecar annotations', async () => {
       const uri = 'file:///test.py';
       const text = `def greet(name):
     return "Hello"`;
 
-      server.handleDocumentOpen(uri, text, 'python');
+      await server.handleDocumentOpen(uri, text, 'python');
 
       const parseResult = server.getParseResult(uri);
       expect(parseResult).toBeTruthy();
       expect(parseResult.getChanges()).toHaveLength(0);
     });
 
-    it('should update parse result with languageId on document change', () => {
+    it('should update parse result with languageId on document change', async () => {
       const uri = 'file:///test.py';
       const initialText = 'def greet():\n    pass';
       const updatedText = `def greet():  # ct-1
@@ -393,11 +399,11 @@ describe('Server', () => {
 # type: insertion
 # -- ChangeTracks ---`;
 
-      server.handleDocumentOpen(uri, initialText, 'python');
+      await server.handleDocumentOpen(uri, initialText, 'python');
       let parseResult = server.getParseResult(uri);
       expect(parseResult?.getChanges()).toHaveLength(0);
 
-      server.handleDocumentChange(uri, updatedText, 'python');
+      await server.handleDocumentChange(uri, updatedText, 'python');
       parseResult = server.getParseResult(uri);
       expect(parseResult).toBeTruthy();
       expect(parseResult.getChanges()).toHaveLength(1);
@@ -406,7 +412,7 @@ describe('Server', () => {
       expect(change.id).toBe('ct-1');
     });
 
-    it('should handle sidecar substitution in code file', () => {
+    it('should handle sidecar substitution in code file', async () => {
       const uri = 'file:///test.py';
       const text = `def greet(name):
     # - return f"Hello, {name}!"  # ct-1
@@ -418,7 +424,7 @@ describe('Server', () => {
 # original: return f"Hello, {name}!"
 # -- ChangeTracks ---`;
 
-      server.handleDocumentOpen(uri, text, 'python');
+      await server.handleDocumentOpen(uri, text, 'python');
 
       const parseResult = server.getParseResult(uri);
       expect(parseResult).toBeTruthy();
@@ -428,7 +434,7 @@ describe('Server', () => {
       expect(change.id).toBe('ct-1');
     });
 
-    it('should parse code file with multiple sidecar changes', () => {
+    it('should parse code file with multiple sidecar changes', async () => {
       const uri = 'file:///test.py';
       const text = `def greet(name):  # ct-1
     # - return f"Hello, {name}!"  # ct-2
@@ -443,13 +449,73 @@ describe('Server', () => {
 # original: return f"Hello, {name}!"
 # -- ChangeTracks ---`;
 
-      server.handleDocumentOpen(uri, text, 'python');
+      await server.handleDocumentOpen(uri, text, 'python');
 
       const parseResult = server.getParseResult(uri);
       expect(parseResult).toBeTruthy();
       expect(parseResult.getChanges()).toHaveLength(2);
       expect(parseResult.getChanges()[0].type).toBe(ChangeType.Insertion);
       expect(parseResult.getChanges()[1].type).toBe(ChangeType.Substitution);
+    });
+
+    it('should suppress decorationData during batch edit', async () => {
+      const uri = 'file:///test-batch.md';
+      const notifications = (mockConnection as any)._notifications as Array<{ method: string; params: any }>;
+
+      // Open document (plain text — no promotion, synchronous path)
+      await server.handleDocumentOpen(uri, 'hello', 'markdown');
+
+      // Clear all notifications from open
+      notifications.length = 0;
+
+      // Start batch
+      server.handleBatchEditStart(uri);
+
+      // Change document during batch
+      await server.handleDocumentChange(uri, 'hello world', 'markdown');
+
+      // decorationData must NOT have been sent during the batch window
+      const decoNotifs = notifications.filter(
+        (n) => n.method === 'changetracks/decorationData'
+      );
+      expect(decoNotifs).toHaveLength(0);
+
+      // Parse result must still be updated (parse-and-cache still runs)
+      const parseResult = server.getParseResult(uri);
+      expect(parseResult).toBeTruthy();
+      expect(parseResult.getChanges()).toHaveLength(0); // 'hello world' has no markup
+    });
+
+    it('should send fresh decorationData on batchEditEnd', async () => {
+      const uri = 'file:///test-batchend.md';
+      const notifications = (mockConnection as any)._notifications as Array<{ method: string; params: any }>;
+
+      // Open document with plain text
+      await server.handleDocumentOpen(uri, 'hello', 'markdown');
+
+      // Clear all notifications from open
+      notifications.length = 0;
+
+      // Start batch, change document, then end batch
+      server.handleBatchEditStart(uri);
+      await server.handleDocumentChange(uri, 'hello world', 'markdown');
+
+      // No decorationData should have been sent during the batch
+      const decosDuringBatch = notifications.filter(
+        (n) => n.method === 'changetracks/decorationData'
+      );
+      expect(decosDuringBatch).toHaveLength(0);
+
+      // End batch
+      server.handleBatchEditEnd(uri);
+
+      // Should now have exactly one decorationData notification
+      const decoNotifs = notifications.filter(
+        (n) => n.method === 'changetracks/decorationData'
+      );
+      expect(decoNotifs).toHaveLength(1);
+      expect(decoNotifs[0].params.uri).toBe(uri);
+      expect(decoNotifs[0].params.documentVersion).toBeDefined();
     });
   });
 });

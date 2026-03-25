@@ -4,10 +4,18 @@ import type {
     EditEvent,
     EditBoundaryState,
     EditBoundaryEffect,
+    ChangeNode,
 } from '@changetracks/core';
 import {
     processEvent,
     DEFAULT_EDIT_BOUNDARY_CONFIG,
+    initHashline,
+    computeLineHash,
+    buildContextualL3EditOp,
+    footnoteRefGlobal,
+    ChangeType as CoreChangeType,
+    changeTypeToAbbrev,
+    ChangeStatus,
 } from '@changetracks/core';
 import { offsetToPosition } from './converters';
 import { getOutputChannel } from './output-channel';
@@ -39,9 +47,10 @@ export class PendingEditManager {
         private readonly getDocument: (uri?: string) => vscode.TextDocument | null,
         private readonly workspace: {
             parse: (text: string, languageId?: string) => { getChanges: () => Array<{ id: string; type: string; level: number; range: { start: number; end: number }; contentRange: { start: number; end: number }; modifiedText?: string; originalText?: string }> };
+            isFootnoteNative: (text: string) => boolean;
         },
         private readonly allocateScId?: () => string,
-        private readonly onChangeTracked?: (scId: string, changeType: string) => Promise<void>,
+        private readonly onChangeTracked?: (scId: string, changeType: string, l3EditOpLine?: string) => Promise<void>,
     ) {
         this.state = {
             pending: null,
@@ -121,6 +130,73 @@ export class PendingEditManager {
             type: 'insertion',
             scId: buf.scId,
         };
+    }
+
+    /**
+     * Produce optimistic ChangeNode[] from pending edit state for instant decoration.
+     * These nodes have id='' and level=0 — non-decoration consumers MUST filter them out.
+     * Returns empty array when no pending edit exists.
+     */
+    public getPendingChangeNodes(uri?: string): ChangeNode[] {
+        const buf = this.state.pending;
+        if (!buf) return [];
+        // Fast URI mismatch check — avoid expensive getDocument() call
+        if (uri && this.pendingUri && this.pendingUri !== uri) return [];
+
+        // Check the document is still open
+        const doc = this.getDocument(this.pendingUri ?? undefined);
+        if (!doc) return [];
+
+        const hasNew = buf.currentText.length > 0;
+        const hasOld = buf.originalText.length > 0;
+
+        if (hasNew && !hasOld) {
+            // Insertion: typed text at [anchor, anchor + currentText.length)
+            return [{
+                id: '',
+                type: CoreChangeType.Insertion,
+                status: ChangeStatus.Proposed,
+                range: { start: buf.anchorOffset, end: buf.anchorOffset + buf.currentText.length },
+                contentRange: { start: buf.anchorOffset, end: buf.anchorOffset + buf.currentText.length },
+                modifiedText: buf.currentText,
+                originalText: '',
+                level: 0,
+                anchored: false,
+            }];
+        }
+
+        if (!hasNew && hasOld) {
+            // Deletion: zero-width range at deletion point, originalText for ghost
+            return [{
+                id: '',
+                type: CoreChangeType.Deletion,
+                status: ChangeStatus.Proposed,
+                range: { start: buf.anchorOffset, end: buf.anchorOffset },
+                contentRange: { start: buf.anchorOffset, end: buf.anchorOffset },
+                modifiedText: '',
+                originalText: buf.originalText,
+                level: 0,
+                anchored: false,
+            }];
+        }
+
+        if (hasNew && hasOld) {
+            // Substitution: range covers new text, originalText for ghost
+            return [{
+                id: '',
+                type: CoreChangeType.Substitution,
+                status: ChangeStatus.Proposed,
+                range: { start: buf.anchorOffset, end: buf.anchorOffset + buf.currentText.length },
+                contentRange: { start: buf.anchorOffset, end: buf.anchorOffset + buf.currentText.length },
+                modifiedText: buf.currentText,
+                originalText: buf.originalText,
+                level: 0,
+                anchored: false,
+            }];
+        }
+
+        // Empty buffer (no current text, no original text) — nothing to show
+        return [];
     }
 
     public hasPendingEdit(): boolean {
@@ -317,6 +393,9 @@ export class PendingEditManager {
      * - insertion:     {++currentText++}
      * - deletion:      {--originalText--}
      * - substitution:  {~~originalText~>currentText~~}
+     *
+     * In L3 format (clean body + footnotes), no body edit is performed.
+     * Instead, a footnote definition with LINE:HASH {edit-op} is appended.
      */
     private async executeCrystallize(effect: Extract<EditBoundaryEffect, { type: 'crystallize' }>): Promise<void> {
         const doc = this.getDocument(this.pendingUri ?? undefined);
@@ -326,6 +405,11 @@ export class PendingEditManager {
             return;
         }
         const text = doc.getText();
+
+        if (this.workspace.isFootnoteNative(text)) {
+            return this.crystallizeL3(effect, doc, text);
+        }
+
         const scId = effect.scId || undefined;
         const scIdSuffix = scId ? `[^${scId}]` : '';
 
@@ -366,7 +450,95 @@ export class PendingEditManager {
         }
 
         if (scId && this.onChangeTracked) {
-            await this.onChangeTracked(scId, effect.changeType);
+            const ct = effect.changeType;
+            const typeEnum = ct === 'insertion' ? CoreChangeType.Insertion
+              : ct === 'deletion' ? CoreChangeType.Deletion
+              : CoreChangeType.Substitution;
+            await this.onChangeTracked(scId, changeTypeToAbbrev(typeEnum));
+        }
+
+        this.pendingUri = null;
+    }
+
+    /**
+     * L3 crystallization: the body text already reflects the user's edit.
+     * No body edit is performed. Appends a footnote with LINE:HASH {edit-op}
+     * as the continuation body so the change is fully described.
+     *
+     * - insertion:    footnote body: LINE:HASH {++currentText++}
+     * - deletion:     footnote body: LINE:HASH {--originalText--}
+     * - substitution: footnote body: LINE:HASH {~~originalText~>currentText~~}
+     */
+    private async crystallizeL3(
+        effect: Extract<EditBoundaryEffect, { type: 'crystallize' }>,
+        doc: vscode.TextDocument,
+        text: string,
+    ): Promise<void> {
+        const scId = effect.scId || undefined;
+        if (!scId) {
+            this.log('crystallizeL3: no scId, abandoning');
+            this.pendingUri = null;
+            return;
+        }
+
+        // Ensure xxhash-wasm is initialized (idempotent — fast on subsequent calls)
+        await initHashline();
+
+        // Compute which line the anchor offset falls on (0-based index)
+        const position = doc.positionAt(effect.offset);
+        const lineIdx = position.line;          // 0-based
+        const lineNumber = lineIdx + 1;         // 1-indexed for L3 format
+        const lineText = doc.lineAt(lineIdx).text;
+        // Strip footnote refs — parser searches clean body lines
+        const cleanLine = lineText.replace(footnoteRefGlobal(), '');
+        // Adjust column for stripped refs before the change position
+        const rawCol = position.character;
+        const refsBeforeChange = lineText.slice(0, rawCol).match(footnoteRefGlobal()) ?? [];
+        const refCharsRemoved = refsBeforeChange.reduce((sum, r) => sum + r.length, 0);
+        const cleanCol = rawCol - refCharsRemoved;
+
+        // Compute anchorLen based on change type
+        let anchorLen: number;
+        const ct = effect.changeType;
+        if (ct === 'insertion') {
+          anchorLen = effect.currentText.length;
+        } else if (ct === 'deletion') {
+          anchorLen = 0;
+        } else if (ct === 'substitution') {
+          anchorLen = effect.currentText.length;
+        } else if (ct === 'highlight') {
+          anchorLen = effect.originalText.length;
+        } else {
+          anchorLen = 0; // comment
+        }
+
+        // Map string changeType to ChangeType enum
+        const changeTypeEnum = ct === 'insertion' ? CoreChangeType.Insertion
+          : ct === 'deletion' ? CoreChangeType.Deletion
+          : ct === 'substitution' ? CoreChangeType.Substitution
+          : ct === 'highlight' ? CoreChangeType.Highlight
+          : CoreChangeType.Comment;
+
+        // computeLineHash needs allLines only for blank-line context hashing
+        const stripped = cleanLine.replace(/\r$/, '').replace(/\s+/g, '');
+        const allLines = stripped.length === 0 ? text.split('\n') : undefined;
+        const hash = computeLineHash(lineIdx, cleanLine, allLines);
+
+        const editOpLine = buildContextualL3EditOp({
+          changeType: changeTypeEnum,
+          originalText: effect.originalText,
+          currentText: effect.currentText,
+          lineContent: cleanLine,
+          lineNumber,
+          hash,
+          column: cleanCol,
+          anchorLen,
+        });
+
+        this.log(`crystallizeL3: appending footnote for ${scId} at ${editOpLine.trim()}`);
+
+        if (this.onChangeTracked) {
+            await this.onChangeTracked(scId, changeTypeToAbbrev(changeTypeEnum), editOpLine);
         }
 
         this.pendingUri = null;

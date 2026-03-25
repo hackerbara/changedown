@@ -1,6 +1,13 @@
-export { parseProjectConfig, type ProjectReviewConfig, type ReasonRequirement } from './config/index.js';
+export {
+  parseProjectConfig, DEFAULT_CONFIG,
+  type ChangeTracksConfig, type HumanAgentSplit, type PolicyMode, type CreationTracking,
+  type CoherenceConfig,
+  // Backward compat aliases (deprecated)
+  type ProjectReviewConfig, type ReasonRequirement,
+} from './config/index.js';
+export { reviewerType, canAccept, canWithdraw, type ParticipantType } from './config/review-permissions.js';
 export { parseTimestamp, nowTimestamp, compareTimestamps, formatTimestamp, type Timestamp } from './timestamp.js';
-export { ChangeType, ChangeStatus, OffsetRange, ChangeNode, InlineMetadata, TextEdit, PendingOverlay, Approval, Revision, DiscussionComment, Resolution } from './model/types.js';
+export { ChangeType, ChangeStatus, changeTypeToAbbrev, OffsetRange, ChangeNode, InlineMetadata, TextEdit, PendingOverlay, Approval, Revision, DiscussionComment, Resolution, isGhostNode, consumptionLabel, nodeStatus, UnresolvedDiagnostic } from './model/types.js';
 export { VirtualDocument } from './model/document.js';
 export { TokenType } from './parser/tokens.js';
 export { CriticMarkupParser, type ParseOptions } from './parser/parser.js';
@@ -11,18 +18,27 @@ export { computeReplyEdit, type ReplyOptions, type ReplyResult } from './operati
 export { nextChange, previousChange } from './operations/navigation.js';
 export { wrapInsertion, wrapDeletion, wrapSubstitution } from './operations/tracking.js';
 export { insertComment } from './operations/comment.js';
-export { generateFootnoteDefinition, scanMaxCtId } from './operations/footnote-generator.js';
+export { generateFootnoteDefinition, scanMaxCtId, buildEditOpFromParts, formatL3EditOpLine, buildContextualL3EditOp, type ContextualEditOpParams } from './operations/footnote-generator.js';
 export { ensureL2, type EnsureL2Options, type EnsureL2Result } from './operations/ensure-l2.js';
 export { applyReview, VALID_DECISIONS, type Decision, type ApplyReviewSuccess, type ApplyReviewError } from './operations/apply-review.js';
 export { computeAmendEdits, type AmendOptions, type AmendResult, type AmendSuccess, type AmendError } from './operations/amend.js';
 export { computeSupersedeResult, type SupersedeOptions, type SupersedeResult, type SupersedeSuccess, type SupersedeError } from './operations/supersede.js';
 export { promoteToLevel1, promoteToLevel2 } from './operations/level-promotion.js';
 export { compactToLevel1, compactToLevel0 } from './operations/level-descent.js';
+export {
+  analyzeCompactionCandidates, compact, compactL2, checkSupersedesIntegrity,
+  type FootnoteRef, type SupersedeChain, type CompactionSurface,
+  type CompactionRequest, type CompactedDocument, type VerificationResult,
+} from './operations/compact.js';
+export { convertL2ToL3, bodyReplacement, buildLineStarts, offsetToLineNumber } from './operations/l2-to-l3.js';
+export { convertL3ToL2 } from './operations/l3-to-l2.js';
+export { scrubBackward, scrubForward, resolve, traceDependencies, resolveReplayFromParsedFootnotes, type ActiveOperation, type IntermediatePosition, type BackwardPassResult, type ForwardPassResult, type ResolvedChange, type ResolvedDocument, type DependencyReport, type DependentChange, type ReplayFootnote, type ReplayResolutionResult } from './operations/scrub.js';
 export { Workspace } from './workspace.js';
 export { CommentSyntax, StrippedLine, getCommentSyntax, wrapLineComment, stripLineComment, escapeRegex, lineOffset } from './comment-syntax.js';
 export { annotateMarkdown } from './annotators/markdown-annotator.js';
 export { annotateSidecar, AnnotationMetadata } from './annotators/sidecar-annotator.js';
 export { SidecarParser } from './parser/sidecar-parser.js';
+export { FootnoteNativeParser, parseContextualEditOp } from './parser/footnote-native-parser.js';
 export { computeSidecarAccept, computeSidecarReject, computeSidecarResolveAll } from './operations/sidecar-accept-reject.js';
 export { ChangeProvider } from './providers/change-provider.js';
 export { parseTrackingHeader, generateTrackingHeader, insertTrackingHeader, TrackingHeader } from './tracking-header.js';
@@ -31,7 +47,9 @@ export { computeSettledReplace, computeSettledText, computeOriginalText, settleA
 export { initHashline, ensureHashlineReady, computeLineHash, formatHashLines, parseLineRef, validateLineRef, HashlineMismatchError } from './hashline.js';
 export { settledLine, computeSettledLineHash, formatTrackedHashLines, formatTrackedHeader } from './hashline-tracked.js';
 export { stripHashlinePrefixes, detectNoOp, relocateHashRef, stripBoundaryEcho } from './hashline-cleanup.js';
-export { parseFootnotes, findFootnoteBlockStart, type FootnoteInfo } from './footnote-parser.js';
+export { findFootnoteBlockStart } from './footnote-utils.js';
+/** @deprecated Use parseForFormat() from format-aware-parse.js instead */
+export { parseFootnotes, type FootnoteInfo } from './footnote-parser.js';
 export { computeCommittedLine, computeCommittedView, formatCommittedOutput, type CommittedLineResult, type CommittedLine, type CommittedViewResult, type FormatOptions, type FootnoteStatus } from './committed-text.js';
 export { SIDECAR_BLOCK_MARKER, findSidecarBlockStart } from './constants.js';
 export {
@@ -44,14 +62,15 @@ export {
   FOOTNOTE_REF_ANCHORED, footnoteRefGlobal, footnoteRefNumericGlobal,
   FOOTNOTE_DEF_START, FOOTNOTE_DEF_START_QUICK,
   FOOTNOTE_DEF_LENIENT, FOOTNOTE_DEF_STRICT, FOOTNOTE_DEF_STATUS, FOOTNOTE_DEF_STATUS_VALUE,
-  FOOTNOTE_CONTINUATION,
+  FOOTNOTE_CONTINUATION, FOOTNOTE_THREAD_REPLY,
+  FOOTNOTE_L3_EDIT_OP, isL3Format, splitBodyAndFootnotes,
 } from './footnote-patterns.js';
 export {
   buildViewSurfaceMap, viewAwareFind,
   type ViewSurfaceMap, type ViewAwareMatch,
 } from './view-surface.js';
 export {
-  findUniqueMatch, applyProposeChange, applySingleOperation,
+  findUniqueMatch, tryFindUniqueMatch, applyProposeChange, applySingleOperation,
   appendFootnote, extractLineRange, replaceUnique,
   stripCriticMarkupWithMap, stripCriticMarkup,
   stripCriticMarkupToCommittedWithMap,
@@ -67,7 +86,7 @@ export {
 export {
   countFootnoteHeadersWithStatus, findFootnoteBlock, parseFootnoteHeader,
   findDiscussionInsertionIndex, findReviewInsertionIndex, findChildFootnoteIds,
-  resolveChangeById,
+  resolveChangeById, extractFootnoteStatuses,
   type FootnoteBlock, type FootnoteHeader,
 } from './footnote-utils.js';
 export {
@@ -97,7 +116,7 @@ export {
   type ViewOptions, type ReviewBuildOptions, type ChangesViewOptions,
   type SettledViewOptions, type RawViewOptions,
 } from './renderers/view-builders/index.js';
-export { buildDeliberationHeader, buildLineRefMap, findFootnoteSectionRange } from './renderers/view-builder-utils.js';
+export { buildDeliberationHeader, buildLineRefMap, findFootnoteSectionRange, computeContinuationLines } from './renderers/view-builder-utils.js';
 export {
   type EditEvent, type PendingBuffer as EditPendingBuffer,
   type EditBoundaryState, type EditBoundaryConfig,
@@ -111,3 +130,5 @@ export {
 export { classifySignal } from './edit-boundary/index.js';
 export { processEvent } from './edit-boundary/index.js';
 export type { ProcessEventContext, ProcessEventResult } from './edit-boundary/index.js';
+export { parseForFormat, stripFootnoteBlocks } from './format-aware-parse.js';
+export type { CoherenceStatusParams, DecorationDataParams, ChangeCountParams, AllChangesResolvedParams, DiagnosticData } from './lsp-protocol-types.js';

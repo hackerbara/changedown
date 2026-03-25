@@ -9,7 +9,7 @@
  */
 
 import * as vscode from 'vscode';
-import { ChangeNode, ChangeType } from '@changetracks/core';
+import { ChangeNode, ChangeType, isGhostNode } from '@changetracks/core';
 import { ViewMode } from './view-mode';
 import { typeLabel } from './visual-semantics';
 import { resolveAuthorIdentity } from './author-identity';
@@ -25,7 +25,7 @@ export interface ReviewPanelState {
     viewMode: ViewMode;
     changes: ChangeCardData[];
     hasActiveMarkdownEditor: boolean;
-    activeFilter: 'all' | 'proposed' | 'accepted' | 'rejected';
+    activeFilter: 'all' | 'proposed' | 'accepted' | 'rejected' | 'consumed';
     activeGrouping: 'flat' | 'by-author' | 'by-type' | 'by-status';
     activeSorting: 'document-order' | 'date' | 'status';
 }
@@ -33,7 +33,8 @@ export interface ReviewPanelState {
 export interface ChangeCardData {
     id: string;
     type: string;
-    text: string;
+    text: string;          // truncated preview (MAX 60 chars)
+    fullText: string;      // full change text for expanded view
     author: string;
     status: string;
     colorClass: string;
@@ -46,6 +47,8 @@ export interface ChangeCardData {
     date: string;
     discussionPreview: string[];
     approvalSummary: string;
+    consumedBy?: string;
+    discussionFull: Array<{ author: string; date: string; text: string; depth?: number; label?: string }>;
 }
 
 export interface StateDiff {
@@ -118,15 +121,50 @@ export function getChangePreview(change: ChangeNode, text: string): string {
     return raw.slice(0, MAX_PREVIEW_LENGTH).trim() + ELLIPSIS;
 }
 
+/** Extract full (un-truncated) text from a ChangeNode for display in expanded cards. */
+export function getFullChangeText(change: ChangeNode, text: string): string {
+    let raw: string;
+    switch (change.type) {
+        case ChangeType.Substitution:
+            raw = [change.originalText ?? '', change.modifiedText ?? '']
+                .filter(Boolean)
+                .join(' \u2192 ');
+            break;
+        case ChangeType.Insertion:
+            raw = change.modifiedText ?? '';
+            break;
+        case ChangeType.Deletion:
+            raw = change.originalText ?? '';
+            break;
+        case ChangeType.Comment:
+            raw = change.metadata?.comment ?? change.originalText ?? '';
+            break;
+        case ChangeType.Highlight:
+            raw = change.originalText ?? '';
+            break;
+        default:
+            raw = text.slice(change.contentRange.start, change.contentRange.end).replace(/\s+/g, ' ').trim();
+    }
+    return raw.replace(/\s+/g, ' ').trim() || '(empty)';
+}
+
 // ── Card data builder ───────────────────────────────────────────────────────
+
+/** Strip leading @ from author to avoid @@ when we prepend @ in templates. */
+function stripLeadingAt(author: string): string {
+    return (author ?? '').replace(/^@/, '');
+}
 
 /** Build ChangeCardData[] from parsed ChangeNodes. */
 export function buildCardData(changes: ChangeNode[], text: string, currentAuthor?: string): ChangeCardData[] {
-    return changes.map(c => ({
+    return changes
+        .filter(c => !isGhostNode(c))
+        .map(c => ({
         id: c.id,
         type: typeLabel(c.type),
         text: getChangePreview(c, text),
-        author: c.metadata?.author ?? '',
+        fullText: getFullChangeText(c, text),
+        author: stripLeadingAt(c.metadata?.author ?? ''),
         status: (c.metadata?.status ?? c.inlineMetadata?.status ?? c.status ?? 'proposed').toLowerCase(),
         colorClass: colorClassForType(c.type),
         replyCount: c.metadata?.discussion?.length ?? 0,
@@ -134,16 +172,24 @@ export function buildCardData(changes: ChangeNode[], text: string, currentAuthor
         isResolved: c.metadata?.resolution?.type === 'resolved',
         hasRequestChanges: (c.metadata?.requestChanges?.length ?? 0) > 0,
         hasAmendments: (c.metadata?.revisions?.length ?? 0) > 0,
+        consumedBy: c.consumedBy,
         isOwnChange: (c.metadata?.author ?? '') === (currentAuthor ?? ''),
         date: c.metadata?.date ?? '',
         discussionPreview: (c.metadata?.discussion ?? []).slice(0, 3).map((d: any) =>
-            `@${d.author}: ${(d.text ?? '').substring(0, 80)}`
+            `@${stripLeadingAt(d.author)}: ${(d.text ?? '').substring(0, 80)}`
         ),
         approvalSummary: c.metadata?.approvals?.[0]
-            ? `Approved by @${c.metadata.approvals[0].author}`
+            ? `Approved by @${stripLeadingAt(c.metadata.approvals[0].author)}`
             : c.metadata?.rejections?.[0]
-            ? `Rejected by @${c.metadata.rejections[0].author}`
+            ? `Rejected by @${stripLeadingAt(c.metadata.rejections[0].author)}`
             : '',
+        discussionFull: (c.metadata?.discussion ?? []).map((d: any) => ({
+            author: stripLeadingAt(d.author ?? ''),
+            date: d.timestamp?.date ?? d.date ?? '',
+            text: d.text ?? '',
+            depth: d.depth,
+            label: d.label,
+        })),
     }));
 }
 
@@ -151,12 +197,13 @@ export function buildCardData(changes: ChangeNode[], text: string, currentAuthor
 
 function filterCards(
     cards: ChangeCardData[],
-    filter: 'all' | 'proposed' | 'accepted' | 'rejected',
+    filter: 'all' | 'proposed' | 'accepted' | 'rejected' | 'consumed',
 ): ChangeCardData[] {
     switch (filter) {
-        case 'proposed':    return cards.filter(c => c.status === 'proposed');
-        case 'accepted':    return cards.filter(c => c.status === 'accepted');
-        case 'rejected':    return cards.filter(c => c.status === 'rejected');
+        case 'proposed':    return cards.filter(c => c.status === 'proposed' && !c.consumedBy);
+        case 'accepted':    return cards.filter(c => c.status === 'accepted' && !c.consumedBy);
+        case 'rejected':    return cards.filter(c => c.status === 'rejected' && !c.consumedBy);
+        case 'consumed':    return cards.filter(c => c.consumedBy != null);
         default:            return cards;
     }
 }
@@ -205,7 +252,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider, vscode.D
     private refreshTimeout: ReturnType<typeof setTimeout> | null = null;
     private lastState: ReviewPanelState | null = null;
 
-    private activeFilter: 'all' | 'proposed' | 'accepted' | 'rejected' = 'all';
+    private activeFilter: 'all' | 'proposed' | 'accepted' | 'rejected' | 'consumed' = 'all';
     private activeGrouping: 'flat' | 'by-author' | 'by-type' | 'by-status' = 'flat';
     private activeSorting: 'document-order' | 'date' | 'status' = 'document-order';
 
@@ -306,7 +353,8 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider, vscode.D
                 break;
             case 'replyToChange':
                 if (msg.id) {
-                    vscode.commands.executeCommand('changetracks.revealChange', msg.id);
+                    vscode.commands.executeCommand('changetracks.revealChange', msg.id)
+                        .then(() => vscode.commands.executeCommand('changetracks.addComment'));
                 }
                 break;
             case 'resolveChange':
@@ -487,20 +535,60 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider, vscode.D
         this.webviewView.webview.html = generateReviewHtml(newState, nonce);
         this.lastState = newState;
     }
+
+    /** Notify the webview of the currently active change (cursor is inside it). */
+    public setActiveChangeId(id: string | null): void {
+        if (this.webviewView?.visible) {
+            this.webviewView.webview.postMessage({ type: 'activeChange', id: id ?? '' });
+        }
+    }
 }
 
 // ── Card HTML builder (module-level for reuse in incremental updates) ────────
 
 /** Build HTML string for a single change card. */
 export function buildCardHtml(c: ChangeCardData): string {
-        const previewHtml = (c.discussionPreview.length > 0 || c.approvalSummary)
-            ? `<div class="card-preview">
-                ${c.approvalSummary ? `<div class="preview-approval">${escapeHtml(c.approvalSummary)}</div>` : ''}
-                ${c.discussionPreview.map(d => `<div class="preview-discussion">${escapeHtml(d)}</div>`).join('')}
-               </div>`
+        // Build thread HTML for expanded view
+        const threadRepliesHtml = c.discussionFull.length > 0
+            ? c.discussionFull.map(d => `
+                <div class="thread-reply">
+                    <div class="thread-reply-author">@${escapeHtml(d.author)} \u00B7 ${escapeHtml(d.date)}${d.label ? `<span class="thread-reply-label">${escapeHtml(d.label)}</span>` : ''}</div>
+                    <div class="thread-reply-text">${escapeHtml(d.text)}</div>
+                </div>
+            `).join('')
             : '';
+
+        // Thread actions — only visible when expanded
+        const threadActionsHtml = `
+            <div class="thread-actions">
+                <button class="thread-action-btn" data-lifecycle="replyToChange" data-id="${escapeHtml(c.id)}" title="Reply to this change">Reply</button>
+                ${c.isResolved
+                    ? `<button class="thread-action-btn" data-lifecycle="unresolveChange" data-id="${escapeHtml(c.id)}" title="Reopen discussion">Unresolve</button>`
+                    : `<button class="thread-action-btn" data-lifecycle="resolveChange" data-id="${escapeHtml(c.id)}" title="Mark discussion as resolved">Resolve</button>`
+                }
+                ${c.isOwnChange
+                    ? `<button class="thread-action-btn" data-lifecycle="amendChange" data-id="${escapeHtml(c.id)}" title="Amend this change">Amend</button>`
+                    : (c.status === 'proposed'
+                        ? `<button class="thread-action-btn" data-lifecycle="supersedeChange" data-id="${escapeHtml(c.id)}" title="Propose an alternative">Supersede</button>`
+                        : '')
+                }
+            </div>
+        `;
+
+        const threadHtml = `
+            <div class="card-thread">
+                ${threadRepliesHtml}
+                ${threadActionsHtml}
+            </div>
+        `;
+
+        const consumedAttr = c.consumedBy ? ` data-consumed="${escapeHtml(c.consumedBy)}"` : '';
+        const consumedBadgeHtml = c.consumedBy
+            ? `<span class="consumed-badge">consumed by ${escapeHtml(c.consumedBy)}</span>`
+            : '';
+
         return `
-            <div class="change-card ${c.colorClass}" data-id="${escapeHtml(c.id)}" data-card-id="${escapeHtml(c.id)}" tabindex="0" role="button"
+            <div class="change-card ${c.colorClass}" data-id="${escapeHtml(c.id)}" data-card-id="${escapeHtml(c.id)}"${consumedAttr} data-expanded="false" aria-expanded="false" tabindex="0" role="button"
                  title="${escapeHtml(c.text)}">
                 <div class="card-header">
                     <span class="type-badge ${c.colorClass}">${escapeHtml(c.type)}</span>
@@ -508,26 +596,21 @@ export function buildCardHtml(c: ChangeCardData): string {
                     ${c.hasAmendments ? '<span class="badge-indicator amended" title="Has amendments">\u270E</span>' : ''}
                     ${c.hasRequestChanges ? '<span class="badge-indicator changes-requested" title="Changes requested">\u26A0</span>' : ''}
                     ${c.isResolved ? '<span class="badge-indicator resolved" title="Resolved">\u2714</span>' : ''}
+                    ${consumedBadgeHtml}
                 </div>
                 <div class="card-text">${escapeHtml(c.text)}</div>
+                <div class="card-text-full">${escapeHtml(c.fullText)}</div>
                 ${c.author ? `<div class="card-meta"><span class="card-author">${escapeHtml(c.author)}</span>${c.replyCount > 0 ? `<span class="card-replies">\uD83D\uDCAC ${c.replyCount}</span>` : ''}</div>` : (c.replyCount > 0 ? `<div class="card-meta"><span class="card-replies">\uD83D\uDCAC ${c.replyCount}</span></div>` : '')}
-                ${previewHtml}
-                <div class="card-actions">
-                    <button class="icon-btn accept-btn" data-action="acceptChange" data-id="${escapeHtml(c.id)}" title="Accept">\u2713</button>
-                    <button class="icon-btn reject-btn" data-action="rejectChange" data-id="${escapeHtml(c.id)}" title="Reject">\u2717</button>
-                    <button class="icon-btn reply-btn" data-lifecycle="replyToChange" data-id="${escapeHtml(c.id)}" title="Reply">\uD83D\uDCAC</button>
-                    ${c.isResolved
-                        ? `<button class="icon-btn unresolve-btn" data-lifecycle="unresolveChange" data-id="${escapeHtml(c.id)}" title="Unresolve">\u21BA</button>`
-                        : `<button class="icon-btn resolve-btn" data-lifecycle="resolveChange" data-id="${escapeHtml(c.id)}" title="Resolve">\u2714</button>`
-                    }
-                    <button class="icon-btn request-changes-btn" data-lifecycle="requestChanges" data-id="${escapeHtml(c.id)}" title="Request Changes">\u26A0</button>
-                    ${c.isOwnChange
-                        ? `<button class="icon-btn amend-btn" data-lifecycle="amendChange" data-id="${escapeHtml(c.id)}" title="Amend">\u270E</button>`
-                        : (c.status === 'proposed'
-                            ? `<button class="icon-btn supersede-btn" data-lifecycle="supersedeChange" data-id="${escapeHtml(c.id)}" title="Supersede">\u21C4</button>`
-                            : '')
-                    }
-                </div>
+                ${c.consumedBy
+                    ? `<div class="card-actions">
+                           <button class="icon-btn" data-action="jumpToFootnote" data-id="${escapeHtml(c.consumedBy)}" title="Go to ${escapeHtml(c.consumedBy)}">&#x2192;</button>
+                           <button class="icon-btn" data-action="compactChange" data-id="${escapeHtml(c.id)}" title="Compact">&#x2716;</button>
+                       </div>`
+                    : `<div class="card-actions">
+                           <button class="icon-btn accept-btn" data-action="acceptChange" data-id="${escapeHtml(c.id)}" title="Accept">\u2713</button>
+                           <button class="icon-btn reject-btn" data-action="rejectChange" data-id="${escapeHtml(c.id)}" title="Reject">\u2717</button>
+                       </div>`}
+                ${threadHtml}
             </div>
         `;
 }
@@ -564,14 +647,33 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
         : `${total} change${total === 1 ? '' : 's'} (${summaryParts})`;
 
     // Build filter bar
+    // Count changes by status
+    const statusCounts: Record<string, number> = { all: changes.length, proposed: 0, accepted: 0, rejected: 0, consumed: 0 };
+    for (const c of changes) {
+        if (c.consumedBy) {
+            statusCounts.consumed++;
+        } else {
+            const s = c.status.toLowerCase();
+            if (s in statusCounts) { statusCounts[s]++; }
+        }
+    }
+
     const filterLabels: Array<{ value: string; label: string }> = [
-        { value: 'all', label: 'All' },
-        { value: 'proposed', label: 'Proposed' },
-        { value: 'accepted', label: 'Accepted' },
-        { value: 'rejected', label: 'Rejected' },
+        { value: 'all', label: `All (${statusCounts.all})` },
+        { value: 'proposed', label: `Proposed (${statusCounts.proposed})` },
+        { value: 'accepted', label: `Accepted (${statusCounts.accepted})` },
+        { value: 'rejected', label: `Rejected (${statusCounts.rejected})` },
+        { value: 'consumed', label: `Consumed (${statusCounts.consumed})` },
     ];
+    const filterTooltips: Record<string, string> = {
+        all: 'Show all changes',
+        proposed: 'Show proposed changes',
+        accepted: 'Show accepted changes',
+        rejected: 'Show rejected changes',
+        consumed: 'Show consumed changes',
+    };
     const filterBtnsHtml = filterLabels.map(f =>
-        `<button class="filter-btn${activeFilter === f.value ? ' active' : ''}" data-filter="${f.value}">${f.label}</button>`
+        `<button class="filter-btn${activeFilter === f.value ? ' active' : ''}" data-filter="${f.value}" title="${filterTooltips[f.value] ?? ''}">${f.label}</button>`
     ).join('');
 
     // Build grouping dropdown
@@ -651,7 +753,7 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
 
         /* Zone: Configure */
         .zone {
-            padding: 8px 12px;
+            padding: 5px 10px;
             border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, rgba(128,128,128,0.2)));
         }
         .zone-label {
@@ -659,13 +761,13 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: var(--vscode-descriptionForeground);
-            margin-bottom: 6px;
+            margin-bottom: 3px;
         }
 
         /* Tracking toggle */
         .toggle-btn {
-            width: 100%; padding: 10px 16px; border: none; border-radius: 6px;
-            font-size: 14px; font-weight: 600; cursor: pointer;
+            width: 100%; padding: 5px 10px; border: none; border-radius: 4px;
+            font-size: 12px; font-weight: 600; cursor: pointer;
             display: flex; align-items: center; gap: 8px;
         }
         .toggle-on {
@@ -679,10 +781,9 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
         }
 
         /* View mode 2x2 grid */
-        .vm-label { font-size: 11px; text-transform: uppercase; color: var(--vscode-descriptionForeground); margin: 10px 0 6px; letter-spacing: 0.5px; }
-        .vm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 0 -4px; }
+        .vm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin-top: 5px; }
         .vm-btn {
-            padding: 6px 4px; border: 1px solid var(--vscode-input-border, rgba(128,128,128,0.3));
+            padding: 3px 4px; border: 1px solid var(--vscode-input-border, rgba(128,128,128,0.3));
             border-radius: 4px; background: var(--vscode-input-background);
             color: var(--vscode-foreground); cursor: pointer; font-size: 11px;
             text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
@@ -738,15 +839,7 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
         }
         .spacer { flex: 1; }
 
-        /* Zone: Changes (collapsible) */
-        .changes-header {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            user-select: none;
-            gap: 4px;
-        }
-        .changes-header:hover { opacity: 0.8; }
+        /* Zone: Changes */
         .collapse-icon {
             font-size: 10px;
             transition: transform 0.15s ease;
@@ -754,16 +847,26 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             width: 12px;
         }
         .collapse-icon.open { transform: rotate(90deg); }
-        .summary-line {
+        .summary-controls-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            margin-top: 2px;
+        }
+        .summary-text {
             font-size: 11px;
             color: var(--vscode-descriptionForeground);
-            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
         }
         .changes-scroll {
             flex: 1;
             min-height: 0;
             overflow-y: auto;
-            padding: 0 12px 12px;
+            padding: 0 10px 8px;
         }
         .changes-scroll.collapsed {
             display: none;
@@ -774,7 +877,7 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             display: flex;
             flex-wrap: wrap;
             gap: 3px;
-            padding: 6px 0 4px;
+            padding: 4px 0 2px;
         }
         .filter-btn {
             padding: 2px 7px;
@@ -795,6 +898,12 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             color: var(--vscode-button-foreground);
             border-color: var(--vscode-button-background);
             font-weight: 600;
+        }
+        .filter-bar.compact .filter-btn:not(.active) {
+            display: none;
+        }
+        .filter-bar.compact .filter-btn.active {
+            cursor: pointer;
         }
 
         /* Controls row (grouping + sorting) */
@@ -829,8 +938,8 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
 
         /* Change card */
         .change-card {
-            padding: 6px 8px;
-            margin-bottom: 4px;
+            padding: 5px 7px;
+            margin-bottom: 3px;
             border-radius: 4px;
             border-left: 3px solid transparent;
             background: var(--vscode-list-hoverBackground, rgba(128,128,128,0.08));
@@ -848,6 +957,18 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
         .change-card.substitution { border-left-color: var(--vscode-gitDecoration-modifiedResourceForeground, #64B5F6); }
         .change-card.highlight { border-left-color: var(--vscode-editorWarning-foreground, #FDD835); }
         .change-card.comment   { border-left-color: var(--vscode-gitDecoration-modifiedResourceForeground, #64B5F6); }
+        .change-card.card-active {
+            outline: 1px solid var(--vscode-focusBorder, #007fd4);
+            outline-offset: -1px;
+        }
+        .change-card[data-consumed] {
+            opacity: 0.6;
+        }
+        .consumed-badge {
+            font-size: 0.85em;
+            color: var(--vscode-descriptionForeground);
+            font-style: italic;
+        }
 
         .card-header {
             display: flex;
@@ -900,30 +1021,6 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             color: var(--vscode-descriptionForeground);
         }
 
-        /* Card preview (hover-to-reveal discussion summary) */
-        .card-preview {
-            display: none;
-            margin-top: 4px;
-            padding: 4px 6px;
-            background: var(--vscode-editor-inactiveSelectionBackground, rgba(128,128,128,0.12));
-            border-radius: 3px;
-            font-size: 10px;
-            color: var(--vscode-descriptionForeground);
-        }
-        .change-card:hover .card-preview {
-            display: block;
-        }
-        .preview-approval {
-            font-weight: 600;
-            margin-bottom: 2px;
-        }
-        .preview-discussion {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-top: 1px;
-        }
-
         .card-actions {
             position: absolute;
             top: 4px;
@@ -953,12 +1050,78 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
         }
         .accept-btn:hover { color: var(--vscode-gitDecoration-addedResourceForeground, #66BB6A); }
         .reject-btn:hover { color: var(--vscode-gitDecoration-deletedResourceForeground, #EF5350); }
-        .reply-btn:hover { color: var(--vscode-gitDecoration-modifiedResourceForeground, #64B5F6); }
-        .resolve-btn:hover { color: var(--vscode-gitDecoration-addedResourceForeground, #66BB6A); }
-        .unresolve-btn:hover { color: var(--vscode-descriptionForeground); }
-        .request-changes-btn:hover { color: var(--vscode-editorWarning-foreground, #FDD835); }
-        .amend-btn:hover { color: var(--vscode-gitDecoration-modifiedResourceForeground, #64B5F6); }
-        .supersede-btn:hover { color: var(--vscode-gitDecoration-modifiedResourceForeground, #64B5F6); }
+
+        /* Expanded card */
+        .change-card[data-expanded="true"] .card-text-full {
+            display: block;
+        }
+        .change-card[data-expanded="true"] .card-text {
+            display: none;
+        }
+        .change-card[data-expanded="true"] .card-actions {
+            display: flex;
+        }
+        .card-text-full {
+            display: none;
+            font-size: 12px;
+            line-height: 1.5;
+            word-break: break-word;
+            color: var(--vscode-foreground);
+            white-space: pre-wrap;
+            margin: 4px 0;
+        }
+
+        /* Thread display in expanded cards */
+        .card-thread {
+            display: none;
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.15));
+        }
+        .change-card[data-expanded="true"] .card-thread {
+            display: block;
+        }
+        .thread-reply {
+            margin-bottom: 6px;
+            font-size: 11px;
+        }
+        .thread-reply-author {
+            color: var(--vscode-descriptionForeground);
+            font-size: 10px;
+            margin-bottom: 1px;
+        }
+        .thread-reply-text {
+            color: var(--vscode-foreground);
+            padding-left: 8px;
+            word-break: break-word;
+        }
+        .thread-reply-label {
+            font-size: 9px;
+            padding: 0 3px;
+            border-radius: 2px;
+            background: rgba(128,128,128,0.12);
+            color: var(--vscode-descriptionForeground);
+            margin-left: 4px;
+        }
+        .thread-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+            padding-top: 4px;
+            border-top: 1px solid var(--vscode-panel-border, rgba(128,128,128,0.1));
+        }
+        .thread-action-btn {
+            padding: 2px 8px;
+            border: 1px solid var(--vscode-input-border, rgba(128,128,128,0.3));
+            border-radius: 3px;
+            background: var(--vscode-input-background);
+            color: var(--vscode-foreground);
+            cursor: pointer;
+            font-size: 10px;
+        }
+        .thread-action-btn:hover {
+            background: var(--vscode-list-hoverBackground);
+        }
 
         /* Card header badge indicators */
         .badge-indicator {
@@ -1006,7 +1169,7 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
         }
 
         /* Controls disclosure */
-        .controls-disclosure { margin: 6px 0; }
+        .controls-disclosure { margin: 0; flex-shrink: 0; }
         .controls-toggle {
             display: flex;
             align-items: center;
@@ -1025,24 +1188,30 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
         /* Export footer */
         .export-footer {
             margin-top: auto;
-            padding: 12px;
+            padding: 6px 10px;
             border-top: 1px solid var(--vscode-panel-border, var(--vscode-widget-border, rgba(128,128,128,0.2)));
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
         }
         .utility-btn {
-            width: 100%;
-            padding: 7px 12px;
+            flex: 1 1 auto;
+            min-width: 0;
+            padding: 4px 8px;
             border: 1px solid transparent;
-            border-radius: 4px;
+            border-radius: 3px;
             background: var(--vscode-button-secondaryBackground, rgba(128,128,128,0.2));
             color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
             cursor: pointer;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
-            margin-bottom: 6px;
+            gap: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .utility-btn:hover {
             background: var(--vscode-button-hoverBackground, rgba(128,128,128,0.35));
@@ -1063,61 +1232,51 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
 
         <!-- Zone 1: Configure -->
         <div class="zone">
-            <div class="zone-label">Configure</div>
-            <button class="toggle-btn ${trackingEnabled ? 'toggle-on' : 'toggle-off'}" id="trackingToggle">
+            <button class="toggle-btn ${trackingEnabled ? 'toggle-on' : 'toggle-off'}" id="trackingToggle" title="Toggle change tracking on/off">
                 <span class="toggle-dot">${trackingEnabled ? '\u25CF' : '\u25CB'}</span>
                 Track Changes: ${trackingEnabled ? 'ON' : 'OFF'}
             </button>
-            <div class="vm-label">View</div>
+            <div class="zone-label">Views</div>
             <div class="vm-grid">
-                <button class="vm-btn ${viewMode === 'review' ? 'vm-active' : ''}" data-mode="review">All Markup</button>
-                <button class="vm-btn ${viewMode === 'changes' ? 'vm-active' : ''}" data-mode="changes">Simple</button>
-                <button class="vm-btn ${viewMode === 'settled' ? 'vm-active' : ''}" data-mode="settled">Final</button>
-                <button class="vm-btn ${viewMode === 'raw' ? 'vm-active' : ''}" data-mode="raw">Original</button>
+                <button class="vm-btn ${viewMode === 'review' ? 'vm-active' : ''}" data-mode="review" title="Show all markup">All Markup</button>
+                <button class="vm-btn ${viewMode === 'changes' ? 'vm-active' : ''}" data-mode="changes" title="Hide delimiters">Simple</button>
+                <button class="vm-btn ${viewMode === 'settled' ? 'vm-active' : ''}" data-mode="settled" title="Show final document">Final</button>
+                <button class="vm-btn ${viewMode === 'raw' ? 'vm-active' : ''}" data-mode="raw" title="Show original document">Original</button>
             </div>
         </div>
 
-        <!-- Zone 2: Navigate -->
+        <!-- Zone 2: Navigate + Bulk Actions -->
         <div class="zone">
-            <div class="zone-label">Navigate</div>
             <div class="action-row">
                 <button class="action-btn" id="prevBtn" title="Previous change">\u25C0 Prev</button>
                 <button class="action-btn" id="nextBtn" title="Next change">Next \u25B6</button>
+                <span class="spacer"></span>
+                <button class="action-btn primary" id="acceptAllBtn" title="Accept all changes in document">Accept All</button>
+                <button class="action-btn danger" id="rejectAllBtn" title="Reject all changes in document">Reject All</button>
             </div>
         </div>
 
-        <!-- Zone 3: Bulk Act -->
-        <div class="zone">
-            <div class="zone-label">Bulk Actions</div>
-            <div class="action-row">
-                <button class="action-btn primary" id="acceptAllBtn">Accept All</button>
-                <button class="action-btn danger" id="rejectAllBtn">Reject All</button>
-            </div>
-        </div>
-
-        <!-- Zone 4: Changes (open by default) -->
+        <!-- Zone 4: Changes -->
         <div class="zone" style="border-bottom: none; padding-bottom: 0;">
-            <div class="changes-header" id="changesToggle" role="button" aria-expanded="true" tabindex="0">
-                <span class="collapse-icon open" id="collapseIcon">\u25B6</span>
-                <span class="zone-label" style="margin-bottom: 0;">Changes</span>
-            </div>
-            <div class="summary-line">${escapeHtml(summaryText)}</div>
-            <!-- Filter bar -->
-            <div class="filter-bar">
-                ${filterBtnsHtml}
-            </div>
-            <!-- Grouping + Sorting controls -->
-            <div class="controls-disclosure">
-                <div class="controls-toggle" id="controlsToggle" role="button" tabindex="0">
-                    <span class="collapse-icon" id="controlsCollapseIcon">&#9658;</span>
-                    Grouping &amp; Sort
-                </div>
-                <div class="controls-body collapsed" id="controlsBody">
-                    <div class="controls-row">
-                        ${groupingSelectHtml}
-                        ${sortingSelectHtml}
+            <div class="zone-label" style="margin-bottom: 0;">Changes</div>
+            <div class="summary-controls-row">
+                <span class="summary-text">${escapeHtml(summaryText)}</span>
+                <div class="controls-disclosure">
+                    <div class="controls-toggle" id="controlsToggle" role="button" tabindex="0">
+                        <span class="collapse-icon" id="controlsCollapseIcon">&#9658;</span>
+                        Grouping &amp; Sort
+                    </div>
+                    <div class="controls-body collapsed" id="controlsBody">
+                        <div class="controls-row">
+                            ${groupingSelectHtml}
+                            ${sortingSelectHtml}
+                        </div>
                     </div>
                 </div>
+            </div>
+            <!-- Filter bar -->
+            <div class="filter-bar${activeFilter === 'all' ? ' compact' : ''}" id="filterBar">
+                ${filterBtnsHtml}
             </div>
         </div>
         <div class="changes-scroll" id="changesList">
@@ -1144,24 +1303,6 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             } else {
                 vscode.postMessage({ command });
             }
-        }
-
-        // Changes section collapse/expand
-        const changesToggle = document.getElementById('changesToggle');
-        const changesList = document.getElementById('changesList');
-        const collapseIcon = document.getElementById('collapseIcon');
-        if (changesToggle && changesList && collapseIcon) {
-            changesToggle.addEventListener('click', () => {
-                const isCollapsed = changesList.classList.toggle('collapsed');
-                collapseIcon.classList.toggle('open', !isCollapsed);
-                changesToggle.setAttribute('aria-expanded', String(!isCollapsed));
-            });
-            changesToggle.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    changesToggle.click();
-                }
-            });
         }
 
         // Configure zone: tracking toggle
@@ -1196,11 +1337,25 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             send('rejectAll');
         });
 
-        // Filter buttons
+        // Filter buttons — compact mode toggle
+        const filterBar = document.getElementById('filterBar');
         document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const filter = btn.getAttribute('data-filter');
-                if (filter) send('setFilter', { filter });
+                if (!filter) return;
+
+                // If clicking the active "All" pill in compact mode, just expand
+                if (filter === 'all' && btn.classList.contains('active') && filterBar?.classList.contains('compact')) {
+                    filterBar.classList.remove('compact');
+                    return;
+                }
+                // If clicking "All" while expanded and already active, collapse back
+                if (filter === 'all' && btn.classList.contains('active') && !filterBar?.classList.contains('compact')) {
+                    filterBar?.classList.add('compact');
+                    return;
+                }
+
+                send('setFilter', { filter });
             });
         });
 
@@ -1234,13 +1389,23 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             if (sorting) send('setSorting', { sorting });
         });
 
-        // Change cards: click to reveal, action buttons for accept/reject
+        // Change cards: click to expand/collapse, action buttons for accept/reject
         document.querySelectorAll('.change-card').forEach(card => {
             card.addEventListener('click', (e) => {
-                // Don't navigate if clicking an action button
                 if (e.target.closest('.icon-btn')) return;
+                if (e.target.closest('.thread-action-btn')) return;
                 const id = card.getAttribute('data-id');
-                if (id) send('revealChange', { value: id });
+                const isExpanded = card.getAttribute('data-expanded') === 'true';
+                if (isExpanded) {
+                    // Collapse — don't scroll editor
+                    card.setAttribute('data-expanded', 'false');
+                    card.setAttribute('aria-expanded', 'false');
+                } else {
+                    // Expand + scroll editor
+                    card.setAttribute('data-expanded', 'true');
+                    card.setAttribute('aria-expanded', 'true');
+                    if (id) send('revealChange', { value: id });
+                }
             });
         });
 
@@ -1254,7 +1419,7 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
             send('exportToDocx');
         });
 
-        document.querySelectorAll('.icon-btn').forEach(btn => {
+        document.querySelectorAll('.icon-btn, .thread-action-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const action = btn.getAttribute('data-action');
@@ -1277,11 +1442,22 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
                 if (!card.classList.contains('change-card')) return;
                 card.addEventListener('click', (e) => {
                     if (e.target.closest('.icon-btn')) return;
+                    if (e.target.closest('.thread-action-btn')) return;
                     const id = card.getAttribute('data-id');
-                    if (id) send('revealChange', { value: id });
+                    const isExpanded = card.getAttribute('data-expanded') === 'true';
+                    if (isExpanded) {
+                        // Collapse — don't scroll editor
+                        card.setAttribute('data-expanded', 'false');
+                        card.setAttribute('aria-expanded', 'false');
+                    } else {
+                        // Expand + scroll editor
+                        card.setAttribute('data-expanded', 'true');
+                        card.setAttribute('aria-expanded', 'true');
+                        if (id) send('revealChange', { value: id });
+                    }
                 });
             });
-            const btns = container.querySelectorAll ? container.querySelectorAll('.icon-btn') : [];
+            const btns = container.querySelectorAll ? container.querySelectorAll('.icon-btn, .thread-action-btn') : [];
             btns.forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -1300,7 +1476,20 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
         /** Handle incremental updates from the extension host. */
         window.addEventListener('message', event => {
             const message = event.data;
-            if (message.type === 'incrementalUpdate') {
+            if (message.type === 'activeChange') {
+                // Remove previous active highlight
+                document.querySelectorAll('.change-card.card-active').forEach(el => {
+                    el.classList.remove('card-active');
+                });
+                // Add active highlight to matching card
+                if (message.id) {
+                    const card = document.querySelector('[data-card-id="' + CSS.escape(message.id) + '"]');
+                    if (card) {
+                        card.classList.add('card-active');
+                        card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                    }
+                }
+            } else if (message.type === 'incrementalUpdate') {
                 const { added, removed, updated } = message.diff;
 
                 // Remove cards
@@ -1313,10 +1502,16 @@ export function generateReviewHtml(state: ReviewPanelState, nonce: string): stri
                 for (const entry of (updated || [])) {
                     const el = document.querySelector('[data-card-id="' + CSS.escape(entry.id) + '"]');
                     if (el) {
+                        // Preserve expand state across incremental updates
+                        const wasExpanded = el.getAttribute('data-expanded');
                         const temp = document.createElement('div');
                         temp.innerHTML = entry.html.trim();
                         const newEl = temp.firstElementChild;
                         if (newEl) {
+                            if (wasExpanded) {
+                                newEl.setAttribute('data-expanded', wasExpanded);
+                                newEl.setAttribute('aria-expanded', wasExpanded);
+                            }
                             el.replaceWith(newEl);
                             attachCardListeners(newEl);
                         }

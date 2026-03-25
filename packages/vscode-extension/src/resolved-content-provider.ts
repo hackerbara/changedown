@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
 import { computeSettledText } from '@changetracks/core';
+import { getPreviousVersion } from './git-integration';
 
 export const RESOLVED_SCHEME = 'changetracks-resolved';
+export const GIT_ORIGINAL_SCHEME = 'changetracks-git-original';
 
 /**
  * Serves the "settled state" of a document — accepted changes absorbed,
@@ -33,11 +35,35 @@ export class ResolvedContentProvider implements vscode.TextDocumentContentProvid
 }
 
 /**
+ * Serves git HEAD content for non-markdown files. Used as the "original"
+ * side for QuickDiff when ChangeTracks proxies git's gutter indicators.
+ */
+export class GitOriginalContentProvider implements vscode.TextDocumentContentProvider {
+  async provideTextDocumentContent(uri: vscode.Uri): Promise<string> {
+    const realUri = vscode.Uri.parse(JSON.parse(uri.query).uri);
+    const prev = await getPreviousVersion(realUri);
+    return prev?.oldText ?? '';
+  }
+
+  dispose(): void { /* nothing to clean up */ }
+}
+
+/**
  * Construct a changetracks-resolved:// URI for a given document URI.
  * The real URI is encoded in the query string.
  */
 export function toResolvedUri(docUri: vscode.Uri): vscode.Uri {
   return vscode.Uri.parse(
     `${RESOLVED_SCHEME}:${docUri.path}?${JSON.stringify({ uri: docUri.toString() })}`
+  );
+}
+
+/**
+ * Construct a changetracks-git-original:// URI for a given document URI.
+ * Used for non-markdown files to proxy git's QuickDiff content.
+ */
+export function toGitOriginalUri(docUri: vscode.Uri): vscode.Uri {
+  return vscode.Uri.parse(
+    `${GIT_ORIGINAL_SCHEME}:${docUri.path}?${JSON.stringify({ uri: docUri.toString() })}`
   );
 }

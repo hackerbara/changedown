@@ -6,7 +6,7 @@
  * without any file I/O.
  */
 
-import { CriticMarkupParser } from '../parser/parser.js';
+import { parseForFormat } from '../format-aware-parse.js';
 import { ChangeType, ChangeStatus } from '../model/types.js';
 import { resolveChangeById, parseFootnoteHeader, findFootnoteBlock, findDiscussionInsertionIndex } from '../footnote-utils.js';
 import { nowTimestamp } from '../timestamp.js';
@@ -98,8 +98,7 @@ export function computeAmendEdits(
   }
 
   // --- Parse document for ChangeNode range/content ---
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text);
+  const doc = parseForFormat(text);
   const change = doc.getChanges().find((c) => c.id === changeId);
 
   if (!change) {

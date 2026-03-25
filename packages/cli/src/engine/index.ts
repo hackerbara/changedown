@@ -6,7 +6,7 @@
  */
 
 // ── Config ──
-export type { ChangeTracksConfig, PolicyMode, CreationTracking } from './config.js';
+export type { ChangeTracksConfig, CLIConfig, PolicyMode, CreationTracking } from './config.js';
 export {
   DEFAULT_CONFIG,
   loadConfig,
@@ -104,6 +104,9 @@ export { handleListChanges } from './handlers/list-changes.js';
 export { handleSupersedeChange } from './handlers/supersede-change.js';
 export { handleProposeBatch } from './handlers/propose-batch.js';
 export { handleFindTrackedFiles } from './handlers/find-tracked-files.js';
+export { handleResolveThread } from './handlers/resolve-thread.js';
+export { resolveThreadTool } from './handlers/resolve-thread.js';
+export { handleCompactChanges } from './handlers/compact-changes.js';
 
 // ── Handler Utilities ──
 export { settleAcceptedChanges, settleRejectedChanges } from './handlers/settle.js';

@@ -225,7 +225,7 @@ When('{word} tries to amend {word} to {string}', function (
     this.journeyDocText = result.text;
 });
 
-When('{word} supersedes {word} with {string} and reason {string}', function (
+When('{word} supersedes {word} with {string} and reason {string}', async function (
     this: ChangeTracksWorld,
     author: string,
     changeId: string,
@@ -234,16 +234,11 @@ When('{word} supersedes {word} with {string} and reason {string}', function (
 ) {
     assert.ok(this.journeyDocText !== undefined, 'Journey document not set');
 
-    // Extract the modified text from the existing change to use as oldText
-    // for the replacement proposal (so applyProposeChange can locate where to insert).
-    const parser = new CriticMarkupParser();
-    const doc = parser.parse(this.journeyDocText);
-    const change = doc.getChanges().find(c => c.id === changeId);
-    const oldText = change?.modifiedText ?? change?.originalText ?? '';
-
-    const result = computeSupersedeResult(this.journeyDocText, changeId, {
+    // Let computeSupersedeResult derive oldText internally from the rejected change.
+    // After body reversion, the original text is back in the body — the internal
+    // derivation (rejectedChange.originalText) is correct for all change types.
+    const result = await computeSupersedeResult(this.journeyDocText, changeId, {
         newText,
-        oldText,
         reason,
         author: author.replace(/^@/, ''),
     });
