@@ -1,5 +1,5 @@
 /**
- * Tracked hashline extensions — ChangeTracks layer on top of base hashline.
+ * Tracked hashline extensions — ChangeDown layer on top of base hashline.
  *
  * Provides "settled" line hashing (strips CriticMarkup using accept-all semantics)
  * and hashline formatting for tracked files.
@@ -30,7 +30,7 @@ import {
  * - `{~~old~>new~~}` → `new`
  * - `{==text==}` → `text`
  * - `{>>comment<<}` → `` (empty)
- * - `[^ct-N]` / `[^ct-N.M]` → `` (empty)
+ * - `[^cn-N]` / `[^cn-N.M]` → `` (empty)
  *
  * Does NOT use the full parser — regex-based for speed on single lines.
  */

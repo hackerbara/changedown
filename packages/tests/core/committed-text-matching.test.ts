@@ -1,50 +1,50 @@
 import { describe, it, expect } from 'vitest';
-import { stripCriticMarkupToCommittedWithMap, findUniqueMatch } from '@changetracks/core';
-import { extractFootnoteStatuses } from '@changetracks/core/internals';
+import { stripCriticMarkupToCommittedWithMap, findUniqueMatch } from '@changedown/core';
+import { extractFootnoteStatuses } from '@changedown/core/internals';
 
 describe('stripCriticMarkupToCommittedWithMap', () => {
   it('reverts proposed insertion (removes inserted text)', () => {
-    const raw = 'Hello {++world ++}[^ct-1]there.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const raw = 'Hello {++world ++}[^cn-1]there.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const result = stripCriticMarkupToCommittedWithMap(raw);
     expect(result.committed).toContain('Hello there.');
     expect(result.committed).not.toContain('world');
   });
 
   it('reverts proposed deletion (keeps original text)', () => {
-    const raw = 'Hello {--beautiful --}[^ct-1]world.\n\n[^ct-1]: @ai:test | 2026-01-01 | del | proposed';
+    const raw = 'Hello {--beautiful --}[^cn-1]world.\n\n[^cn-1]: @ai:test | 2026-01-01 | del | proposed';
     const result = stripCriticMarkupToCommittedWithMap(raw);
     expect(result.committed).toContain('Hello beautiful world.');
   });
 
   it('reverts proposed substitution (keeps old text)', () => {
-    const raw = 'The {~~quick~>slow~~}[^ct-1] fox.\n\n[^ct-1]: @ai:test | 2026-01-01 | sub | proposed';
+    const raw = 'The {~~quick~>slow~~}[^cn-1] fox.\n\n[^cn-1]: @ai:test | 2026-01-01 | sub | proposed';
     const result = stripCriticMarkupToCommittedWithMap(raw);
     expect(result.committed).toContain('The quick fox.');
     expect(result.committed).not.toContain('slow');
   });
 
   it('applies accepted insertion (keeps inserted text)', () => {
-    const raw = 'Hello {++world ++}[^ct-1]there.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | accepted';
+    const raw = 'Hello {++world ++}[^cn-1]there.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | accepted';
     const result = stripCriticMarkupToCommittedWithMap(raw);
     expect(result.committed).toContain('Hello world there.');
   });
 
   it('applies accepted deletion (removes text)', () => {
-    const raw = 'Hello {--beautiful --}[^ct-1]world.\n\n[^ct-1]: @ai:test | 2026-01-01 | del | accepted';
+    const raw = 'Hello {--beautiful --}[^cn-1]world.\n\n[^cn-1]: @ai:test | 2026-01-01 | del | accepted';
     const result = stripCriticMarkupToCommittedWithMap(raw);
     expect(result.committed).toContain('Hello world.');
     expect(result.committed).not.toContain('beautiful');
   });
 
   it('applies accepted substitution (keeps new text)', () => {
-    const raw = 'The {~~quick~>slow~~}[^ct-1] fox.\n\n[^ct-1]: @ai:test | 2026-01-01 | sub | accepted';
+    const raw = 'The {~~quick~>slow~~}[^cn-1] fox.\n\n[^cn-1]: @ai:test | 2026-01-01 | sub | accepted';
     const result = stripCriticMarkupToCommittedWithMap(raw);
     expect(result.committed).toContain('The slow fox.');
   });
 
   it('builds correct position map (committed index -> raw index)', () => {
-    // "AB{++CD++}[^ct-1]EF" with proposed insertion → committed = "ABEF"
-    const raw = 'AB{++CD++}[^ct-1]EF\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    // "AB{++CD++}[^cn-1]EF" with proposed insertion → committed = "ABEF"
+    const raw = 'AB{++CD++}[^cn-1]EF\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const result = stripCriticMarkupToCommittedWithMap(raw);
     expect(result.committed.slice(0, 4)).toBe('ABEF');
     expect(result.toRaw[0]).toBe(0); // A
@@ -54,18 +54,18 @@ describe('stripCriticMarkupToCommittedWithMap', () => {
   });
 
   it('records markup ranges for proposed changes', () => {
-    const raw = 'The {~~quick~>slow~~}[^ct-1] fox.\n\n[^ct-1]: @ai:test | 2026-01-01 | sub | proposed';
+    const raw = 'The {~~quick~>slow~~}[^cn-1] fox.\n\n[^cn-1]: @ai:test | 2026-01-01 | sub | proposed';
     const result = stripCriticMarkupToCommittedWithMap(raw);
     expect(result.markupRanges.length).toBeGreaterThan(0);
   });
 
   it('handles mixed proposed and accepted on same line', () => {
-    const raw = '{++new ++}[^ct-1]and {~~old~>changed~~}[^ct-2] text.\n\n' +
-      '[^ct-1]: @ai:test | 2026-01-01 | ins | accepted\n' +
-      '[^ct-2]: @ai:test | 2026-01-01 | sub | proposed';
+    const raw = '{++new ++}[^cn-1]and {~~old~>changed~~}[^cn-2] text.\n\n' +
+      '[^cn-1]: @ai:test | 2026-01-01 | ins | accepted\n' +
+      '[^cn-2]: @ai:test | 2026-01-01 | sub | proposed';
     const result = stripCriticMarkupToCommittedWithMap(raw);
-    // ct-1 accepted: keep "new "
-    // ct-2 proposed: revert to "old"
+    // cn-1 accepted: keep "new "
+    // cn-2 proposed: revert to "old"
     expect(result.committed).toContain('new and old text.');
   });
 
@@ -80,14 +80,14 @@ describe('stripCriticMarkupToCommittedWithMap', () => {
 describe('extractFootnoteStatuses', () => {
   it('extracts statuses matching parser output', () => {
     const text = [
-      'Hello {++world++}[^ct-1] and {--gone--}[^ct-2]',
+      'Hello {++world++}[^cn-1] and {--gone--}[^cn-2]',
       '',
-      '[^ct-1]: @alice | 2026-03-23 | ins | proposed',
-      '[^ct-2]: @bob | 2026-03-23 | del | accepted',
+      '[^cn-1]: @alice | 2026-03-23 | ins | proposed',
+      '[^cn-2]: @bob | 2026-03-23 | del | accepted',
     ].join('\n');
     const regexResult = extractFootnoteStatuses(text);
-    expect(regexResult.get('ct-1')).toBe('proposed');
-    expect(regexResult.get('ct-2')).toBe('accepted');
+    expect(regexResult.get('cn-1')).toBe('proposed');
+    expect(regexResult.get('cn-2')).toBe('accepted');
   });
 
   it('returns empty map for text without footnotes', () => {
@@ -96,17 +96,17 @@ describe('extractFootnoteStatuses', () => {
 
   it('extracts status from ai: author without @ prefix', () => {
     const text = [
-      '{~~quick~>slow~~}[^ct-1]',
+      '{~~quick~>slow~~}[^cn-1]',
       '',
-      '[^ct-1]: ai:test | 2026-02-25 | sub | accepted',
+      '[^cn-1]: ai:test | 2026-02-25 | sub | accepted',
     ].join('\n');
-    expect(extractFootnoteStatuses(text).get('ct-1')).toBe('accepted');
+    expect(extractFootnoteStatuses(text).get('cn-1')).toBe('accepted');
   });
 });
 
 describe('findUniqueMatch committed-text cascade level', () => {
   it('finds original text under proposed substitution', () => {
-    const text = 'The {~~quick~>slow~~}[^ct-1] brown fox.\n\n[^ct-1]: @ai:test | 2026-01-01 | sub | proposed';
+    const text = 'The {~~quick~>slow~~}[^cn-1] brown fox.\n\n[^cn-1]: @ai:test | 2026-01-01 | sub | proposed';
     const result = findUniqueMatch(text, 'quick brown');
     expect(result.wasCommittedMatch).toBe(true);
     // The raw match should cover the CriticMarkup construct
@@ -114,7 +114,7 @@ describe('findUniqueMatch committed-text cascade level', () => {
   });
 
   it('finds text spanning a proposed insertion gap', () => {
-    const text = 'Hello {++world ++}[^ct-1]there.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const text = 'Hello {++world ++}[^cn-1]there.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     // In committed view: "Hello there." — "Hello there" should match
     const result = findUniqueMatch(text, 'Hello there');
     expect(result.wasCommittedMatch).toBe(true);
@@ -132,14 +132,14 @@ describe('findUniqueMatch committed-text cascade level', () => {
   });
 
   it('does NOT use committed matching for accepted changes', () => {
-    const text = 'The {~~quick~>slow~~}[^ct-1] brown fox.\n\n[^ct-1]: @ai:test | 2026-01-01 | sub | accepted';
+    const text = 'The {~~quick~>slow~~}[^cn-1] brown fox.\n\n[^cn-1]: @ai:test | 2026-01-01 | sub | accepted';
     // Committed text for accepted sub = "slow brown fox"
     // Searching for "quick brown" should NOT match via committed
     expect(() => findUniqueMatch(text, 'quick brown')).toThrow();
   });
 
   it('expands raw range to cover complete CriticMarkup constructs', () => {
-    const text = 'A{~~XY~>B~~}[^ct-1]CD\n\n[^ct-1]: @ai:test | 2026-01-01 | sub | proposed';
+    const text = 'A{~~XY~>B~~}[^cn-1]CD\n\n[^cn-1]: @ai:test | 2026-01-01 | sub | proposed';
     // Committed: "AXYCD" — searching for "XYC"
     const result = findUniqueMatch(text, 'XYC');
     expect(result.wasCommittedMatch).toBe(true);

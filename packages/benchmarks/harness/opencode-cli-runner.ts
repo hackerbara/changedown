@@ -35,8 +35,8 @@ export interface RunEpisodeOptions {
   taskPrompt: string;
   workflow?: WorkflowId;
   prompts?: PromptsConfig;
-  /** When true, disable ChangeTracks plugin via env var or config */
-  disableChangeTracksPlugin?: boolean;
+  /** When true, disable ChangeDown plugin via env var or config */
+  disableChangeDownPlugin?: boolean;
   model?: string;
   timeoutMs?: number;
   logProgress?: boolean;
@@ -116,10 +116,10 @@ export async function runEpisode(options: RunEpisodeOptions): Promise<EpisodeRes
     args.push("--model", options.model);
   }
 
-  // For workflow A/D (no ChangeTracks), we could set an env var or use a different agent
-  // For now, just document that the workspace should not have ChangeTracks plugin loaded
-  if (options.disableChangeTracksPlugin) {
-    log("Note: To disable ChangeTracks, ensure workspace has no .opencode config loading the plugin");
+  // For workflow A/D (no ChangeDown), we could set an env var or use a different agent
+  // For now, just document that the workspace should not have ChangeDown plugin loaded
+  if (options.disableChangeDownPlugin) {
+    log("Note: To disable ChangeDown, ensure workspace has no .opencode config loading the plugin");
   }
 
   log(`Running: opencode ${args.join(" ")}`);
@@ -135,7 +135,7 @@ export async function runEpisode(options: RunEpisodeOptions): Promise<EpisodeRes
         ...process.env,
         // Ensure SC MCP server resolves relative paths from the workspace,
         // not from wherever OpenCode's MCP subprocess inherits its CWD.
-        CHANGETRACKS_PROJECT_DIR: options.cwd,
+        CHANGEDOWN_PROJECT_DIR: options.cwd,
       },
     });
 

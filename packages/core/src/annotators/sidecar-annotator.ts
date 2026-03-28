@@ -40,9 +40,9 @@ function splitChangeLines(value: string): string[] {
  * for a given language.
  *
  * Sidecar annotation marks changes in code files using line comments:
- * - Deletion: `# - original_code  # ct-N`
- * - Insertion: `new_code  # ct-N`
- * - Substitution: deletion line + insertion line with same ct-N tag
+ * - Deletion: `# - original_code  # cn-N`
+ * - Insertion: `new_code  # cn-N`
+ * - Substitution: deletion line + insertion line with same cn-N tag
  *
  * A sidecar metadata block is appended at the bottom of the file.
  *
@@ -76,7 +76,7 @@ export function annotateSidecar(
     if (change.removed && next?.added) {
       // Adjacent removed + added: substitution
       tagCounter++;
-      const tag = `ct-${tagCounter}`;
+      const tag = `cn-${tagCounter}`;
       const oldLines = splitChangeLines(change.value);
       const newLines = splitChangeLines(next.value);
 
@@ -99,7 +99,7 @@ export function annotateSidecar(
     } else if (change.removed) {
       // Pure deletion
       tagCounter++;
-      const tag = `ct-${tagCounter}`;
+      const tag = `cn-${tagCounter}`;
       const oldLines = splitChangeLines(change.value);
 
       for (const line of oldLines) {
@@ -114,7 +114,7 @@ export function annotateSidecar(
     } else if (change.added) {
       // Pure insertion
       tagCounter++;
-      const tag = `ct-${tagCounter}`;
+      const tag = `cn-${tagCounter}`;
       const newLines = splitChangeLines(change.value);
 
       for (const line of newLines) {

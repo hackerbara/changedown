@@ -1,17 +1,15 @@
 import { ImageRun } from 'docx';
-import { imageSize } from 'image-size';
 import {
   type ImageDimensions,
   DEFAULT_DPI, MAX_WIDTH_INCHES,
   FALLBACK_WIDTH_INCHES, FALLBACK_HEIGHT_INCHES,
-  inchesToPixels, pixelsToInches,
+  inchesToPixels,
 } from '../shared/image-types.js';
 import type { ImagePositionMetadata } from '../shared/image-types.js';
 
 export interface DimensionResolutionInput {
   footnoteDimensions?: ImageDimensions;
   pandocAttrs?: { width?: string; height?: string };
-  imageBuffer?: Buffer;
   dpi?: number;
   maxWidthInches?: number;
 }
@@ -20,12 +18,10 @@ export interface DimensionResolutionInput {
  * Resolve image dimensions using the priority cascade:
  * 1. Footnote metadata
  * 2. Pandoc-style attributes
- * 3. Intrinsic dimensions from image buffer
- * 4. Fallback 3x3
- * 5. Clamp to max page width
+ * 3. Fallback 3x3
+ * 4. Clamp to max page width
  */
 export function resolveImageDimensions(input: DimensionResolutionInput): ImageDimensions {
-  const dpi = input.dpi ?? DEFAULT_DPI;
   const maxWidth = input.maxWidthInches ?? MAX_WIDTH_INCHES;
   let dims: ImageDimensions;
 
@@ -36,20 +32,6 @@ export function resolveImageDimensions(input: DimensionResolutionInput): ImageDi
       widthIn: parseInches(input.pandocAttrs.width),
       heightIn: parseInches(input.pandocAttrs.height),
     };
-  } else if (input.imageBuffer) {
-    try {
-      const result = imageSize(input.imageBuffer);
-      if (result.width && result.height) {
-        dims = {
-          widthIn: pixelsToInches(result.width, dpi),
-          heightIn: pixelsToInches(result.height, dpi),
-        };
-      } else {
-        dims = { widthIn: FALLBACK_WIDTH_INCHES, heightIn: FALLBACK_HEIGHT_INCHES };
-      }
-    } catch {
-      dims = { widthIn: FALLBACK_WIDTH_INCHES, heightIn: FALLBACK_HEIGHT_INCHES };
-    }
   } else {
     dims = { widthIn: FALLBACK_WIDTH_INCHES, heightIn: FALLBACK_HEIGHT_INCHES };
   }
@@ -81,7 +63,7 @@ function parseInches(value: string): number {
  * Optionally applies floating/anchor positioning for round-trip fidelity.
  */
 export function buildImageRun(
-  data: Buffer,
+  data: Uint8Array,
   format: 'png' | 'jpg' | 'gif' | 'bmp',
   dims: ImageDimensions,
   dpi: number = DEFAULT_DPI,

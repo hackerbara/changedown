@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ChangeTracks — Build all packages from source
+// ChangeDown — Build all packages from source
 // Usage: node scripts/build.mjs [--package-only]
 //
 // Matches the build order and commands from scripts/build-all.sh in the dev repo:
@@ -32,7 +32,7 @@ const { values } = parseArgs({
 
 if (values.help) {
   console.log(`
-  ${bold('ChangeTracks — Build')}
+  ${bold('ChangeDown — Build')}
 
   Usage: node scripts/build.mjs [options]
 
@@ -63,21 +63,21 @@ function cleanTsBuildInfo(dir) {
 
 // --- Build steps (order matches build-all.sh) ---
 const steps = [
-  { name: '@changetracks/core', dir: 'packages/core', cmd: 'npm run build' },
-  { name: '@changetracks/docx', dir: 'packages/docx', cmd: 'npx tsc' },
-  { name: 'changetracks', dir: 'packages/cli', cmd: 'npx tsc' },
-  { name: '@changetracks/lsp-server', dir: 'packages/lsp-server', cmd: 'npm run build' },
-  { name: 'changetracks-vscode', dir: 'packages/vscode-extension', cmd: 'npm run compile && npm run esbuild' },
-  { name: '@changetracks/mcp', dir: 'changetracks-plugin/mcp-server', cmd: 'node esbuild.mjs' },
-  { name: 'hooks-impl (plugin)', dir: 'changetracks-plugin/hooks-impl', cmd: 'node esbuild.mjs' },
-  { name: '@changetracks/opencode-plugin', dir: 'packages/opencode-plugin', cmd: 'npm run build' },
+  { name: '@changedown/core', dir: 'packages/core', cmd: 'npm run build' },
+  { name: '@changedown/docx', dir: 'packages/docx', cmd: 'npx tsc' },
+  { name: 'changedown', dir: 'packages/cli', cmd: 'npx tsc' },
+  { name: '@changedown/lsp-server', dir: 'packages/lsp-server', cmd: 'npm run build' },
+  { name: 'changedown-vscode', dir: 'packages/vscode-extension', cmd: 'npm run compile && npm run esbuild' },
+  { name: '@changedown/mcp', dir: 'changedown-plugin/mcp-server', cmd: 'node esbuild.mjs' },
+  { name: 'hooks-impl (plugin)', dir: 'changedown-plugin/hooks-impl', cmd: 'node esbuild.mjs' },
+  { name: '@changedown/opencode-plugin', dir: 'packages/opencode-plugin', cmd: 'npm run build' },
 ];
 
 const TOTAL = steps.length + 1; // +1 for vsix packaging
 let failed = 0;
 let step = 0;
 
-console.log(`\n  ${bold('Building ChangeTracks (all packages)')}\n`);
+console.log(`\n  ${bold('Building ChangeDown (all packages)')}\n`);
 
 if (!values['package-only']) {
   // Clean stale .tsbuildinfo before building
@@ -129,7 +129,7 @@ if (failed === 0) {
     process.stdout.write(`${green('ok')}\n`);
     console.log(`\n  ${green(bold('All packages built successfully.'))}`);
     const extVersion = JSON.parse(readFileSync(join(extDir, 'package.json'), 'utf8')).version;
-    console.log(`  Extension: ${dim(join(extDir, `changetracks-vscode-${extVersion}.vsix`))}`);
+    console.log(`  Extension: ${dim(join(extDir, `changedown-vscode-${extVersion}.vsix`))}`);
   } catch (e) {
     process.stdout.write(`${red('FAIL')}\n`);
     const stderr = e.stderr?.toString() || e.stdout?.toString() || '';

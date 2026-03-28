@@ -40,30 +40,30 @@ describe('O7: Settlement (Layer 1 compaction)', () => {
       expect(before).toContain('{~~');
 
       const result = await ctx.review(filePath, {
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'verified' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'verified' }],
       });
       expect(result.isError).toBeUndefined();
 
       // After auto-settlement: inline markup removed, footnote persists
       await ctx.assertNoMarkupInBody(filePath);
-      await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
 
       // The accepted text (GraphQL) is present in the body
       const disk = await ctx.readDisk(filePath);
       expect(disk).toContain('GraphQL');
 
-      // TODO: Layer 1 settlement keeps inline footnote refs (e.g. [^ct-1]) in the body.
+      // TODO: Layer 1 settlement keeps inline footnote refs (e.g. [^cn-1]) in the body.
       // This is the current behavior — only CriticMarkup delimiters are removed,
       // footnote refs are preserved for the audit trail. Consider whether Layer 2
       // compaction should strip these.
-      const footnoteStart = disk.indexOf('\n[^ct-');
+      const footnoteStart = disk.indexOf('\n[^cn-');
       const body = footnoteStart >= 0 ? disk.slice(0, footnoteStart) : disk;
-      expect(body).toContain('[^ct-1]');
+      expect(body).toContain('[^cn-1]');
 
       // The response indicates settlement occurred
       const parsed = ctx.parseResult(result);
       expect(parsed.settled).toBeDefined();
-      expect(parsed.settled).toContain('ct-1');
+      expect(parsed.settled).toContain('cn-1');
     });
   });
 
@@ -100,24 +100,24 @@ describe('O7: Settlement (Layer 1 compaction)', () => {
       expect(before).toContain('It supports caching.');
 
       const result = await ctx.review(filePath, {
-        reviews: [{ change_id: 'ct-1', decision: 'reject', reason: 'not needed' }],
+        reviews: [{ change_id: 'cn-1', decision: 'reject', reason: 'not needed' }],
       });
       expect(result.isError).toBeUndefined();
 
       // After auto-settlement of rejected insertion: inserted text is gone
       const disk = await ctx.readDisk(filePath);
-      const footnoteStart = disk.indexOf('\n[^ct-');
+      const footnoteStart = disk.indexOf('\n[^cn-');
       const body = footnoteStart >= 0 ? disk.slice(0, footnoteStart) : disk;
       expect(body).not.toContain('It supports caching.');
 
       // TODO: Layer 1 settlement keeps inline footnote refs in the body (see above).
-      expect(body).toContain('[^ct-1]');
+      expect(body).toContain('[^cn-1]');
 
       // Inline markup gone
       await ctx.assertNoMarkupInBody(filePath);
 
       // Footnote persists with rejected status
-      await ctx.assertFootnoteStatus(filePath, 'ct-1', 'rejected');
+      await ctx.assertFootnoteStatus(filePath, 'cn-1', 'rejected');
     });
   });
 
@@ -148,12 +148,12 @@ describe('O7: Settlement (Layer 1 compaction)', () => {
     it('approving without auto-settle keeps markup, then settle flag compacts', async () => {
       // Step 1: Approve (markup persists because auto_on_approve = false)
       await ctx.review(filePath, {
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'good call' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'good call' }],
       });
 
       const afterApprove = await ctx.readDisk(filePath);
       expect(afterApprove).toContain('{~~');  // Markup still present
-      await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
 
       // Step 2: Call review_changes with settle = true
       const settleResult = await ctx.review(filePath, { settle: true });
@@ -161,16 +161,16 @@ describe('O7: Settlement (Layer 1 compaction)', () => {
 
       // After explicit settle: markup removed, footnote persists
       await ctx.assertNoMarkupInBody(filePath);
-      await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
 
       const disk = await ctx.readDisk(filePath);
       expect(disk).toContain('Redis caching');
-      expect(disk).toContain('[^ct-1]:');
+      expect(disk).toContain('[^cn-1]:');
 
       // TODO: Layer 1 settlement keeps inline footnote refs in the body (see above).
-      const footnoteStart2 = disk.indexOf('\n[^ct-');
+      const footnoteStart2 = disk.indexOf('\n[^cn-');
       const body2 = footnoteStart2 >= 0 ? disk.slice(0, footnoteStart2) : disk;
-      expect(body2).toContain('[^ct-1]');
+      expect(body2).toContain('[^cn-1]');
     });
   });
 
@@ -200,14 +200,14 @@ describe('O7: Settlement (Layer 1 compaction)', () => {
 
     it('after settling a substitution, new text remains and old text is gone from body', async () => {
       const result = await ctx.review(filePath, {
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'verified' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'verified' }],
       });
       expect(result.isError).toBeUndefined();
 
       await ctx.assertNoMarkupInBody(filePath);
 
       const disk = await ctx.readDisk(filePath);
-      const footnoteStart = disk.indexOf('\n[^ct-');
+      const footnoteStart = disk.indexOf('\n[^cn-');
       const body = footnoteStart >= 0 ? disk.slice(0, footnoteStart) : disk;
 
       // New text present
@@ -215,9 +215,9 @@ describe('O7: Settlement (Layer 1 compaction)', () => {
       // Old text gone from body
       expect(body).not.toContain('REST');
       // TODO: Layer 1 settlement keeps inline footnote refs in the body (see above).
-      expect(body).toContain('[^ct-1]');
+      expect(body).toContain('[^cn-1]');
       // Footnote persists
-      expect(disk).toContain('[^ct-1]:');
+      expect(disk).toContain('[^cn-1]:');
     });
   });
 
@@ -247,14 +247,14 @@ describe('O7: Settlement (Layer 1 compaction)', () => {
 
     it('after settling a deletion approval, deleted text is gone from body', async () => {
       const result = await ctx.review(filePath, {
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'agreed' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'agreed' }],
       });
       expect(result.isError).toBeUndefined();
 
       await ctx.assertNoMarkupInBody(filePath);
 
       const disk = await ctx.readDisk(filePath);
-      const footnoteStart = disk.indexOf('\n[^ct-');
+      const footnoteStart = disk.indexOf('\n[^cn-');
       const body = footnoteStart >= 0 ? disk.slice(0, footnoteStart) : disk;
 
       // Deleted text gone
@@ -263,10 +263,10 @@ describe('O7: Settlement (Layer 1 compaction)', () => {
       expect(body).toContain('Keep this.');
       expect(body).toContain('And keep this too.');
       // TODO: Layer 1 settlement keeps inline footnote refs in the body (see above).
-      expect(body).toContain('[^ct-1]');
+      expect(body).toContain('[^cn-1]');
       // Footnote persists
-      expect(disk).toContain('[^ct-1]:');
-      await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+      expect(disk).toContain('[^cn-1]:');
+      await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
     });
   });
 
@@ -302,11 +302,11 @@ describe('O7: Settlement (Layer 1 compaction)', () => {
     });
 
     it('after settling both accepted and rejected changes, all footnotes persist', async () => {
-      // Accept ct-1 (substitution), reject ct-2 (insertion)
+      // Accept cn-1 (substitution), reject cn-2 (insertion)
       const result = await ctx.review(filePath, {
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'good rename' },
-          { change_id: 'ct-2', decision: 'reject', reason: 'too verbose' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'good rename' },
+          { change_id: 'cn-2', decision: 'reject', reason: 'too verbose' },
         ],
       });
       expect(result.isError).toBeUndefined();
@@ -317,22 +317,22 @@ describe('O7: Settlement (Layer 1 compaction)', () => {
       const disk = await ctx.readDisk(filePath);
 
       // Both footnotes persist (Layer 1 keeps footnotes)
-      expect(disk).toContain('[^ct-1]:');
-      expect(disk).toContain('[^ct-2]:');
+      expect(disk).toContain('[^cn-1]:');
+      expect(disk).toContain('[^cn-2]:');
 
       // Each has correct status
-      await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
-      await ctx.assertFootnoteStatus(filePath, 'ct-2', 'rejected');
+      await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-2', 'rejected');
 
       // Accepted substitution: new text present
-      const footnoteStart = disk.indexOf('\n[^ct-');
+      const footnoteStart = disk.indexOf('\n[^cn-');
       const body = footnoteStart >= 0 ? disk.slice(0, footnoteStart) : disk;
       expect(body).toContain('Opening');
       expect(body).not.toContain('{~~');
 
       // TODO: Layer 1 settlement keeps inline footnote refs in the body (see above).
-      expect(body).toContain('[^ct-1]');
-      expect(body).toContain('[^ct-2]');
+      expect(body).toContain('[^cn-1]');
+      expect(body).toContain('[^cn-2]');
 
       // Rejected insertion: inserted text removed
       expect(body).not.toContain('Extra detail.');

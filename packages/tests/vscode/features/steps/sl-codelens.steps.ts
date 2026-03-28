@@ -9,7 +9,7 @@
 
 import { Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import { getCodeLensItems } from '../../journeys/playwrightHarness';
 
 // ── Helper ───────────────────────────────────────────────────────────
@@ -20,7 +20,7 @@ import { getCodeLensItems } from '../../journeys/playwrightHarness';
  * Items reference change IDs in their title or command string.
  */
 async function getCodeLensForChange(
-    world: ChangeTracksWorld,
+    world: ChangeDownWorld,
     changeId: string
 ): Promise<Array<{ line: number; title: string; command: string }>> {
     assert.ok(world.page, 'Page not available');
@@ -35,7 +35,7 @@ async function getCodeLensForChange(
 Then(
     'the CodeLens for {word} shows {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string, expected: string) {
+    async function (this: ChangeDownWorld, changeId: string, expected: string) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let items: Array<{ line: number; title: string; command: string }> = [];
@@ -55,7 +55,7 @@ Then(
 Then(
     'the CodeLens for {word} does not contain discussion indicator',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         // Allow a brief settle period then assert absence
         await this.page.waitForTimeout(500);
@@ -72,7 +72,7 @@ Then(
 Then(
     'the CodeLens for {word} contains discussion indicator',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let items: Array<{ line: number; title: string; command: string }> = [];
@@ -93,7 +93,7 @@ Then(
 Then(
     'the CodeLens for {word} shows reply count of {int}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string, expectedCount: number) {
+    async function (this: ChangeDownWorld, changeId: string, expectedCount: number) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let items: Array<{ line: number; title: string; command: string }> = [];
@@ -114,7 +114,7 @@ Then(
 Then(
     'the CodeLens for {word} contains request-changes indicator',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let items: Array<{ line: number; title: string; command: string }> = [];
@@ -135,7 +135,7 @@ Then(
 Then(
     'the CodeLens for {word} contains amendment indicator',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let items: Array<{ line: number; title: string; command: string }> = [];
@@ -156,7 +156,7 @@ Then(
 Then(
     'no CodeLens items exist for the document',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Allow view mode change to propagate
         await this.page.waitForTimeout(800);
@@ -173,7 +173,7 @@ Then(
     'CodeLens items exist for {word}, {word}, {word}, {word}',
     { timeout: 15000 },
     async function (
-        this: ChangeTracksWorld,
+        this: ChangeDownWorld,
         id1: string,
         id2: string,
         id3: string,

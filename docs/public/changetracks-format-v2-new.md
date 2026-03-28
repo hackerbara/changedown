@@ -51,7 +51,7 @@ few or as many fields as needed.
 Add a footnote reference and it becomes **Level 2** — full deliberation:
 
 ```markdown
-The API should use GraphQL for the public interface.
+The API should use GraphQL[^ct-1] for the public interface.
 
 [^ct-1]: @alice | 2024-01-15 | sub | proposed
     context: "The API should use {REST} for the public interface"
@@ -110,7 +110,7 @@ Dotted IDs under a shared parent: `ct-17.1`, `ct-17.2`. The parent is the logica
 operation; children are components. One level only — `ct-17.1.1` is never valid.
 Accept the parent → resolves all children. Reject a child → carves out one exception.
 
-A change may carry multiple refs: `slow` signals
+A change may carry multiple refs: `slow[^ct-1][^ct-2]` signals
 ct-2 supersedes ct-1.
 
 ## 4. The Footnote
@@ -380,7 +380,7 @@ The API should use GraphQL for the public interface
 and gRPC for internal service communication.
 
 Authentication uses OAuth 2.0 with JWT tokens for
-all endpoints. Rate limiting is set to 100 req/min.
+all endpoints. Rate limiting is set to 100 req/min[^ct-3].
 
 [^ct-1]: @alice | 2024-01-15 | sub | accepted
     4:e2 should use GraphQL for the public

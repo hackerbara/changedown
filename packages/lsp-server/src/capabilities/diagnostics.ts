@@ -7,7 +7,7 @@
  */
 
 import { Diagnostic, DiagnosticSeverity } from 'vscode-languageserver';
-import { ChangeNode, ChangeType, isGhostNode, consumptionLabel, UnresolvedDiagnostic } from '@changetracks/core';
+import { ChangeNode, ChangeType, isGhostNode, consumptionLabel, UnresolvedDiagnostic } from '@changedown/core';
 import { offsetRangeToLspRange } from '../converters';
 
 /**
@@ -56,7 +56,7 @@ export function createDiagnostics(
       result.push({
         range,
         severity: DiagnosticSeverity.Warning,
-        source: 'changetracks',
+        source: 'changedown',
         message,
         code: change.id,
         data: {
@@ -74,7 +74,7 @@ export function createDiagnostics(
       result.push({
         range,
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: `${label} by ${change.consumedBy} — this change's effect was absorbed by a later edit`,
         code: change.id,
         data: {
@@ -92,7 +92,7 @@ export function createDiagnostics(
     result.push({
       range,
       severity: DiagnosticSeverity.Hint,
-      source: 'changetracks',
+      source: 'changedown',
       message,
       code: change.id,
       data: {

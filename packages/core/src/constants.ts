@@ -1,12 +1,12 @@
 /**
  * Marker string used to identify the start of a sidecar annotation block
- * in non-markdown (code) files. Appears as: `COMMENT_CHAR -- ChangeTracks ---...`
+ * in non-markdown (code) files. Appears as: `COMMENT_CHAR -- ChangeDown ---...`
  */
-export const SIDECAR_BLOCK_MARKER = '-- ChangeTracks';
+export const SIDECAR_BLOCK_MARKER = '-- ChangeDown';
 
 /**
  * Finds the line index where the sidecar block starts.
- * Looks for: `COMMENT_CHAR -- ChangeTracks`
+ * Looks for: `COMMENT_CHAR -- ChangeDown`
  * Returns -1 if not found.
  *
  * Shared by sidecar-parser and sidecar-accept-reject.

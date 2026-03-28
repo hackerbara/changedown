@@ -5,13 +5,13 @@
  * and bulk operations to accept or reject all changes at once.
  *
  * Produces LSP Command objects that route through the extension's
- * changetracks.acceptChange / changetracks.rejectChange commands,
+ * changedown.acceptChange / changedown.rejectChange commands,
  * which in turn call handleReviewChange and handle both L2 and L3
  * correctly via applyReview.
  */
 
 import { CodeAction, CodeActionKind, Command, Diagnostic } from 'vscode-languageserver';
-import { ChangeNode, ChangeType, isGhostNode, type DiagnosticData } from '@changetracks/core';
+import { ChangeNode, ChangeType, isGhostNode, type DiagnosticData } from '@changedown/core';
 
 /**
  * Type guard: returns true when `data` carries a `changeId` string.
@@ -70,12 +70,12 @@ function createUnresolvedActions(changeId: string): CodeAction[] {
     {
       title: searchTitle,
       kind: CodeActionKind.QuickFix,
-      command: Command.create(searchTitle, 'changetracks.searchAnchorText', changeId),
+      command: Command.create(searchTitle, 'changedown.searchAnchorText', changeId),
     },
     {
       title: jumpTitle,
       kind: CodeActionKind.QuickFix,
-      command: Command.create(jumpTitle, 'changetracks.jumpToFootnote', changeId),
+      command: Command.create(jumpTitle, 'changedown.jumpToFootnote', changeId),
     },
   ];
 }
@@ -91,7 +91,7 @@ function createConsumedActions(changeId: string, consumedBy: string, hasActiveTh
       kind: CodeActionKind.QuickFix,
       command: Command.create(
         `Go to consuming change (${consumedBy})`,
-        'changetracks.jumpToFootnote',
+        'changedown.jumpToFootnote',
         consumedBy
       ),
     },
@@ -103,7 +103,7 @@ function createConsumedActions(changeId: string, consumedBy: string, hasActiveTh
       kind: CodeActionKind.RefactorRewrite,
       command: Command.create(
         'Compact consumed footnote',
-        'changetracks.compactChange',
+        'changedown.compactChange',
         changeId
       ),
     });
@@ -161,10 +161,10 @@ function createAction(
   _reviewerIdentity?: string
 ): CodeAction {
   const commandMap: Record<string, string> = {
-    accept: 'changetracks.acceptChange',
-    reject: 'changetracks.rejectChange',
-    request_changes: 'changetracks.requestChanges',
-    withdraw: 'changetracks.withdrawRequest',
+    accept: 'changedown.acceptChange',
+    reject: 'changedown.rejectChange',
+    request_changes: 'changedown.requestChanges',
+    withdraw: 'changedown.withdrawRequest',
   };
   return {
     title,
@@ -192,7 +192,7 @@ function createBulkAction(
   mode: 'accept' | 'reject',
   _reviewerIdentity?: string
 ): CodeAction {
-  const commandName = mode === 'accept' ? 'changetracks.acceptAll' : 'changetracks.rejectAll';
+  const commandName = mode === 'accept' ? 'changedown.acceptAll' : 'changedown.rejectAll';
   return {
     title,
     kind: CodeActionKind.Source,

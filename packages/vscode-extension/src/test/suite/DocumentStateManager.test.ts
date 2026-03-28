@@ -30,8 +30,8 @@ suite('DocumentStateManager', () => {
         manager.ensureDocState('file:///test.md', 1, '');
         const id1 = manager.allocateScId('file:///test.md');
         const id2 = manager.allocateScId('file:///test.md');
-        assert.strictEqual(id1, 'ct-1');
-        assert.strictEqual(id2, 'ct-2');
+        assert.strictEqual(id1, 'cn-1');
+        assert.strictEqual(id2, 'cn-2');
     });
 
     test('handleFileRename migrates state to new URI', () => {
@@ -59,9 +59,9 @@ suite('DocumentStateManager', () => {
 
     test('filterOptimisticNodes removes nodes with empty id and level 0', () => {
         const changes = [
-            { id: 'ct-1', level: 1 },
+            { id: 'cn-1', level: 1 },
             { id: '', level: 0 },
-            { id: 'ct-2', level: 2 },
+            { id: 'cn-2', level: 2 },
         ] as any[];
         const filtered = DocumentStateManager.filterOptimisticNodes(changes);
         assert.strictEqual(filtered.length, 2);

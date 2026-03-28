@@ -27,7 +27,7 @@ Feature: Propose changes via Surface E (committed view)
       | old_text   | timeout = 30     |
       | new_text   | timeout = 60     |
       | reasoning  | Increase for slow networks |
-    Then the response contains change_id "ct-1"
+    Then the response contains change_id "cn-1"
     And the file contains "{~~timeout = 30~>timeout = 60~~}"
 
   Scenario: Propose insertion after a hash-addressed line

@@ -1,4 +1,4 @@
-import type { ChangeTracksConfig } from './config.js';
+import type { ChangeDownConfig } from './config.js';
 
 export interface ResolveAuthorResult {
   author: string;
@@ -12,7 +12,7 @@ export interface ResolveAuthorResult {
  * The MCP protocol does not pass client/model metadata in tool requests;
  * Cursor does not currently inject model identity when spawning MCP servers.
  */
-const AUTHOR_ENV_KEY = 'CHANGETRACKS_AUTHOR';
+const AUTHOR_ENV_KEY = 'CHANGEDOWN_AUTHOR';
 
 /**
  * Valid author format: namespace:identifier
@@ -45,7 +45,7 @@ function validateAuthorFormat(author: string): ResolveAuthorResult | null {
 /**
  * Resolves the author identity for a tool call.
  *
- * Precedence: explicit argument > CHANGETRACKS_AUTHOR env > config default > "unknown".
+ * Precedence: explicit argument > CHANGEDOWN_AUTHOR env > config default > "unknown".
  * When enforcement is `'required'` and no explicit author is provided, env (if set)
  * satisfies the requirement; otherwise returns an error with an actionable message.
  *
@@ -54,7 +54,7 @@ function validateAuthorFormat(author: string): ResolveAuthorResult | null {
  */
 export function resolveAuthor(
   explicitAuthor: string | undefined,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
   toolName: string
 ): ResolveAuthorResult {
   // Explicit author always wins (truthy check — empty string is "not provided")

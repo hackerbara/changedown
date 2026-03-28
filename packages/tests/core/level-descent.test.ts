@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { compactToLevel1, compactToLevel0 } from '@changetracks/core/internals';
+import { compactToLevel1, compactToLevel0 } from '@changedown/core/internals';
 
 describe('Level descent (compaction)', () => {
   it('compacts Level 2 to Level 1', () => {
-    const text = '{~~REST~>GraphQL~~}[^ct-1]\n\n[^ct-1]: @alice | 2026-02-13 | sub | accepted\n    approved: @carol 2026-02-15';
-    const result = compactToLevel1(text, 'ct-1');
+    const text = '{~~REST~>GraphQL~~}[^cn-1]\n\n[^cn-1]: @alice | 2026-02-13 | sub | accepted\n    approved: @carol 2026-02-15';
+    const result = compactToLevel1(text, 'cn-1');
     expect(result).toBe('{~~REST~>GraphQL~~}{>>@alice|2026-02-13|sub|accepted<<}');
   });
 

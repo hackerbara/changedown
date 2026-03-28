@@ -197,7 +197,7 @@ async function main(): Promise<void> {
 
   // Validate Surface D prerequisites before starting runs
   if (surfaces.includes("D")) {
-    const cliPath = path.join(process.cwd(), "changetracks-plugin", "mcp-server", "dist", "cli.js");
+    const cliPath = path.join(process.cwd(), "changedown-plugin", "mcp-server", "dist", "cli.js");
     try {
       await fs.access(cliPath);
     } catch {
@@ -232,7 +232,7 @@ async function main(): Promise<void> {
 
       console.log(`\n  --- Surface ${surface} ---`);
 
-      const needsChangeTracks = surface !== "A";
+      const needsChangeDown = surface !== "A";
       const isCompact = surface === "C" || surface === "D" || surface === "E" || surface === "G";
       const protocolMode = isCompact ? "compact" as const : "classic" as const;
       const disableMcpPlugin = surface === "D";
@@ -241,9 +241,9 @@ async function main(): Promise<void> {
 
       const tempDir = await createTempWorkspace(fixtureDir, {
         gitInit: true,
-        injectChangeTracks: needsChangeTracks,
-        protocolMode: needsChangeTracks ? protocolMode : undefined,
-        disableChangeTracksPlugin: disableMcpPlugin,
+        injectChangeDown: needsChangeDown,
+        protocolMode: needsChangeDown ? protocolMode : undefined,
+        disableChangeDownPlugin: disableMcpPlugin,
         v1Config: isV1,
         patchWrapExperimental,
         // @ts-expect-error gitSetup not yet in CreateTempWorkspaceOptions type
@@ -254,7 +254,7 @@ async function main(): Promise<void> {
       const result = await runEpisode({
         cwd: tempDir,
         taskPrompt: prompt,
-        disableChangeTracksPlugin: surface === "A" || surface === "D",
+        disableChangeDownPlugin: surface === "A" || surface === "D",
         model: modelOverride,
         timeoutMs: 600_000,
         logProgress: true,

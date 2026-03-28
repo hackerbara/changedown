@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Workspace, ChangeType, ChangeStatus } from '@changetracks/core/internals';
+import { Workspace, ChangeType, ChangeStatus } from '@changedown/core/internals';
 
 describe('Workspace provider dispatch', () => {
   let ws: Workspace;
@@ -60,8 +60,8 @@ describe('Workspace provider dispatch', () => {
       expect(changes[0].type).toBe(ChangeType.Insertion);
     });
 
-    it('uses CriticMarkup even if markdown text contains "ChangeTracks" string', () => {
-      const text = 'Hello {++world++}!\n\n-- ChangeTracks --\nSome text';
+    it('uses CriticMarkup even if markdown text contains "ChangeDown" string', () => {
+      const text = 'Hello {++world++}!\n\n-- ChangeDown --\nSome text';
       const doc = ws.parse(text, 'markdown');
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
@@ -74,10 +74,10 @@ describe('Workspace provider dispatch', () => {
   describe('sidecar dispatch for code files', () => {
     const pythonSidecar = [
       'x = 1',
-      'y = 2  # ct-1',
+      'y = 2  # cn-1',
       '',
-      '# -- ChangeTracks ---------------------------------------------',
-      '# [^ct-1]: ins | pending',
+      '# -- ChangeDown ---------------------------------------------',
+      '# [^cn-1]: ins | pending',
       '# ----------------------------------------------------------------',
     ].join('\n');
 
@@ -86,16 +86,16 @@ describe('Workspace provider dispatch', () => {
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       expect(changes[0].type).toBe(ChangeType.Insertion);
-      expect(changes[0].id).toBe('ct-1');
+      expect(changes[0].id).toBe('cn-1');
     });
 
     it('parses sidecar annotations for typescript languageId when sidecar block present', () => {
       const tsSidecar = [
         'const x = 1;',
-        'const y = 2;  // ct-1',
+        'const y = 2;  // cn-1',
         '',
-        '// -- ChangeTracks ---------------------------------------------',
-        '// [^ct-1]: ins | pending',
+        '// -- ChangeDown ---------------------------------------------',
+        '// [^cn-1]: ins | pending',
         '// ----------------------------------------------------------------',
       ].join('\n');
       const doc = ws.parse(tsSidecar, 'typescript');
@@ -106,7 +106,7 @@ describe('Workspace provider dispatch', () => {
 
     it('acceptChange returns TextEdit[] for sidecar changes', () => {
       const result = ws.acceptChange(
-        { id: 'ct-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
+        { id: 'cn-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
           range: { start: 0, end: 10 }, contentRange: { start: 0, end: 10 }, level: 0, anchored: false },
         pythonSidecar,
         'python'
@@ -117,7 +117,7 @@ describe('Workspace provider dispatch', () => {
 
     it('rejectChange returns TextEdit[] for sidecar changes', () => {
       const result = ws.rejectChange(
-        { id: 'ct-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
+        { id: 'cn-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
           range: { start: 0, end: 10 }, contentRange: { start: 0, end: 10 }, level: 0, anchored: false },
         pythonSidecar,
         'python'
@@ -164,20 +164,20 @@ describe('Workspace provider dispatch', () => {
   describe('sidecar block detection', () => {
     it('detects sidecar block in python file', () => {
       const text = [
-        'code  # ct-1',
-        '# -- ChangeTracks ---',
-        '# [^ct-1]: ins | pending',
+        'code  # cn-1',
+        '# -- ChangeDown ---',
+        '# [^cn-1]: ins | pending',
         '# ---',
       ].join('\n');
       const doc = ws.parse(text, 'python');
-      // Sidecar path used: should find ct-1
+      // Sidecar path used: should find cn-1
       expect(doc.getChanges()).toHaveLength(1);
-      expect(doc.getChanges()[0].id).toBe('ct-1');
+      expect(doc.getChanges()[0].id).toBe('cn-1');
     });
 
     it('does not detect sidecar for markdown even with matching text', () => {
       // Markdown always uses CriticMarkup regardless of content
-      const text = '# -- ChangeTracks ---\n{++hello++}';
+      const text = '# -- ChangeDown ---\n{++hello++}';
       const doc = ws.parse(text, 'markdown');
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
@@ -185,7 +185,7 @@ describe('Workspace provider dispatch', () => {
     });
 
     it('does not use sidecar when text lacks sidecar block', () => {
-      const text = 'x = 1  # ct-1\ny = 2';
+      const text = 'x = 1  # cn-1\ny = 2';
       const doc = ws.parse(text, 'python');
       // Without sidecar block, falls back to CriticMarkup — no CriticMarkup in this text
       expect(doc.getChanges()).toHaveLength(0);

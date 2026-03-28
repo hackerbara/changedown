@@ -1,5 +1,5 @@
 /**
- * File-ops re-exports from @changetracks/core.
+ * File-ops re-exports from @changedown/core.
  *
  * The pure text-transform functions have been moved into the core package.
  * This module re-exports them so existing MCP server code continues to work
@@ -28,4 +28,4 @@ export {
   type ApplySingleOperationParams,
   type ApplySingleOperationResult,
   type OverlapResolution,
-} from '@changetracks/core';
+} from '@changedown/core';

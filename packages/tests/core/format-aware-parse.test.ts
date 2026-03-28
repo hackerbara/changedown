@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { parseForFormat, ChangeType, initHashline, stripFootnoteBlocks, neutralizeEditOpLine } from '@changetracks/core/internals';
+import { parseForFormat, ChangeType, initHashline, stripFootnoteBlocks, neutralizeEditOpLine } from '@changedown/core/internals';
 
 describe('parseForFormat', () => {
   beforeAll(async () => { await initHashline(); });
 
   it('parses L2 text with CriticMarkupParser', () => {
-    const l2 = 'Hello {++beautiful ++}world\n\n[^ct-1]: @a | 2026-01-01 | ins | proposed';
+    const l2 = 'Hello {++beautiful ++}world\n\n[^cn-1]: @a | 2026-01-01 | ins | proposed';
     const doc = parseForFormat(l2);
     const changes = doc.getChanges();
     expect(changes.length).toBe(1);
@@ -16,10 +16,10 @@ describe('parseForFormat', () => {
 
   it('parses L3 text with FootnoteNativeParser', () => {
     const l3 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'Hello world',
       '',
-      '[^ct-1]: @a | 2026-01-01 | ins | proposed',
+      '[^cn-1]: @a | 2026-01-01 | ins | proposed',
       '    4:b4 {++beautiful ++}',
     ].join('\n');
     const doc = parseForFormat(l3);
@@ -42,14 +42,14 @@ describe('stripFootnoteBlocks', () => {
     const text = [
       'Hello world',
       '',
-      '[^ct-1]: @a | 2026-01-01 | ins | accepted',
+      '[^cn-1]: @a | 2026-01-01 | ins | accepted',
       '    1:b4 world',
-      '[^ct-2]: @a | 2026-01-01 | del | proposed',
+      '[^cn-2]: @a | 2026-01-01 | del | proposed',
       '    1:c5 ',
     ].join('\n');
-    const result = stripFootnoteBlocks(text, ['ct-1']);
-    expect(result).toContain('[^ct-2]');
-    expect(result).not.toContain('[^ct-1]');
+    const result = stripFootnoteBlocks(text, ['cn-1']);
+    expect(result).toContain('[^cn-2]');
+    expect(result).not.toContain('[^cn-1]');
     expect(result).toContain('Hello world');
   });
 
@@ -57,18 +57,18 @@ describe('stripFootnoteBlocks', () => {
     const text = [
       'Body text',
       '',
-      '[^ct-1]: @a | 2026-01-01 | ins | accepted',
+      '[^cn-1]: @a | 2026-01-01 | ins | accepted',
       '    1:b4 text',
-      '[^ct-2]: @a | 2026-01-01 | del | rejected',
+      '[^cn-2]: @a | 2026-01-01 | del | rejected',
       '    1:c5 ',
     ].join('\n');
-    const result = stripFootnoteBlocks(text, ['ct-1', 'ct-2']);
+    const result = stripFootnoteBlocks(text, ['cn-1', 'cn-2']);
     expect(result.trim()).toBe('Body text');
   });
 
   it('returns text unchanged when IDs not found', () => {
-    const text = 'Hello world\n\n[^ct-1]: @a | 2026-01-01 | ins | proposed\n    1:b4 world';
-    const result = stripFootnoteBlocks(text, ['ct-99']);
+    const text = 'Hello world\n\n[^cn-1]: @a | 2026-01-01 | ins | proposed\n    1:b4 world';
+    const result = stripFootnoteBlocks(text, ['cn-99']);
     expect(result).toBe(text);
   });
 });
@@ -78,30 +78,30 @@ describe('neutralizeEditOpLine', () => {
     const text = [
       'Hello world',
       '',
-      '[^ct-1]: @a | 2026-01-01 | ins | accepted',
+      '[^cn-1]: @a | 2026-01-01 | ins | accepted',
       '    1:b4 {++world++}',
     ].join('\n');
-    const result = neutralizeEditOpLine(text, 'ct-1');
+    const result = neutralizeEditOpLine(text, 'cn-1');
     expect(result).not.toContain('{++world++}');
     expect(result).toContain('settled: "world"');
-    expect(result).toContain('[^ct-1]:'); // header preserved
+    expect(result).toContain('[^cn-1]:'); // header preserved
   });
 
   it('replaces edit-op line with settled log line for deletion', () => {
     const text = [
       'Hello',
       '',
-      '[^ct-1]: @a | 2026-01-01 | del | rejected',
+      '[^cn-1]: @a | 2026-01-01 | del | rejected',
       '    1:b4 {--removed--}',
     ].join('\n');
-    const result = neutralizeEditOpLine(text, 'ct-1');
+    const result = neutralizeEditOpLine(text, 'cn-1');
     expect(result).not.toContain('{--removed--}');
     expect(result).toContain('settled:');
   });
 
   it('returns text unchanged when ID not found', () => {
-    const text = 'Hello\n\n[^ct-1]: @a | 2026-01-01 | ins | proposed\n    1:b4 {++world++}';
-    const result = neutralizeEditOpLine(text, 'ct-99');
+    const text = 'Hello\n\n[^cn-1]: @a | 2026-01-01 | ins | proposed\n    1:b4 {++world++}';
+    const result = neutralizeEditOpLine(text, 'cn-99');
     expect(result).toBe(text);
   });
 });

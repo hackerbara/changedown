@@ -95,9 +95,9 @@ suite('LspBridge', () => {
         const calls: [string, number, string | undefined][] = [];
         bridge.setCursorPositionSender((uri, line, changeId) => { calls.push([uri, line, changeId]); });
 
-        bridge.sendCursorPosition('file:///test.md', 5, 'ct-1');
+        bridge.sendCursorPosition('file:///test.md', 5, 'cn-1');
         assert.strictEqual(calls.length, 1);
-        assert.deepStrictEqual(calls[0], ['file:///test.md', 5, 'ct-1']);
+        assert.deepStrictEqual(calls[0], ['file:///test.md', 5, 'cn-1']);
     });
 
     test('dispose clears overlay timeout', () => {

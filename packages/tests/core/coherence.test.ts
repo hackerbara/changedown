@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { VirtualDocument, ChangeType, ChangeStatus, parseProjectConfig } from '@changetracks/core';
-import { FootnoteNativeParser, initHashline } from '@changetracks/core/internals';
-import type { UnresolvedDiagnostic } from '@changetracks/core';
+import { VirtualDocument, ChangeType, ChangeStatus, parseProjectConfig } from '@changedown/core';
+import { FootnoteNativeParser, initHashline } from '@changedown/core/internals';
+import type { UnresolvedDiagnostic } from '@changedown/core';
 
 describe('VirtualDocument coherence', () => {
   it('defaults coherenceRate to 100 and unresolvedDiagnostics to empty', () => {
@@ -12,7 +12,7 @@ describe('VirtualDocument coherence', () => {
 
   it('accepts coherenceRate and unresolvedDiagnostics in constructor', () => {
     const diags: UnresolvedDiagnostic[] = [{
-      changeId: 'ct-5',
+      changeId: 'cn-5',
       expectedText: 'Protocol overview',
       actualLineContent: 'Security architecture',
       attemptedPaths: ['hash', 'relocation', 'context', 'replay'],
@@ -20,27 +20,27 @@ describe('VirtualDocument coherence', () => {
     const doc = new VirtualDocument([], 85, diags);
     expect(doc.coherenceRate).toBe(85);
     expect(doc.unresolvedDiagnostics).toHaveLength(1);
-    expect(doc.unresolvedDiagnostics[0].changeId).toBe('ct-5');
+    expect(doc.unresolvedDiagnostics[0].changeId).toBe('cn-5');
   });
 
   it('computes unresolved count from changes', () => {
     const changes = [
-      { id: 'ct-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
+      { id: 'cn-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
         range: { start: 10, end: 20 }, contentRange: { start: 10, end: 20 },
         level: 2 as const, anchored: true },
-      { id: 'ct-2', type: ChangeType.Deletion, status: ChangeStatus.Proposed,
+      { id: 'cn-2', type: ChangeType.Deletion, status: ChangeStatus.Proposed,
         range: { start: 0, end: 0 }, contentRange: { start: 0, end: 0 },
         level: 2 as const, anchored: false },
     ];
     const doc = new VirtualDocument(changes, 50, []);
     expect(doc.coherenceRate).toBe(50);
     expect(doc.getUnresolvedChanges()).toHaveLength(1);
-    expect(doc.getUnresolvedChanges()[0].id).toBe('ct-2');
+    expect(doc.getUnresolvedChanges()[0].id).toBe('cn-2');
   });
 
   it('excludes L0 inline changes from getUnresolvedChanges', () => {
     const changes = [
-      { id: 'ct-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
+      { id: 'cn-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
         range: { start: 0, end: 5 }, contentRange: { start: 0, end: 5 },
         level: 0 as const, anchored: false },
     ];
@@ -50,7 +50,7 @@ describe('VirtualDocument coherence', () => {
 
   it('excludes L1 overlay nodes from getUnresolvedChanges', () => {
     const changes = [
-      { id: 'ct-pending', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
+      { id: 'cn-pending', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
         range: { start: 0, end: 5 }, contentRange: { start: 0, end: 5 },
         level: 1 as const, anchored: false },
     ];
@@ -87,7 +87,7 @@ describe('parser-computed coherenceRate and resolvedText', () => {
     const text = [
       'Hello world.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:7b {++Hello ++}',
     ].join('\n');
     const doc = parser.parse(text);
@@ -102,7 +102,7 @@ describe('parser-computed coherenceRate and resolvedText', () => {
     const text = [
       'Hello world.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:ff {++xyzzy ++}',
     ].join('\n');
     const doc = parser.parse(text);
@@ -113,45 +113,45 @@ describe('parser-computed coherenceRate and resolvedText', () => {
   });
 
   it('coherenceRate reflects partial resolution when some nodes resolve and some do not', () => {
-    // ct-1: correct hash + text present → resolves
-    // ct-2: wrong hash + inserted text absent from body → unresolved
+    // cn-1: correct hash + text present → resolves
+    // cn-2: wrong hash + inserted text absent from body → unresolved
     // Expected rate: 1/2 = 50
     const text = [
       'Hello world.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:7b {++Hello ++}',
       '',
-      '[^ct-2]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-2]: @alice | 2026-03-20 | ins | proposed',
       '    1:ff {++missing ++}',
     ].join('\n');
     const doc = parser.parse(text);
     expect(doc.coherenceRate).toBe(50);
     expect(doc.getUnresolvedChanges()).toHaveLength(1);
-    expect(doc.getUnresolvedChanges()[0].id).toBe('ct-2');
+    expect(doc.getUnresolvedChanges()[0].id).toBe('cn-2');
   });
 
   it('resolvedText is defined when replay produces fresh anchors for stale-hash changes', () => {
-    // ct-1 records insertion of "very " with wrong hash ff and a contextual
-    // edit-op that references the pre-ct-2 body ("lazy"). After ct-2 changes
+    // cn-1 records insertion of "very " with wrong hash ff and a contextual
+    // edit-op that references the pre-cn-2 body ("lazy"). After cn-2 changes
     // "lazy" to "sleepy", the contextual match on the current body fails.
-    // The scrub replay traces the edit history, resolves ct-1's position, and
+    // The scrub replay traces the edit history, resolves cn-1's position, and
     // emits a fresh anchor with the updated LINE:HASH — triggering resolvedText.
     const text = [
       'The very very sleepy dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:ff The {++very ++}very lazy dog.',
       '',
-      '[^ct-2]: @bob | 2026-03-21 | sub | proposed',
+      '[^cn-2]: @bob | 2026-03-21 | sub | proposed',
       '    1:ee The very very {~~lazy~>sleepy~~} dog.',
     ].join('\n');
     const doc = parser.parse(text);
     expect(doc.resolvedText).toBeDefined();
     // The resolved text must differ from the input (anchors were updated)
     expect(doc.resolvedText).not.toBe(text);
-    // ct-1 is resolved via replay
-    const ct1 = doc.getChanges().find(c => c.id === 'ct-1');
+    // cn-1 is resolved via replay
+    const ct1 = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ct1?.anchored).toBe(true);
     expect(ct1?.resolutionPath).toBe('replay');
   });
@@ -162,7 +162,7 @@ describe('parser-computed coherenceRate and resolvedText', () => {
     const text = [
       'Hello world.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:7b {++Hello ++}',
     ].join('\n');
     const doc = parser.parse(text);

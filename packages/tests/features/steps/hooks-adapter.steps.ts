@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 
 import {
   handlePreToolUse,
@@ -16,15 +16,15 @@ import {
   handleBeforeMcpExecution,
   handleBeforeReadFile,
   handleCursorStop,
-} from 'changetracks-hooks/internals';
-import type { HookInput } from 'changetracks-hooks/internals';
+} from 'changedown-hooks/internals';
+import type { HookInput } from 'changedown-hooks/internals';
 
 // =============================================================================
 // Extend the world with adapter-specific state
 // =============================================================================
 
 declare module './world.js' {
-  interface ChangeTracksWorld {
+  interface ChangeDownWorld {
     // Adapter test state
     adapterTmpDir: string | null;
     adapterBatchFiles: Map<string, string>;
@@ -45,7 +45,7 @@ declare module './world.js' {
 // Lifecycle hooks
 // =============================================================================
 
-Before({ tags: '@H6 or @H7' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@H6 or @H7' }, function (this: ChangeDownWorld) {
   this.adapterTmpDir = null;
   this.adapterBatchFiles = new Map();
   this.ccPreResult = null;
@@ -58,7 +58,7 @@ Before({ tags: '@H6 or @H7' }, function (this: ChangeTracksWorld) {
   this.cursorStopResult = null;
 });
 
-After({ tags: '@H6 or @H7' }, async function (this: ChangeTracksWorld) {
+After({ tags: '@H6 or @H7' }, async function (this: ChangeDownWorld) {
   if (this.adapterTmpDir) {
     await fs.rm(this.adapterTmpDir, { recursive: true, force: true });
   }
@@ -78,7 +78,7 @@ After({ tags: '@H6 or @H7' }, async function (this: ChangeTracksWorld) {
 
 When(
   'I call Claude Code PreToolUse with tool {string} on file {string}',
-  async function (this: ChangeTracksWorld, toolName: string, fileName: string) {
+  async function (this: ChangeDownWorld, toolName: string, fileName: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const input: HookInput = {
       hook_event_name: 'PreToolUse',
@@ -100,21 +100,21 @@ When(
   },
 );
 
-Then('the Claude Code hook returns empty', function (this: ChangeTracksWorld) {
+Then('the Claude Code hook returns empty', function (this: ChangeDownWorld) {
   assert.ok(this.ccPreResult !== undefined, 'No Claude Code PreToolUse result');
   assert.deepStrictEqual(this.ccPreResult, {});
 });
 
 Then(
   'the Claude Code hook decision is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.ccPreResult, 'No Claude Code PreToolUse result');
     assert.ok(this.ccPreResult.hookSpecificOutput, 'No hookSpecificOutput in result');
     assert.equal(this.ccPreResult.hookSpecificOutput.permissionDecision, expected);
   },
 );
 
-Then('the Claude Code hook has additional context', function (this: ChangeTracksWorld) {
+Then('the Claude Code hook has additional context', function (this: ChangeDownWorld) {
   assert.ok(this.ccPreResult, 'No Claude Code PreToolUse result');
   assert.ok(this.ccPreResult.hookSpecificOutput, 'No hookSpecificOutput in result');
   assert.ok(
@@ -125,7 +125,7 @@ Then('the Claude Code hook has additional context', function (this: ChangeTracks
 
 Then(
   'the Claude Code hook reason contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.ccPreResult, 'No Claude Code PreToolUse result');
     assert.ok(this.ccPreResult.hookSpecificOutput, 'No hookSpecificOutput in result');
     const reason = this.ccPreResult.hookSpecificOutput.permissionDecisionReason ?? '';
@@ -141,7 +141,7 @@ Then(
 When(
   'I call Claude Code PostToolUse with tool {string} on file {string} with old {string} and new {string}',
   async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     toolName: string,
     fileName: string,
     oldText: string,
@@ -164,7 +164,7 @@ When(
 
 Then(
   'the Claude Code post hook logged is {word}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.ccPostResult !== undefined, 'No Claude Code PostToolUse result');
     assert.equal(this.ccPostResult.logged, expected === 'true');
   },
@@ -172,7 +172,7 @@ Then(
 
 Then(
   'the pending edits contain an entry for {string}',
-  async function (this: ChangeTracksWorld, fileName: string) {
+  async function (this: ChangeDownWorld, fileName: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const edits = await readPendingEdits(this.batchTmpDir);
     const fullPath = path.join(this.batchTmpDir, fileName);
@@ -185,7 +185,7 @@ Then(
 
 Given(
   'a Claude Code pending substitution from {string} to {string} in session {string}',
-  async function (this: ChangeTracksWorld, oldText: string, newText: string, sessionId: string) {
+  async function (this: ChangeDownWorld, oldText: string, newText: string, sessionId: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const filePath = [...this.batchFiles.values()].pop()!;
     await appendPendingEdit(this.batchTmpDir, {
@@ -200,7 +200,7 @@ Given(
 
 When(
   'I call Claude Code Stop for session {string}',
-  async function (this: ChangeTracksWorld, sessionId: string) {
+  async function (this: ChangeDownWorld, sessionId: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     this.ccStopResult = await handleStop({
       hook_event_name: 'Stop',
@@ -217,7 +217,7 @@ When(
 
 When(
   'I call Cursor preToolUse with tool {string} on file {string}',
-  async function (this: ChangeTracksWorld, toolName: string, fileName: string) {
+  async function (this: ChangeDownWorld, toolName: string, fileName: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const input: HookInput = {
       hook_event_name: 'preToolUse',
@@ -235,7 +235,7 @@ When(
 
 Then(
   'the Cursor decision is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.cursorPreResult, 'No Cursor preToolUse result');
     assert.equal(this.cursorPreResult.decision, expected);
   },
@@ -243,7 +243,7 @@ Then(
 
 Then(
   'the Cursor reason contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.cursorPreResult, 'No Cursor preToolUse result');
     assert.ok(
       (this.cursorPreResult.reason ?? '').includes(expected),
@@ -257,7 +257,7 @@ Then(
 When(
   'I call Cursor afterFileEdit on {string} with old {string} and new {string} in conversation {string}',
   async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     fileName: string,
     oldText: string,
     newText: string,
@@ -277,7 +277,7 @@ When(
 
 Then(
   'the pending edits contain an entry for {string} with session {string}',
-  async function (this: ChangeTracksWorld, fileName: string, sessionId: string) {
+  async function (this: ChangeDownWorld, fileName: string, sessionId: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const edits = await readPendingEdits(this.batchTmpDir);
     const fullPath = path.join(this.batchTmpDir, fileName);
@@ -293,10 +293,10 @@ Then(
 
 Given(
   'a Cursor config with author enforcement {string}',
-  async function (this: ChangeTracksWorld, enforcement: string) {
+  async function (this: ChangeDownWorld, enforcement: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     await fs.writeFile(
-      path.join(this.batchTmpDir, '.changetracks', 'config.toml'),
+      path.join(this.batchTmpDir, '.changedown', 'config.toml'),
       `[tracking]\ninclude = ["**/*.md"]\n\n[author]\ndefault = "ai:claude"\nenforcement = "${enforcement}"\n`,
       'utf-8',
     );
@@ -305,7 +305,7 @@ Given(
 
 When(
   'I call Cursor beforeMCPExecution with tool {string}',
-  async function (this: ChangeTracksWorld, toolName: string) {
+  async function (this: ChangeDownWorld, toolName: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const input: HookInput = {
       hook_event_name: 'beforeMCPExecution',
@@ -319,7 +319,7 @@ When(
 
 When(
   'I call Cursor beforeMCPExecution with tool {string} without author',
-  async function (this: ChangeTracksWorld, toolName: string) {
+  async function (this: ChangeDownWorld, toolName: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const input: HookInput = {
       hook_event_name: 'beforeMCPExecution',
@@ -331,19 +331,19 @@ When(
   },
 );
 
-Then('the Cursor MCP response continues', function (this: ChangeTracksWorld) {
+Then('the Cursor MCP response continues', function (this: ChangeDownWorld) {
   assert.ok(this.cursorMcpResult, 'No Cursor MCP result');
   assert.equal(this.cursorMcpResult.continue, true);
 });
 
-Then('the Cursor MCP response blocks', function (this: ChangeTracksWorld) {
+Then('the Cursor MCP response blocks', function (this: ChangeDownWorld) {
   assert.ok(this.cursorMcpResult, 'No Cursor MCP result');
   assert.equal(this.cursorMcpResult.continue, false);
 });
 
 Then(
   'the Cursor MCP permission is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.cursorMcpResult, 'No Cursor MCP result');
     assert.equal(this.cursorMcpResult.permission, expected);
   },
@@ -351,7 +351,7 @@ Then(
 
 Then(
   'the Cursor MCP message contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.cursorMcpResult, 'No Cursor MCP result');
     assert.ok(
       (this.cursorMcpResult.agentMessage ?? '').includes(expected),
@@ -364,7 +364,7 @@ Then(
 
 When(
   'I call Cursor beforeReadFile on {string}',
-  async function (this: ChangeTracksWorld, fileName: string) {
+  async function (this: ChangeDownWorld, fileName: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const input: HookInput = {
       hook_event_name: 'beforeReadFile',
@@ -375,19 +375,19 @@ When(
   },
 );
 
-Then('the Cursor read response continues', function (this: ChangeTracksWorld) {
+Then('the Cursor read response continues', function (this: ChangeDownWorld) {
   assert.ok(this.cursorReadResult, 'No Cursor read result');
   assert.equal(this.cursorReadResult.continue, true);
 });
 
-Then('the Cursor read response blocks', function (this: ChangeTracksWorld) {
+Then('the Cursor read response blocks', function (this: ChangeDownWorld) {
   assert.ok(this.cursorReadResult, 'No Cursor read result');
   assert.equal(this.cursorReadResult.continue, false);
 });
 
 Then(
   'the Cursor read permission is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.cursorReadResult, 'No Cursor read result');
     assert.equal(this.cursorReadResult.permission, expected);
   },
@@ -397,12 +397,12 @@ Then(
 
 Given(
   'a Cursor pending substitution from {string} to {string} in conversation {string}',
-  async function (this: ChangeTracksWorld, oldText: string, newText: string, conversationId: string) {
+  async function (this: ChangeDownWorld, oldText: string, newText: string, conversationId: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const filePath = [...this.batchFiles.values()].pop();
     // If no file registered in batchFiles, create a placeholder entry
     const targetFile = filePath ?? path.join(this.batchTmpDir, 'readme.md');
-    const pendingPath = path.join(this.batchTmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(this.batchTmpDir, '.changedown', 'pending.json');
     const existing = await readPendingEdits(this.batchTmpDir);
     existing.push({
       file: targetFile,
@@ -419,7 +419,7 @@ Given(
 
 When(
   'I call Cursor stop for conversation {string}',
-  async function (this: ChangeTracksWorld, conversationId: string) {
+  async function (this: ChangeDownWorld, conversationId: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const input: HookInput = {
       hook_event_name: 'stop',

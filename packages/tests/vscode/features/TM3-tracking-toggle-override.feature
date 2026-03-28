@@ -12,7 +12,7 @@ Feature: TM3 -- Tracking toggle override
   Scenario: TM3-01 Tracking stays off after tab switch
     # Tracking is ON from the Background step.
     # User explicitly toggles it OFF.
-    When I execute "ChangeTracks: Toggle Tracking"
+    When I execute "ChangeDown: Toggle Tracking"
     And I wait 500ms
     # Switch to a different fixture file (multi-tab-second.md)
     And I switch to fixture "multi-tab-second.md"
@@ -36,7 +36,7 @@ Feature: TM3 -- Tracking toggle override
     # Insert text WITHOUT waiting for crystallization.
     When I insert " PENDING" at the end
     # Immediately toggle tracking OFF before the pause threshold fires.
-    And I execute "ChangeTracks: Toggle Tracking"
+    And I execute "ChangeDown: Toggle Tracking"
     # Wait longer than the default pause threshold (300ms) to let any
     # pending timer fire -- it should have been abandoned.
     And I wait 1000ms
@@ -49,7 +49,7 @@ Feature: TM3 -- Tracking toggle override
   Scenario: TM3-03 Tracking stays off after Smart View toggle
     # Tracking is ON from the Background step.
     # User explicitly toggles tracking OFF.
-    When I execute "ChangeTracks: Toggle Tracking"
+    When I execute "ChangeDown: Toggle Tracking"
     And I wait 500ms
     # Toggle Smart View (cycles view mode). This should not re-enable tracking.
     And I toggle Smart View

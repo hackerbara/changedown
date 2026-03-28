@@ -8,7 +8,7 @@ import {
   initHashline,
   type CompactionSurface,
   type FootnoteRef,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 // ─── Task 1: compaction-boundary footnote handling ───────────────────────────
 
@@ -16,28 +16,28 @@ describe('analyzeCompactionCandidates — compaction-boundary filtering', () => 
   it('filters out a compaction-boundary footnote with full 4-field header', async () => {
     // A boundary footnote that matches FOOTNOTE_DEF_LENIENT must be excluded.
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
-      '[^ct-2]: @alice | 2026-03-20 | compaction-boundary | -',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-2]: @alice | 2026-03-20 | compaction-boundary | -',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
 
-    // ct-2 must not appear in any category
-    const allIds = collectIds(surface);
-    assert.ok(!allIds.has('ct-2'), 'compaction-boundary entry must be filtered out');
+    // cn-2 must not appear in any category
+    const allIds = collecnIds(surface);
+    assert.ok(!allIds.has('cn-2'), 'compaction-boundary entry must be filtered out');
 
-    // ct-1 must still appear
-    assert.ok(allIds.has('ct-1'), 'normal decided footnote must appear');
+    // cn-1 must still appear
+    assert.ok(allIds.has('cn-1'), 'normal decided footnote must appear');
 
     // totalFootnotes counts only non-boundary entries
     assert.strictEqual(surface.totalFootnotes, 1);
   });
 
   it('bare compaction-boundary (no 4-field header) produces no FootnoteInfo at all', async () => {
-    // A bare `[^ct-5]: compaction-boundary` line does not match FOOTNOTE_DEF_LENIENT
+    // A bare `[^cn-5]: compaction-boundary` line does not match FOOTNOTE_DEF_LENIENT
     // (only 1 field after the colon, not 4 pipe-separated fields), so the unified
     // parser ignores it entirely (resolveType returns null for "compaction-boundary").
-    const l3Text = '[^ct-5]: compaction-boundary';
+    const l3Text = '[^cn-5]: compaction-boundary';
 
     // Verify at the surface level — unified parser excludes compaction-boundary entries
     const surface = await analyzeCompactionCandidates(l3Text);
@@ -49,7 +49,7 @@ describe('analyzeCompactionCandidates — compaction-boundary filtering', () => 
   it('3-field compaction-boundary (@author | date | compaction-boundary) is not parsed', async () => {
     // Only 3 fields — also does not match the 4-field header pattern, so the
     // unified parser excludes this entry.
-    const l3Text = '[^ct-3]: @alice | 2026-03-20 | compaction-boundary';
+    const l3Text = '[^cn-3]: @alice | 2026-03-20 | compaction-boundary';
 
     const surface = await analyzeCompactionCandidates(l3Text);
     assert.strictEqual(surface.totalFootnotes, 0);
@@ -61,8 +61,8 @@ describe('analyzeCompactionCandidates — compaction-boundary filtering', () => 
 describe('analyzeCompactionCandidates — status categorization', () => {
   it('categorizes accepted footnotes as decided', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | ins | accepted',
-      '[^ct-2]: @bob | 2026-03-02 | del | accepted',
+      '[^cn-1]: @alice | 2026-03-01 | ins | accepted',
+      '[^cn-2]: @bob | 2026-03-02 | del | accepted',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
@@ -71,14 +71,14 @@ describe('analyzeCompactionCandidates — status categorization', () => {
     assert.strictEqual(surface.proposed.length, 0);
     assert.deepStrictEqual(
       surface.decided.map((r: FootnoteRef) => r.id).sort(),
-      ['ct-1', 'ct-2'],
+      ['cn-1', 'cn-2'],
     );
   });
 
   it('categorizes rejected footnotes as decided', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | sub | rejected',
-      '[^ct-2]: @bob | 2026-03-02 | del | rejected',
+      '[^cn-1]: @alice | 2026-03-01 | sub | rejected',
+      '[^cn-2]: @bob | 2026-03-02 | del | rejected',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
@@ -89,8 +89,8 @@ describe('analyzeCompactionCandidates — status categorization', () => {
 
   it('categorizes proposed footnotes correctly', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | ins | proposed',
-      '[^ct-2]: @bob | 2026-03-02 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-01 | ins | proposed',
+      '[^cn-2]: @bob | 2026-03-02 | sub | proposed',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
@@ -101,9 +101,9 @@ describe('analyzeCompactionCandidates — status categorization', () => {
 
   it('separates mixed accepted/rejected/proposed into correct buckets', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | ins | accepted',
-      '[^ct-2]: @bob | 2026-03-02 | del | rejected',
-      '[^ct-3]: @carol | 2026-03-03 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-01 | ins | accepted',
+      '[^cn-2]: @bob | 2026-03-02 | del | rejected',
+      '[^cn-3]: @carol | 2026-03-03 | sub | proposed',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
@@ -113,18 +113,18 @@ describe('analyzeCompactionCandidates — status categorization', () => {
     assert.strictEqual(surface.totalFootnotes, 3);
 
     const decidedIds = surface.decided.map((r: FootnoteRef) => r.id).sort();
-    assert.deepStrictEqual(decidedIds, ['ct-1', 'ct-2']);
-    assert.strictEqual(surface.proposed[0].id, 'ct-3');
+    assert.deepStrictEqual(decidedIds, ['cn-1', 'cn-2']);
+    assert.strictEqual(surface.proposed[0].id, 'cn-3');
   });
 
   it('FootnoteRef carries author, date, and type fields', async () => {
-    const l3Text = '[^ct-1]: @alice | 2026-03-10 | ins | accepted';
+    const l3Text = '[^cn-1]: @alice | 2026-03-10 | ins | accepted';
 
     const surface = await analyzeCompactionCandidates(l3Text);
 
     assert.strictEqual(surface.decided.length, 1);
     const ref = surface.decided[0];
-    assert.strictEqual(ref.id, 'ct-1');
+    assert.strictEqual(ref.id, 'cn-1');
     assert.strictEqual(ref.status, 'accepted');
     assert.strictEqual(ref.author, '@alice');
     assert.strictEqual(ref.date, '2026-03-10');
@@ -132,7 +132,7 @@ describe('analyzeCompactionCandidates — status categorization', () => {
   });
 
   it('unresolved is always empty (future concern)', async () => {
-    const l3Text = '[^ct-1]: @alice | 2026-03-01 | ins | accepted';
+    const l3Text = '[^cn-1]: @alice | 2026-03-01 | ins | accepted';
     const surface = await analyzeCompactionCandidates(l3Text);
     assert.strictEqual(surface.unresolved.length, 0);
   });
@@ -143,40 +143,40 @@ describe('analyzeCompactionCandidates — status categorization', () => {
 describe('analyzeCompactionCandidates — supersede chains', () => {
   it('detects a supersede chain from supersedes: line', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | ins | accepted',
-      '[^ct-2]: @alice | 2026-03-02 | ins | accepted',
-      '    supersedes: ct-1',
+      '[^cn-1]: @alice | 2026-03-01 | ins | accepted',
+      '[^cn-2]: @alice | 2026-03-02 | ins | accepted',
+      '    supersedes: cn-1',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
 
     assert.strictEqual(surface.supersedeChains.length, 1);
     const chain = surface.supersedeChains[0];
-    assert.strictEqual(chain.active, 'ct-2');
-    assert.deepStrictEqual(chain.consumed, ['ct-1']);
+    assert.strictEqual(chain.active, 'cn-2');
+    assert.deepStrictEqual(chain.consumed, ['cn-1']);
   });
 
   it('detects a chain where one op supersedes multiple predecessors', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | ins | rejected',
-      '[^ct-2]: @alice | 2026-03-02 | ins | rejected',
-      '[^ct-3]: @alice | 2026-03-03 | ins | accepted',
-      '    supersedes: ct-1',
-      '    supersedes: ct-2',
+      '[^cn-1]: @alice | 2026-03-01 | ins | rejected',
+      '[^cn-2]: @alice | 2026-03-02 | ins | rejected',
+      '[^cn-3]: @alice | 2026-03-03 | ins | accepted',
+      '    supersedes: cn-1',
+      '    supersedes: cn-2',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
 
     assert.strictEqual(surface.supersedeChains.length, 1);
     const chain = surface.supersedeChains[0];
-    assert.strictEqual(chain.active, 'ct-3');
-    assert.deepStrictEqual(chain.consumed, ['ct-1', 'ct-2']);
+    assert.strictEqual(chain.active, 'cn-3');
+    assert.deepStrictEqual(chain.consumed, ['cn-1', 'cn-2']);
   });
 
   it('returns empty supersedeChains when no supersedes: lines exist', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | ins | accepted',
-      '[^ct-2]: @bob | 2026-03-02 | del | proposed',
+      '[^cn-1]: @alice | 2026-03-01 | ins | accepted',
+      '[^cn-2]: @bob | 2026-03-02 | del | proposed',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
@@ -186,12 +186,12 @@ describe('analyzeCompactionCandidates — supersede chains', () => {
 
   it('handles multiple independent supersede chains', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | ins | rejected',
-      '[^ct-2]: @alice | 2026-03-02 | ins | accepted',
-      '    supersedes: ct-1',
-      '[^ct-3]: @bob | 2026-03-03 | del | rejected',
-      '[^ct-4]: @bob | 2026-03-04 | del | accepted',
-      '    supersedes: ct-3',
+      '[^cn-1]: @alice | 2026-03-01 | ins | rejected',
+      '[^cn-2]: @alice | 2026-03-02 | ins | accepted',
+      '    supersedes: cn-1',
+      '[^cn-3]: @bob | 2026-03-03 | del | rejected',
+      '[^cn-4]: @bob | 2026-03-04 | del | accepted',
+      '    supersedes: cn-3',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
@@ -199,10 +199,10 @@ describe('analyzeCompactionCandidates — supersede chains', () => {
     assert.strictEqual(surface.supersedeChains.length, 2);
 
     const chainMap = new Map(surface.supersedeChains.map((c: { active: string; consumed: string[] }) => [c.active, c]));
-    assert.ok(chainMap.has('ct-2'));
-    assert.deepStrictEqual(chainMap.get('ct-2')!.consumed, ['ct-1']);
-    assert.ok(chainMap.has('ct-4'));
-    assert.deepStrictEqual(chainMap.get('ct-4')!.consumed, ['ct-3']);
+    assert.ok(chainMap.has('cn-2'));
+    assert.deepStrictEqual(chainMap.get('cn-2')!.consumed, ['cn-1']);
+    assert.ok(chainMap.has('cn-4'));
+    assert.deepStrictEqual(chainMap.get('cn-4')!.consumed, ['cn-3']);
   });
 });
 
@@ -211,21 +211,21 @@ describe('analyzeCompactionCandidates — supersede chains', () => {
 describe('analyzeCompactionCandidates — active discussion threads', () => {
   it('detects footnotes with active discussion thread replies', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-01 | sub | proposed',
       '    reason: improve clarity',
       '    @bob 2026-03-02: This looks good to me',
-      '[^ct-2]: @bob | 2026-03-02 | del | proposed',
+      '[^cn-2]: @bob | 2026-03-02 | del | proposed',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
 
     assert.strictEqual(surface.withActiveThreads.length, 1);
-    assert.strictEqual(surface.withActiveThreads[0].id, 'ct-1');
+    assert.strictEqual(surface.withActiveThreads[0].id, 'cn-1');
   });
 
   it('does not count approval/rejection lines as active thread replies', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | sub | accepted',
+      '[^cn-1]: @alice | 2026-03-01 | sub | accepted',
       '    reason: improve clarity',
       '    approved: @bob 2026-03-02',
     ].join('\n');
@@ -237,7 +237,7 @@ describe('analyzeCompactionCandidates — active discussion threads', () => {
 
   it('does not count request-changes lines as active thread replies', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-01 | sub | proposed',
       '    request-changes: @bob 2026-03-02: reword this',
     ].join('\n');
 
@@ -248,23 +248,23 @@ describe('analyzeCompactionCandidates — active discussion threads', () => {
 
   it('counts @author date: lines as active thread entries', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-01 | sub | proposed',
       '    @carol 2026-03-02: I disagree with this change',
       '    @alice 2026-03-03: Let me reconsider',
-      '[^ct-2]: @bob | 2026-03-02 | del | proposed',
+      '[^cn-2]: @bob | 2026-03-02 | del | proposed',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
 
     assert.strictEqual(surface.withActiveThreads.length, 1);
-    assert.strictEqual(surface.withActiveThreads[0].id, 'ct-1');
+    assert.strictEqual(surface.withActiveThreads[0].id, 'cn-1');
   });
 
   it('returns empty withActiveThreads when no discussion exists', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-01 | ins | accepted',
       '    reason: spelling fix',
-      '[^ct-2]: @bob | 2026-03-02 | del | rejected',
+      '[^cn-2]: @bob | 2026-03-02 | del | rejected',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
@@ -296,25 +296,25 @@ describe('analyzeCompactionCandidates — edge cases', () => {
 
   it('handles compaction-boundary mixed with real footnotes', async () => {
     const l3Text = [
-      '[^ct-1]: @alice | 2026-03-01 | ins | accepted',
-      '[^ct-2]: @alice | 2026-03-10 | compaction-boundary | -',
-      '[^ct-3]: @bob | 2026-03-15 | del | proposed',
+      '[^cn-1]: @alice | 2026-03-01 | ins | accepted',
+      '[^cn-2]: @alice | 2026-03-10 | compaction-boundary | -',
+      '[^cn-3]: @bob | 2026-03-15 | del | proposed',
     ].join('\n');
 
     const surface = await analyzeCompactionCandidates(l3Text);
 
-    // Only ct-1 and ct-3 should appear
+    // Only cn-1 and cn-3 should appear
     assert.strictEqual(surface.totalFootnotes, 2);
-    const allIds = collectIds(surface);
-    assert.ok(!allIds.has('ct-2'));
-    assert.ok(allIds.has('ct-1'));
-    assert.ok(allIds.has('ct-3'));
+    const allIds = collecnIds(surface);
+    assert.ok(!allIds.has('cn-2'));
+    assert.ok(allIds.has('cn-1'));
+    assert.ok(allIds.has('cn-3'));
   });
 });
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
-function collectIds(surface: CompactionSurface): Set<string> {
+function collecnIds(surface: CompactionSurface): Set<string> {
   const ids = new Set<string>();
   for (const ref of [...surface.decided, ...surface.proposed, ...surface.unresolved, ...surface.withActiveThreads]) {
     ids.add(ref.id);
@@ -338,16 +338,16 @@ describe('compact', () => {
     const text = [
       'The quick beautiful brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:a1 The quick {++beautiful ++}brown fox.',
       '    approved: @bob 2026-03-20 "OK"',
     ].join('\n');
 
     const result = await compact(text, { targets: 'all-decided', undecidedPolicy: 'accept' });
 
-    assert.deepStrictEqual(result.compactedIds, ['ct-1']);
+    assert.deepStrictEqual(result.compactedIds, ['cn-1']);
     assert.ok(result.text.includes('The quick beautiful brown fox.'), 'body preserved');
-    assert.ok(!result.text.includes('[^ct-1]:'), 'footnote ct-1 removed');
+    assert.ok(!result.text.includes('[^cn-1]:'), 'footnote cn-1 removed');
     assert.ok(result.text.includes('compaction-boundary'), 'boundary inserted');
     assert.ok(result.verification.valid, 'verification passes');
   });
@@ -356,17 +356,17 @@ describe('compact', () => {
     const text = [
       'The quick beautiful brown fox jumps over.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:a1 The quick {++beautiful ++}brown fox jumps over.',
-      '[^ct-2]: @bob | 2026-03-21 | ins | proposed',
+      '[^cn-2]: @bob | 2026-03-21 | ins | proposed',
       '    1:b2 The quick beautiful brown fox {++happily ++}jumps over.',
     ].join('\n');
 
     const result = await compact(text, { targets: 'all-decided', undecidedPolicy: 'accept' });
 
-    assert.deepStrictEqual(result.compactedIds, ['ct-1']);
-    assert.ok(!result.text.includes('[^ct-1]:'), 'decided footnote removed');
-    assert.ok(result.text.includes('[^ct-2]:'), 'proposed footnote preserved');
+    assert.deepStrictEqual(result.compactedIds, ['cn-1']);
+    assert.ok(!result.text.includes('[^cn-1]:'), 'decided footnote removed');
+    assert.ok(result.text.includes('[^cn-2]:'), 'proposed footnote preserved');
     assert.ok(result.text.includes('compaction-boundary'), 'boundary inserted');
   });
 
@@ -374,17 +374,17 @@ describe('compact', () => {
     const text = [
       'The quick brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:a1 {++The quick ++}brown fox.',
-      '[^ct-2]: @bob | 2026-03-21 | del | accepted',
+      '[^cn-2]: @bob | 2026-03-21 | del | accepted',
       '    1:b2 The quick brown {--lazy --}fox.',
     ].join('\n');
 
-    const result = await compact(text, { targets: ['ct-1'], undecidedPolicy: 'accept' });
+    const result = await compact(text, { targets: ['cn-1'], undecidedPolicy: 'accept' });
 
-    assert.deepStrictEqual(result.compactedIds, ['ct-1']);
-    assert.ok(!result.text.includes('[^ct-1]:'), 'targeted footnote removed');
-    assert.ok(result.text.includes('[^ct-2]:'), 'non-targeted footnote preserved');
+    assert.deepStrictEqual(result.compactedIds, ['cn-1']);
+    assert.ok(!result.text.includes('[^cn-1]:'), 'targeted footnote removed');
+    assert.ok(result.text.includes('[^cn-2]:'), 'non-targeted footnote preserved');
   });
 
   it('auto-accepts proposed changes (body unchanged)', async () => {
@@ -392,15 +392,15 @@ describe('compact', () => {
     const text = [
       'The quick beautiful brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:a1 The quick {++beautiful ++}brown fox.',
     ].join('\n');
 
-    const result = await compact(text, { targets: ['ct-1'], undecidedPolicy: 'accept' });
+    const result = await compact(text, { targets: ['cn-1'], undecidedPolicy: 'accept' });
 
-    assert.deepStrictEqual(result.compactedIds, ['ct-1']);
+    assert.deepStrictEqual(result.compactedIds, ['cn-1']);
     assert.ok(result.text.includes('The quick beautiful brown fox.'), 'body unchanged (auto-accept)');
-    assert.ok(!result.text.includes('[^ct-1]:'), 'footnote removed');
+    assert.ok(!result.text.includes('[^cn-1]:'), 'footnote removed');
   });
 
   it('auto-rejects proposed insertion (removes text from body)', async () => {
@@ -408,35 +408,35 @@ describe('compact', () => {
     const text = [
       'The quick beautiful brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:a1 The quick {++beautiful ++}brown fox.',
     ].join('\n');
 
-    const result = await compact(text, { targets: ['ct-1'], undecidedPolicy: 'reject' });
+    const result = await compact(text, { targets: ['cn-1'], undecidedPolicy: 'reject' });
 
-    assert.deepStrictEqual(result.compactedIds, ['ct-1']);
+    assert.deepStrictEqual(result.compactedIds, ['cn-1']);
     assert.ok(result.text.includes('The quick brown fox.'), 'inserted text removed from body');
     assert.ok(!result.text.includes('beautiful'), 'inserted word gone');
-    assert.ok(!result.text.includes('[^ct-1]:'), 'footnote removed');
+    assert.ok(!result.text.includes('[^cn-1]:'), 'footnote removed');
   });
 
   it('includes optional boundary metadata', async () => {
     const text = [
       'Some text here.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:a1 Some {++text ++}here.',
     ].join('\n');
 
     const result = await compact(text, {
       targets: 'all-decided',
       undecidedPolicy: 'accept',
-      boundaryMeta: { note: 'Sprint cleanup', tool: 'changetracks v0.2' },
+      boundaryMeta: { note: 'Sprint cleanup', tool: 'changedown v0.2' },
     });
 
     assert.ok(result.text.includes('compaction-boundary'), 'boundary present');
     assert.ok(result.text.includes('    note: Sprint cleanup'), 'note metadata present');
-    assert.ok(result.text.includes('    tool: changetracks v0.2'), 'tool metadata present');
+    assert.ok(result.text.includes('    tool: changedown v0.2'), 'tool metadata present');
   });
 
   it('handles empty document gracefully', async () => {
@@ -458,47 +458,47 @@ describe('compact', () => {
     assert.ok(result.verification.valid);
   });
 
-  it('assigns boundary ID greater than max existing ct-ID', async () => {
+  it('assigns boundary ID greater than max existing cn-ID', async () => {
     const text = [
       'Hello world.',
       '',
-      '[^ct-5]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-5]: @alice | 2026-03-20 | ins | accepted',
       '    1:a1 {++Hello ++}world.',
     ].join('\n');
 
     const result = await compact(text, { targets: 'all-decided', undecidedPolicy: 'accept' });
 
-    // Max existing is ct-5, so boundary should be ct-6
-    assert.ok(result.text.includes('[^ct-6]: compaction-boundary'), 'boundary ID is ct-6');
+    // Max existing is cn-5, so boundary should be cn-6
+    assert.ok(result.text.includes('[^cn-6]: compaction-boundary'), 'boundary ID is cn-6');
   });
 
   it('detects dangling refs in verification', async () => {
-    // Manually construct a case where a body ref [^ct-1] points to a removed footnote.
+    // Manually construct a case where a body ref [^cn-1] points to a removed footnote.
     // This would happen if the body contains an inline ref (unusual for L3 but possible).
     const text = [
-      'See change [^ct-1] for details.',
+      'See change [^cn-1] for details.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
-      '    1:a1 See change {++[^ct-1] for details.++}',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
+      '    1:a1 See change {++[^cn-1] for details.++}',
     ].join('\n');
 
-    const result = await compact(text, { targets: ['ct-1'], undecidedPolicy: 'accept' });
+    const result = await compact(text, { targets: ['cn-1'], undecidedPolicy: 'accept' });
 
-    // The body still has [^ct-1] but the footnote was removed
-    assert.deepStrictEqual(result.compactedIds, ['ct-1']);
+    // The body still has [^cn-1] but the footnote was removed
+    assert.deepStrictEqual(result.compactedIds, ['cn-1']);
     assert.ok(!result.verification.valid, 'should detect dangling ref');
-    assert.ok(result.verification.danglingRefs.includes('ct-1'), 'ct-1 is dangling');
+    assert.ok(result.verification.danglingRefs.includes('cn-1'), 'cn-1 is dangling');
   });
 
   it('auto-rejects proposed substitution (restores original text)', async () => {
     const text = [
       'The quick brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | sub | proposed',
       '    1:a1 The quick {~~brown~>red~~} fox.',
     ].join('\n');
 
-    const result = await compact(text, { targets: ['ct-1'], undecidedPolicy: 'reject' });
+    const result = await compact(text, { targets: ['cn-1'], undecidedPolicy: 'reject' });
 
     assert.ok(result.text.includes('The quick brown fox.'), 'original text restored');
     assert.ok(!result.text.includes('red'), 'modified text removed');
@@ -508,13 +508,13 @@ describe('compact', () => {
     const text = [
       'The quick beautiful brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:a1 The quick {++beautiful ++}brown fox.',
     ].join('\n');
 
     const result = await compact(text, { targets: 'all-decided', undecidedPolicy: 'accept' });
 
-    // After compacting ct-1, no surviving footnotes with anchors remain
+    // After compacting cn-1, no surviving footnotes with anchors remain
     // (only the boundary, which has no edit-op). anchorCoherence should be 100.
     assert.strictEqual(result.verification.anchorCoherence, 100);
     assert.deepStrictEqual(result.verification.unresolvedAnchors, []);
@@ -524,27 +524,27 @@ describe('compact', () => {
   });
 
   it('cross-boundary supersedes does not trigger dangling', async () => {
-    // ct-2 supersedes ct-1. Compact both ct-1 and ct-2, leave ct-3.
-    // ct-3's supersedes: ct-2 is cross-boundary (ct-2 in removedIds), not dangling.
+    // cn-2 supersedes cn-1. Compact both cn-1 and cn-2, leave cn-3.
+    // cn-3's supersedes: cn-2 is cross-boundary (cn-2 in removedIds), not dangling.
     const text = [
       'The quick newest brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-15 | sub | accepted',
+      '[^cn-1]: @alice | 2026-03-15 | sub | accepted',
       '    1:a1 The quick {~~new~>newer~~} brown fox.',
       '',
-      '[^ct-2]: @alice | 2026-03-17 | sub | accepted',
-      '    supersedes: ct-1',
+      '[^cn-2]: @alice | 2026-03-17 | sub | accepted',
+      '    supersedes: cn-1',
       '    1:a1 The quick {~~newer~>newest~~} brown fox.',
       '',
-      '[^ct-3]: @bob | 2026-03-18 | sub | proposed',
-      '    supersedes: ct-2',
+      '[^cn-3]: @bob | 2026-03-18 | sub | proposed',
+      '    supersedes: cn-2',
       '    1:a1 The quick {~~newest~>best~~} brown fox.',
     ].join('\n');
 
-    const result = await compact(text, { targets: ['ct-1', 'ct-2'], undecidedPolicy: 'accept' });
+    const result = await compact(text, { targets: ['cn-1', 'cn-2'], undecidedPolicy: 'accept' });
 
-    // ct-1 and ct-2 removed, ct-3 survives with supersedes: ct-2
-    // ct-2 is in removedIds → cross-boundary, NOT dangling
+    // cn-1 and cn-2 removed, cn-3 survives with supersedes: cn-2
+    // cn-2 is in removedIds → cross-boundary, NOT dangling
     assert.deepStrictEqual(result.verification.danglingSupersedes, []);
     assert.deepStrictEqual(result.verification.danglingRefs, []);
     // Note: valid may be false due to anchorCoherence (fake hashes in test fixture),
@@ -556,51 +556,51 @@ describe('compact', () => {
 
 describe('supersede chain compaction', () => {
   // 1. Auto-includes consumed predecessors in target set
-  // If you target ct-2 which supersedes ct-1, ct-1 should be auto-included
+  // If you target cn-2 which supersedes cn-1, cn-1 should be auto-included
   it('auto-includes consumed predecessors in target set', async () => {
     const text = [
       'The quick newer brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-15 | sub | accepted',
+      '[^cn-1]: @alice | 2026-03-15 | sub | accepted',
       '    1:a1 The quick {~~new~>newer~~} brown fox.',
       '',
-      '[^ct-2]: @alice | 2026-03-17 | sub | proposed',
-      '    supersedes: ct-1',
+      '[^cn-2]: @alice | 2026-03-17 | sub | proposed',
+      '    supersedes: cn-1',
       '    1:a1 The quick {~~newer~>newest~~} brown fox.',
     ].join('\n');
-    // Compact ct-2 — should auto-include ct-1
-    const result = await compact(text, { targets: ['ct-2'], undecidedPolicy: 'accept' });
-    assert.ok(result.compactedIds.includes('ct-1'), 'ct-1 auto-included');
-    assert.ok(result.compactedIds.includes('ct-2'), 'ct-2 included');
-    assert.ok(!result.text.includes('[^ct-1]:'), 'ct-1 footnote removed');
-    assert.ok(!result.text.includes('[^ct-2]:'), 'ct-2 footnote removed');
+    // Compact cn-2 — should auto-include cn-1
+    const result = await compact(text, { targets: ['cn-2'], undecidedPolicy: 'accept' });
+    assert.ok(result.compactedIds.includes('cn-1'), 'cn-1 auto-included');
+    assert.ok(result.compactedIds.includes('cn-2'), 'cn-2 included');
+    assert.ok(!result.text.includes('[^cn-1]:'), 'cn-1 footnote removed');
+    assert.ok(!result.text.includes('[^cn-2]:'), 'cn-2 footnote removed');
   });
 
   // 2. Cross-boundary supersedes reference preserved
-  // When compacting ct-1 and ct-2 but leaving ct-3 which supersedes ct-2,
-  // ct-3 keeps its supersedes: ct-2 line as cross-boundary info
+  // When compacting cn-1 and cn-2 but leaving cn-3 which supersedes cn-2,
+  // cn-3 keeps its supersedes: cn-2 line as cross-boundary info
   it('cross-boundary supersedes reference is preserved on surviving footnote', async () => {
     const text = [
       'The quick newest brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-15 | sub | accepted',
+      '[^cn-1]: @alice | 2026-03-15 | sub | accepted',
       '    1:a1 The quick {~~new~>newer~~} brown fox.',
       '',
-      '[^ct-2]: @alice | 2026-03-17 | sub | accepted',
-      '    supersedes: ct-1',
+      '[^cn-2]: @alice | 2026-03-17 | sub | accepted',
+      '    supersedes: cn-1',
       '    1:a1 The quick {~~newer~>newest~~} brown fox.',
       '',
-      '[^ct-3]: @bob | 2026-03-18 | sub | proposed',
-      '    supersedes: ct-2',
+      '[^cn-3]: @bob | 2026-03-18 | sub | proposed',
+      '    supersedes: cn-2',
       '    1:a1 The quick {~~newest~>best~~} brown fox.',
     ].join('\n');
-    // Compact ct-1 and ct-2, leave ct-3
-    const result = await compact(text, { targets: ['ct-1', 'ct-2'], undecidedPolicy: 'accept' });
-    assert.ok(result.compactedIds.includes('ct-1'), 'ct-1 compacted');
-    assert.ok(result.compactedIds.includes('ct-2'), 'ct-2 compacted');
-    // ct-3 survives with cross-boundary supersedes
-    assert.ok(result.text.includes('[^ct-3]:'), 'ct-3 preserved');
-    assert.ok(result.text.includes('supersedes: ct-2'), 'cross-boundary ref preserved');
+    // Compact cn-1 and cn-2, leave cn-3
+    const result = await compact(text, { targets: ['cn-1', 'cn-2'], undecidedPolicy: 'accept' });
+    assert.ok(result.compactedIds.includes('cn-1'), 'cn-1 compacted');
+    assert.ok(result.compactedIds.includes('cn-2'), 'cn-2 compacted');
+    // cn-3 survives with cross-boundary supersedes
+    assert.ok(result.text.includes('[^cn-3]:'), 'cn-3 preserved');
+    assert.ok(result.text.includes('supersedes: cn-2'), 'cross-boundary ref preserved');
     // Supersedes and dangling-ref checks both pass (anchor coherence may
     // fail due to fake hashes in test fixture — that's fine, we're testing
     // supersedes cross-boundary behavior here, not anchor resolution).
@@ -615,18 +615,18 @@ describe('compactL2', () => {
   it('compacts an L2 document via promote→compact→demote', async () => {
     // L2 doc with one accepted insertion (CriticMarkup inline)
     const l2Text = [
-      'The quick {++beautiful ++}[^ct-1]brown fox.',
+      'The quick {++beautiful ++}[^cn-1]brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    approved: @bob 2026-03-20 "OK"',
     ].join('\n');
 
     const result = await compactL2(l2Text, { targets: 'all-decided', undecidedPolicy: 'accept' });
 
-    assert.deepStrictEqual(result.compactedIds, ['ct-1']);
+    assert.deepStrictEqual(result.compactedIds, ['cn-1']);
     // Body should not contain CriticMarkup or footnotes for compacted change
     assert.ok(!result.text.includes('{++'), 'no insertion markup');
-    assert.ok(!result.text.includes('[^ct-1]'), 'no footnote ref');
+    assert.ok(!result.text.includes('[^cn-1]'), 'no footnote ref');
     assert.ok(result.text.includes('beautiful'), 'accepted text remains');
     // Boundary should exist
     assert.ok(result.text.includes('compaction-boundary'), 'boundary present');
@@ -634,20 +634,20 @@ describe('compactL2', () => {
 
   it('preserves proposed changes as L2 CriticMarkup', async () => {
     const l2Text = [
-      'The quick {++beautiful ++}[^ct-1]{++brown ++}[^ct-2]fox.',
+      'The quick {++beautiful ++}[^cn-1]{++brown ++}[^cn-2]fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    approved: @bob 2026-03-20 "OK"',
-      '[^ct-2]: @carol | 2026-03-21 | ins | proposed',
+      '[^cn-2]: @carol | 2026-03-21 | ins | proposed',
     ].join('\n');
 
     const result = await compactL2(l2Text, { targets: 'all-decided', undecidedPolicy: 'accept' });
 
-    assert.deepStrictEqual(result.compactedIds, ['ct-1']);
-    // ct-1 compacted, ct-2 preserved as inline L2
-    assert.ok(!result.text.includes('[^ct-1]'), 'ct-1 compacted');
-    assert.ok(result.text.includes('[^ct-2]'), 'ct-2 preserved');
-    // L2 format should have CriticMarkup for ct-2
+    assert.deepStrictEqual(result.compactedIds, ['cn-1']);
+    // cn-1 compacted, cn-2 preserved as inline L2
+    assert.ok(!result.text.includes('[^cn-1]'), 'cn-1 compacted');
+    assert.ok(result.text.includes('[^cn-2]'), 'cn-2 preserved');
+    // L2 format should have CriticMarkup for cn-2
     assert.ok(result.text.includes('{++'), 'proposed change has CriticMarkup');
   });
 });
@@ -661,32 +661,32 @@ describe('compact — freshAnchor write-back', () => {
 
   it('freshens surviving anchors after body mutation from auto-reject', async () => {
     // Two changes on the same line:
-    // ct-1: proposed insertion (will be auto-rejected, mutating the body)
-    // ct-2: accepted insertion (survives, but its anchor hash may go stale)
+    // cn-1: proposed insertion (will be auto-rejected, mutating the body)
+    // cn-2: accepted insertion (survives, but its anchor hash may go stale)
     //
     // Body: "The quick beautiful bold brown fox."
-    // ct-1 proposes "beautiful " (will be rejected → removed from body)
-    // ct-2 accepted "bold " (already settled)
+    // cn-1 proposes "beautiful " (will be rejected → removed from body)
+    // cn-2 accepted "bold " (already settled)
     //
-    // After rejecting ct-1, body becomes "The quick bold brown fox."
-    // ct-2's anchor hash was computed against "The quick beautiful bold brown fox."
+    // After rejecting cn-1, body becomes "The quick bold brown fox."
+    // cn-2's anchor hash was computed against "The quick beautiful bold brown fox."
     // which no longer matches. resolve() should freshen it.
     const text = [
       'The quick beautiful bold brown fox.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:a1 The quick {++beautiful ++}bold brown fox.',
-      '[^ct-2]: @bob | 2026-03-21 | ins | accepted',
+      '[^cn-2]: @bob | 2026-03-21 | ins | accepted',
       '    1:a1 The quick beautiful {++bold ++}brown fox.',
       '    approved: @carol 2026-03-22 "OK"',
     ].join('\n');
 
     const result = await compact(text, {
-      targets: ['ct-1', 'ct-2'],
+      targets: ['cn-1', 'cn-2'],
       undecidedPolicy: 'reject',
     });
 
-    // ct-1 rejected → "beautiful " removed from body
+    // cn-1 rejected → "beautiful " removed from body
     assert.ok(result.text.includes('The quick bold brown fox.'), 'body has rejection applied');
     assert.ok(!result.text.includes('beautiful'), 'rejected text removed');
 
@@ -696,33 +696,33 @@ describe('compact — freshAnchor write-back', () => {
   });
 
   it('freshens surviving anchor when earlier footnote removal shifts content', async () => {
-    // ct-1 accepted (will be compacted)
-    // ct-2 accepted (survives) — its edit-op references line content
-    // After compacting ct-1, body is unchanged (decided, no mutation),
-    // but ct-2's anchor should still resolve correctly.
+    // cn-1 accepted (will be compacted)
+    // cn-2 accepted (survives) — its edit-op references line content
+    // After compacting cn-1, body is unchanged (decided, no mutation),
+    // but cn-2's anchor should still resolve correctly.
     const text = [
       'First line with change.',
       'Second line with another change.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:a1 First line {++with change++}.',
       '    approved: @bob 2026-03-20',
-      '[^ct-2]: @carol | 2026-03-21 | ins | accepted',
+      '[^cn-2]: @carol | 2026-03-21 | ins | accepted',
       '    2:b2 Second line {++with another change++}.',
       '    approved: @dave 2026-03-21',
     ].join('\n');
 
     const result = await compact(text, {
-      targets: ['ct-1'],
+      targets: ['cn-1'],
       undecidedPolicy: 'accept',
     });
 
-    // ct-1 removed, ct-2 survives
-    assert.ok(!result.text.includes('[^ct-1]:'), 'ct-1 compacted');
-    assert.ok(result.text.includes('[^ct-2]:'), 'ct-2 survives');
+    // cn-1 removed, cn-2 survives
+    assert.ok(!result.text.includes('[^cn-1]:'), 'cn-1 compacted');
+    assert.ok(result.text.includes('[^cn-2]:'), 'cn-2 survives');
     assert.deepStrictEqual(result.verification.danglingRefs, []);
 
-    // ct-2's anchor should be present with correct resolution
+    // cn-2's anchor should be present with correct resolution
     const survivingChanges = result.verification.resolvedChanges;
     assert.ok(Array.isArray(survivingChanges), 'has resolved changes array');
   });
@@ -735,58 +735,58 @@ describe('checkSupersedesIntegrity', () => {
     const text = [
       'Hello world.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:a1 Hello world.',
     ].join('\n');
 
-    const result = checkSupersedesIntegrity(text, ['ct-2']);
+    const result = checkSupersedesIntegrity(text, ['cn-2']);
     assert.deepStrictEqual(result, []);
   });
 
   it('allows supersedes to removed footnote (cross-boundary)', () => {
-    // ct-2 supersedes ct-1, ct-1 was removed by this compaction.
-    // ct-1 is in removedIds → cross-boundary, valid.
+    // cn-2 supersedes cn-1, cn-1 was removed by this compaction.
+    // cn-1 is in removedIds → cross-boundary, valid.
     const text = [
       'Hello world.',
       '',
-      '[^ct-2]: @alice | 2026-03-21 | ins | accepted',
-      '    supersedes: ct-1',
+      '[^cn-2]: @alice | 2026-03-21 | ins | accepted',
+      '    supersedes: cn-1',
       '    1:a1 Hello world.',
     ].join('\n');
 
-    const result = checkSupersedesIntegrity(text, ['ct-1']);
+    const result = checkSupersedesIntegrity(text, ['cn-1']);
     assert.deepStrictEqual(result, []);
   });
 
   it('allows supersedes to surviving footnote', () => {
-    // ct-2 supersedes ct-1, both survive — fine
+    // cn-2 supersedes cn-1, both survive — fine
     const text = [
       'Hello world.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:a1 Hello world.',
-      '[^ct-2]: @alice | 2026-03-21 | ins | accepted',
-      '    supersedes: ct-1',
+      '[^cn-2]: @alice | 2026-03-21 | ins | accepted',
+      '    supersedes: cn-1',
       '    1:a1 Hello world.',
     ].join('\n');
 
-    const result = checkSupersedesIntegrity(text, ['ct-3']);
+    const result = checkSupersedesIntegrity(text, ['cn-3']);
     assert.deepStrictEqual(result, []);
   });
 
   it('detects dangling supersedes (absent from both surviving and removed)', () => {
-    // ct-2 supersedes ct-1. ct-1 is NOT in surviving footnotes and was NOT
+    // cn-2 supersedes cn-1. cn-1 is NOT in surviving footnotes and was NOT
     // removed by this compaction — it should exist but doesn't.
     const text = [
       'Hello world.',
       '',
-      '[^ct-2]: @alice | 2026-03-21 | ins | accepted',
-      '    supersedes: ct-1',
+      '[^cn-2]: @alice | 2026-03-21 | ins | accepted',
+      '    supersedes: cn-1',
       '    1:a1 Hello world.',
     ].join('\n');
 
-    // removedIds does NOT include ct-1 — it wasn't targeted
-    const result = checkSupersedesIntegrity(text, ['ct-3']);
-    assert.deepStrictEqual(result, ['ct-1']);
+    // removedIds does NOT include cn-1 — it wasn't targeted
+    const result = checkSupersedesIntegrity(text, ['cn-3']);
+    assert.deepStrictEqual(result, ['cn-1']);
   });
 });

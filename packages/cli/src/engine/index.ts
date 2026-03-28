@@ -2,11 +2,11 @@
  * Engine barrel export.
  *
  * Exposes all engine modules (config, state, handlers, utilities) so that
- * the MCP server and other consumers can import from 'changetracks/engine'.
+ * the MCP server and other consumers can import from 'changedown/engine'.
  */
 
 // ── Config ──
-export type { ChangeTracksConfig, CLIConfig, PolicyMode, CreationTracking } from './config.js';
+export type { ChangeDownConfig, CLIConfig, PolicyMode, CreationTracking } from './config.js';
 export {
   DEFAULT_CONFIG,
   loadConfig,
@@ -91,7 +91,7 @@ export type { ProposeChangeResult } from './handlers/propose-change.js';
 export { handleBeginChangeGroup } from './handlers/begin-change-group.js';
 export { handleEndChangeGroup } from './handlers/end-change-group.js';
 export { handleReviewChange } from './handlers/review-change.js';
-export { applyReview, type Decision } from '@changetracks/core';
+export { applyReview, type Decision } from '@changedown/core';
 export { handleReviewChanges } from './handlers/review-changes.js';
 export { handleRespondToThread } from './handlers/respond-to-thread.js';
 export { handleListOpenThreads } from './handlers/list-open-threads.js';

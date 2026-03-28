@@ -39,7 +39,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import type { Page } from 'playwright';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import { getOrCreateInstance } from './world';
 import {
     launchWithJourneyFixture,
@@ -50,10 +50,10 @@ import {
 } from '../../journeys/playwrightHarness';
 
 // ---------------------------------------------------------------------------
-// Extend ChangeTracksWorld with tracking-specific state
+// Extend ChangeDownWorld with tracking-specific state
 // ---------------------------------------------------------------------------
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         /** Content set before tracking mode was enabled */
         trackingInitialContent?: string;
         /** Whether the editor is file-backed (vs untitled) */
@@ -74,7 +74,7 @@ declare module './world' {
 // ---------------------------------------------------------------------------
 // Helper: get document text via Playwright evaluate
 // ---------------------------------------------------------------------------
-async function getTrackedDocumentText(world: ChangeTracksWorld): Promise<string> {
+async function getTrackedDocumentText(world: ChangeDownWorld): Promise<string> {
     assert.ok(world.page, 'Page not available');
     return await getDocumentText(world.page!, { instanceId: world.instance?.instanceId });
 }
@@ -91,11 +91,11 @@ async function positionCursorViaBridge(
     page: Page,
     input: { location: 'start' | 'end' } | { line: number; character: number } | { target: string; position: 'before' | 'after' }
 ): Promise<void> {
-    const inputPath = path.join(os.tmpdir(), 'changetracks-test-position-cursor-input.json');
-    const resultPath = path.join(os.tmpdir(), 'changetracks-test-position-cursor.json');
+    const inputPath = path.join(os.tmpdir(), 'changedown-test-position-cursor-input.json');
+    const resultPath = path.join(os.tmpdir(), 'changedown-test-position-cursor.json');
     try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
     fs.writeFileSync(inputPath, JSON.stringify(input));
-    await executeCommandViaBridge(page, 'changetracks._testPositionCursor');
+    await executeCommandViaBridge(page, 'changedown._testPositionCursor');
     // Poll for result — the bridge command writes its own result file
     const deadline = Date.now() + 5000;
     while (Date.now() < deadline) {
@@ -140,7 +140,7 @@ async function openTempFileWithContent(page: Page, content: string, tmpPath: str
 Given(
     'a tracking-mode editor with content {string}',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld, content: string) {
+    async function (this: ChangeDownWorld, content: string) {
         this.trackingInitialContent = content;
         this.instance = await getOrCreateInstance(
             'tracking-mode-test.md',
@@ -150,15 +150,15 @@ Given(
 
         // Reset document content with tracking header prepended.
         // This eliminates dependency on the toggle command and shared instance state.
-        const trackedContent = `<!-- ctrcks.com/v1: tracked -->\n${content}`;
-        const inputPath = path.join(os.tmpdir(), 'changetracks-test-reset-input.json');
+        const trackedContent = `<!-- changedown.com/v1: tracked -->\n${content}`;
+        const inputPath = path.join(os.tmpdir(), 'changedown-test-reset-input.json');
         fs.writeFileSync(inputPath, JSON.stringify({ content: trackedContent }));
-        await executeCommandViaBridge(this.page!, 'ChangeTracks: Test Reset Document');
+        await executeCommandViaBridge(this.page!, 'ChangeDown: Test Reset Document');
         await this.page!.waitForTimeout(500);
 
         // Verify tracking is enabled
         const text = await getDocumentText(this.page!, { instanceId: this.instance?.instanceId });
-        if (!text.includes('ctrcks.com/v1: tracked')) {
+        if (!text.includes('changedown.com/v1: tracked')) {
             throw new Error(`Tracking header not found in document after reset. Content: ${text.substring(0, 100)}`);
         }
 
@@ -173,7 +173,7 @@ Given(
 Given(
     'a tracking-mode editor with file-backed content {string}',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld, content: string) {
+    async function (this: ChangeDownWorld, content: string) {
         this.trackingInitialContent = content;
         this.trackingFileBacked = true;
 
@@ -184,11 +184,11 @@ Given(
         this.page = this.instance.page;
 
         // Create a file-backed document: write from Node.js, then open via command palette
-        const tmpFile = path.join(os.tmpdir(), 'changetracks-cucumber-test.md');
+        const tmpFile = path.join(os.tmpdir(), 'changedown-cucumber-test.md');
         await openTempFileWithContent(this.page!, content, tmpFile);
 
         // Enable tracking mode
-        await executeCommandViaBridge(this.page!, 'ChangeTracks: Toggle Tracking');
+        await executeCommandViaBridge(this.page!, 'ChangeDown: Toggle Tracking');
         await this.page!.waitForTimeout(500);
     }
 );
@@ -196,7 +196,7 @@ Given(
 Given(
     'an editor with file-backed content {string}',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld, content: string) {
+    async function (this: ChangeDownWorld, content: string) {
         this.trackingInitialContent = content;
         this.trackingFileBacked = true;
 
@@ -207,7 +207,7 @@ Given(
         this.page = this.instance.page;
 
         // Create a file-backed document (tracking mode NOT enabled)
-        const tmpFile = path.join(os.tmpdir(), 'changetracks-cucumber-test-notrack.md');
+        const tmpFile = path.join(os.tmpdir(), 'changedown-cucumber-test-notrack.md');
         await openTempFileWithContent(this.page!, content, tmpFile);
     }
 );
@@ -215,7 +215,7 @@ Given(
 Given(
     'a tracking-mode editor with file-backed plain-text content {string}',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld, content: string) {
+    async function (this: ChangeDownWorld, content: string) {
         this.trackingInitialContent = content;
         this.trackingFileBacked = true;
 
@@ -226,11 +226,11 @@ Given(
         this.page = this.instance.page;
 
         // Create a non-markdown file-backed document
-        const tmpFile = path.join(os.tmpdir(), 'changetracks-cucumber-test.txt');
+        const tmpFile = path.join(os.tmpdir(), 'changedown-cucumber-test.txt');
         await openTempFileWithContent(this.page!, content, tmpFile);
 
         // Enable tracking mode
-        await executeCommandViaBridge(this.page!, 'ChangeTracks: Toggle Tracking');
+        await executeCommandViaBridge(this.page!, 'ChangeDown: Toggle Tracking');
         await this.page!.waitForTimeout(500);
     }
 );
@@ -242,18 +242,18 @@ Given(
 Given(
     'the pause threshold is {int}ms',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, ms: number) {
+    async function (this: ChangeDownWorld, ms: number) {
         assert.ok(this.page, 'Page not available');
         this.trackingPauseThreshold = ms;
         // Modify settings.json directly — VS Code watches and auto-reloads
-        await updateSettingDirect(this.page!, 'changetracks.editBoundary.pauseThresholdMs', ms);
+        await updateSettingDirect(this.page!, 'changedown.editBoundary.pauseThresholdMs', ms);
     }
 );
 
 Given(
     'pasteMinChars is {int}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, n: number) {
+    async function (this: ChangeDownWorld, n: number) {
         assert.ok(this.page, 'Page not available');
         // pasteMinChars is hardcoded to 50; this step records intent but no config change needed
         this.trackingPasteMinChars = n;
@@ -263,11 +263,11 @@ Given(
 Given(
     'breakOnNewline is enabled',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         this.trackingBreakOnNewline = true;
         // Modify settings.json directly — VS Code watches and auto-reloads
-        await updateSettingDirect(this.page!, 'changetracks.editBoundary.breakOnNewline', true);
+        await updateSettingDirect(this.page!, 'changedown.editBoundary.breakOnNewline', true);
     }
 );
 
@@ -278,7 +278,7 @@ Given(
 When(
     'I insert {string} at the end',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, text: string) {
+    async function (this: ChangeDownWorld, text: string) {
         assert.ok(this.page, 'Page not available');
         // Position cursor at end of document via bridge command
         await positionCursorViaBridge(this.page!, { location: 'end' });
@@ -293,7 +293,7 @@ When(
 When(
     'I insert {string} at the beginning',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, text: string) {
+    async function (this: ChangeDownWorld, text: string) {
         assert.ok(this.page, 'Page not available');
         // Position cursor at start of document via bridge command
         await positionCursorViaBridge(this.page!, { location: 'start' });
@@ -307,7 +307,7 @@ When(
 When(
     'I insert {string} adjacent',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, text: string) {
+    async function (this: ChangeDownWorld, text: string) {
         assert.ok(this.page, 'Page not available');
         // Type text at current cursor position via keyboard
         await this.page!.keyboard.type(text, { delay: 0 });
@@ -319,7 +319,7 @@ When(
     'I type {string}, {string}, {string}, {string}, {string} at the end with {int}ms gaps',
     { timeout: 20000 },
     async function (
-        this: ChangeTracksWorld,
+        this: ChangeDownWorld,
         c1: string, c2: string, c3: string, c4: string, c5: string,
         gapMs: number
     ) {
@@ -342,7 +342,7 @@ When(
     'I rapidly insert {string}, {string}, {string}, {string}, {string} at the end',
     { timeout: 15000 },
     async function (
-        this: ChangeTracksWorld,
+        this: ChangeDownWorld,
         c1: string, c2: string, c3: string, c4: string, c5: string
     ) {
         assert.ok(this.page, 'Page not available');
@@ -358,7 +358,7 @@ When(
 When(
     'I delete the character at position {int},{int}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, line: number, col: number) {
+    async function (this: ChangeDownWorld, line: number, col: number) {
         assert.ok(this.page, 'Page not available');
         // Position cursor AFTER the character to delete (col+1), then press Backspace
         await positionCursorViaBridge(this.page!, { line, character: col + 1 });
@@ -372,21 +372,21 @@ When(
     'I delete the range {int},{int} to {int},{int}',
     { timeout: 15000 },
     async function (
-        this: ChangeTracksWorld,
+        this: ChangeDownWorld,
         startLine: number, startCol: number,
         endLine: number, endCol: number
     ) {
         assert.ok(this.page, 'Page not available');
         // Use _testSelectAndReplace bridge to select the range and replace with empty string
-        const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-replace-input.json');
-        const resultPath = path.join(os.tmpdir(), 'changetracks-test-select-replace.json');
+        const inputPath = path.join(os.tmpdir(), 'changedown-test-select-replace-input.json');
+        const resultPath = path.join(os.tmpdir(), 'changedown-test-select-replace.json');
         try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
         fs.writeFileSync(inputPath, JSON.stringify({
             startLine, startCharacter: startCol,
             endLine, endCharacter: endCol,
             replacement: ''
         }));
-        await executeCommandViaBridge(this.page!, 'changetracks._testSelectAndReplace');
+        await executeCommandViaBridge(this.page!, 'changedown._testSelectAndReplace');
         // Poll for result
         const deadline = Date.now() + 5000;
         while (Date.now() < deadline) {
@@ -408,7 +408,7 @@ When(
 When(
     'I backspace-delete at position {int},{int}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, line: number, col: number) {
+    async function (this: ChangeDownWorld, line: number, col: number) {
         assert.ok(this.page, 'Page not available');
         // Position cursor at the given position, then press Backspace
         await positionCursorViaBridge(this.page!, { line, character: col });
@@ -421,7 +421,7 @@ When(
 When(
     'I delete the first unwrapped character after the deletion',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Position cursor after 'b' and press Backspace
         await positionCursorViaBridge(this.page!, { target: 'b', position: 'after' });
@@ -435,22 +435,22 @@ When(
     'I replace the range {int},{int} to {int},{int} with {string}',
     { timeout: 15000 },
     async function (
-        this: ChangeTracksWorld,
+        this: ChangeDownWorld,
         startLine: number, startCol: number,
         endLine: number, endCol: number,
         newText: string
     ) {
         assert.ok(this.page, 'Page not available');
         // Use _testSelectAndReplace bridge
-        const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-replace-input.json');
-        const resultPath = path.join(os.tmpdir(), 'changetracks-test-select-replace.json');
+        const inputPath = path.join(os.tmpdir(), 'changedown-test-select-replace-input.json');
+        const resultPath = path.join(os.tmpdir(), 'changedown-test-select-replace.json');
         try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
         fs.writeFileSync(inputPath, JSON.stringify({
             startLine, startCharacter: startCol,
             endLine, endCharacter: endCol,
             replacement: newText
         }));
-        await executeCommandViaBridge(this.page!, 'changetracks._testSelectAndReplace');
+        await executeCommandViaBridge(this.page!, 'changedown._testSelectAndReplace');
         const deadline = Date.now() + 5000;
         while (Date.now() < deadline) {
             await this.page!.waitForTimeout(100);
@@ -471,7 +471,7 @@ When(
 When(
     'I move the cursor to position {int},{int}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, line: number, col: number) {
+    async function (this: ChangeDownWorld, line: number, col: number) {
         assert.ok(this.page, 'Page not available');
         // Position cursor at the specified line/character (0-based) via bridge
         await positionCursorViaBridge(this.page!, { line, character: col });
@@ -482,7 +482,7 @@ When(
 When(
     'I move the cursor to a safe mid-position',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Position cursor at start of document (safe position away from any pending edits)
         await positionCursorViaBridge(this.page!, { location: 'start' });
@@ -494,7 +494,7 @@ When(
     'I rapidly move cursor to positions \\({int},{int}\\), \\({int},{int}\\), \\({int},{int}\\)',
     { timeout: 20000 },
     async function (
-        this: ChangeTracksWorld,
+        this: ChangeDownWorld,
         l1: number, c1: number,
         l2: number, c2: number,
         l3: number, c3: number
@@ -511,7 +511,7 @@ When(
 When(
     'I apply a multi-change edit',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Type two words rapidly at the end — simulates a multi-character batch
         await positionCursorViaBridge(this.page!, { location: 'end' });
@@ -528,7 +528,7 @@ When(
 When(
     'I save the document',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Save via keyboard shortcut (Cmd+S on macOS)
         await this.page!.keyboard.press('Meta+s');
@@ -539,7 +539,7 @@ When(
 When(
     'I save the document and capture text at save event',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Capture current text before save, then save via keyboard shortcut
         const textBeforeSave = await getDocumentText(this.page!, { instanceId: this.instance?.instanceId });
@@ -553,7 +553,7 @@ When(
 When(
     'I save the document and measure duration',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Measure save duration via keyboard shortcut timing
         const start = Date.now();
@@ -570,7 +570,7 @@ When(
 When(
     'I wait {int}ms',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld, ms: number) {
+    async function (this: ChangeDownWorld, ms: number) {
         assert.ok(this.page, 'Page not available');
         await this.page!.waitForTimeout(ms);
     }
@@ -585,7 +585,7 @@ When(
 Then(
     'the tracked document text is {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, expected: string) {
+    async function (this: ChangeDownWorld, expected: string) {
         const text = await getTrackedDocumentText(this);
         assert.strictEqual(text, expected, `Expected document text "${expected}" but got "${text}"`);
     }
@@ -594,7 +594,7 @@ Then(
 Then(
     'the tracked document contains {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, expected: string) {
+    async function (this: ChangeDownWorld, expected: string) {
         // CriticMarkup delimiters are produced asynchronously by the edit boundary
         // detector (pause threshold + async onDidChangeTextDocument). Poll for up
         // to 5 seconds when the expected text looks like CriticMarkup.
@@ -624,7 +624,7 @@ Then(
 Then(
     'the tracked document does not contain {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, expected: string) {
+    async function (this: ChangeDownWorld, expected: string) {
         const text = await getTrackedDocumentText(this);
         assert.ok(
             !text.includes(expected),
@@ -636,7 +636,7 @@ Then(
 Then(
     'the tracked document contains exactly {int} insertion marker(s)',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, count: number) {
+    async function (this: ChangeDownWorld, count: number) {
         const text = await getTrackedDocumentText(this);
         const matches = text.match(/\{\+\+/g) || [];
         assert.strictEqual(
@@ -649,7 +649,7 @@ Then(
 Then(
     'the tracked document contains exactly {int} deletion marker(s)',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, count: number) {
+    async function (this: ChangeDownWorld, count: number) {
         const text = await getTrackedDocumentText(this);
         const matches = text.match(/\{--/g) || [];
         assert.strictEqual(
@@ -662,9 +662,9 @@ Then(
 Then(
     'the tracked document contains at least {int} footnote ref(s)',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, minCount: number) {
+    async function (this: ChangeDownWorld, minCount: number) {
         const text = await getTrackedDocumentText(this);
-        const matches = text.match(/\[\^ct-\d+\]/g) || [];
+        const matches = text.match(/\[\^cn-\d+\]/g) || [];
         assert.ok(
             matches.length >= minCount,
             `Expected at least ${minCount} footnote refs, found ${matches.length} in: ${text.substring(0, 300)}`
@@ -675,7 +675,7 @@ Then(
 Then(
     '{string} appears before {string} in the tracked document',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, first: string, second: string) {
+    async function (this: ChangeDownWorld, first: string, second: string) {
         const text = await getTrackedDocumentText(this);
         const firstIdx = text.indexOf(first);
         const secondIdx = text.indexOf(second);
@@ -691,7 +691,7 @@ Then(
 Then(
     '{string} appears exactly {int} time(s) in the tracked document',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, text: string, count: number) {
+    async function (this: ChangeDownWorld, text: string, count: number) {
         const doc = await getTrackedDocumentText(this);
         const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const matches = doc.match(new RegExp(escaped, 'g')) || [];
@@ -705,7 +705,7 @@ Then(
 Then(
     'the tracked document contains {string} or {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, option1: string, option2: string) {
+    async function (this: ChangeDownWorld, option1: string, option2: string) {
         const isCriticMarkup = /\{\+\+|\{--|~>|\{~~|\{==|\{>>/.test(option1 + option2);
         if (isCriticMarkup) {
             const deadline = Date.now() + 5000;
@@ -732,7 +732,7 @@ Then(
 Then(
     'the tracked document does not contain unwrapped {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, text: string) {
+    async function (this: ChangeDownWorld, text: string) {
         const doc = await getTrackedDocumentText(this);
         const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const unwrappedMatch = doc.match(new RegExp(`${escaped}(?!\\+\\+)`, 'g'));
@@ -750,16 +750,16 @@ Then(
 Then(
     'the saved file contains {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, expected: string) {
+    async function (this: ChangeDownWorld, expected: string) {
         assert.ok(this.page, 'Page not available');
         // Read saved file content from disk (file-backed documents write to os.tmpdir())
         let savedContent = '';
         if (this.trackingFileBacked) {
             // Determine which tmp file was used based on the test context
             const candidates = [
-                path.join(os.tmpdir(), 'changetracks-cucumber-test.md'),
-                path.join(os.tmpdir(), 'changetracks-cucumber-test-notrack.md'),
-                path.join(os.tmpdir(), 'changetracks-cucumber-test.txt'),
+                path.join(os.tmpdir(), 'changedown-cucumber-test.md'),
+                path.join(os.tmpdir(), 'changedown-cucumber-test-notrack.md'),
+                path.join(os.tmpdir(), 'changedown-cucumber-test.txt'),
             ];
             for (const filePath of candidates) {
                 if (fs.existsSync(filePath)) {
@@ -782,15 +782,15 @@ Then(
 Then(
     'the saved file does not contain unwrapped {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, text: string) {
+    async function (this: ChangeDownWorld, text: string) {
         assert.ok(this.page, 'Page not available');
         // Read saved file content from disk or bridge
         let savedContent = '';
         if (this.trackingFileBacked) {
             const candidates = [
-                path.join(os.tmpdir(), 'changetracks-cucumber-test.md'),
-                path.join(os.tmpdir(), 'changetracks-cucumber-test-notrack.md'),
-                path.join(os.tmpdir(), 'changetracks-cucumber-test.txt'),
+                path.join(os.tmpdir(), 'changedown-cucumber-test.md'),
+                path.join(os.tmpdir(), 'changedown-cucumber-test-notrack.md'),
+                path.join(os.tmpdir(), 'changedown-cucumber-test.txt'),
             ];
             for (const filePath of candidates) {
                 if (fs.existsSync(filePath)) {
@@ -814,7 +814,7 @@ Then(
 Then(
     'the text captured at save time contains {string}',
     { timeout: 5000 },
-    async function (this: ChangeTracksWorld, expected: string) {
+    async function (this: ChangeDownWorld, expected: string) {
         assert.ok(this.textAtSaveTime !== undefined, 'No text captured at save time');
         assert.ok(
             this.textAtSaveTime!.includes(expected),
@@ -826,7 +826,7 @@ Then(
 Then(
     'the save completed in less than {int}ms',
     { timeout: 5000 },
-    async function (this: ChangeTracksWorld, maxMs: number) {
+    async function (this: ChangeDownWorld, maxMs: number) {
         assert.ok(this.lastSaveDurationMs !== undefined, 'No save duration measured');
         assert.ok(
             this.lastSaveDurationMs! < maxMs,

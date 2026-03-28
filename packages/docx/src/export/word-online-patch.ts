@@ -12,13 +12,27 @@
 
 import JSZip from 'jszip';
 import type { ImagePatchInfo, MediaInjection } from '../shared/image-types.js';
+import type { CommentPatchInfo, HyperlinkPatchInfo } from '../shared/patch-types.js';
 import { wrapTrackedImages, injectMediaFiles } from './image-patch.js';
+import { wrapTrackedHyperlinks } from './hyperlink-patch.js';
 
-export interface CommentPatchInfo {
-  id: number;
-  paraId: string;
-  parentParaId?: string;
-}
+export type { CommentPatchInfo } from '../shared/patch-types.js';
+
+/**
+ * Pandoc-compatible heading style definitions (levels 1–6).
+ * The docx npm package emits heading styles that lack w:outlineLvl,
+ * w:keepNext, w:keepLines, and proper w:name casing — pandoc won't
+ * recognize them as headings without these. We replace the generated
+ * styles with these pandoc-reference definitions during post-processing.
+ */
+const PANDOC_HEADING_STYLES = [
+  '<w:style w:styleId="Heading1" w:type="paragraph"><w:name w:val="heading 1"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:spacing w:after="80" w:before="360"/><w:outlineLvl w:val="0"/></w:pPr><w:rPr><w:b/><w:sz w:val="36"/><w:szCs w:val="36"/></w:rPr></w:style>',
+  '<w:style w:styleId="Heading2" w:type="paragraph"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:spacing w:after="80" w:before="160"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr></w:style>',
+  '<w:style w:styleId="Heading3" w:type="paragraph"><w:name w:val="heading 3"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:spacing w:after="80" w:before="160"/><w:outlineLvl w:val="2"/></w:pPr><w:rPr><w:b/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr></w:style>',
+  '<w:style w:styleId="Heading4" w:type="paragraph"><w:name w:val="heading 4"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:spacing w:after="40" w:before="80"/><w:outlineLvl w:val="3"/></w:pPr><w:rPr><w:i/><w:iCs/></w:rPr></w:style>',
+  '<w:style w:styleId="Heading5" w:type="paragraph"><w:name w:val="heading 5"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:spacing w:after="40" w:before="80"/><w:outlineLvl w:val="4"/></w:pPr><w:rPr/></w:style>',
+  '<w:style w:styleId="Heading6" w:type="paragraph"><w:name w:val="heading 6"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:uiPriority w:val="9"/><w:qFormat/><w:pPr><w:keepNext/><w:keepLines/><w:spacing w:after="0" w:before="40"/><w:outlineLvl w:val="5"/></w:pPr><w:rPr><w:i/><w:iCs/></w:rPr></w:style>',
+];
 
 /**
  * Generate an 8-character uppercase hex ID suitable for w14:paraId attributes.
@@ -37,11 +51,12 @@ export function randomParaId(): string {
  * @returns A new buffer with all patches applied
  */
 export async function patchDocxForWordOnline(
-  buffer: Buffer,
+  buffer: Uint8Array,
   commentPatchInfos: CommentPatchInfo[],
   imagePatchInfos?: ImagePatchInfo[],
   mediaInjections?: MediaInjection[],
-): Promise<Buffer> {
+  hyperlinkPatchInfos?: HyperlinkPatchInfo[],
+): Promise<Uint8Array> {
   const zip = await JSZip.loadAsync(buffer);
 
   // --- 1. Fix document.xml ---
@@ -73,6 +88,17 @@ export async function patchDocxForWordOnline(
   // --- Image tracked change wrapping ---
   if (imagePatchInfos && imagePatchInfos.length > 0) {
     docXml = wrapTrackedImages(docXml, imagePatchInfos);
+  }
+
+  // --- Hyperlink tracked change wrapping ---
+  if (hyperlinkPatchInfos && hyperlinkPatchInfos.length > 0) {
+    const relsFile = zip.file('word/_rels/document.xml.rels');
+    if (relsFile) {
+      let relsXml = await relsFile.async('string');
+      const result = wrapTrackedHyperlinks(docXml, relsXml, hyperlinkPatchInfos);
+      docXml = result.docXml;
+      zip.file('word/_rels/document.xml.rels', result.relsXml);
+    }
   }
 
   zip.file('word/document.xml', docXml);
@@ -195,10 +221,48 @@ export async function patchDocxForWordOnline(
     }
   }
 
+  // --- 5. Replace heading styles with pandoc-compatible definitions ---
+  // The docx npm package generates Heading1–Heading6 styles that lack
+  // w:outlineLvl and other properties pandoc needs to recognize them as
+  // real headings. Replace them wholesale with pandoc-reference definitions.
+  {
+    const sf = zip.file('word/styles.xml');
+    if (sf) {
+      let sx = await sf.async('string');
+      let patched = false;
+
+      // Ensure Normal style exists (heading styles are basedOn Normal)
+      if (!sx.includes('w:styleId="Normal"')) {
+        sx = sx.replace(
+          '</w:styles>',
+          '<w:style w:default="1" w:styleId="Normal" w:type="paragraph">' +
+            '<w:name w:val="Normal"/><w:qFormat/>' +
+            '</w:style></w:styles>',
+        );
+        patched = true;
+      }
+
+      for (let level = 1; level <= 6; level++) {
+        const styleId = `Heading${level}`;
+        const re = new RegExp(
+          `<w:style[^>]*w:styleId="${styleId}"[^>]*>.*?</w:style>`,
+          's',
+        );
+        if (re.test(sx)) {
+          sx = sx.replace(re, PANDOC_HEADING_STYLES[level - 1]);
+          patched = true;
+        }
+      }
+      if (patched) {
+        zip.file('word/styles.xml', sx);
+      }
+    }
+  }
+
   // --- Inject unsupported-format media files ---
   if (mediaInjections && mediaInjections.length > 0) {
     await injectMediaFiles(zip, mediaInjections);
   }
 
-  return Buffer.from(await zip.generateAsync({ type: 'nodebuffer' }));
+  return await zip.generateAsync({ type: 'uint8array' });
 }

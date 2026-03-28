@@ -6,7 +6,7 @@ Feature: NAV2 — Navigation E2E via Playwright
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   # ── Next Change ──────────────────────────────────────────────
@@ -49,7 +49,7 @@ Feature: NAV2 — Navigation E2E via Playwright
   @fixture(no-header)
   Scenario: NAV2-06 Navigation in document with no changes does nothing
     Given I open "no-header.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     When I position the cursor at line 1 column 1
     And I record the cursor line
     And I navigate to the next change

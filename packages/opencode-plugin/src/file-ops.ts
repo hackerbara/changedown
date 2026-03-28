@@ -1,4 +1,4 @@
-import { defaultNormalizer, normalizedIndexOf, TextNormalizer } from '@changetracks/core';
+import { defaultNormalizer, normalizedIndexOf, TextNormalizer } from '@changedown/core';
 
 export interface LineRangeResult {
   content: string;

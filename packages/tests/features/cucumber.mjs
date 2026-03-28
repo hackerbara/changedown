@@ -1,5 +1,5 @@
 /**
- * Cucumber-js configuration for ChangeTracks BDD tests.
+ * Cucumber-js configuration for ChangeDown BDD tests.
  *
  * Feature files live in features/ (shared across TS and future Rust runners).
  * Step definitions are TypeScript, loaded via tsx (ESM-compatible TS loader).

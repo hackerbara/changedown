@@ -25,18 +25,18 @@ registerVideoScript('v2-accept-reject', 'v2-accept-reject.md', async ({ page }) 
     await beat(page, 1800);
 
     // 4. Accept bob's deletion (cursor is already in it)
-    await command(page, 'changetracks.acceptChange');
+    await command(page, 'changedown.acceptChange');
     await beat(page, 600);
 
     // 5. Navigate to next change (alice's substitution) and reject it
-    await command(page, 'changetracks.nextChange');
+    await command(page, 'changedown.nextChange');
     await beat(page, 600);
-    await command(page, 'changetracks.rejectChange');
+    await command(page, 'changedown.rejectChange');
     await beat(page, 600);
 
     // 6. Navigate to highlight and accept it
-    await command(page, 'changetracks.nextChange');
+    await command(page, 'changedown.nextChange');
     await beat(page, 600);
-    await command(page, 'changetracks.acceptChange');
+    await command(page, 'changedown.acceptChange');
     await beat(page, 1000);
-}, { 'changetracks.clickToShowComments': false });
+}, { 'changedown.clickToShowComments': false });

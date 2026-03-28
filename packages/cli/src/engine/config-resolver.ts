@@ -1,18 +1,18 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
 import { existsSync, realpathSync, watch, type FSWatcher } from 'node:fs';
-import { loadConfig, DEFAULT_CONFIG, type ChangeTracksConfig } from './config.js';
+import { loadConfig, DEFAULT_CONFIG, type ChangeDownConfig } from './config.js';
 
 interface CachedProject {
   projectDir: string;
-  config: ChangeTracksConfig;
+  config: ChangeDownConfig;
 }
 
 /**
  * Lazy, per-file config resolver with caching.
  *
  * Instead of loading config once at startup from a guessed project directory,
- * discovers `.changetracks/config.toml` by walking up from each file path.
+ * discovers `.changedown/config.toml` by walking up from each file path.
  * Results are cached by discovered project root so the filesystem walk only
  * happens once per project per session.
  *
@@ -60,11 +60,11 @@ export class ConfigResolver {
   /**
    * Resolve config for a given absolute file path.
    *
-   * Walks up from the file's directory looking for `.changetracks/config.toml`.
+   * Walks up from the file's directory looking for `.changedown/config.toml`.
    * Returns cached config if the same project root was already discovered.
    * Falls back to defaults if no config is found.
    */
-  async forFile(filePath: string): Promise<{ config: ChangeTracksConfig; projectDir: string }> {
+  async forFile(filePath: string): Promise<{ config: ChangeDownConfig; projectDir: string }> {
     const dir = path.dirname(filePath);
     const projectRoot = await this.findProjectRoot(dir);
 
@@ -145,7 +145,7 @@ export class ConfigResolver {
     if (!inferredProject) {
       throw new Error(
         `Cannot resolve path "${file}" because project root is unknown. ` +
-        'Use an absolute path or set CHANGETRACKS_PROJECT_DIR to the workspace root.'
+        'Use an absolute path or set CHANGEDOWN_PROJECT_DIR to the workspace root.'
       );
     }
 
@@ -203,7 +203,7 @@ export class ConfigResolver {
    * Used by tools that don't have a file path (e.g. `get_tracking_status()`
    * with no args, `begin_change_group`).
    */
-  async lastConfig(): Promise<ChangeTracksConfig> {
+  async lastConfig(): Promise<ChangeDownConfig> {
     if (this.lastProjectDir) {
       const cached = this.cache.get(this.lastProjectDir);
       if (cached) return cached.config;
@@ -224,8 +224,8 @@ export class ConfigResolver {
   }
 
   /**
-   * Walk up from `startDir` looking for a directory containing `.changetracks/`.
-   * Returns the project root (parent of `.changetracks/`) or undefined.
+   * Walk up from `startDir` looking for a directory containing `.changedown/`.
+   * Returns the project root (parent of `.changedown/`) or undefined.
    */
   private async findProjectRoot(startDir: string): Promise<string | undefined> {
     let dir = path.resolve(startDir);
@@ -233,7 +233,7 @@ export class ConfigResolver {
 
     while (true) {
       try {
-        await fs.access(path.join(dir, '.changetracks', 'config.toml'));
+        await fs.access(path.join(dir, '.changedown', 'config.toml'));
         return dir;
       } catch {
         // Not found at this level
@@ -249,7 +249,7 @@ export class ConfigResolver {
 
   /**
    * Synchronous project root lookup used by resolveFilePath.
-   * Walks up from startDir until it finds `.changetracks/config.toml`.
+   * Walks up from startDir until it finds `.changedown/config.toml`.
    */
   private static findProjectRootSync(startDir: string): string | undefined {
     if (!startDir) return undefined;
@@ -257,7 +257,7 @@ export class ConfigResolver {
     const root = path.parse(dir).root;
 
     while (true) {
-      if (existsSync(path.join(dir, '.changetracks', 'config.toml'))) {
+      if (existsSync(path.join(dir, '.changedown', 'config.toml'))) {
         return dir;
       }
       const parent = path.dirname(dir);
@@ -269,7 +269,7 @@ export class ConfigResolver {
   }
 
   /**
-   * Start watching `.changetracks/config.toml` for a project root.
+   * Start watching `.changedown/config.toml` for a project root.
    * On change, invalidates the cached config so the next forFile() re-reads.
    * Debounced at 100ms (fs.watch fires multiple events per save).
    * Idempotent — won't create duplicate watchers for the same project.
@@ -277,7 +277,7 @@ export class ConfigResolver {
   private watchConfig(projectDir: string): void {
     if (this.watchers.has(projectDir)) return;
 
-    const configPath = path.join(projectDir, '.changetracks', 'config.toml');
+    const configPath = path.join(projectDir, '.changedown', 'config.toml');
     try {
       const watcher = watch(configPath, () => {
         // Debounce: clear previous timer, set new one
@@ -287,7 +287,7 @@ export class ConfigResolver {
         this.debounceTimers.set(projectDir, setTimeout(() => {
           this.debounceTimers.delete(projectDir);
           this.cache.delete(projectDir);
-          console.error(`changetracks: config changed, cache invalidated for ${projectDir}`);
+          console.error(`changedown: config changed, cache invalidated for ${projectDir}`);
         }, 100));
       });
 

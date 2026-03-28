@@ -15,8 +15,8 @@ Feature: I10 — CLI interactive mode
     And the user confirms "advanced settings" with "no"
     And the user confirms "No .gitignore" with "yes"
     When I run runInit interactively
-    Then the file ".changetracks/config.toml" exists in that directory
-    And the init file ".changetracks/config.toml" contains 'default = "Alice"'
+    Then the file ".changedown/config.toml" exists in that directory
+    And the init file ".changedown/config.toml" contains 'default = "Alice"'
     And the prompt "Author identity" was shown
     And the outro contains "Setup complete"
     And a "Next steps" note was shown
@@ -33,9 +33,9 @@ Feature: I10 — CLI interactive mode
     And the user confirms "Auto-settle changes on reject" with "yes"
     And the user confirms "No .gitignore" with "yes"
     When I run runInit interactively
-    Then the init file ".changetracks/config.toml" contains 'mode = "compact"'
-    And the init file ".changetracks/config.toml" contains 'default_view = "changes"'
-    And the init file ".changetracks/config.toml" contains "auto_on_approve = false"
+    Then the init file ".changedown/config.toml" contains 'mode = "compact"'
+    And the init file ".changedown/config.toml" contains 'default_view = "changes"'
+    And the init file ".changedown/config.toml" contains "auto_on_approve = false"
 
   @fast @I10
   Scenario: Cancellation at author prompt
@@ -120,4 +120,4 @@ Feature: I10 — CLI interactive mode
     And the user confirms "advanced settings" with "no"
     And the user confirms "No .gitignore" with "yes"
     When I run runInit interactively
-    Then the file ".changetracks/config.toml" exists in that directory
+    Then the file ".changedown/config.toml" exists in that directory

@@ -6,15 +6,15 @@
  */
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 
 // =============================================================================
 // O6: Background — tracked file with proposed substitution
 // =============================================================================
 
 Given(
-  'a tracked file with a proposed substitution ct-1 by {string}',
-  async function (this: ChangeTracksWorld, author: string, table: any) {
+  'a tracked file with a proposed substitution cn-1 by {string}',
+  async function (this: ChangeDownWorld, author: string, table: any) {
     if (!this.ctx) {
       this.configOverrides.settlement = { auto_on_approve: false, auto_on_reject: false };
       await this.setupContext();
@@ -39,17 +39,17 @@ Given(
 );
 
 Given(
-  'a proposed deletion ct-2 by {string}',
-  async function (this: ChangeTracksWorld, author: string) {
-    // Propose a deletion on the SAME file as the Background (doc.md) so it gets ct-2.
-    // The Background already created ct-1 (substitution) on doc.md.
+  'a proposed deletion cn-2 by {string}',
+  async function (this: ChangeDownWorld, author: string) {
+    // Propose a deletion on the SAME file as the Background (doc.md) so it gets cn-2.
+    // The Background already created cn-1 (substitution) on doc.md.
     const filePath = this.files.get('doc.md');
     assert.ok(filePath, 'Expected doc.md from Background step');
     // Read current content to find appropriate text to delete
     const content = await this.ctx.readDisk(filePath);
-    // The file now has CriticMarkup from ct-1. We need to propose on text that
+    // The file now has CriticMarkup from cn-1. We need to propose on text that
     // exists in the file body. Propose a deletion on a word in the file.
-    // File content is like: "The API uses {~~REST~>GraphQL~~}[^ct-1] for services.\n\n[^ct-1]:..."
+    // File content is like: "The API uses {~~REST~>GraphQL~~}[^cn-1] for services.\n\n[^cn-1]:..."
     // We'll delete " for" from "for services" to keep it simple.
     await this.ctx.propose(filePath, {
       old_text: 'services',
@@ -61,8 +61,8 @@ Given(
 );
 
 Given(
-  'ct-1 has been accepted',
-  async function (this: ChangeTracksWorld) {
+  'cn-1 has been accepted',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     // Manually update the footnote status to 'accepted'
@@ -78,7 +78,7 @@ Given(
 
 When(
   'I call amend_change with:',
-  async function (this: ChangeTracksWorld, table: any) {
+  async function (this: ChangeDownWorld, table: any) {
     if (!this.ctx) await this.setupContext();
     const rows: string[][] = table.rawTable;
     const params = Object.fromEntries(rows.map((r: string[]) => [r[0].trim(), r[1].trim()]));
@@ -86,7 +86,7 @@ When(
     const filePath = this.files.get('doc.md') ?? this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
 
-    const changeId = params.change_id || 'ct-1';
+    const changeId = params.change_id || 'cn-1';
     const targetFile = filePath;
 
     try {
@@ -103,12 +103,12 @@ When(
 
 When(
   'I call amend_change with author {string}',
-  async function (this: ChangeTracksWorld, author: string) {
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
-      this.lastResult = await this.ctx.amend(filePath, 'ct-1', {
+      this.lastResult = await this.ctx.amend(filePath, 'cn-1', {
         new_text: 'gRPC',
         reason: 'I prefer gRPC',
         author,
@@ -120,13 +120,13 @@ When(
 );
 
 When(
-  'I call amend_change for ct-1',
-  async function (this: ChangeTracksWorld) {
+  'I call amend_change for cn-1',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
-      this.lastResult = await this.ctx.amend(filePath, 'ct-1', {
+      this.lastResult = await this.ctx.amend(filePath, 'cn-1', {
         new_text: 'gRPC',
         reason: 'changed my mind',
       });
@@ -137,20 +137,20 @@ When(
 );
 
 When(
-  'I call amend_change for ct-1 with new_text {string}',
-  async function (this: ChangeTracksWorld, newText: string) {
+  'I call amend_change for cn-1 with new_text {string}',
+  async function (this: ChangeDownWorld, newText: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
 
     // First add a discussion entry so we can verify it's preserved
     await this.ctx.review(filePath, {
-      responses: [{ change_id: 'ct-1', response: 'Have you benchmarked this?', label: 'question' }],
+      responses: [{ change_id: 'cn-1', response: 'Have you benchmarked this?', label: 'question' }],
       author: 'ai:reviewer',
     });
 
     try {
-      this.lastResult = await this.ctx.amend(filePath, 'ct-1', {
+      this.lastResult = await this.ctx.amend(filePath, 'cn-1', {
         new_text: newText,
         reason: 'benchmarks show gRPC is 3x faster',
       });
@@ -166,7 +166,7 @@ When(
 
 Then(
   'the inline markup changes from {string} to {string}',
-  async function (this: ChangeTracksWorld, oldMarkup: string, newMarkup: string) {
+  async function (this: ChangeDownWorld, oldMarkup: string, newMarkup: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -177,7 +177,7 @@ Then(
 
 Then(
   'the footnote contains {string}',
-  async function (this: ChangeTracksWorld, expected: string) {
+  async function (this: ChangeDownWorld, expected: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -190,7 +190,7 @@ Then(
 
 Then(
   'the footnote contains previous text {string}',
-  async function (this: ChangeTracksWorld, prevText: string) {
+  async function (this: ChangeDownWorld, prevText: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -203,7 +203,7 @@ Then(
 
 Then(
   'the footnote for {word} has status {string}',
-  async function (this: ChangeTracksWorld, changeId: string, status: string) {
+  async function (this: ChangeDownWorld, changeId: string, status: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.assertFootnoteStatus(filePath, changeId, status);
@@ -212,7 +212,7 @@ Then(
 
 Then(
   'the inline markup is unchanged',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -223,7 +223,7 @@ Then(
 
 Then(
   'the error mentions {string} {string}',
-  function (this: ChangeTracksWorld, word1: string, word2: string) {
+  function (this: ChangeDownWorld, word1: string, word2: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult).toLowerCase();
     assert.ok(text.includes(word1.toLowerCase()), `Expected error to mention "${word1}"`);
@@ -233,7 +233,7 @@ Then(
 
 Then(
   'the error mentions status {string}',
-  function (this: ChangeTracksWorld, status: string) {
+  function (this: ChangeDownWorld, status: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult).toLowerCase();
     assert.ok(text.includes(status.toLowerCase()), `Expected error to mention status "${status}"`);
@@ -242,7 +242,7 @@ Then(
 
 Then(
   'the change ID remains {string}',
-  async function (this: ChangeTracksWorld, changeId: string) {
+  async function (this: ChangeDownWorld, changeId: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -252,7 +252,7 @@ Then(
 
 Then(
   'existing discussion entries are preserved',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);

@@ -1,4 +1,4 @@
-# ChangeTracks Practical Guide
+# ChangeDown Practical Guide
 
 A cookbook for agents and tool implementors. Every concept has a concrete example. Read this, then build.
 
@@ -9,18 +9,18 @@ A cookbook for agents and tool implementors. Every concept has a concrete exampl
 ### Minimal tracked file (L2)
 
 ```markdown
-<!-- ctrcks.com/v2: tracked -->
+<!-- changedown.com/v2: tracked -->
 # API Design
 
 The API should use GraphQL for the public interface.
 
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
 ```
 
 Three things happened:
 1. The tracking header on line 1 declares this file as tracked.
 2. `GraphQL` is a substitution — replace "REST" with "GraphQL".
-3. `[^ct-1]` links the inline change to its footnote, which carries author, date, type, and status.
+3. `[^cn-1]` links the inline change to its footnote, which carries author, date, type, and status.
 
 ### Add your first tracked change
 
@@ -35,7 +35,7 @@ The API should use GraphQL for the public interface.
 ```markdown
 The rate-limited API should use GraphQL for the public interface.
 
-[^ct-2]: @bob | 2024-01-16 | ins | proposed
+[^cn-2]: @bob | 2024-01-16 | ins | proposed
 ```
 
 ### Accept or reject
@@ -64,7 +64,7 @@ Highlights can attach comments with no whitespace: `100 req/min`
 
 Comments can omit the closing `<<}`: `
 
-[^ct-5]: @bob | 2024-01-16 | comment | proposed
+[^cn-5]: @bob | 2024-01-16 | comment | proposed
 ```
 
 ### Add a highlight with comment
@@ -81,12 +81,12 @@ Footnote status changes. Body does NOT change on accept (it already reflects the
 
 **Before:**
 ```
-[^ct-4]: @alice | 2024-01-15 | sub | proposed
+[^cn-4]: @alice | 2024-01-15 | sub | proposed
 ```
 
 **After:**
 ```
-[^ct-4]: @alice | 2024-01-15 | sub | accepted
+[^cn-4]: @alice | 2024-01-15 | sub | accepted
     approved: @eve 2024-01-20 "Benchmarks look good"
 ```
 
@@ -106,7 +106,7 @@ The API should use REST for the public interface.
 
 **After (footnote):**
 ```
-[^ct-4]: @alice | 2024-01-15 | sub | rejected
+[^cn-4]: @alice | 2024-01-15 | sub | rejected
     rejected: @carol 2024-01-19 "REST is simpler for this use case"
 ```
 
@@ -125,12 +125,12 @@ Does NOT change status. Records a concern.
 
 **Before:**
 ```
-[^ct-4]: @alice | 2024-01-15 | sub | proposed
+[^cn-4]: @alice | 2024-01-15 | sub | proposed
 ```
 
 **After:**
 ```
-[^ct-4]: @alice | 2024-01-15 | sub | proposed
+[^cn-4]: @alice | 2024-01-15 | sub | proposed
     request-changes: @carol 2024-01-18 "Pick one protocol" [blocking]
 ```
 
@@ -141,16 +141,16 @@ Labels: `[suggestion]`, `[issue]`, `[security]`, `[blocking]`, `[nitpick]`, etc.
 Old change gets `superseded-by`, new change gets `supersedes`. Same mechanism for both same-author revision and different-author alternative — attribution distinguishes them.
 
 ```
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
     5:a3 OAuth2
     approved: @bob 2024-01-16 "Correct direction"
     superseded-by: ct-2
 
-[^ct-2]: @alice | 2024-01-17 | sub | proposed     ← same author = revision
+[^cn-2]: @alice | 2024-01-17 | sub | proposed     ← same author = revision
     supersedes: ct-1
     5:a3 OAuth2 with Authorization Code flow
 
-[^ct-3]: @carol | 2024-01-17 | sub | proposed     ← different author = alternative
+[^cn-3]: @carol | 2024-01-17 | sub | proposed     ← different author = alternative
     supersedes: ct-1
     5:a3 mTLS with client certificates
 ```
@@ -163,13 +163,13 @@ Discussion lives in footnote body lines. Replies indent 2 extra spaces per level
 
 **Before:**
 ```
-[^ct-4]: @alice | 2024-01-15 | sub | proposed
+[^cn-4]: @alice | 2024-01-15 | sub | proposed
     @dave 2024-01-16: GraphQL increases client complexity.
 ```
 
 **After:**
 ```
-[^ct-4]: @alice | 2024-01-15 | sub | proposed
+[^cn-4]: @alice | 2024-01-15 | sub | proposed
     @dave 2024-01-16: GraphQL increases client complexity.
       @alice 2024-01-16: But reduces over-fetching. See PR #42.
         @dave 2024-01-17: Fair point. Benchmarks are convincing.
@@ -189,9 +189,9 @@ Add `resolved @who date` to close a thread. Reopen with `open -- reason`.
 Multi-change operations use dotted IDs under a shared parent:
 
 ```
-[^ct-17]: @alice | 2024-02-10 | move | proposed
-[^ct-17.1]: @alice | 2024-02-10 | del | proposed    ←  at source
-[^ct-17.2]: @alice | 2024-02-10 | ins | proposed    ← moved text at destination
+[^cn-17]: @alice | 2024-02-10 | move | proposed
+[^cn-17.1]: @alice | 2024-02-10 | del | proposed    ←  at source
+[^cn-17.2]: @alice | 2024-02-10 | ins | proposed    ← moved text at destination
 ```
 
 Accept ct-17 cascades to all proposed children. Reject ct-17.2 carves out one child. Already-decided children are unaffected by parent cascades.
@@ -257,16 +257,16 @@ Three canonical projections of the same document.
 ### Source (L2 file on disk)
 
 ```markdown
-<!-- ctrcks.com/v2: tracked -->
+<!-- changedown.com/v2: tracked -->
 # API Design
 
 The production-ready API should use GraphQL for
 the interface.
 
-[^ct-1]: @bob | 2024-01-16 | ins | proposed
-[^ct-2]: @alice | 2024-01-15 | sub | accepted
+[^cn-1]: @bob | 2024-01-16 | ins | proposed
+[^cn-2]: @alice | 2024-01-15 | sub | accepted
     approved: @eve 2024-01-20 "Correct choice"
-[^ct-3]: @alice | 2024-01-17 | del | rejected
+[^cn-3]: @alice | 2024-01-17 | del | rejected
     rejected: @bob 2024-01-18 "Public is accurate"
 ```
 
@@ -338,11 +338,11 @@ When multiple review lines exist, the **last status-changing action** wins. `req
 Accept/reject on a parent cascades to all `proposed` children:
 
 ```
-[^ct-17]: @alice | 2024-02-10 | move | accepted
+[^cn-17]: @alice | 2024-02-10 | move | accepted
     approved: @bob 2024-02-11 "Good restructure"
-[^ct-17.1]: @alice | 2024-02-10 | del | accepted
+[^cn-17.1]: @alice | 2024-02-10 | del | accepted
     approved: @bob 2024-02-11 "Good restructure" (cascaded from ct-17)
-[^ct-17.2]: @alice | 2024-02-10 | ins | accepted
+[^cn-17.2]: @alice | 2024-02-10 | ins | accepted
     approved: @bob 2024-02-11 "Good restructure" (cascaded from ct-17)
 ```
 
@@ -378,7 +378,7 @@ Six tools exposed via MCP `list_tools`. Two protocol modes: **classic** (old_tex
 | `list_changes` | List tracked changes | `file`, `status` filter, `detail` (summary/context/full) |
 | `supersede_change` | Atomically reject + re-propose | `file`, `change_id`, `old_text`, `new_text`, `reason` |
 
-Protocol mode is set in `.changetracks/config.toml`. The MCP client sees different `propose_change` schemas depending on the mode.
+Protocol mode is set in `.changedown/config.toml`. The MCP client sees different `propose_change` schemas depending on the mode.
 
 ---
 
@@ -387,7 +387,7 @@ Protocol mode is set in `.changetracks/config.toml`. The MCP client sees differe
 ### Full L2 document
 
 ```markdown
-<!-- ctrcks.com/v2: tracked -->
+<!-- changedown.com/v2: tracked -->
 # Authentication Design
 
 The service uses OAuth2 with Authorization Code flow for
@@ -397,16 +397,16 @@ all external API endpoints. Rate limiting is set to
 Internal services use mTLS with client certificates for
 mutual authentication.
 
-[^ct-compact]: @alice | 2024-03-01 | compaction-boundary
-    compacted-by: changetracks v0.1.0
+[^cn-compact]: @alice | 2024-03-01 | compaction-boundary
+    compacted-by: changedown v0.1.0
 
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
     context: "uses {basic auth} for all"
     superseded-by: ct-2
     approved: @bob 2024-01-16 "Correct direction"
     request-changes: @carol 2024-01-16 "Specify grant type" [blocking]
 
-[^ct-2]: @alice | 2024-01-17 | sub | accepted
+[^cn-2]: @alice | 2024-01-17 | sub | accepted
     supersedes: ct-1
     context: "uses {basic auth} for all"
     approved: @eve 2024-01-20 "Grant type specified, looks good"
@@ -414,15 +414,15 @@ mutual authentication.
       @carol 2024-01-18: Thanks, Authorization Code is the right choice here.
     resolved @carol 2024-01-18
 
-[^ct-3]: @bob | 2024-01-18 | ins | proposed
+[^cn-3]: @bob | 2024-01-18 | ins | proposed
     @dave 2024-01-19: Do we need this distinction?
       @bob 2024-01-19: Yes, internal services use mTLS (see ct-7).
 
-[^ct-5]: @bob | 2024-01-16 | highlight | proposed
+[^cn-5]: @bob | 2024-01-16 | highlight | proposed
 
-[^ct-7]: @alice | 2024-02-01 | move | proposed
-[^ct-7.1]: @alice | 2024-02-01 | del | proposed
-[^ct-7.2]: @alice | 2024-02-01 | ins | proposed
+[^cn-7]: @alice | 2024-02-01 | move | proposed
+[^cn-7.1]: @alice | 2024-02-01 | del | proposed
+[^cn-7.2]: @alice | 2024-02-01 | ins | proposed
 
 ```
 
@@ -444,16 +444,16 @@ mutual authentication.
 
 ### Key differences in L3
 
-The L3 version of this document has a clean body (no delimiters, no `[^ct-N]` references). Each footnote gains a `LINE:HASH {op}` edit-op line anchoring the change to the body. For example:
+The L3 version of this document has a clean body (no delimiters, no `[^cn-N]` references). Each footnote gains a `LINE:HASH {op}` edit-op line anchoring the change to the body. For example:
 
 ```
-[^ct-2]: @alice | 2024-01-17 | sub | accepted
+[^cn-2]: @alice | 2024-01-17 | sub | accepted
     supersedes: ct-1
     3:b7 uses OAuth2 with Authorization Code flow for
     approved: @eve 2024-01-20 "Grant type specified, looks good"
     ...
 
-[^ct-3]: @bob | 2024-01-18 | ins | proposed
+[^cn-3]: @bob | 2024-01-18 | ins | proposed
     4:c2 all external API endpoints
     ...
 ```
@@ -488,7 +488,7 @@ The body changed since you read it. LINE:HASH coordinates reference the body at 
 
 Superseded changes stay in the log with their full governance record. Only the `superseded-by:` back-reference is added. The old change is not deleted — it is part of the revision history.
 
-### File was edited outside ChangeTracks
+### File was edited outside ChangeDown
 
 The coherence health check runs on file open and reports resolution rate. If above threshold (default 98%), minor drift is handled automatically via the matching cascade. Below threshold, the system reports degraded state and offers recovery options: automatic re-anchoring, assisted re-anchoring via matching cascade suggestions, and manual resolution.
 

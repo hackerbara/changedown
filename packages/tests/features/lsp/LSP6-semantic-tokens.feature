@@ -6,25 +6,25 @@ Feature: LSP6 - Semantic Tokens
 
   # --- Token type mapping ---
 
-  Scenario: Insertion produces changetracks-insertion token
+  Scenario: Insertion produces changedown-insertion token
     Given the document text "Sample text for testing"
     And a parsed insertion at content range 3-11 with status "Proposed"
     When I build semantic tokens
     Then token 1 has type index 0
 
-  Scenario: Deletion produces changetracks-deletion token
+  Scenario: Deletion produces changedown-deletion token
     Given the document text "Sample text for testing"
     And a parsed deletion at content range 3-11 with status "Proposed"
     When I build semantic tokens
     Then token 1 has type index 1
 
-  Scenario: Highlight produces changetracks-highlight token
+  Scenario: Highlight produces changedown-highlight token
     Given the document text "Sample text for testing"
     And a parsed highlight at content range 3-11 with status "Proposed"
     When I build semantic tokens
     Then token 1 has type index 2
 
-  Scenario: Comment produces changetracks-comment token
+  Scenario: Comment produces changedown-comment token
     Given the document text "Sample text for testing"
     And a parsed comment at content range 3-11 with status "Proposed"
     When I build semantic tokens
@@ -80,10 +80,10 @@ Feature: LSP6 - Semantic Tokens
 
   Scenario: Legend includes expected token types
     When I request the semantic tokens legend
-    Then the legend includes token type "changetracks-insertion"
-    And the legend includes token type "changetracks-deletion"
-    And the legend includes token type "changetracks-highlight"
-    And the legend includes token type "changetracks-comment"
+    Then the legend includes token type "changedown-insertion"
+    And the legend includes token type "changedown-deletion"
+    And the legend includes token type "changedown-highlight"
+    And the legend includes token type "changedown-comment"
     And the legend includes modifier "modification"
     And the legend includes modifier "proposed"
     And the legend includes modifier "accepted"

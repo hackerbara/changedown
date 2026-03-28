@@ -1,21 +1,21 @@
 @wip @coverage-gap @red @slow @SCM1 @fixture(journey-review-target)
 Feature: SCM1 — SCM / QuickDiff integration
   As a document reviewer
-  I want ChangeTracks to integrate with VS Code's Source Control panel
+  I want ChangeDown to integrate with VS Code's Source Control panel
   So I can see changed files and gutter diff indicators
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   # ── Provider registration ────────────────────────────────────
 
-  Scenario: SCM1-01 Source Control panel shows ChangeTracks provider
+  Scenario: SCM1-01 Source Control panel shows ChangeDown provider
     When I execute "View: Show Source Control"
     And I wait 1000 milliseconds
     Then the status bar shows "changes"
-    # SCM provider "ChangeTracks" should be registered
+    # SCM provider "ChangeDown" should be registered
 
   # ── Resource group ───────────────────────────────────────────
 
@@ -34,7 +34,7 @@ Feature: SCM1 — SCM / QuickDiff integration
   # ── Diff view ────────────────────────────────────────────────
 
   Scenario: SCM1-04 Show Diff opens diff editor
-    When I execute "ChangeTracks: Show Diff"
+    When I execute "ChangeDown: Show Diff"
     And I wait 1000 milliseconds
     Then a diff editor is open
 
@@ -51,7 +51,7 @@ Feature: SCM1 — SCM / QuickDiff integration
   @fixture(journey-accept-reject) @destructive
   Scenario: SCM1-06 SCM updates after accept all
     Given I open "journey-accept-reject.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
     When I accept all changes
     And I wait 1000 milliseconds
@@ -60,7 +60,7 @@ Feature: SCM1 — SCM / QuickDiff integration
   # ── Commands registered ──────────────────────────────────────
 
   Scenario: SCM1-07 SCM commands are registered
-    When I execute "ChangeTracks: Show Diff"
+    When I execute "ChangeDown: Show Diff"
     And I wait 1000 milliseconds
     Then a diff editor is open
 

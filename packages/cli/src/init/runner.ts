@@ -69,14 +69,14 @@ export async function runInit(opts: RunInitOptions): Promise<void> {
   const policyFlag = initArgs.find(a => a.startsWith('--policy='))?.slice('--policy='.length) as
     | 'safety-net' | 'strict' | 'permissive' | undefined;
 
-  const configDir = path.join(projectDir, '.changetracks');
+  const configDir = path.join(projectDir, '.changedown');
   const configPath = path.join(configDir, 'config.toml');
 
   // Re-init guard
   if (fs.existsSync(configPath) && !reconfigure) {
     const summary = parseConfigSummary(projectDir);
     if (nonInteractive) {
-      log('  ChangeTracks is already configured in this project.');
+      log('  ChangeDown is already configured in this project.');
       log(`  Config: ${configPath}`);
       if (summary) {
         log(`  Author:   ${summary.author}`);
@@ -88,7 +88,7 @@ export async function runInit(opts: RunInitOptions): Promise<void> {
       return;
     }
 
-    clack.intro('ChangeTracks — durable change tracking for editors and AI agents');
+    clack.intro('ChangeDown — durable change tracking for editors and AI agents');
     if (summary) {
       clack.log.info([
         `Already configured: ${configPath}`,
@@ -100,7 +100,7 @@ export async function runInit(opts: RunInitOptions): Promise<void> {
     } else {
       clack.log.info(`Already configured: ${configPath}`);
     }
-    clack.log.info('Run changetracks init --reconfigure to update settings.');
+    clack.log.info('Run changedown init --reconfigure to update settings.');
     clack.outro('Nothing changed.');
     return;
   }
@@ -153,11 +153,11 @@ async function runNonInteractive(opts: NonInteractiveOptions): Promise<void> {
   if (hasGitignore(projectDir)) {
     const result = ensureGitignoreEntries(projectDir);
     if (result.action === 'appended') {
-      log('  Updated .gitignore with ChangeTracks entries.');
+      log('  Updated .gitignore with ChangeDown entries.');
     }
   } else {
     createGitignore(projectDir);
-    log('  Created .gitignore with ChangeTracks entries.');
+    log('  Created .gitignore with ChangeDown entries.');
   }
 
   // Configure agents
@@ -174,7 +174,7 @@ async function runNonInteractive(opts: NonInteractiveOptions): Promise<void> {
     }
   }
 
-  log('  ChangeTracks initialized.');
+  log('  ChangeDown initialized.');
 }
 
 // ---------------------------------------------------------------------------
@@ -195,7 +195,7 @@ async function runInteractive(opts: InteractiveOptions): Promise<void> {
   const { projectDir, configDir, configPath, agentsFlag, clack } = opts;
   const exit = opts.exit ?? process.exit;
 
-  clack.intro('ChangeTracks — durable change tracking for editors and AI agents');
+  clack.intro('ChangeDown — durable change tracking for editors and AI agents');
 
   // ── Step 1: Author identity ──────────────────────────────────────────
   const detectedAuthor = resolveIdentity(projectDir);
@@ -333,7 +333,7 @@ async function runInteractive(opts: InteractiveOptions): Promise<void> {
   });
   fs.mkdirSync(configDir, { recursive: true });
   fs.writeFileSync(configPath, configToml, 'utf8');
-  clack.log.success('Created .changetracks/config.toml');
+  clack.log.success('Created .changedown/config.toml');
 
   // ── Examples ─────────────────────────────────────────────────────────
   await copyExamples(projectDir);
@@ -343,16 +343,16 @@ async function runInteractive(opts: InteractiveOptions): Promise<void> {
   if (hasGitignore(projectDir)) {
     const result = ensureGitignoreEntries(projectDir);
     if (result.action === 'appended') {
-      clack.log.success('Updated .gitignore with ChangeTracks entries.');
+      clack.log.success('Updated .gitignore with ChangeDown entries.');
     }
   } else {
     const createIt = await clack.confirm({
-      message: 'No .gitignore found. Create one with ChangeTracks entries?',
+      message: 'No .gitignore found. Create one with ChangeDown entries?',
       initialValue: true,
     });
     if (!clack.isCancel(createIt) && createIt) {
       createGitignore(projectDir);
-      clack.log.success('Created .gitignore with ChangeTracks entries.');
+      clack.log.success('Created .gitignore with ChangeDown entries.');
     }
   }
 
@@ -412,7 +412,7 @@ async function runInteractive(opts: InteractiveOptions): Promise<void> {
         '1. Open examples/getting-started.md in VS Code or Cursor',
         '2. Press Alt+Cmd+T (Ctrl+Alt+T) to start tracking changes',
         '3. Install Claude Code or Cursor for agent-assisted reviews',
-        '4. Run changetracks status to see tracked files',
+        '4. Run changedown status to see tracked files',
       ];
       break;
   }

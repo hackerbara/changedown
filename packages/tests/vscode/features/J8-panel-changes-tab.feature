@@ -6,16 +6,16 @@ Feature: Changes tab — triage and actions at a glance
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
-    And I open the ChangeTracks sidebar
+    And I open the ChangeDown sidebar
 
   Scenario: Change cards display with metadata
     Then the Review Panel shows change cards
 
   # WebView iframe interaction tests — originally @wip pending reliable
   # iframe detection. Now use command-mediated panel state queries
-  # (changetracks._testQueryPanelState) which bypass iframe probing.
+  # (changedown._testQueryPanelState) which bypass iframe probing.
 
   Scenario: Click card navigates to change in editor
     When I click the text preview on a change card

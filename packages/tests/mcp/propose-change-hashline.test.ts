@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { validateOrRelocate, validateOrAutoRemap, computeLineHash } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { validateOrRelocate, validateOrAutoRemap, computeLineHash } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -21,7 +21,7 @@ function hashForLine(content: string, lineNum: number): string {
 describe('propose_change hashline addressing', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeAll(async () => {
@@ -29,7 +29,7 @@ describe('propose_change hashline addressing', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-propose-hashline-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-propose-hashline-'));
     state = new SessionState();
     // Disable auto_header to avoid header insertion shifting line numbers.
     // Header insertion is tested separately in propose-change.test.ts.
@@ -82,13 +82,13 @@ describe('propose_change hashline addressing', () => {
 
       expect(result.isError).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
-      expect(data.change_id).toBe('ct-1');
+      expect(data.change_id).toBe('cn-1');
       expect(data.type).toBe('sub');
       // affected_lines present even in legacy mode (content, no hashes when hashlines disabled)
       expect(data.affected_lines).toBeDefined();
 
       const modified = await fs.readFile(filePath, 'utf-8');
-      expect(modified).toContain('{~~quick brown~>slow red~~}[^ct-1]');
+      expect(modified).toContain('{~~quick brown~>slow red~~}[^cn-1]');
     });
 
     it('insertion with insert_after works the same as before', async () => {
@@ -107,7 +107,7 @@ describe('propose_change hashline addressing', () => {
       expect(data.affected_lines).toBeDefined();
 
       const modified = await fs.readFile(filePath, 'utf-8');
-      expect(modified).toContain('quick{++ brown++}[^ct-1]');
+      expect(modified).toContain('quick{++ brown++}[^cn-1]');
     });
   });
 
@@ -115,7 +115,7 @@ describe('propose_change hashline addressing', () => {
 
   describe('config gate', () => {
     it('returns error when hashline disabled but line params provided', async () => {
-      const disabledConfig: ChangeTracksConfig = {
+      const disabledConfig: ChangeDownConfig = {
         ...config,
         hashline: { enabled: false, auto_remap: false },
       };
@@ -137,7 +137,7 @@ describe('propose_change hashline addressing', () => {
     });
 
     it('returns error when hashline disabled but after_line params provided', async () => {
-      const disabledConfig: ChangeTracksConfig = {
+      const disabledConfig: ChangeDownConfig = {
         ...config,
         hashline: { enabled: false, auto_remap: false },
       };
@@ -183,12 +183,12 @@ describe('propose_change hashline addressing', () => {
       expect(result.isError).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
       expect(data.type).toBe('sub');
-      expect(data.change_id).toBe('ct-1');
+      expect(data.change_id).toBe('cn-1');
       expect(data.affected_lines).toBeDefined();
       expect(Array.isArray(data.affected_lines)).toBe(true);
 
       const modified = await fs.readFile(filePath, 'utf-8');
-      expect(modified).toContain('{~~Line two~>Line TWO~~}[^ct-1]');
+      expect(modified).toContain('{~~Line two~>Line TWO~~}[^cn-1]');
     });
 
     it('multi-line range: replaces lines start through end', async () => {
@@ -218,7 +218,7 @@ describe('propose_change hashline addressing', () => {
       expect(data.type).toBe('sub');
 
       const modified = await fs.readFile(filePath, 'utf-8');
-      expect(modified).toContain('{~~Line two\nLine three~>Lines 2-3 replaced~~}[^ct-1]');
+      expect(modified).toContain('{~~Line two\nLine three~>Lines 2-3 replaced~~}[^cn-1]');
     });
   });
 
@@ -249,7 +249,7 @@ describe('propose_change hashline addressing', () => {
       expect(data.type).toBe('del');
 
       const modified = await fs.readFile(filePath, 'utf-8');
-      expect(modified).toContain('{--Line two--}[^ct-1]');
+      expect(modified).toContain('{--Line two--}[^cn-1]');
     });
   });
 
@@ -282,7 +282,7 @@ describe('propose_change hashline addressing', () => {
 
       const modified = await fs.readFile(filePath, 'utf-8');
       // After line 2, insert the markup before line 3
-      expect(modified).toContain('{++Inserted line++}[^ct-1]');
+      expect(modified).toContain('{++Inserted line++}[^cn-1]');
       // The insertion should appear between line 2 and line 3
       const lines = modified.split('\n');
       const insertionLineIdx = lines.findIndex(l => l.includes('{++Inserted line++}'));
@@ -320,9 +320,9 @@ describe('propose_change hashline addressing', () => {
       const modified = await fs.readFile(filePath, 'utf-8');
       // Only the second line's "word" should be replaced
       expect(modified).toContain('The word appears here');
-      expect(modified).toContain('{~~word~>TERM~~}[^ct-1]');
+      expect(modified).toContain('{~~word~>TERM~~}[^cn-1]');
       // The substitution should be on line 2
-      expect(modified).toContain('Another {~~word~>TERM~~}[^ct-1] appears here');
+      expect(modified).toContain('Another {~~word~>TERM~~}[^cn-1] appears here');
     });
 
     it('hybrid mode with multi-line range', async () => {
@@ -349,7 +349,7 @@ describe('propose_change hashline addressing', () => {
 
       expect(result.isError).toBeUndefined();
       const modified = await fs.readFile(filePath, 'utf-8');
-      expect(modified).toContain('{~~foo word bar~>foo TERM bar~~}[^ct-1]');
+      expect(modified).toContain('{~~foo word bar~>foo TERM bar~~}[^cn-1]');
     });
   });
 
@@ -598,7 +598,7 @@ describe('propose_change hashline addressing', () => {
       expect(result.isError).toBeUndefined();
       const modified = await fs.readFile(filePath, 'utf-8');
       // The prefix should be stripped; only "Line TWO" as new text
-      expect(modified).toContain('{~~Line two~>Line TWO~~}[^ct-1]');
+      expect(modified).toContain('{~~Line two~>Line TWO~~}[^cn-1]');
       expect(modified).not.toContain('2:ab|');
     });
   });
@@ -796,7 +796,7 @@ describe('propose_change hashline addressing', () => {
       // The change should succeed but include a staleness warning
       expect(result.isError).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
-      expect(data.change_id).toBe('ct-1');
+      expect(data.change_id).toBe('cn-1');
       expect(data.warning).toBeDefined();
       expect(data.warning).toMatch(/stale|changed|outdated/i);
     });
@@ -828,7 +828,7 @@ describe('propose_change hashline addressing', () => {
       expect(result.isError).toBeUndefined();
       const modified = await fs.readFile(filePath, 'utf-8');
       // The boundary lines should be stripped, only "Line TWO" should be the replacement
-      expect(modified).toContain('{~~Line two~>Line TWO~~}[^ct-1]');
+      expect(modified).toContain('{~~Line two~>Line TWO~~}[^cn-1]');
     });
   });
 
@@ -963,7 +963,7 @@ describe('propose_change hashline addressing', () => {
   describe('nested CriticMarkup guard', () => {
     it('rejects pure line-range edit on line with existing CriticMarkup', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
-      const content = 'Line one\n{++Line two inserted++}[^ct-1]\nLine three\n\n[^ct-1]: @test | 2026-02-12 | ins | proposed';
+      const content = 'Line one\n{++Line two inserted++}[^cn-1]\nLine three\n\n[^cn-1]: @test | 2026-02-12 | ins | proposed';
       await fs.writeFile(filePath, content);
       const hash = hashForLine(content, 2);
 
@@ -987,7 +987,7 @@ describe('propose_change hashline addressing', () => {
 
     it('allows hybrid mode on line with existing CriticMarkup', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
-      const content = 'Line one\nSome {++inserted++}[^ct-1] text\nLine three\n\n[^ct-1]: @test | 2026-02-12 | ins | proposed';
+      const content = 'Line one\nSome {++inserted++}[^cn-1] text\nLine three\n\n[^cn-1]: @test | 2026-02-12 | ins | proposed';
       await fs.writeFile(filePath, content);
       const hash = hashForLine(content, 2);
 
@@ -1042,7 +1042,7 @@ describe('propose_change hashline addressing', () => {
 
   describe('auto_header + hashline coordinate shift', () => {
     let autoHeaderResolver: ConfigResolver;
-    let autoHeaderConfig: ChangeTracksConfig;
+    let autoHeaderConfig: ChangeDownConfig;
 
     beforeEach(async () => {
       autoHeaderConfig = {
@@ -1077,12 +1077,12 @@ describe('propose_change hashline addressing', () => {
 
       expect(result.isError).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
-      expect(data.change_id).toBe('ct-1');
+      expect(data.change_id).toBe('cn-1');
       expect(data.type).toBe('ins');
 
       const written = await fs.readFile(filePath, 'utf-8');
       // File should have tracking header AND the insertion
-      expect(written).toContain('<!-- ctrcks.com/v1: tracked -->');
+      expect(written).toContain('<!-- changedown.com/v1: tracked -->');
       expect(written).toContain('{++Inserted text++}');
     });
 
@@ -1109,13 +1109,13 @@ describe('propose_change hashline addressing', () => {
 
       expect(result.isError).toBeUndefined();
       const written = await fs.readFile(filePath, 'utf-8');
-      expect(written).toContain('<!-- ctrcks.com/v1: tracked -->');
+      expect(written).toContain('<!-- changedown.com/v1: tracked -->');
       expect(written).toContain('{~~this~>that~~}');
     });
 
     it('already-headered file is not shifted (no false adjustment)', async () => {
       const filePath = path.join(tmpDir, 'has-header.md');
-      const body = '<!-- ctrcks.com/v1: tracked -->\n# Title\n\nContent\n';
+      const body = '<!-- changedown.com/v1: tracked -->\n# Title\n\nContent\n';
       await fs.writeFile(filePath, body);
 
       const h3 = hashForLine(body, 3);
@@ -1222,7 +1222,7 @@ describe('propose_change hashline addressing', () => {
       const text = result.content[0].text;
       // Error message should be educational
       expect(text).toContain('Hash mismatch on line 2');
-      expect(text).toContain('file content has changed since your last read');
+      expect(text).toContain('Coordinate resolution failed: line content not found in any view.');
       expect(text).toContain('read_tracked_file');
       expect(text).toContain('Quick-fix');
     });

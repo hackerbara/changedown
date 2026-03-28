@@ -16,7 +16,7 @@ describe('Batch overlap detection', () => {
 
   it('rejects batch with overlapping changes on same line', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nThe API uses REST for external requests from clients.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nThe API uses REST for external requests from clients.\n');
 
     await ctx.read(filePath, { view: 'review' });
 
@@ -34,7 +34,7 @@ describe('Batch overlap detection', () => {
 
   it('allows batch with non-overlapping changes on same line', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nThe API uses REST for external requests from clients.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nThe API uses REST for external requests from clients.\n');
 
     await ctx.read(filePath, { view: 'review' });
 
@@ -51,7 +51,7 @@ describe('Batch overlap detection', () => {
 
   it('allows batch with changes on different lines', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nLine one here.\nLine two here.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nLine one here.\nLine two here.\n');
 
     await ctx.read(filePath, { view: 'review' });
 
@@ -68,7 +68,7 @@ describe('Batch overlap detection', () => {
 
   it('detects overlap when one change is a subset of another', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nThe quick brown fox jumps over the lazy dog.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nThe quick brown fox jumps over the lazy dog.\n');
 
     await ctx.read(filePath, { view: 'review' });
 
@@ -86,7 +86,7 @@ describe('Batch overlap detection', () => {
 
   it('detects overlap when changes share boundary characters', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nfoo bar baz qux.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nfoo bar baz qux.\n');
 
     await ctx.read(filePath, { view: 'review' });
 

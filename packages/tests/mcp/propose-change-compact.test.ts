@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { computeLineHash } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { computeLineHash } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -24,7 +24,7 @@ describe('propose_change compact mode', () => {
   let state: SessionState;
   let resolver: ConfigResolver;
 
-  const compactConfig: ChangeTracksConfig = {
+  const compactConfig: ChangeDownConfig = {
     tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
     author: { default: 'ai:test-agent', enforcement: 'optional' },
     hooks: { enforcement: 'warn', exclude: [] },
@@ -45,7 +45,7 @@ describe('propose_change compact mode', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-compact-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-compact-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -69,7 +69,7 @@ describe('propose_change compact mode', () => {
     expect(result.isError).toBeUndefined();
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('{~~quick brown~>slow red~~}');
-    expect(modified).toContain('[^ct-1]');
+    expect(modified).toContain('[^cn-1]');
   });
 
   it('insertion via at+op', async () => {
@@ -105,7 +105,7 @@ describe('propose_change compact mode', () => {
     expect(result.isError).toBeUndefined();
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('{--delete this line--}');
-    expect(modified).toContain('[^ct-1]');
+    expect(modified).toContain('[^cn-1]');
   });
 
   it('op with {>>reasoning generates footnote with reasoning', async () => {
@@ -124,11 +124,11 @@ describe('propose_change compact mode', () => {
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('{~~timeout=30~>timeout=60~~}');
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
   });
 
   it('rejects compact params in classic mode', async () => {
-    const classicConfig: ChangeTracksConfig = {
+    const classicConfig: ChangeDownConfig = {
       ...compactConfig,
       protocol: { ...compactConfig.protocol, mode: 'classic' as const },
     };
@@ -174,7 +174,7 @@ describe('propose_change compact mode', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.type).toBe('sub');
     expect(data.document_state).toBeDefined();
     expect(data.document_state.total_changes).toBe(1);
@@ -265,7 +265,7 @@ describe('propose_change compact mode', () => {
       expect(result.isError).toBeUndefined();
       const modified = await fs.readFile(filePath, 'utf-8');
       expect(modified).toContain('{--Delete this line.--}');
-      expect(modified).toContain('[^ct-1]');
+      expect(modified).toContain('[^cn-1]');
       // Should have footnote with reasoning
       expect(modified).toContain('removing unused line');
     });
@@ -292,12 +292,12 @@ describe('propose_change compact mode', () => {
       expect(result.isError).toBeUndefined();
       const modified = await fs.readFile(filePath, 'utf-8');
       expect(modified).toContain('{--Remove this.\nAnd this.--}');
-      expect(modified).toContain('[^ct-1]');
+      expect(modified).toContain('[^cn-1]');
     });
   });
 
   describe('whole-range replace at level 1 (inline comment, no footnote)', () => {
-    const level1Config: ChangeTracksConfig = {
+    const level1Config: ChangeDownConfig = {
       ...compactConfig,
       protocol: { ...compactConfig.protocol, level: 1 },
     };
@@ -333,8 +333,8 @@ describe('propose_change compact mode', () => {
       expect(modified).toContain('~~}');
       // Level 1: inline metadata comment with author|date|type|status
       expect(modified).toMatch(/\{>>@ai:test-agent\|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\|sub\|proposed<<\}/);
-      // No footnote definition line (level 2 would produce [^ct-N]:)
-      expect(modified).not.toMatch(/^\[\^ct-\d+\]:/m);
+      // No footnote definition line (level 2 would produce [^cn-N]:)
+      expect(modified).not.toMatch(/^\[\^cn-\d+\]:/m);
     });
   });
 
@@ -345,10 +345,10 @@ describe('propose_change compact mode', () => {
       // The accepted sub means "old" text is gone, "new" text is present.
       const rawContent = [
         'Line one',
-        '{~~old text~>new text~~}[^ct-1]',
+        '{~~old text~>new text~~}[^cn-1]',
         'Line three',
         '',
-        '[^ct-1]: @ai:test | 2026-03-04 | sub | accepted',
+        '[^cn-1]: @ai:test | 2026-03-04 | sub | accepted',
       ].join('\n');
 
       const filePath = path.join(tmpDir, 'settled-test.md');
@@ -393,17 +393,17 @@ describe('propose_change compact mode', () => {
       // Verify the file was modified correctly
       const modified = await fs.readFile(filePath, 'utf-8');
       expect(modified).toContain('{~~Line three~>Line three (updated)~~}');
-      expect(modified).toContain('[^ct-2]');
+      expect(modified).toContain('[^cn-2]');
     });
 
-    it('returns hash mismatch error when settled-view hash does not match recorded hash', async () => {
+    it('returns hash mismatch error when hash cannot be found in any view', async () => {
       // File with a settled change
       const rawContent = [
         'Line one',
-        '{~~old~>new~~}[^ct-1]',
+        '{~~old~>new~~}[^cn-1]',
         'Line three',
         '',
-        '[^ct-1]: @ai:test | 2026-03-04 | sub | accepted',
+        '[^cn-1]: @ai:test | 2026-03-04 | sub | accepted',
       ].join('\n');
 
       const filePath = path.join(tmpDir, 'mismatch-test.md');
@@ -416,24 +416,26 @@ describe('propose_change compact mode', () => {
         state,
       );
 
-      // Use a wrong hash (all zeros)
+      // Use a valid hex hash ('ff') with an insertion op (empty oldText).
+      // Stage 3.5a is skipped because insertion has no oldText.
+      // Stage 3.5b cannot find 'ff' in any view (no line hashes to 'ff').
+      // Result: coordinate resolution fails.
       const result = await handleProposeChange(
         {
           file: filePath,
-          at: '3:00',  // wrong hash
-          op: '{~~Line three~>updated~~}',
+          at: '3:ff',  // valid hex hash not found in any view
+          op: '{++extra content++}',
           reason: 'test',
         },
         resolver,
         state,
       );
 
-      // Should fail with hash mismatch
+      // Should fail — coordinate unresolvable after all fallback stages
       expect(result.isError).toBe(true);
       const data = JSON.parse(result.content[0].text);
       expect(data.error.code).toBe('HASHLINE_REFERENCE_UNRESOLVED');
-      expect(data.error.message).toContain('Hash mismatch');
-      expect(data.error.message).toContain('settled');
+      expect(data.error.message).toContain('mismatch');
     });
 
     it('falls through to raw resolution when no session state exists', async () => {
@@ -468,10 +470,10 @@ describe('propose_change compact mode', () => {
       // (old replaced by new), line 3 shows "Line three".
       const rawContent = [
         'Line one',
-        '{~~old text~>new text~~}[^ct-1]',
+        '{~~old text~>new text~~}[^cn-1]',
         'Line three',
         '',
-        '[^ct-1]: @ai:test | 2026-03-04 | sub | proposed',
+        '[^cn-1]: @ai:test | 2026-03-04 | sub | proposed',
       ].join('\n');
       const filePath = path.join(tmpDir, 'settled-projection.md');
       await fs.writeFile(filePath, rawContent);
@@ -539,7 +541,7 @@ describe('propose_change compact mode', () => {
       // 6. Verify the file was modified correctly
       const modified = await fs.readFile(filePath, 'utf-8');
       expect(modified).toContain('{~~Line three~>Line three (updated)~~}');
-      expect(modified).toContain('[^ct-2]');
+      expect(modified).toContain('[^cn-2]');
 
       // 7. Verify chained edit works: use affected_lines hashes for a follow-up edit
       //    After the first edit, the session state should have settled-view hashes re-recorded.

@@ -1,5 +1,5 @@
 Feature: I5 — Environment detection
-  ChangeTracks init adapts its output based on the runtime environment.
+  ChangeDown init adapts its output based on the runtime environment.
 
   @fast @I5
   Scenario: Detects VS Code integrated terminal

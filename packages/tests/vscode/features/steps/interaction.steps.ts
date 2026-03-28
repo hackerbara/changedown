@@ -3,7 +3,7 @@ import { strict as assert } from 'assert';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import { getOrCreateInstance } from './world';
 
 // Journey helpers (compiled to out/)
@@ -24,19 +24,19 @@ import { instanceViewMode, getInstanceKey, VIEW_MODE_ORDER } from './decoration.
 
 // ── Given steps ──────────────────────────────────────────────────────
 
-Given('I open {string} in VS Code', { timeout: 60000 }, async function (this: ChangeTracksWorld, fixture: string) {
+Given('I open {string} in VS Code', { timeout: 60000 }, async function (this: ChangeDownWorld, fixture: string) {
     this.fixtureFile = fixture;
     this.instance = await getOrCreateInstance(fixture, (name) => launchWithJourneyFixture(name));
     this.page = this.instance.page;
 });
 
-Given('the ChangeTracks extension is active', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+Given('the ChangeDown extension is active', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available — call "I open {fixture} in VS Code" first');
-    // Extension is active if decorations or status bar show ChangeTracks
+    // Extension is active if decorations or status bar show ChangeDown
     const status = await getStatusBarText(this.page);
     const deco = await getDecorationCounts(this.page);
     assert.ok(
-        status.includes('ChangeTracks') || status.includes('change') || deco.total > 0,
+        status.includes('ChangeDown') || status.includes('change') || deco.total > 0,
         `Extension does not appear active. Status: "${status}", decorations: ${deco.total}`
     );
 });
@@ -46,14 +46,14 @@ Given('the ChangeTracks extension is active', { timeout: 15000 }, async function
  * Reads the document header (source of truth for tracking state) first.
  * If already tracked, does nothing. If not, toggles once and verifies.
  * This avoids the bug where toggling a fixture that already has tracking ON
- * (header `<!-- ctrcks.com/v1: tracked -->`) would turn it OFF.
+ * (header `<!-- changedown.com/v1: tracked -->`) would turn it OFF.
  */
-Given('tracking mode is enabled', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+Given('tracking mode is enabled', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
 
     // Read the header to check current tracking state
     const text = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
-    const headerMatch = text.match(/<!--\s*ctrcks\.com\/v1:\s*(tracked|untracked)\s*-->/);
+    const headerMatch = text.match(/<!--\s*changedown\.com\/v1:\s*(tracked|untracked)\s*-->/);
 
     if (headerMatch?.[1] === 'tracked') {
         // Already tracked — do nothing
@@ -61,15 +61,15 @@ Given('tracking mode is enabled', { timeout: 15000 }, async function (this: Chan
     }
 
     // Not tracked (or no header yet) — toggle once
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Toggle Tracking');
+    await executeCommandViaBridge(this.page, 'ChangeDown: Toggle Tracking');
     await this.page.waitForTimeout(500);
 
     // Verify tracking is now on
     const afterText = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
-    const afterMatch = afterText.match(/<!--\s*ctrcks\.com\/v1:\s*(tracked|untracked)\s*-->/);
+    const afterMatch = afterText.match(/<!--\s*changedown\.com\/v1:\s*(tracked|untracked)\s*-->/);
     if (afterMatch?.[1] !== 'tracked') {
         // Toggle went the wrong way — toggle again
-        await executeCommandViaBridge(this.page, 'ChangeTracks: Toggle Tracking');
+        await executeCommandViaBridge(this.page, 'ChangeDown: Toggle Tracking');
         await this.page.waitForTimeout(500);
     }
 });
@@ -83,65 +83,65 @@ Given('tracking mode is enabled', { timeout: 15000 }, async function (this: Chan
  * Section 11: Wait for LSP change data before asserting decorations.
  * Use before "Then inline decorations are visible" and similar steps in @slow tests.
  */
-When('I wait for changes to load', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+When('I wait for changes to load', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const result = await waitForChanges(this.page);
     assert.ok(result.ready, `Changes did not load within timeout. Check LSP connection.`);
 });
 
-When('I execute {string}', { timeout: 10000 }, async function (this: ChangeTracksWorld, command: string) {
+When('I execute {string}', { timeout: 10000 }, async function (this: ChangeDownWorld, command: string) {
     assert.ok(this.page, 'Page not available');
     await executeCommandViaBridge(this.page, command);
     await this.page.waitForTimeout(500);
 });
 
-When('I accept the change at cursor', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I accept the change at cursor', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     this.lastBulkOperation = false;
     const before = await getDecorationCounts(this.page);
     this.decorationCountBefore = before.total;
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Accept Change', [undefined, 'approve']);
+    await executeCommandViaBridge(this.page, 'ChangeDown: Accept Change', [undefined, 'approve']);
     await this.page.waitForTimeout(800);
 });
 
-When('I reject the change at cursor', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I reject the change at cursor', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     this.lastBulkOperation = false;
     const before = await getDecorationCounts(this.page);
     this.decorationCountBefore = before.total;
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Reject Change', [undefined, 'reject']);
+    await executeCommandViaBridge(this.page, 'ChangeDown: Reject Change', [undefined, 'reject']);
     await this.page.waitForTimeout(800);
 });
 
-When('I accept all changes', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I accept all changes', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     this.lastBulkOperation = true;
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Accept All Changes');
+    await executeCommandViaBridge(this.page, 'ChangeDown: Accept All Changes');
     await this.page.waitForTimeout(1000);
 });
 
-When('I reject all changes', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I reject all changes', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     this.lastBulkOperation = true;
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Reject All Changes');
+    await executeCommandViaBridge(this.page, 'ChangeDown: Reject All Changes');
     await this.page.waitForTimeout(1000);
 });
 
-When('I navigate to the next change', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+When('I navigate to the next change', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Next Change');
+    await executeCommandViaBridge(this.page, 'ChangeDown: Next Change');
     await this.page.waitForTimeout(500);
 });
 
-When('I navigate to the previous change', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+When('I navigate to the previous change', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Previous Change');
+    await executeCommandViaBridge(this.page, 'ChangeDown: Previous Change');
     await this.page.waitForTimeout(500);
 });
 
-When('I toggle Smart View', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+When('I toggle Smart View', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Toggle Smart View');
+    await executeCommandViaBridge(this.page, 'ChangeDown: Toggle Smart View');
     await this.page.waitForTimeout(500);
 
     // Update view mode tracking — Toggle Smart View cycles through all 4 modes
@@ -154,7 +154,7 @@ When('I toggle Smart View', { timeout: 15000 }, async function (this: ChangeTrac
 });
 
 When('I position the cursor at line {int} column {int}', { timeout: 5000 }, async function (
-    this: ChangeTracksWorld, line: number, col: number
+    this: ChangeDownWorld, line: number, col: number
 ) {
     assert.ok(this.page, 'Page not available');
     // Ensure editor has DOM focus before keyboard-based cursor positioning
@@ -164,7 +164,7 @@ When('I position the cursor at line {int} column {int}', { timeout: 5000 }, asyn
     await this.page.waitForTimeout(300);
 });
 
-When('I type {string} into the editor', { timeout: 15000 }, async function (this: ChangeTracksWorld, text: string) {
+When('I type {string} into the editor', { timeout: 15000 }, async function (this: ChangeDownWorld, text: string) {
     assert.ok(this.page, 'Page not available');
     // Focus the editor
     await this.page.click('.monaco-editor .view-lines');
@@ -174,22 +174,22 @@ When('I type {string} into the editor', { timeout: 15000 }, async function (this
     await this.page.waitForTimeout(500);
 });
 
-When('I paste {string} into the editor', { timeout: 10000 }, async function (this: ChangeTracksWorld, text: string) {
+When('I paste {string} into the editor', { timeout: 10000 }, async function (this: ChangeDownWorld, text: string) {
     assert.ok(this.page, 'Page not available');
     // Focus editor
     await this.page.click('.monaco-editor .view-lines');
     await this.page.waitForTimeout(200);
     // Set clipboard via bridge command (navigator.clipboard throws NotAllowedError in Electron)
-    const inputPath = path.join(os.tmpdir(), 'changetracks-test-paste-input.json');
+    const inputPath = path.join(os.tmpdir(), 'changedown-test-paste-input.json');
     fs.writeFileSync(inputPath, JSON.stringify({ text }));
-    await executeCommandViaBridge(this.page, 'ChangeTracks: Test Paste Clipboard');
+    await executeCommandViaBridge(this.page, 'ChangeDown: Test Paste Clipboard');
     await this.page.waitForTimeout(200);
     // Paste via keyboard shortcut
     await this.page.keyboard.press('Meta+v');
     await this.page.waitForTimeout(500);
 });
 
-When('I wait for edit boundary detection', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+When('I wait for edit boundary detection', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     // Snapshot current marker count
     const beforeText = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
@@ -211,7 +211,7 @@ When('I wait for edit boundary detection', { timeout: 15000 }, async function (t
  * Unlike "I type {string} into the editor", this does NOT click the editor first,
  * so it works for find/replace dialogs and other focused inputs.
  */
-When('I type {string}', { timeout: 15000 }, async function (this: ChangeTracksWorld, text: string) {
+When('I type {string}', { timeout: 15000 }, async function (this: ChangeDownWorld, text: string) {
     assert.ok(this.page, 'Page not available');
     await this.page.keyboard.type(text, { delay: 30 });
     await this.page.waitForTimeout(300);
@@ -221,7 +221,7 @@ When('I type {string}', { timeout: 15000 }, async function (this: ChangeTracksWo
  * Press a keyboard key or shortcut (e.g., "Meta+z", "ArrowLeft", "Tab", "Escape").
  * Uses Playwright's keyboard.press which supports modifier combinations.
  */
-When('I press {string}', { timeout: 5000 }, async function (this: ChangeTracksWorld, key: string) {
+When('I press {string}', { timeout: 5000 }, async function (this: ChangeDownWorld, key: string) {
     assert.ok(this.page, 'Page not available');
     // Ensure editor has DOM focus without moving cursor — after Go-to-Line
     // or command palette, focus can be on a non-editor element
@@ -235,7 +235,7 @@ When('I press {string}', { timeout: 5000 }, async function (this: ChangeTracksWo
 });
 
 When('I select from line {int} column {int} to line {int} column {int}', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     startLine: number, startCol: number,
     endLine: number, endCol: number
 ) {
@@ -272,7 +272,7 @@ When('I select from line {int} column {int} to line {int} column {int}', { timeo
  * Wait for a specific number of milliseconds. Used by timing-sensitive
  * tracking mode scenarios to test edit boundary detection thresholds.
  */
-When('I wait {int} milliseconds', { timeout: 35000 }, async function (this: ChangeTracksWorld, ms: number) {
+When('I wait {int} milliseconds', { timeout: 35000 }, async function (this: ChangeDownWorld, ms: number) {
     assert.ok(this.page, 'Page not available');
     await this.page.waitForTimeout(ms);
 });
@@ -283,7 +283,7 @@ When('I wait {int} milliseconds', { timeout: 35000 }, async function (this: Chan
  * The fixture must already be in the workspace (i.e., in the fixtures/journeys/ folder
  * that was opened with the initial VS Code launch).
  */
-When('I switch to fixture {string}', { timeout: 15000 }, async function (this: ChangeTracksWorld, fixture: string) {
+When('I switch to fixture {string}', { timeout: 15000 }, async function (this: ChangeDownWorld, fixture: string) {
     assert.ok(this.page, 'Page not available');
     // Open Quick Open (Cmd+P / Ctrl+P)
     await this.page.keyboard.press(process.platform === 'darwin' ? 'Meta+p' : 'Control+p');
@@ -299,7 +299,7 @@ When('I switch to fixture {string}', { timeout: 15000 }, async function (this: C
 // ── Then steps ───────────────────────────────────────────────────────
 
 When('I record the cursor line', { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         const cursorLine = await getCursorLineViaBridge(this.page);
         assert.ok(cursorLine > 0, 'Could not query cursor position');
@@ -308,7 +308,7 @@ When('I record the cursor line', { timeout: 10000 },
 );
 
 Then('the cursor moved to a different line', { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         const cursorLine = await getCursorLineViaBridge(this.page);
         assert.ok(cursorLine > 0, 'Could not query cursor position');
@@ -321,7 +321,7 @@ Then('the cursor moved to a different line', { timeout: 10000 },
 );
 
 Then('a diff editor is open', { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         const hasDiffEditor = await this.page.evaluate(`(() => {
             const diffElements = document.querySelectorAll('.monaco-diff-editor');
@@ -331,25 +331,25 @@ Then('a diff editor is open', { timeout: 15000 },
     }
 );
 
-Then('the status bar shows {string}', { timeout: 5000 }, async function (this: ChangeTracksWorld, text: string) {
+Then('the status bar shows {string}', { timeout: 5000 }, async function (this: ChangeDownWorld, text: string) {
     assert.ok(this.page, 'Page not available');
     const status = await getStatusBarText(this.page);
     assert.ok(status.includes(text), `Status bar does not contain "${text}". Actual: "${status}"`);
 });
 
-Then('inline decorations are visible', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('inline decorations are visible', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const deco = await getDecorationCounts(this.page);
     assert.ok(deco.total > 0, `No inline decorations found (total: ${deco.total})`);
 });
 
-Then('CodeLens elements are present', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Then('CodeLens elements are present', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const count = await getCodeLensCount(this.page);
     assert.ok(count > 0, `No CodeLens elements found (count: ${count})`);
 });
 
-Then('the editor text contains {string}', { timeout: 10000 }, async function (this: ChangeTracksWorld, text: string) {
+Then('the editor text contains {string}', { timeout: 10000 }, async function (this: ChangeDownWorld, text: string) {
     assert.ok(this.page, 'Page not available');
     const opts = { expectedFilename: this.fixtureFile, instanceId: this.instance?.instanceId };
     const doc = await getDocumentText(this.page, opts);
@@ -357,7 +357,7 @@ Then('the editor text contains {string}', { timeout: 10000 }, async function (th
     assert.ok(doc.includes(text), `Editor text does not contain "${text}"`);
 });
 
-Then('the editor text does not contain {string}', { timeout: 10000 }, async function (this: ChangeTracksWorld, text: string) {
+Then('the editor text does not contain {string}', { timeout: 10000 }, async function (this: ChangeDownWorld, text: string) {
     assert.ok(this.page, 'Page not available');
     const opts = { expectedFilename: this.fixtureFile, instanceId: this.instance?.instanceId };
     const doc = await getDocumentText(this.page, opts);
@@ -365,7 +365,7 @@ Then('the editor text does not contain {string}', { timeout: 10000 }, async func
     assert.ok(!doc.includes(text), `Editor text should not contain "${text}"`);
 });
 
-Then('the document contains {string}', { timeout: 15000 }, async function (this: ChangeTracksWorld, text: string) {
+Then('the document contains {string}', { timeout: 15000 }, async function (this: ChangeDownWorld, text: string) {
     assert.ok(this.page, 'Page not available');
     const opts = { expectedFilename: this.fixtureFile, instanceId: this.instance?.instanceId };
 
@@ -394,7 +394,7 @@ Then('the document contains {string}', { timeout: 15000 }, async function (this:
     }
 });
 
-Then('the document does not contain {string}', { timeout: 10000 }, async function (this: ChangeTracksWorld, text: string) {
+Then('the document does not contain {string}', { timeout: 10000 }, async function (this: ChangeDownWorld, text: string) {
     assert.ok(this.page, 'Page not available');
     const opts = { expectedFilename: this.fixtureFile, instanceId: this.instance?.instanceId };
     const doc = await getDocumentText(this.page, opts);
@@ -407,7 +407,7 @@ Then('the document does not contain {string}', { timeout: 10000 }, async functio
  * L3 edit-op lines have the format: "    LINE:HASH {markup}" in footnote definitions.
  * This is a reliable indicator that L2→L3 promotion completed successfully.
  */
-Then('the document contains L3 edit-op lines', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+Then('the document contains L3 edit-op lines', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const opts = { expectedFilename: this.fixtureFile, instanceId: this.instance?.instanceId };
     const editOpPattern = /^ {4}\d+:[0-9a-fA-F]{2,}\s+\{/m;
@@ -429,7 +429,7 @@ Then('the document contains L3 edit-op lines', { timeout: 15000 }, async functio
  * This step only checks the body portion to avoid false positives.
  * Polls for up to 10s to handle re-promotion after view mode cycling.
  */
-Then('the document body has no inline CriticMarkup', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+Then('the document body has no inline CriticMarkup', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const opts = { expectedFilename: this.fixtureFile, instanceId: this.instance?.instanceId };
     const delimiters = ['{++', '{--', '{~~', '{==', '{>>'];
@@ -439,7 +439,7 @@ Then('the document body has no inline CriticMarkup', { timeout: 15000 }, async f
     while (Date.now() < deadline) {
         const doc = await getDocumentText(this.page, opts);
         assert.ok(doc.length > 0, 'getDocumentText returned empty — Monaco API unavailable.');
-        const footnoteStart = doc.search(/^\[\^ct-\d+\]:/m);
+        const footnoteStart = doc.search(/^\[\^cn-\d+\]:/m);
         body = footnoteStart >= 0 ? doc.slice(0, footnoteStart) : doc;
         const found = delimiters.find(d => body.includes(d));
         if (!found) return; // Body is clean — success
@@ -454,23 +454,23 @@ Then('the document body has no inline CriticMarkup', { timeout: 15000 }, async f
  * Assert the document body does not contain a string.
  * Only checks the body portion (before the first footnote definition).
  */
-Then('the document body does not contain {string}', { timeout: 10000 }, async function (this: ChangeTracksWorld, text: string) {
+Then('the document body does not contain {string}', { timeout: 10000 }, async function (this: ChangeDownWorld, text: string) {
     assert.ok(this.page, 'Page not available');
     const opts = { expectedFilename: this.fixtureFile, instanceId: this.instance?.instanceId };
     const doc = await getDocumentText(this.page, opts);
     assert.ok(doc.length > 0, 'getDocumentText returned empty — Monaco API unavailable.');
-    const footnoteStart = doc.search(/^\[\^ct-\d+\]:/m);
+    const footnoteStart = doc.search(/^\[\^cn-\d+\]:/m);
     const body = footnoteStart >= 0 ? doc.slice(0, footnoteStart) : doc;
     assert.ok(!body.includes(text), `Document body unexpectedly contains "${text}"`);
 });
 
-Then('{int} comment gutter icons are visible', { timeout: 5000 }, async function (this: ChangeTracksWorld, count: number) {
+Then('{int} comment gutter icons are visible', { timeout: 5000 }, async function (this: ChangeDownWorld, count: number) {
     assert.ok(this.page, 'Page not available');
     const actual = await getCommentGutterIconCount(this.page);
     assert.strictEqual(actual, count, `Expected ${count} comment gutter icons, got ${actual}`);
 });
 
-Then('no decorations are visible', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Then('no decorations are visible', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const deco = await getDecorationCounts(this.page);
     assert.strictEqual(deco.total, 0, `Expected 0 decorations but found ${deco.total}`);
@@ -482,7 +482,7 @@ Then('no decorations are visible', { timeout: 5000 }, async function (this: Chan
  * all reflect the same state.
  */
 Then('all surfaces reflect the change was {word}', { timeout: 15000 }, async function (
-    this: ChangeTracksWorld, operation: string
+    this: ChangeDownWorld, operation: string
 ) {
     assert.ok(this.page, 'Page not available');
 
@@ -548,7 +548,7 @@ Then('all surfaces reflect the change was {word}', { timeout: 15000 }, async fun
 });
 
 Then('hovering shows text containing {string}', { timeout: 15000 },
-    async function (this: ChangeTracksWorld, expected: string) {
+    async function (this: ChangeDownWorld, expected: string) {
         assert.ok(this.page, 'Page not available');
 
         // Trigger hover at cursor position via Extension Host bridge.

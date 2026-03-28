@@ -4,7 +4,7 @@ import { optionalStrArg } from '../args.js';
 import { resolveAuthor } from '../author.js';
 import { isFileInScope } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
-import { computeResolutionEdit, computeUnresolveEdit, type TextEdit } from '@changetracks/core';
+import { computeResolutionEdit, computeUnresolveEdit, type TextEdit } from '@changedown/core';
 import { SessionState } from '../state.js';
 import { rerecordState } from '../state-utils.js';
 
@@ -24,7 +24,7 @@ export const resolveThreadTool = {
       },
       change_id: {
         type: 'string',
-        description: 'e.g., ct-7',
+        description: 'e.g., cn-7',
       },
       action: {
         type: 'string',
@@ -89,7 +89,7 @@ export async function handleResolveThread(
     if (!isFileInScope(filePath, config, projectDir)) {
       return errorResult(
         `File is not in scope for tracking: "${filePath}". ` +
-          'Check .changetracks/config.toml include/exclude patterns.'
+          'Check .changedown/config.toml include/exclude patterns.'
       );
     }
 

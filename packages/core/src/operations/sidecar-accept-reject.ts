@@ -1,5 +1,5 @@
 /**
- * Sidecar accept/reject operations for code files annotated with ct-N tags.
+ * Sidecar accept/reject operations for code files annotated with cn-N tags.
  *
  * Handles:
  * - Accept insertion: strip sc tag from code line, keep code
@@ -12,8 +12,8 @@
  * Also cleans up the sidecar block: removes resolved entries, and removes the
  * entire block if all entries are resolved.
  *
- * Grouped changes (dotted IDs): when accepting/rejecting a parent tag (e.g. ct-1),
- * all children (ct-1.1, ct-1.2, etc.) are resolved together.
+ * Grouped changes (dotted IDs): when accepting/rejecting a parent tag (e.g. cn-1),
+ * all children (cn-1.1, cn-1.2, etc.) are resolved together.
  */
 
 import { TextEdit, ChangeNode } from '../model/types.js';
@@ -21,19 +21,19 @@ import { getCommentSyntax, stripLineComment, CommentSyntax, escapeRegex, lineOff
 import { SIDECAR_BLOCK_MARKER, findSidecarBlockStart as findSidecarStart } from '../constants.js';
 
 /**
- * Strips the `  # ct-N` or `  // ct-N` tag suffix from a raw line string.
+ * Strips the `  # cn-N` or `  // cn-N` tag suffix from a raw line string.
  */
 function stripTag(line: string, syntax: { line: string }): string {
   const escaped = escapeRegex(syntax.line);
-  const pattern = new RegExp(`  ${escaped} ct-\\d+(?:\\.\\d+)?$`);
+  const pattern = new RegExp(`  ${escaped} cn-\\d+(?:\\.\\d+)?$`);
   return line.replace(pattern, '');
 }
 
 /**
  * Tests whether a tag matches the requested tag or is a child of it.
  *
- * - If `requestedTag` has no dot (e.g. `ct-1`), matches `ct-1` and any `ct-1.N`.
- * - If `requestedTag` has a dot (e.g. `ct-1.2`), matches only `ct-1.2` exactly.
+ * - If `requestedTag` has no dot (e.g. `cn-1`), matches `cn-1` and any `cn-1.N`.
+ * - If `requestedTag` has a dot (e.g. `cn-1.2`), matches only `cn-1.2` exactly.
  */
 function tagMatches(lineTag: string, requestedTag: string): boolean {
   if (lineTag === requestedTag) {
@@ -91,9 +91,9 @@ function computeSidecarBlockEdits(
   }
 
   const escaped = escapeRegex(syntax.line);
-  // Pattern for footnote entry: `COMMENT [^ct-N]: TYPE | STATUS`
+  // Pattern for footnote entry: `COMMENT [^cn-N]: TYPE | STATUS`
   const entryPattern = new RegExp(
-    `^${escaped}\\s+\\[\\^(ct-\\d+(?:\\.\\d+)?)\\]:`
+    `^${escaped}\\s+\\[\\^(cn-\\d+(?:\\.\\d+)?)\\]:`
   );
   // Pattern for field lines (belonging to an entry): `COMMENT     key: value`
   const fieldPattern = new RegExp(`^${escaped}\\s{4,}\\w+:\\s+`);
@@ -165,14 +165,14 @@ function computeSidecarBlockEdits(
 /**
  * Computes TextEdits to accept a sidecar-annotated change.
  *
- * - Accept insertion: strip the ct-N tag suffix, keep the code
+ * - Accept insertion: strip the cn-N tag suffix, keep the code
  * - Accept deletion: remove the entire deletion marker line (including newline)
  * - Accept substitution: strip tag from new (insertion) lines + remove old (deletion) lines
  *
  * Also removes the sidecar block entry for the resolved tag.
  *
  * @param text The full file text
- * @param tag The ct-N tag to accept (e.g. "ct-1")
+ * @param tag The cn-N tag to accept (e.g. "cn-1")
  * @param languageId VS Code language ID (e.g. "python", "typescript")
  * @returns TextEdit[] to apply (empty array if language unsupported or tag not found)
  */
@@ -238,7 +238,7 @@ export function computeSidecarAccept(text: string, tag: string, languageId: stri
  * Also removes the sidecar block entry for the resolved tag.
  *
  * @param text The full file text
- * @param tag The ct-N tag to reject (e.g. "ct-1")
+ * @param tag The cn-N tag to reject (e.g. "cn-1")
  * @param languageId VS Code language ID (e.g. "python", "typescript")
  * @returns TextEdit[] to apply (empty array if language unsupported or tag not found)
  */

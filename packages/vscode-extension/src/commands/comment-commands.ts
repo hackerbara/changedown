@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { scanMaxCtId, generateFootnoteDefinition } from '@changetracks/core';
+import { scanMaxCnId, generateFootnoteDefinition } from '@changedown/core';
 import { findReplyInsertionPoint, formatReply } from '../footnote-writer';
 import { offsetToPosition } from '../converters';
 import { resolveAuthorIdentity } from '../author-identity';
@@ -14,21 +14,21 @@ export function registerCommentCommands(
     changeComments: CommentCommandsContext
 ): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('changetracks.acceptChangeFromThread', async (thread: vscode.CommentThread) => {
+        vscode.commands.registerCommand('changedown.acceptChangeFromThread', async (thread: vscode.CommentThread) => {
             const changeId = changeComments.getChangeIdForThread(thread);
             if (changeId) await controller.acceptChangeAtCursor(changeId);
         }),
-        vscode.commands.registerCommand('changetracks.rejectChangeFromThread', async (thread: vscode.CommentThread) => {
+        vscode.commands.registerCommand('changedown.rejectChangeFromThread', async (thread: vscode.CommentThread) => {
             const changeId = changeComments.getChangeIdForThread(thread);
             if (changeId) await controller.rejectChangeAtCursor(changeId);
         }),
-        vscode.commands.registerCommand('changetracks.createComment', async (reply: vscode.CommentReply) => {
+        vscode.commands.registerCommand('changedown.createComment', async (reply: vscode.CommentReply) => {
             const thread = reply.thread;
             if (!thread.range || !reply.text.trim()) {
                 thread.dispose();
                 return;
             }
-            const config = vscode.workspace.getConfiguration('changetracks');
+            const config = vscode.workspace.getConfiguration('changedown');
             const format = config.get<'inline' | 'footnote'>('commentInsertFormat', 'footnote');
             const includeAuthor = config.get<boolean>('commentInsertAuthor', true);
             const author = includeAuthor ? resolveAuthorIdentity() : undefined;
@@ -41,8 +41,8 @@ export function registerCommentCommands(
             const wsEdit = new vscode.WorkspaceEdit();
             if (format === 'footnote') {
                 const date = new Date().toISOString().slice(0, 10);
-                const maxId = scanMaxCtId(text);
-                const newId = `ct-${maxId + 1}`;
+                const maxId = scanMaxCnId(text);
+                const newId = `cn-${maxId + 1}`;
                 const inlinePart = `{==${rangeText}==}{>> ${commentBody} <<}[^${newId}]`;
                 const footnoteDef = generateFootnoteDefinition(newId, 'comment', author, date);
                 const firstLine = author ? formatReply(author, commentBody) : '\n    ' + commentBody.replace(/\n/g, '\n    ');
@@ -63,17 +63,17 @@ export function registerCommentCommands(
             await controller.runWithTrackedEditGuard(() => vscode.workspace.applyEdit(wsEdit));
             thread.dispose();
         }),
-        vscode.commands.registerCommand('changetracks.resolveThread', async (thread: vscode.CommentThread) => {
+        vscode.commands.registerCommand('changedown.resolveThread', async (thread: vscode.CommentThread) => {
             const changeId = changeComments.getChangeIdForThread(thread);
             if (!changeId) return;
-            await controller.sendLifecycleRequest('changetracks/resolveThread', { changeId });
+            await controller.sendLifecycleRequest('changedown/resolveThread', { changeId });
         }),
-        vscode.commands.registerCommand('changetracks.unresolveThread', async (thread: vscode.CommentThread) => {
+        vscode.commands.registerCommand('changedown.unresolveThread', async (thread: vscode.CommentThread) => {
             const changeId = changeComments.getChangeIdForThread(thread);
             if (!changeId) return;
-            await controller.sendLifecycleRequest('changetracks/unresolveThread', { changeId });
+            await controller.sendLifecycleRequest('changedown/unresolveThread', { changeId });
         }),
-        vscode.commands.registerCommand('changetracks.replyToThread', async (reply: vscode.CommentReply) => {
+        vscode.commands.registerCommand('changedown.replyToThread', async (reply: vscode.CommentReply) => {
             const editor = vscode.window.activeTextEditor;
             if (!editor) return;
 
@@ -103,8 +103,8 @@ export function registerCommentCommands(
                 );
                 if (!change) return;
 
-                const maxId = scanMaxCtId(text);
-                const newId = `ct-${maxId + 1}`;
+                const maxId = scanMaxCnId(text);
+                const newId = `cn-${maxId + 1}`;
                 const typeLabel = change.type.toLowerCase();
                 const closingOffset = change.range.end;
 

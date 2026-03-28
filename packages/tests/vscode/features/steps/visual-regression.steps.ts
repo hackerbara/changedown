@@ -11,7 +11,7 @@
 
 import { Given, Then, After } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import {
     launchVSCode,
     closeVSCode,
@@ -32,7 +32,7 @@ import {
 Given(
     'VS Code is open with visual fixture {string}',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld, fixture: string) {
+    async function (this: ChangeDownWorld, fixture: string) {
         this.fixtureFile = fixture;
         this.instance = await launchVSCode(fixture);
         this.page = this.instance.page;
@@ -46,7 +46,7 @@ Given(
 Given(
     'VS Code is open with visual fixture {string} using light theme',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld, fixture: string) {
+    async function (this: ChangeDownWorld, fixture: string) {
         this.fixtureFile = fixture;
         this.instance = await launchVSCode(fixture, { theme: 'light' });
         this.page = this.instance.page;
@@ -69,7 +69,7 @@ Given(
 Then(
     'the editor screenshot matches golden {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, goldenName: string) {
+    async function (this: ChangeDownWorld, goldenName: string) {
         assert.ok(this.page, 'Page not available');
         ensureDirectories();
 
@@ -94,7 +94,7 @@ Then(
  * different fixtures, themes, and isolated scroll/mutation state make
  * sharing impractical for pixel-perfect comparison.
  */
-After({ tags: '@visual' }, async function (this: ChangeTracksWorld) {
+After({ tags: '@visual' }, async function (this: ChangeDownWorld) {
     if (this.instance) {
         await closeVSCode(this.instance).catch(() => {});
         this.instance = undefined;

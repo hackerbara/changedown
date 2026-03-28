@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { computeReplyEdit } from '@changetracks/core';
+import { computeReplyEdit } from '@changedown/core';
 
 describe('computeReplyEdit', () => {
   const baseDoc = [
-    'Hello {++world++}[^ct-1] more text',
+    'Hello {++world++}[^cn-1] more text',
     '',
-    '[^ct-1]: @alice | 2026-03-09 | ins | proposed',
+    '[^cn-1]: @alice | 2026-03-09 | ins | proposed',
     '    reason: Added greeting',
     '',
   ].join('\n');
 
   it('appends reply to footnote', () => {
-    const result = computeReplyEdit(baseDoc, 'ct-1', {
+    const result = computeReplyEdit(baseDoc, 'cn-1', {
       text: 'Looks good, ship it',
       author: 'bob',
       date: '2026-03-09',
@@ -23,7 +23,7 @@ describe('computeReplyEdit', () => {
   });
 
   it('includes label when provided', () => {
-    const result = computeReplyEdit(baseDoc, 'ct-1', {
+    const result = computeReplyEdit(baseDoc, 'cn-1', {
       text: 'Consider rewording',
       author: 'bob',
       date: '2026-03-09',
@@ -36,7 +36,7 @@ describe('computeReplyEdit', () => {
   });
 
   it('handles multi-line replies with continuation indent', () => {
-    const result = computeReplyEdit(baseDoc, 'ct-1', {
+    const result = computeReplyEdit(baseDoc, 'cn-1', {
       text: 'Two issues:\n1. Naming\n2. Style',
       author: 'bob',
       date: '2026-03-09',
@@ -50,28 +50,28 @@ describe('computeReplyEdit', () => {
   });
 
   it('returns error for nonexistent change', () => {
-    const result = computeReplyEdit(baseDoc, 'ct-999', {
+    const result = computeReplyEdit(baseDoc, 'cn-999', {
       text: 'Hello',
       author: 'bob',
     });
     expect(result.isError).toBe(true);
     if (result.isError) {
-      expect(result.error).toContain('ct-999');
+      expect(result.error).toContain('cn-999');
     }
   });
 
   it('inserts reply after existing discussion, before approval', () => {
     const docWithApproval = [
-      'Hello {++world++}[^ct-1]',
+      'Hello {++world++}[^cn-1]',
       '',
-      '[^ct-1]: @alice | 2026-03-09 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-09 | ins | proposed',
       '    reason: Added greeting',
       '    @carol 2026-03-09: Looks fine',
       '    approved: @dave 2026-03-09 "LGTM"',
       '',
     ].join('\n');
 
-    const result = computeReplyEdit(docWithApproval, 'ct-1', {
+    const result = computeReplyEdit(docWithApproval, 'cn-1', {
       text: 'One more thought',
       author: 'bob',
       date: '2026-03-09',
@@ -89,7 +89,7 @@ describe('computeReplyEdit', () => {
   });
 
   it('uses nowTimestamp when date is not provided', () => {
-    const result = computeReplyEdit(baseDoc, 'ct-1', {
+    const result = computeReplyEdit(baseDoc, 'cn-1', {
       text: 'Auto-dated reply',
       author: 'bob',
     });

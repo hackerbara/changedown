@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SIDECAR_BLOCK_MARKER } from '@changetracks/core';
+import { SIDECAR_BLOCK_MARKER } from '@changedown/core';
 
 /**
  * Single source for current document/editor. Unifies findMarkdownDocument and findSupportedEditor.

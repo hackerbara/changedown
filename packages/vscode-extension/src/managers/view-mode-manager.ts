@@ -1,12 +1,11 @@
 import * as vscode from 'vscode';
-import type { ChangeNode } from '@changetracks/core';
-import { ViewMode, VIEW_MODE_LABELS, nextViewMode, resolveViewName } from '../view-mode';
+import type { ChangeNode } from '@changedown/core';
+import { ViewMode, VIEW_MODE_LABELS, nextViewMode } from '../view-mode';
 import { invalidateDecorationCache } from '../lsp-client';
 import { ProjectedView } from '../projected-view';
 import { DocumentStateManager } from './document-state-manager';
 import { LspBridge } from './lsp-bridge';
 import { isSupported } from './shared';
-import type { ChangeTracksFoldingProvider } from '../folding-provider';
 
 /**
  * Callbacks from controller for cross-cutting concerns that ViewModeManager
@@ -29,7 +28,6 @@ export interface ViewModeCallbacks {
 export class ViewModeManager implements vscode.Disposable {
     private _viewMode: ViewMode;
     private _showDelimiters: boolean;
-    private _foldingProvider: ChangeTracksFoldingProvider | null = null;
     private readonly projectedView = new ProjectedView();
     private readonly docStateManager: DocumentStateManager;
     private readonly lspBridge: LspBridge;
@@ -73,20 +71,6 @@ export class ViewModeManager implements vscode.Disposable {
         return this.projectedView.originalUri;
     }
 
-    // ── Folding provider ────────────────────────────────────────────────
-
-    public get foldingProvider(): ChangeTracksFoldingProvider | null {
-        return this._foldingProvider;
-    }
-
-    /**
-     * Set the folding provider for hidden deletion regions in Simple mode.
-     * Called by extension.ts after creating both the controller and the provider.
-     */
-    public setFoldingProvider(provider: ChangeTracksFoldingProvider): void {
-        this._foldingProvider = provider;
-    }
-
     // ── Config updates ──────────────────────────────────────────────────
 
     /**
@@ -105,7 +89,7 @@ export class ViewModeManager implements vscode.Disposable {
     public async setViewMode(mode: ViewMode): Promise<void> {
         const previousMode = this._viewMode;
         this._viewMode = mode;
-        this.callbacks.setContextKey('changetracks:viewMode', mode);
+        this.callbacks.setContextKey('changedown:viewMode', mode);
 
         const editor = vscode.window.activeTextEditor;
 
@@ -177,15 +161,7 @@ export class ViewModeManager implements vscode.Disposable {
         // Fire change event so panel refreshes when view mode changes
         this.callbacks.scheduleNotifyChanges();
 
-        // Update folding provider so hidden deletion regions are (un)folded on mode change
-        if (this._foldingProvider) {
-            const activeEditor = vscode.window.activeTextEditor;
-            const changes = activeEditor && isSupported(activeEditor.document)
-                ? this.callbacks.getChangesForDocument(activeEditor.document) : [];
-            this._foldingProvider.updateState(mode, activeEditor?.selection.active.line ?? -1, changes);
-        }
-
-        vscode.window.showInformationMessage(`ChangeTracks View: ${VIEW_MODE_LABELS[mode]}`);
+        vscode.window.showInformationMessage(`ChangeDown View: ${VIEW_MODE_LABELS[mode]}`);
         this.callbacks.updateStatusBar();
 
         this._onDidChangeViewMode.fire(mode);
@@ -218,7 +194,7 @@ export class ViewModeManager implements vscode.Disposable {
             exitState.shadow = editor.document.getText();
             invalidateDecorationCache(exitUri);
             this._viewMode = 'review';
-            this.callbacks.setContextKey('changetracks:viewMode', 'review');
+            this.callbacks.setContextKey('changedown:viewMode', 'review');
             this.callbacks.updateStatusBar();
             this.callbacks.scheduleNotifyChanges();
         }

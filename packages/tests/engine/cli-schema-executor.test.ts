@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { executeCommand, ParseError, type CommandDef, type ToolHandler } from 'changetracks/schema-executor';
-import { ConfigResolver } from 'changetracks/engine';
-import { SessionState } from 'changetracks/engine';
+import { executeCommand, ParseError, type CommandDef, type ToolHandler } from 'changedown/schema-executor';
+import { ConfigResolver } from 'changedown/engine';
+import { SessionState } from 'changedown/engine';
 
 /* Minimal stubs — the executor never touches resolver/state directly. */
 const resolver = {} as ConfigResolver;
@@ -69,11 +69,11 @@ describe('executeCommand', () => {
       positionals: ['file', 'change_id'],
       usage: 'test',
     };
-    const result = await executeCommand(def, ['doc.md', 'ct-1'], resolver, state);
+    const result = await executeCommand(def, ['doc.md', 'cn-1'], resolver, state);
     expect(result.success).toBe(true);
     const data = result.data as Record<string, unknown>;
     expect(data.file).toBe('doc.md');
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
   });
 
   it('applies flagMapping to rename CLI flags', async () => {

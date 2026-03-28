@@ -24,10 +24,10 @@ Feature: Propose changes via Surface B (classic MCP)
       | new_text | Pagination defaults to 50 results. |
       | insert_after | Rate limiting is set to 100 requests per minute. |
       | reasoning | API needs pagination for list endpoints |
-    Then the response contains change_id "ct-1"
+    Then the response contains change_id "cn-1"
     And the response type is "ins"
     And the file contains "{++Pagination defaults to 50 results.++}"
-    And the file contains a footnote "[^ct-1]" with status "proposed"
+    And the file contains a footnote "[^cn-1]" with status "proposed"
     And the footnote contains the reasoning "API needs pagination for list endpoints"
 
   Scenario: Insert text with empty old_text (beginning of match context)
@@ -37,7 +37,7 @@ Feature: Propose changes via Surface B (classic MCP)
       | new_text | > Draft   |
       | insert_after | # API Design |
       | reasoning | Mark as draft |
-    Then the response contains change_id "ct-1"
+    Then the response contains change_id "cn-1"
     And the file contains "{++> Draft++}"
 
   # --- Deletions ---
@@ -108,9 +108,9 @@ Feature: Propose changes via Surface B (classic MCP)
   Scenario: Two sequential changes get incrementing IDs
     When I call propose_change with old_text "REST" and new_text "GraphQL"
     And I call propose_change with old_text "API keys" and new_text "OAuth2"
-    Then the first change has id "ct-1"
-    And the second change has id "ct-2"
-    And the file contains both "[^ct-1]" and "[^ct-2]"
+    Then the first change has id "cn-1"
+    And the second change has id "cn-2"
+    And the file contains both "[^cn-1]" and "[^cn-2]"
 
   # --- Raw mode ---
 

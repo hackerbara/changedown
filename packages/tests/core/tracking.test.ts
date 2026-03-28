@@ -4,7 +4,7 @@ import {
   wrapDeletion,
   wrapSubstitution,
   TextEdit,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 function applyEdit(text: string, edit: TextEdit): string {
   return text.substring(0, edit.offset) + edit.newText + text.substring(edit.offset + edit.length);
@@ -88,8 +88,8 @@ describe('Tracking - wrapInsertion', () => {
   });
 
   it('appends footnote ref when scId is provided', () => {
-    const edit = wrapInsertion('text', 0, 'ct-5');
-    expect(edit.newText).toBe('{++text++}[^ct-5]');
+    const edit = wrapInsertion('text', 0, 'cn-5');
+    expect(edit.newText).toBe('{++text++}[^cn-5]');
   });
 
   it('does not append footnote ref when scId is omitted', () => {
@@ -112,8 +112,8 @@ describe('Tracking - wrapDeletion with scId', () => {
   });
 
   it('appends footnote ref when scId is provided', () => {
-    const edit = wrapDeletion('removed', 0, 'ct-6');
-    expect(edit.newText).toBe('{--removed--}[^ct-6]');
+    const edit = wrapDeletion('removed', 0, 'cn-6');
+    expect(edit.newText).toBe('{--removed--}[^cn-6]');
   });
 
   it('does not append footnote ref when scId is omitted', () => {
@@ -131,8 +131,8 @@ describe('Tracking - wrapSubstitution with scId', () => {
   });
 
   it('appends footnote ref when scId is provided', () => {
-    const edit = wrapSubstitution('old', 'new', 0, 'ct-7');
-    expect(edit.newText).toBe('{~~old~>new~~}[^ct-7]');
+    const edit = wrapSubstitution('old', 'new', 0, 'cn-7');
+    expect(edit.newText).toBe('{~~old~>new~~}[^cn-7]');
   });
 
   it('does not append footnote ref when scId is omitted', () => {
@@ -141,7 +141,7 @@ describe('Tracking - wrapSubstitution with scId', () => {
   });
 
   it('handles dotted scId for grouped changes', () => {
-    const edit = wrapSubstitution('old', 'new', 0, 'ct-3.1');
-    expect(edit.newText).toBe('{~~old~>new~~}[^ct-3.1]');
+    const edit = wrapSubstitution('old', 'new', 0, 'cn-3.1');
+    expect(edit.newText).toBe('{~~old~>new~~}[^cn-3.1]');
   });
 });

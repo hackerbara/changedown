@@ -1,7 +1,7 @@
 /**
  * Video Script: View Modes
  *
- * Demonstrates cycling through view modes with the ChangeTracks
+ * Demonstrates cycling through view modes with the ChangeDown
  * sidebar panel visible alongside the editor. The panel shows the
  * change list and view mode selector while the editor content updates.
  *
@@ -11,8 +11,8 @@
 import { registerVideoScript, beat, command } from '../record';
 
 registerVideoScript('v4-view-modes', 'v4-view-modes.md', async ({ page }) => {
-    // 1. Open the ChangeTracks sidebar panel
-    await command(page, 'changetracksReview.focus');
+    // 1. Open the ChangeDown sidebar panel
+    await command(page, 'changedownReview.focus');
     await beat(page, 300);
 
     // Click back on editor to keep it active (sidebar steals focus)
@@ -26,18 +26,18 @@ registerVideoScript('v4-view-modes', 'v4-view-modes.md', async ({ page }) => {
     await beat(page, 1500);
 
     // 3. Toggle to Simple Markup — delimiters hidden, colors remain
-    await command(page, 'changetracks.toggleView');
+    await command(page, 'changedown.toggleView');
     await beat(page, 1500);
 
     // 4. Toggle to Final — shows settled document
-    await command(page, 'changetracks.toggleView');
+    await command(page, 'changedown.toggleView');
     await beat(page, 1500);
 
     // 5. Toggle to Original — shows document before changes
-    await command(page, 'changetracks.toggleView');
+    await command(page, 'changedown.toggleView');
     await beat(page, 1500);
 
     // 6. Toggle back to All Markup
-    await command(page, 'changetracks.toggleView');
+    await command(page, 'changedown.toggleView');
     await beat(page, 1000);
 });

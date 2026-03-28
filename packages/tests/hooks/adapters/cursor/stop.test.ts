@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handleCursorStop } from 'changetracks-hooks/internals';
-import type { HookInput } from 'changetracks-hooks/internals';
+import { handleCursorStop } from 'changedown-hooks/internals';
+import type { HookInput } from 'changedown-hooks/internals';
 
 describe('Cursor stop handler', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cursor-stop-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cursor-stop-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     // Default config: safety-net mode
     await fs.writeFile(
@@ -36,13 +36,13 @@ describe('Cursor stop handler', () => {
 
   it('clears pending edits without wrapping in strict mode', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\n\n[author]\ndefault = "ai:claude"\n',
       'utf-8',
     );
 
     // Write some pending edits
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     await fs.writeFile(
       pendingPath,
       JSON.stringify([
@@ -71,12 +71,12 @@ describe('Cursor stop handler', () => {
 
   it('clears pending edits without wrapping in permissive mode', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "permissive"\n\n[author]\ndefault = "ai:claude"\n',
       'utf-8',
     );
 
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     await fs.writeFile(
       pendingPath,
       JSON.stringify([
@@ -107,7 +107,7 @@ describe('Cursor stop handler', () => {
     const mdPath = path.join(tmpDir, 'readme.md');
     await fs.writeFile(mdPath, '# Updated', 'utf-8');
 
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     await fs.writeFile(
       pendingPath,
       JSON.stringify([
@@ -138,14 +138,14 @@ describe('Cursor stop handler', () => {
     expect(content).toContain('{~~');
     expect(content).toContain('# Hello');
     expect(content).toContain('# Updated');
-    expect(content).toContain('[^ct-');
+    expect(content).toContain('[^cn-');
   });
 
   it('uses conversation_id for session identification', async () => {
     const mdPath = path.join(tmpDir, 'readme.md');
     await fs.writeFile(mdPath, '# Updated', 'utf-8');
 
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     await fs.writeFile(
       pendingPath,
       JSON.stringify([

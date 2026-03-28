@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleRespondToThread } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleRespondToThread } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -14,11 +14,11 @@ const TS_RE = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z';
 describe('handleRespondToThread', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-respond-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-respond-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -57,21 +57,21 @@ describe('handleRespondToThread', () => {
   it('adds a basic response to a change with header + reason', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'This looks good to me' },
+      { file: filePath, change_id: 'cn-1', response: 'This looks good to me' },
       resolver,
       state
     );
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.comment_added).toBe(true);
 
     const modified = await fs.readFile(filePath, 'utf-8');
@@ -83,14 +83,14 @@ describe('handleRespondToThread', () => {
   it('adds a response with an optional label', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'Consider using a different word', label: 'suggestion' },
+      { file: filePath, change_id: 'cn-1', response: 'Consider using a different word', label: 'suggestion' },
       resolver,
       state
     );
@@ -106,16 +106,16 @@ describe('handleRespondToThread', () => {
   it('inserts response after existing discussion entries', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
       `    @human:alice ${TODAY}: I think this needs more context`,
       `      @ai:claude-opus-4.6 ${TODAY}: How about adding an example?`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'Agreed, example would help' },
+      { file: filePath, change_id: 'cn-1', response: 'Agreed, example would help' },
       resolver,
       state
     );
@@ -142,16 +142,16 @@ describe('handleRespondToThread', () => {
   it('inserts response before approval lines', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
       `    @human:alice ${TODAY}: Looks reasonable`,
       `    approved: @human:alice ${TODAY} "Looks good with the example"`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'Thanks for the approval' },
+      { file: filePath, change_id: 'cn-1', response: 'Thanks for the approval' },
       resolver,
       state
     );
@@ -174,14 +174,14 @@ describe('handleRespondToThread', () => {
   it('handles multi-line response with continuation indent', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'First line\nSecond line\nThird line' },
+      { file: filePath, change_id: 'cn-1', response: 'First line\nSecond line\nThird line' },
       resolver,
       state
     );
@@ -201,27 +201,27 @@ describe('handleRespondToThread', () => {
   it('returns error when change_id footnote is not found in file', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-99', response: 'Hello' },
+      { file: filePath, change_id: 'cn-99', response: 'Hello' },
       resolver,
       state
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/ct-99|not found/i);
+    expect(result.content[0].text).toMatch(/cn-99|not found/i);
   });
 
   // ─── 7. Error: missing required args ────────────────────────────────
 
   it('returns error when file argument is missing', async () => {
     const result = await handleRespondToThread(
-      { change_id: 'ct-1', response: 'Hello' },
+      { change_id: 'cn-1', response: 'Hello' },
       resolver,
       state
     );
@@ -249,7 +249,7 @@ describe('handleRespondToThread', () => {
     await fs.writeFile(filePath, 'Some text.');
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1' },
+      { file: filePath, change_id: 'cn-1' },
       resolver,
       state
     );
@@ -264,7 +264,7 @@ describe('handleRespondToThread', () => {
     const filePath = path.join(tmpDir, 'nonexistent.md');
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'Hello' },
+      { file: filePath, change_id: 'cn-1', response: 'Hello' },
       resolver,
       state
     );
@@ -278,15 +278,15 @@ describe('handleRespondToThread', () => {
   it('adds response after metadata when no existing discussion entries', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
       '    context: "text with {old} in it"',
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'First discussion entry' },
+      { file: filePath, change_id: 'cn-1', response: 'First discussion entry' },
       resolver,
       state
     );
@@ -308,16 +308,16 @@ describe('handleRespondToThread', () => {
   it('inserts response before resolution lines', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
       `    @human:alice ${TODAY}: Good change`,
       `    resolved @human:alice ${TODAY}: Accepted after review`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'One more thought' },
+      { file: filePath, change_id: 'cn-1', response: 'One more thought' },
       resolver,
       state
     );
@@ -341,7 +341,7 @@ describe('handleRespondToThread', () => {
     await fs.writeFile(filePath, 'const x = 1;');
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'Hello' },
+      { file: filePath, change_id: 'cn-1', response: 'Hello' },
       resolver,
       state
     );
@@ -357,21 +357,21 @@ describe('handleRespondToThread', () => {
     await fs.mkdir(subDir);
     const filePath = path.join(subDir, 'notes.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: 'docs/notes.md', change_id: 'ct-1', response: 'Looks good' },
+      { file: 'docs/notes.md', change_id: 'cn-1', response: 'Looks good' },
       resolver,
       state
     );
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.comment_added).toBe(true);
 
     const modified = await fs.readFile(filePath, 'utf-8');
@@ -383,17 +383,17 @@ describe('handleRespondToThread', () => {
   it('targets the correct footnote when multiple exist', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Text {~~a~>b~~}[^ct-1] and {~~c~>d~~}[^ct-2] here.',
+      'Text {~~a~>b~~}[^cn-1] and {~~c~>d~~}[^cn-2] here.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: First change`,
       '',
-      `[^ct-2]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-2]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Second change`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-2', response: 'Targeting the second one' },
+      { file: filePath, change_id: 'cn-2', response: 'Targeting the second one' },
       resolver,
       state
     );
@@ -403,13 +403,13 @@ describe('handleRespondToThread', () => {
     const modified = await fs.readFile(filePath, 'utf-8');
     const lines = modified.split('\n');
 
-    // The response should be in the ct-2 block, not ct-1
-    const sc2HeaderIdx = lines.findIndex(l => l.startsWith('[^ct-2]:'));
+    // The response should be in the cn-2 block, not cn-1
+    const sc2HeaderIdx = lines.findIndex(l => l.startsWith('[^cn-2]:'));
     const responseIdx = lines.findIndex(l => l.includes('Targeting the second one'));
-    const sc1HeaderIdx = lines.findIndex(l => l.startsWith('[^ct-1]:'));
+    const sc1HeaderIdx = lines.findIndex(l => l.startsWith('[^cn-1]:'));
 
     expect(responseIdx).toBeGreaterThan(sc2HeaderIdx);
-    // ct-1 block should NOT contain the response
+    // cn-1 block should NOT contain the response
     expect(responseIdx).toBeGreaterThan(sc1HeaderIdx);
   });
 
@@ -418,9 +418,9 @@ describe('handleRespondToThread', () => {
   it('inserts response before rejected: and request-changes: lines', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
       `    @human:alice ${TODAY}: Not sure about this`,
       `    rejected: @human:bob ${TODAY} "Doesn't fit the style"`,
@@ -428,7 +428,7 @@ describe('handleRespondToThread', () => {
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'I disagree with the rejection' },
+      { file: filePath, change_id: 'cn-1', response: 'I disagree with the rejection' },
       resolver,
       state
     );
@@ -451,16 +451,16 @@ describe('handleRespondToThread', () => {
   it('inserts response before open resolution lines', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
       `    @human:alice ${TODAY}: Still discussing`,
       `    open -- needs more review`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'Adding my thoughts' },
+      { file: filePath, change_id: 'cn-1', response: 'Adding my thoughts' },
       resolver,
       state
     );
@@ -481,16 +481,16 @@ describe('handleRespondToThread', () => {
   it('inserts response before bare "open" resolution line', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
       `    @human:alice ${TODAY}: Still discussing`,
       '    open',
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'Adding my thoughts' },
+      { file: filePath, change_id: 'cn-1', response: 'Adding my thoughts' },
       resolver,
       state
     );
@@ -513,14 +513,14 @@ describe('handleRespondToThread', () => {
   it('returns error when an invalid label is provided', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'Hello', label: 'invalid-label' },
+      { file: filePath, change_id: 'cn-1', response: 'Hello', label: 'invalid-label' },
       resolver,
       state
     );
@@ -535,14 +535,14 @@ describe('handleRespondToThread', () => {
   it('uses explicit author parameter when provided', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'This looks good to me', author: 'ai:claude-sonnet-4.5' },
+      { file: filePath, change_id: 'cn-1', response: 'This looks good to me', author: 'ai:claude-sonnet-4.5' },
       resolver,
       state
     );
@@ -562,14 +562,14 @@ describe('handleRespondToThread', () => {
   it('uses config default author when author parameter is omitted', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
     ].join('\n'));
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'This looks good to me' },
+      { file: filePath, change_id: 'cn-1', response: 'This looks good to me' },
       resolver,
       state
     );
@@ -586,21 +586,21 @@ describe('handleRespondToThread', () => {
   it('enforcement=required without author returns error', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     const originalContent = [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
     ].join('\n');
     await fs.writeFile(filePath, originalContent);
 
-    const requiredConfig: ChangeTracksConfig = {
+    const requiredConfig: ChangeDownConfig = {
       ...config,
       author: { default: 'ai:claude-opus-4.6', enforcement: 'required' },
     };
     const requiredResolver = await createTestResolver(tmpDir, requiredConfig);
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'This looks good to me' },
+      { file: filePath, change_id: 'cn-1', response: 'This looks good to me' },
       requiredResolver,
       state
     );
@@ -616,20 +616,20 @@ describe('handleRespondToThread', () => {
   it('enforcement=required with author succeeds', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      'Some text with {~~old~>new~~}[^ct-1] inline.',
+      'Some text with {~~old~>new~~}[^cn-1] inline.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improved clarity`,
     ].join('\n'));
 
-    const requiredConfig: ChangeTracksConfig = {
+    const requiredConfig: ChangeDownConfig = {
       ...config,
       author: { default: 'ai:claude-opus-4.6', enforcement: 'required' },
     };
     const requiredResolver = await createTestResolver(tmpDir, requiredConfig);
 
     const result = await handleRespondToThread(
-      { file: filePath, change_id: 'ct-1', response: 'This looks good to me', author: 'ai:claude-sonnet-4.5' },
+      { file: filePath, change_id: 'cn-1', response: 'This looks good to me', author: 'ai:claude-sonnet-4.5' },
       requiredResolver,
       state
     );

@@ -24,7 +24,7 @@
 
 import { Given, When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import { getOrCreateInstance } from './world';
 import {
     launchWithJourneyFixture,
@@ -42,7 +42,7 @@ import {
 // ── Extend World with shared SL state ───────────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         slScenarioTag?: string;
         slReviewerIdentity?: string;
     }
@@ -100,7 +100,7 @@ export function extractFootnoteStatusFromDoc(text: string, changeId: string): st
  * Position cursor inside a change by finding text and using setCursorPosition.
  */
 export async function positionCursorAtText(
-    world: ChangeTracksWorld,
+    world: ChangeDownWorld,
     searchText: string,
     column = 15
 ): Promise<void> {
@@ -119,7 +119,7 @@ export async function positionCursorAtText(
 Given(
     'VS Code is launched with fixture {string}',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld, fixture: string) {
+    async function (this: ChangeDownWorld, fixture: string) {
         this.fixtureFile = fixture;
         this.instance = await getOrCreateInstance(
             fixture,
@@ -132,7 +132,7 @@ Given(
 Given(
     'the extension has finished parsing',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available — launch VS Code first');
         const result = await waitForChanges(this.page);
         if (!result.ready) {
@@ -144,9 +144,9 @@ Given(
 Given(
     'I open the Review Panel',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
-        await executeCommandViaBridge(this.page, 'changetracks.openReviewPanel');
+        await executeCommandViaBridge(this.page, 'changedown.openReviewPanel');
         await this.page.waitForTimeout(1500);
     }
 );
@@ -154,9 +154,9 @@ Given(
 Given(
     'CodeLens is enabled',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
-        await updateSettingDirect(this.page, 'changetracks.codeLensMode', 'always');
+        await updateSettingDirect(this.page, 'changedown.codeLensMode', 'always');
         await this.page.waitForTimeout(500);
     }
 );
@@ -164,11 +164,11 @@ Given(
 Given(
     'the current reviewer identity is {string}',
     { timeout: 5000 },
-    async function (this: ChangeTracksWorld, identity: string) {
+    async function (this: ChangeDownWorld, identity: string) {
         assert.ok(this.page, 'Page not available');
         this.slReviewerIdentity = identity;
         const cleanId = identity.replace(/^@/, '');
-        await updateSettingDirect(this.page, 'changetracks.reviewerIdentity', cleanId);
+        await updateSettingDirect(this.page, 'changedown.reviewerIdentity', cleanId);
         await this.page.waitForTimeout(300);
     }
 );
@@ -178,7 +178,7 @@ Given(
 When(
     'I position cursor inside the {word} insertion {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, _changeId: string, textHint: string) {
+    async function (this: ChangeDownWorld, _changeId: string, textHint: string) {
         await positionCursorAtText(this, textHint);
     }
 );
@@ -186,7 +186,7 @@ When(
 When(
     'I position cursor inside the {word} insertion',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         const text = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
         // Find the footnote reference to locate the change's line
@@ -203,7 +203,7 @@ When(
 When(
     'I position cursor inside the {word} substitution',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         const text = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
         const refPattern = `[^${changeId}]`;
@@ -219,7 +219,7 @@ When(
 When(
     'I position cursor inside the {word} highlight',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         const text = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
         const refPattern = `[^${changeId}]`;
@@ -237,7 +237,7 @@ When(
 When(
     'I select QuickPick item {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, label: string) {
+    async function (this: ChangeDownWorld, label: string) {
         assert.ok(this.page, 'Page not available');
         await selectQuickPickItem(this.page, label);
         await this.page.waitForTimeout(500);
@@ -247,7 +247,7 @@ When(
 When(
     'I type {string} in the InputBox',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, text: string) {
+    async function (this: ChangeDownWorld, text: string) {
         assert.ok(this.page, 'Page not available');
         await typeInInputBox(this.page, text);
         await this.page.waitForTimeout(1000);
@@ -257,7 +257,7 @@ When(
 Then(
     'an InputBox appears',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         await this.page.waitForSelector('.quick-input-widget[style*="display: flex"] input[type="text"]', { timeout: 8000 });
     }
@@ -266,7 +266,7 @@ Then(
 When(
     'I press Escape to cancel',
     { timeout: 5000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         await dismissQuickInput(this.page);
         await this.page.waitForTimeout(500);
@@ -278,9 +278,9 @@ When(
 When(
     'I set view mode to {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, mode: string) {
+    async function (this: ChangeDownWorld, mode: string) {
         assert.ok(this.page, 'Page not available');
-        await updateSettingDirect(this.page, 'changetracks.viewMode', mode);
+        await updateSettingDirect(this.page, 'changedown.viewMode', mode);
         await this.page.waitForTimeout(500);
     }
 );
@@ -290,7 +290,7 @@ When(
 Then(
     'the document footnote for {word} contains {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string, expected: string) {
+    async function (this: ChangeDownWorld, changeId: string, expected: string) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let footnote = '';
@@ -310,7 +310,7 @@ Then(
 Then(
     'the footnote status for {word} is still {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, changeId: string, expectedStatus: string) {
+    async function (this: ChangeDownWorld, changeId: string, expectedStatus: string) {
         assert.ok(this.page, 'Page not available');
         const text = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
         const actual = extractFootnoteStatusFromDoc(text, changeId);
@@ -327,7 +327,7 @@ Then(
 Then(
     'I capture evidence screenshot {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, stepName: string) {
+    async function (this: ChangeDownWorld, stepName: string) {
         assert.ok(this.page, 'Page not available');
         await captureEvidence(this.page, 'SL', 'lifecycle', stepName);
     }

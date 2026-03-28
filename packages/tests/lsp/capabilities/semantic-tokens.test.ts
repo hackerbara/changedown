@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { getSemanticTokensLegend, buildSemanticTokens } from '@changetracks/lsp-server/internals';
-import type { SemanticTokensLegend } from '@changetracks/lsp-server/internals';
-import { ChangeType, ChangeNode, ChangeStatus } from '@changetracks/core';
+import { getSemanticTokensLegend, buildSemanticTokens } from '@changedown/lsp-server/internals';
+import type { SemanticTokensLegend } from '@changedown/lsp-server/internals';
+import { ChangeType, ChangeNode, ChangeStatus } from '@changedown/core';
 
 describe('Semantic Tokens', () => {
   describe('getSemanticTokensLegend', () => {
@@ -12,9 +12,9 @@ describe('Semantic Tokens', () => {
       expect(Array.isArray(legend.tokenModifiers)).toBeTruthy();
 
       // Verify expected token types (custom types to avoid theme color override)
-      expect(legend.tokenTypes.includes('changetracks-insertion')).toBeTruthy();
-      expect(legend.tokenTypes.includes('changetracks-deletion')).toBeTruthy();
-      expect(legend.tokenTypes.includes('changetracks-highlight')).toBeTruthy();
+      expect(legend.tokenTypes.includes('changedown-insertion')).toBeTruthy();
+      expect(legend.tokenTypes.includes('changedown-deletion')).toBeTruthy();
+      expect(legend.tokenTypes.includes('changedown-highlight')).toBeTruthy();
 
       // Verify expected modifiers
       expect(legend.tokenModifiers.includes('modification')).toBeTruthy();
@@ -24,9 +24,9 @@ describe('Semantic Tokens', () => {
     it('should have consistent order for token types', () => {
       const legend = getSemanticTokensLegend();
       const expectedTokenTypes = [
-          'changetracks-insertion', 'changetracks-deletion', 'changetracks-highlight',
-          'changetracks-comment', 'changetracks-subOriginal', 'changetracks-subModified',
-          'changetracks-moveFrom', 'changetracks-moveTo'
+          'changedown-insertion', 'changedown-deletion', 'changedown-highlight',
+          'changedown-comment', 'changedown-subOriginal', 'changedown-subModified',
+          'changedown-moveFrom', 'changedown-moveTo'
       ];
       expect(legend.tokenTypes).toStrictEqual(expectedTokenTypes);
     });
@@ -61,14 +61,14 @@ describe('Semantic Tokens', () => {
 
         // LSP format: [deltaLine, deltaStartChar, length, tokenType, tokenModifiers]
         // For insertion with Proposed status:
-        //   tokenType=0 (changetracks-insertion)
+        //   tokenType=0 (changedown-insertion)
         //   tokenModifiers = modification(1) | proposed(4) = 5
         const data = result.data;
         expect(data).toHaveLength(5);
         expect(data[0]).toBe(0); // deltaLine (first token, line 0)
         expect(data[1]).toBe(3); // deltaStartChar (start at char 3)
         expect(data[2]).toBe(8); // length (11-3=8)
-        expect(data[3]).toBe(0); // tokenType (changetracks-insertion=0)
+        expect(data[3]).toBe(0); // tokenType (changedown-insertion=0)
         expect(data[4]).toBe(5); // tokenModifiers (modification=1 | proposed=4 = 5)
       });
 
@@ -104,11 +104,11 @@ describe('Semantic Tokens', () => {
         expect(result).toBeTruthy();
 
         // For deletion with Proposed status:
-        //   tokenType=1 (changetracks-deletion)
+        //   tokenType=1 (changedown-deletion)
         //   tokenModifiers = deprecated(2) | proposed(4) = 6
         const data = result.data;
         expect(data).toHaveLength(5);
-        expect(data[3]).toBe(1); // tokenType (changetracks-deletion=1)
+        expect(data[3]).toBe(1); // tokenType (changedown-deletion=1)
         expect(data[4]).toBe(6); // tokenModifiers (deprecated=2 | proposed=4 = 6)
       });
     });
@@ -133,14 +133,14 @@ describe('Semantic Tokens', () => {
         const data = result.data;
         expect(data).toHaveLength(10); // 2 tokens × 5 integers each
 
-        // First token: original (changetracks-subOriginal + deprecated + proposed)
+        // First token: original (changedown-subOriginal + deprecated + proposed)
         //   tokenModifiers = deprecated(2) | proposed(4) = 6
-        expect(data[3]).toBe(4); // tokenType (changetracks-subOriginal=4)
+        expect(data[3]).toBe(4); // tokenType (changedown-subOriginal=4)
         expect(data[4]).toBe(6); // tokenModifiers (deprecated=2 | proposed=4 = 6)
 
-        // Second token: modified (changetracks-subModified + modification + proposed)
+        // Second token: modified (changedown-subModified + modification + proposed)
         //   tokenModifiers = modification(1) | proposed(4) = 5
-        expect(data[8]).toBe(5); // tokenType (changetracks-subModified=5)
+        expect(data[8]).toBe(5); // tokenType (changedown-subModified=5)
         expect(data[9]).toBe(5); // tokenModifiers (modification=1 | proposed=4 = 5)
       });
 
@@ -176,11 +176,11 @@ describe('Semantic Tokens', () => {
         expect(result).toBeTruthy();
 
         // For highlight with Proposed status:
-        //   tokenType=2 (changetracks-highlight)
+        //   tokenType=2 (changedown-highlight)
         //   tokenModifiers = proposed(4)
         const data = result.data;
         expect(data).toHaveLength(5);
-        expect(data[3]).toBe(2); // tokenType (changetracks-highlight=2)
+        expect(data[3]).toBe(2); // tokenType (changedown-highlight=2)
         expect(data[4]).toBe(4); // tokenModifiers (proposed=4)
       });
     });
@@ -200,11 +200,11 @@ describe('Semantic Tokens', () => {
         expect(result).toBeTruthy();
 
         // For comment with Proposed status:
-        //   tokenType=3 (changetracks-comment)
+        //   tokenType=3 (changedown-comment)
         //   tokenModifiers = proposed(4)
         const data = result.data;
         expect(data).toHaveLength(5);
-        expect(data[3]).toBe(3); // tokenType (changetracks-comment=3)
+        expect(data[3]).toBe(3); // tokenType (changedown-comment=3)
         expect(data[4]).toBe(4); // tokenModifiers (proposed=4)
       });
     });
@@ -241,7 +241,7 @@ describe('Semantic Tokens', () => {
         //   tokenModifiers = modification(1) | proposed(4) = 5
         expect(data[0]).toBe(0); // deltaLine
         expect(data[1]).toBe(3); // deltaStartChar
-        expect(data[3]).toBe(0); // tokenType (changetracks-insertion)
+        expect(data[3]).toBe(0); // tokenType (changedown-insertion)
         expect(data[4]).toBe(5); // tokenModifiers (modification=1 | proposed=4 = 5)
 
         // Second token: deletion (delta from first token) with proposed status
@@ -249,7 +249,7 @@ describe('Semantic Tokens', () => {
         // deltaLine should still be 0 (same line)
         // deltaStartChar should be relative to previous token
         expect(data[5]).toBe(0); // deltaLine
-        expect(data[8]).toBe(1); // tokenType (changetracks-deletion)
+        expect(data[8]).toBe(1); // tokenType (changedown-deletion)
         expect(data[9]).toBe(6); // tokenModifiers (deprecated=2 | proposed=4 = 6)
       });
 
@@ -374,7 +374,7 @@ describe('Semantic Tokens', () => {
         const result = buildSemanticTokens(changes, testText);
         const data = result.data;
         expect(data).toHaveLength(5);
-        expect(data[3]).toBe(7); // tokenType (changetracks-moveTo=7)
+        expect(data[3]).toBe(7); // tokenType (changedown-moveTo=7)
         // modification(1) | proposed(4) = 5
         expect(data[4]).toBe(5);
       });
@@ -394,7 +394,7 @@ describe('Semantic Tokens', () => {
         const result = buildSemanticTokens(changes, testText);
         const data = result.data;
         expect(data).toHaveLength(5);
-        expect(data[3]).toBe(6); // tokenType (changetracks-moveFrom=6)
+        expect(data[3]).toBe(6); // tokenType (changedown-moveFrom=6)
         // deprecated(2) | proposed(4) = 6
         expect(data[4]).toBe(6);
       });
@@ -411,7 +411,7 @@ describe('Semantic Tokens', () => {
 
         const result = buildSemanticTokens(changes, testText);
         const data = result.data;
-        expect(data[3]).toBe(0); // tokenType (changetracks-insertion=0)
+        expect(data[3]).toBe(0); // tokenType (changedown-insertion=0)
       });
 
       it('should emit standard deletion token when moveRole is absent', () => {
@@ -426,7 +426,7 @@ describe('Semantic Tokens', () => {
 
         const result = buildSemanticTokens(changes, testText);
         const data = result.data;
-        expect(data[3]).toBe(1); // tokenType (changetracks-deletion=1)
+        expect(data[3]).toBe(1); // tokenType (changedown-deletion=1)
       });
     });
 
@@ -752,13 +752,13 @@ describe('Semantic Tokens', () => {
     describe('consumed op modifier', () => {
       it('should apply deprecated modifier to consumed op tokens', () => {
         const changes: ChangeNode[] = [{
-          id: 'ct-3',
+          id: 'cn-3',
           type: ChangeType.Insertion,
           status: ChangeStatus.Proposed,
           range: { start: 0, end: 14 },
           contentRange: { start: 3, end: 11 },
           level: 2, anchored: false,
-          consumedBy: 'ct-5',
+          consumedBy: 'cn-5',
         }];
 
         const result = buildSemanticTokens(changes, testText, 'review');
@@ -770,13 +770,13 @@ describe('Semantic Tokens', () => {
 
       it('should apply deprecated modifier to consumed deletion tokens', () => {
         const changes: ChangeNode[] = [{
-          id: 'ct-4',
+          id: 'cn-4',
           type: ChangeType.Deletion,
           status: ChangeStatus.Proposed,
           range: { start: 0, end: 14 },
           contentRange: { start: 3, end: 11 },
           level: 2, anchored: false,
-          consumedBy: 'ct-6',
+          consumedBy: 'cn-6',
         }];
 
         const result = buildSemanticTokens(changes, testText, 'review');
@@ -788,7 +788,7 @@ describe('Semantic Tokens', () => {
 
       it('should not apply deprecated modifier when consumedBy is absent', () => {
         const changes: ChangeNode[] = [{
-          id: 'ct-7',
+          id: 'cn-7',
           type: ChangeType.Insertion,
           status: ChangeStatus.Proposed,
           range: { start: 0, end: 14 },

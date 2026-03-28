@@ -1,6 +1,6 @@
 # How Track Changes Works
 
-ChangeTracks is change tracking for text files. It provides insertions, deletions, substitutions, comments, and accept/reject — operations familiar from track changes in popular editors — but implemented as plain-text markup in files, designed for both humans and AI agents. Changes can carry both *what* changed and *why*, through inline markup and attached discussion threads — when authors provide reasoning.
+ChangeDown is change tracking for text files. It provides insertions, deletions, substitutions, comments, and accept/reject — operations familiar from track changes in popular editors — but implemented as plain-text markup in files, designed for both humans and AI agents. Changes can carry both *what* changed and *why*, through inline markup and attached discussion threads — when authors provide reasoning.
 
 The changes are written in [CriticMarkup](https://criticmarkup.com/), an open standard. Think of it as the text-file version of colored underlines and strikethroughs you see in popular editors:
 
@@ -16,7 +16,7 @@ Each change gets a reference tag (like ``) that links to a record at the bottom 
 
 ## For Humans — The VS Code Experience
 
-Install the ChangeTracks extension from the VS Code Marketplace (or Cursor's extension panel). The extension requires no additional runtime dependencies - no language server to install separately, no external binaries. Open a markdown file. Toggle tracking mode with **Shift+Cmd+E** — a dot icon appears in the editor title bar confirming tracking is active.
+Install the ChangeDown extension from the VS Code Marketplace (or Cursor's extension panel). The extension requires no additional runtime dependencies - no language server to install separately, no external binaries. Open a markdown file. Toggle tracking mode with **Shift+Cmd+E** — a dot icon appears in the editor title bar confirming tracking is active.
 
 **Type naturally.** Every edit auto-wraps in CriticMarkup. The extension accumulates keystrokes and flushes them as a single change after a 30-second pause, a cursor move, or a file save. Cut/paste operations are detected as moves (displayed in purple with bidirectional navigation).
 
@@ -43,9 +43,9 @@ The extension ships with a 5-step walkthrough (Welcome tab) that walks through p
 
 ## For Agents - MCP Tools
 
-ChangeTracks's agent integration currently supports **Claude Code** (via Claude Code plugin with hooks) and **Cursor** (via hooks adapter). The MCP server uses stdio transport, meaning any MCP-compatible agent framework can connect - but Claude Code and Cursor are the two with tested, shipped hook implementations.
+ChangeDown's agent integration currently supports **Claude Code** (via Claude Code plugin with hooks) and **Cursor** (via hooks adapter). The MCP server uses stdio transport, meaning any MCP-compatible agent framework can connect - but Claude Code and Cursor are the two with tested, shipped hook implementations.
 
-AI agents interact with ChangeTracks through seven [MCP](https://modelcontextprotocol.io/) tools. The tools expose a propose/review workflow analogous to the human editor experience:
+AI agents interact with ChangeDown through seven [MCP](https://modelcontextprotocol.io/) tools. The tools expose a propose/review workflow analogous to the human editor experience:
 
 | Tool | Purpose |
 |------|---------|
@@ -99,9 +99,9 @@ Classic works like find-and-replace. Compact uses the `LINE:HASH` coordinates fr
 
 ### Git interaction
 
-ChangeTracks operates alongside git, not instead of it. Changes live in the file as CriticMarkup text - git sees them as normal text diffs. When you `git diff`, you see CriticMarkup syntax in the diff. When you `git log -p -S '[^ct-N]'`, you can trace a specific change through version history. There is no separate database, no sidecar files beyond `.changetracks/config.toml` and transient hook state. Accepted changes are compacted (markup removed, footnote status updated) by the `settle` command or the review tool's settle option - the result is a clean file that git commits as usual.
+ChangeDown operates alongside git, not instead of it. Changes live in the file as CriticMarkup text - git sees them as normal text diffs. When you `git diff`, you see CriticMarkup syntax in the diff. When you `git log -p -S '[^cn-N]'`, you can trace a specific change through version history. There is no separate database, no sidecar files beyond `.changedown/config.toml` and transient hook state. Accepted changes are compacted (markup removed, footnote status updated) by the `settle` command or the review tool's settle option - the result is a clean file that git commits as usual.
 
-This means ChangeTracks adds a deliberation layer *above* git's what-changed layer: git records that line 47 changed, ChangeTracks records *why* and *who decided*.
+This means ChangeDown adds a deliberation layer *above* git's what-changed layer: git records that line 47 changed, ChangeDown records *why* and *who decided*.
 
 ### Four views
 
@@ -118,13 +118,13 @@ The first `read_tracked_file` call delivers a one-time editing guide showing pro
 
 ## Hospitality, Then Enforcement
 
-ChangeTracks follows ADR-024: *environment over instruction*. Instead of telling agents what to do and hoping they comply, the system changes the environment so correct behavior is the path of least resistance. Four layers enforce this, from least invasive to most:
+ChangeDown follows ADR-024: *environment over instruction*. Instead of telling agents what to do and hoping they comply, the system changes the environment so correct behavior is the path of least resistance. Four layers enforce this, from least invasive to most:
 
 ```mermaid
 graph TD
     subgraph "Four Layers of Enforcement"
-        A["📄 File Header<br/>&lt;!-- ctrcks.com/v1: tracked --&gt;<br/><i>Signal: this file is tracked</i>"]
-        B["⚙️ Project Config<br/>.changetracks/config.toml<br/><i>Rules: protocol, author, policy</i>"]
+        A["📄 File Header<br/>&lt;!-- changedown.com/v1: tracked --&gt;<br/><i>Signal: this file is tracked</i>"]
+        B["⚙️ Project Config<br/>.changedown/config.toml<br/><i>Rules: protocol, author, policy</i>"]
         C["🪝 Hooks<br/>PreToolUse / PostToolUse / Stop<br/><i>Redirect: catch raw edits</i>"]
         D["🔧 MCP Tools<br/>propose_change, review_changes, ...<br/><i>Surface: the correct path</i>"]
     end
@@ -137,20 +137,20 @@ graph TD
     style D fill:#f3e5f5,stroke:#9c27b0,color:#4a148c
 ```
 
-**Layer 1 - File header.** The `<!-- ctrcks.com/v1: tracked -->` comment on line 1 signals that a file is tracked. The header is the highest-precedence signal; it overrides project config and global defaults.
+**Layer 1 - File header.** The `<!-- changedown.com/v1: tracked -->` comment on line 1 signals that a file is tracked. The header is the highest-precedence signal; it overrides project config and global defaults.
 
-**Layer 2 - Project config.** `.changetracks/config.toml` sets project-wide rules: which files to track, whether authors are required, what protocol mode to use, and the enforcement level.
+**Layer 2 - Project config.** `.changedown/config.toml` sets project-wide rules: which files to track, whether authors are required, what protocol mode to use, and the enforcement level.
 
 **Layer 3 - Hooks.** Three hooks intercept agent behavior at the point of action:
 - **PreToolUse** — fires before an Edit or Write tool executes. In strict mode, blocks the edit and returns a pre-formatted `propose_change` call. Whether the agent submits it depends on the agent's behavior.
-- **PostToolUse** — fires after an allowed edit. In safety-net mode, logs the raw edit to `.changetracks/pending.json`.
+- **PostToolUse** — fires after an allowed edit. In safety-net mode, logs the raw edit to `.changedown/pending.json`.
 - **Stop** — fires when the agent session ends. Wraps any logged raw edits in CriticMarkup and allocates change IDs.
 
 **Layer 4 - MCP tools.** The tools themselves are the correct path. When an agent uses `propose_change`, changes are tracked with full reasoning from the start. No hooks needed.
 
 ### The enforcement dial
 
-The `[policy] mode` setting in `.changetracks/config.toml` controls how strictly the system redirects agents:
+The `[policy] mode` setting in `.changedown/config.toml` controls how strictly the system redirects agents:
 
 | Mode | Behavior |
 |------|----------|
@@ -158,11 +158,11 @@ The `[policy] mode` setting in `.changetracks/config.toml` controls how strictly
 | **safety-net** | Raw Edit/Write is allowed but logged. At session end, the Stop hook wraps all logged edits in CriticMarkup. Reasoning is lost — the change is tracked but without the agent's explanation. |
 | **permissive** | No interception. The agent writes directly. Use only for files that don't need tracking. |
 
-### What ChangeTracks does NOT do
+### What ChangeDown does NOT do
 
-- **Not a merge tool.** ChangeTracks does not resolve git merge conflicts. If two people edit the same tracked file on different branches, git handles the merge; ChangeTracks markup is just text that git merges like any other text.
+- **Not a merge tool.** ChangeDown does not resolve git merge conflicts. If two people edit the same tracked file on different branches, git handles the merge; ChangeDown markup is just text that git merges like any other text.
 - **Not real-time collaboration.** There is no live multi-cursor, no operational transform, no CRDT. It is designed for asynchronous review workflows - one author proposes, another reviews.
-- **Not a replacement for code review.** ChangeTracks tracks changes in prose/documentation. It does not parse programming languages, does not understand ASTs, and does not integrate with GitHub PR review flows.
+- **Not a replacement for code review.** ChangeDown tracks changes in prose/documentation. It does not parse programming languages, does not understand ASTs, and does not integrate with GitHub PR review flows.
 - **Markdown only (v1).** The parser handles markdown files. Other plain-text formats are not yet supported. Binary files (images, PDFs) are out of scope.
 
 ## Safety Net — What Happens When Agents Slip Through
@@ -187,7 +187,7 @@ sequenceDiagram
 
     Stop->>Log: Read pending edits
     Stop->>File: Wrap edits in CriticMarkup
-    Stop->>File: Allocate [^ct-N] IDs
+    Stop->>File: Allocate [^cn-N] IDs
 ```
 
 In strict mode, the flow is shorter — the edit never reaches the file:
@@ -212,7 +212,7 @@ The core parser is single-pass O(n) - it scales linearly with file size. Edit bo
 
 ## Settings
 
-Three settings in `.changetracks/config.toml` control the agent experience:
+Three settings in `.changedown/config.toml` control the agent experience:
 
 | Setting | Values | Effect |
 |---------|--------|--------|
@@ -228,7 +228,7 @@ Additional settings that affect agent behavior:
 | `[policy] default_view` | `review` / `changes` / `settled` | Which view agents see by default |
 | `[hashline] enabled` | `true` / `false` | Whether `LINE:HASH` coordinates appear in margin |
 
-For the full configuration reference, see `.changetracks/config.toml` in any tracked project.
+For the full configuration reference, see `.changedown/config.toml` in any tracked project.
 
 ## Getting Started
 
@@ -236,6 +236,6 @@ For the full configuration reference, see `.changetracks/config.toml` in any tra
 2. **Open a markdown file** and run **Shift+Cmd+E** to toggle tracking.
 3. **Make edits** - they auto-wrap in CriticMarkup.
 4. **Review changes** with **Shift+Cmd+A** (accept) or **Shift+Cmd+R** (reject).
-5. **For agent integration,** install the Claude Code plugin from `changetracks-plugin/` and configure `.changetracks/config.toml`.
+5. **For agent integration,** install the Claude Code plugin from `changedown-plugin/` and configure `.changedown/config.toml`.
 
 For term definitions, see [Glossary](glossary.md).

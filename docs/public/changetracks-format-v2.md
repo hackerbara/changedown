@@ -152,7 +152,7 @@ Use as few or as many fields as needed.
 threading, discussion, multiple reviewer approvals, revision history, context anchoring.
 
 ```markdown
-The API should use GraphQL for the public interface.
+The API should use GraphQL[^ct-1] for the public interface.
 
 [^ct-1]: @alice | 2024-01-15 | sub | proposed
     @alice 2024-01-15: GraphQL reduces over-fetching for dashboard clients.
@@ -188,9 +188,9 @@ line and no body lines is valid (minimal metadata, no discussion).
 Multi-change operations use dotted IDs under a shared parent:
 
 ```markdown
-
+[^ct-17.1]
 ...
-moved text
+moved text[^ct-17.2]
 ```
 
 Parent `ct-17` is the logical operation. Children `ct-17.1`, `ct-17.2` are its
@@ -199,7 +199,7 @@ components. One level of nesting only — `ct-17.1.1` is never valid.
 Accept `ct-17` resolves all children. Reject `ct-17.2` carves out one exception.
 
 A change may carry multiple footnote references when alternatives exist:
-`slow` signals that ct-2 is an alternative to ct-1
+`slow[^ct-1][^ct-2]` signals that ct-2 is an alternative to ct-1
 (see `superseded-by:` in §6.3).
 
 ## 6. Footnote Format
@@ -538,7 +538,7 @@ The API should use GraphQL for the public interface
 and gRPC for internal service communication.
 
 Authentication uses OAuth 2.0 with JWT tokens for
-all endpoints. Rate limiting is set to 100 req/min.
+all endpoints. Rate limiting is set to 100 req/min[^ct-3].
 
 [^ct-1]: @alice | 2024-01-15 | sub | accepted
     4:e2 should use GraphQL for the public

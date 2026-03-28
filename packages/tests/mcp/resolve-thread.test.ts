@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
 
 // Dynamically import since we'll add the export in step 3
-const { handleResolveThread } = await import('changetracks/engine');
+const { handleResolveThread } = await import('changedown/engine');
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const TS_RE = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z';
@@ -17,11 +17,11 @@ const TS_RE = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z';
 describe('handleResolveThread', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-resolve-thread-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-resolve-thread-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -87,14 +87,14 @@ describe('handleResolveThread', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleResolveThread(
-      { file: filePath, change_id: 'ct-1', action: 'resolve' },
+      { file: filePath, change_id: 'cn-1', action: 'resolve' },
       resolver,
       state
     );
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.action).toBe('resolve');
     expect(data.success).toBe(true);
 
@@ -109,23 +109,23 @@ describe('handleResolveThread', () => {
 
     // Create a file with a resolved change
     const content = [
-      'The {~~quick brown~>slow red~~}[^ct-1] fox.',
+      'The {~~quick brown~>slow red~~}[^cn-1] fox.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Better color`,
       `    resolved: @ai:claude-opus-4.6 2026-03-22T10:00:00Z`,
     ].join('\n');
     await fs.writeFile(filePath, content);
 
     const result = await handleResolveThread(
-      { file: filePath, change_id: 'ct-1', action: 'unresolve' },
+      { file: filePath, change_id: 'cn-1', action: 'unresolve' },
       resolver,
       state
     );
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.action).toBe('unresolve');
     expect(data.success).toBe(true);
 
@@ -139,7 +139,7 @@ describe('handleResolveThread', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleResolveThread(
-      { file: filePath, change_id: 'ct-1' },
+      { file: filePath, change_id: 'cn-1' },
       resolver,
       state
     );
@@ -157,7 +157,7 @@ describe('handleResolveThread', () => {
 
   it('error when file is missing', async () => {
     const result = await handleResolveThread(
-      { change_id: 'ct-1', action: 'resolve' },
+      { change_id: 'cn-1', action: 'resolve' },
       resolver,
       state
     );
@@ -185,13 +185,13 @@ describe('handleResolveThread', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleResolveThread(
-      { file: filePath, change_id: 'ct-99', action: 'resolve' },
+      { file: filePath, change_id: 'cn-99', action: 'resolve' },
       resolver,
       state
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/ct-99|not found/i);
+    expect(result.content[0].text).toMatch(/cn-99|not found/i);
   });
 
   // ─── 6. Error: file not in scope ──────────────────────────────────────
@@ -201,7 +201,7 @@ describe('handleResolveThread', () => {
     await fs.writeFile(filePath, 'const x = 1;');
 
     const result = await handleResolveThread(
-      { file: filePath, change_id: 'ct-1', action: 'resolve' },
+      { file: filePath, change_id: 'cn-1', action: 'resolve' },
       resolver,
       state
     );
@@ -216,7 +216,7 @@ describe('handleResolveThread', () => {
     const filePath = path.join(tmpDir, 'nonexistent.md');
 
     const result = await handleResolveThread(
-      { file: filePath, change_id: 'ct-1', action: 'resolve' },
+      { file: filePath, change_id: 'cn-1', action: 'resolve' },
       resolver,
       state
     );
@@ -231,7 +231,7 @@ describe('handleResolveThread', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleResolveThread(
-      { file: filePath, change_id: 'ct-1', action: 'destroy' },
+      { file: filePath, change_id: 'cn-1', action: 'destroy' },
       resolver,
       state
     );
@@ -246,7 +246,7 @@ describe('handleResolveThread', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleResolveThread(
-      { file: filePath, change_id: 'ct-1', action: 'unresolve' },
+      { file: filePath, change_id: 'cn-1', action: 'unresolve' },
       resolver,
       state
     );
@@ -263,7 +263,7 @@ describe('handleResolveThread', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleResolveThread(
-      { file: filePath, change_id: 'ct-1', action: 'resolve', author: 'human:alice' },
+      { file: filePath, change_id: 'cn-1', action: 'resolve', author: 'human:alice' },
       resolver,
       state
     );

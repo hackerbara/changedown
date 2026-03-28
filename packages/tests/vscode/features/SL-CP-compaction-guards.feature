@@ -7,36 +7,36 @@ Feature: SL-CP — Compaction guards in running VS Code
 
   @SL-CP-01
   Scenario: Compact accepted+resolved change succeeds
-    When I position cursor inside the ct-1 insertion "ready for compaction"
-    And I execute "changetracks.compactChangeFully"
+    When I position cursor inside the cn-1 insertion "ready for compaction"
+    And I execute "changedown.compactChangeFully"
     Then the document contains "ready for compaction" as plain text
-    And the current document text does not include "[^ct-1]"
+    And the current document text does not include "[^cn-1]"
     And I capture evidence screenshot "after-clean-compact"
 
   @SL-CP-02
   Scenario: Compact proposed change is blocked
-    When I position cursor inside the ct-2 insertion "still proposed"
-    And I execute "changetracks.compactChangeFully"
+    When I position cursor inside the cn-2 insertion "still proposed"
+    And I execute "changedown.compactChangeFully"
     Then an error or warning message appears about "proposed"
-    And the document still contains "[^ct-2]"
+    And the document still contains "[^cn-2]"
     And I capture evidence screenshot "compact-blocked-proposed"
 
   @SL-CP-03
   Scenario: Compact with unresolved discussion shows warning
-    When I position cursor inside the ct-3 insertion "has open discussion"
-    And I execute "changetracks.compactChangeFully"
+    When I position cursor inside the cn-3 insertion "has open discussion"
+    And I execute "changedown.compactChangeFully"
     Then a warning dialog appears about "open discussion"
     And I capture evidence screenshot "compact-unresolved-warning"
     When I confirm "Compact Anyway"
     Then the document contains "has open discussion" as plain text
-    And the current document text does not include "[^ct-3]"
+    And the current document text does not include "[^cn-3]"
     And I capture evidence screenshot "after-compact-with-warning"
 
   @SL-CP-04
   Scenario: Compact accepted without discussion succeeds silently
-    When I position cursor inside the ct-4 insertion "clean compact"
-    And I execute "changetracks.compactChangeFully"
+    When I position cursor inside the cn-4 insertion "clean compact"
+    And I execute "changedown.compactChangeFully"
     Then the document contains "clean compact" as plain text
-    And the current document text does not include "[^ct-4]"
+    And the current document text does not include "[^cn-4]"
     And no warning dialog appeared
     And I capture evidence screenshot "after-silent-compact"

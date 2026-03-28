@@ -7,7 +7,7 @@ Feature: High-fidelity keyboard input in tracking mode
   Background:
     Given I open "kb-spike.md" in VS Code
     And the editor is reset to the fixture
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And tracking mode is definitely enabled
 
   # ── Smoke test: does Playwright keyboard.type() work at all? ──

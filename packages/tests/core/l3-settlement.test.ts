@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { settleAcceptedChangesOnly, settleRejectedChangesOnly, initHashline, computeSettledView } from '@changetracks/core/internals';
+import { settleAcceptedChangesOnly, settleRejectedChangesOnly, initHashline, computeSettledView } from '@changedown/core/internals';
 
 beforeAll(async () => {
   await initHashline();
@@ -8,10 +8,10 @@ beforeAll(async () => {
 // Helper: build L3 document with one insertion
 function l3WithInsertion(status: string) {
   return [
-    '<!-- ctrcks.com/v1: tracked -->',
+    '<!-- changedown.com/v1: tracked -->',
     'Hello beautiful world',
     '',
-    `[^ct-1]: @alice | 2026-03-18 | ins | ${status}`,
+    `[^cn-1]: @alice | 2026-03-18 | ins | ${status}`,
     '    2:b4 {++beautiful ++}',
   ].join('\n');
 }
@@ -19,10 +19,10 @@ function l3WithInsertion(status: string) {
 // Helper: build L3 document with one deletion
 function l3WithDeletion(status: string) {
   return [
-    '<!-- ctrcks.com/v1: tracked -->',
+    '<!-- changedown.com/v1: tracked -->',
     'Hello world',
     '',
-    `[^ct-1]: @alice | 2026-03-18 | del | ${status}`,
+    `[^cn-1]: @alice | 2026-03-18 | del | ${status}`,
     '    2:b4 {--beautiful --} @ctx:"Hello "||" world"',
   ].join('\n');
 }
@@ -30,10 +30,10 @@ function l3WithDeletion(status: string) {
 // Helper: build L3 document with one substitution
 function l3WithSubstitution(status: string) {
   return [
-    '<!-- ctrcks.com/v1: tracked -->',
+    '<!-- changedown.com/v1: tracked -->',
     'Hello new world',
     '',
-    `[^ct-1]: @alice | 2026-03-18 | sub | ${status}`,
+    `[^cn-1]: @alice | 2026-03-18 | sub | ${status}`,
     '    2:b4 {~~old~>new~~}',
   ].join('\n');
 }
@@ -46,7 +46,7 @@ describe('settleAcceptedChangesOnly on L3', () => {
     expect(settledContent).toBe(input);
     expect(settledContent).toContain('{++beautiful ++}');
     expect(settledContent).not.toContain('settled:');
-    expect(settledContent).toContain('[^ct-1]:');
+    expect(settledContent).toContain('[^cn-1]:');
   });
 
   it('accept deletion: L3 no-op — text unchanged, edit-op preserved', () => {
@@ -73,12 +73,12 @@ describe('settleAcceptedChangesOnly on L3', () => {
     expect(settledContent).toContain('{++beautiful ++}');
   });
 
-  it('does NOT inject [^ct-N] refs into L3 body lines', () => {
+  it('does NOT inject [^cn-N] refs into L3 body lines', () => {
     const input = l3WithInsertion('accepted');
     const { settledContent } = settleAcceptedChangesOnly(input);
     const bodyLines = settledContent.split('\n').slice(0, 2);
     for (const line of bodyLines) {
-      expect(line).not.toMatch(/\[\^ct-\d+\]/);
+      expect(line).not.toMatch(/\[\^cn-\d+\]/);
     }
   });
 });
@@ -86,38 +86,38 @@ describe('settleAcceptedChangesOnly on L3', () => {
 describe('settleRejectedChangesOnly on L3', () => {
   it('reject insertion: text removed from body, edit-op preserved', () => {
     const { settledContent, settledIds } = settleRejectedChangesOnly(l3WithInsertion('rejected'));
-    expect(settledIds).toEqual(['ct-1']);
+    expect(settledIds).toEqual(['cn-1']);
     const bodyLine = settledContent.split('\n')[1];
     expect(bodyLine).toBe('Hello world');
-    expect(settledContent).toContain('[^ct-1]:');
+    expect(settledContent).toContain('[^cn-1]:');
     expect(settledContent).toContain('{++beautiful ++}');
     expect(settledContent).not.toContain('settled:');
   });
 
   it('reject deletion: text restored to body, edit-op preserved', () => {
     const { settledContent, settledIds } = settleRejectedChangesOnly(l3WithDeletion('rejected'));
-    expect(settledIds).toEqual(['ct-1']);
+    expect(settledIds).toEqual(['cn-1']);
     expect(settledContent).toContain('beautiful');
-    expect(settledContent).toContain('[^ct-1]:');
+    expect(settledContent).toContain('[^cn-1]:');
     expect(settledContent).toContain('{--beautiful --}');
     expect(settledContent).not.toContain('settled:');
   });
 
   it('reject substitution: reverted to original, edit-op preserved', () => {
     const { settledContent, settledIds } = settleRejectedChangesOnly(l3WithSubstitution('rejected'));
-    expect(settledIds).toEqual(['ct-1']);
+    expect(settledIds).toEqual(['cn-1']);
     expect(settledContent).toContain('old');
     expect(settledContent).not.toContain('new world');
-    expect(settledContent).toContain('[^ct-1]:');
+    expect(settledContent).toContain('[^cn-1]:');
     expect(settledContent).toContain('{~~old~>new~~}');
     expect(settledContent).not.toContain('settled:');
   });
 
-  it('does NOT inject [^ct-N] refs into L3 body lines', () => {
+  it('does NOT inject [^cn-N] refs into L3 body lines', () => {
     const { settledContent } = settleRejectedChangesOnly(l3WithInsertion('rejected'));
     const bodyLines = settledContent.split('\n').slice(0, 2);
     for (const line of bodyLines) {
-      expect(line).not.toMatch(/\[\^ct-\d+\]/);
+      expect(line).not.toMatch(/\[\^cn-\d+\]/);
     }
   });
 });
@@ -125,18 +125,18 @@ describe('settleRejectedChangesOnly on L3', () => {
 describe('computeSettledView on L3', () => {
   it('produces correct line mappings for L3 text', () => {
     const l3 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'Hello beautiful world',
       'Second line',
       '',
-      '[^ct-1]: @alice | 2026-03-18 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-18 | ins | proposed',
       '    1:b4 beautiful ',
     ].join('\n');
     const result = computeSettledView(l3);
     expect(result.lines.length).toBeGreaterThan(0);
     // Settled view strips footnotes from output lines
     const fullText = result.lines.map(l => l.text).join('\n');
-    expect(fullText).not.toContain('[^ct-1]');
+    expect(fullText).not.toContain('[^cn-1]');
     expect(fullText).toContain('Hello beautiful world');
   });
 });
@@ -144,14 +144,14 @@ describe('computeSettledView on L3', () => {
 describe('mixed-status L3 settlement', () => {
   it('settles only accepted changes, leaves proposed and rejected', () => {
     const l3 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'Hello beautiful new world today',
       '',
-      '[^ct-1]: @alice | 2026-03-18 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-18 | ins | accepted',
       '    2:b4 {++beautiful ++}',
-      '[^ct-2]: @bob | 2026-03-18 | ins | proposed',
+      '[^cn-2]: @bob | 2026-03-18 | ins | proposed',
       '    2:b4 {++new ++}',
-      '[^ct-3]: @carol | 2026-03-18 | ins | rejected',
+      '[^cn-3]: @carol | 2026-03-18 | ins | rejected',
       '    2:b4 {++today++}',
     ].join('\n');
     const { settledContent, settledIds } = settleAcceptedChangesOnly(l3);
@@ -166,16 +166,16 @@ describe('mixed-status L3 settlement', () => {
 describe('L3 settlement round-trip', () => {
   it('settle in L3 preserves edit-op, preserves footnote header', () => {
     const l3 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'Hello beautiful world',
       '',
-      '[^ct-1]: @alice | 2026-03-18 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-18 | ins | accepted',
       '    2:b4 {++beautiful ++}',
-      '[^ct-2]: @bob | 2026-03-18 | ins | proposed',
+      '[^cn-2]: @bob | 2026-03-18 | ins | proposed',
       '    2:b4 {++world++}',
     ].join('\n');
     const { settledContent } = settleAcceptedChangesOnly(l3);
-    expect(settledContent).toContain('[^ct-1]:');
+    expect(settledContent).toContain('[^cn-1]:');
     expect(settledContent).toContain('{++beautiful ++}');
     expect(settledContent).not.toContain('settled:');
     expect(settledContent).toContain('{++world++}');

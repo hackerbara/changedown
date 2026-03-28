@@ -19,7 +19,7 @@ import {
   initHashline,
   ChangeType,
   convertL2ToL3,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 beforeAll(async () => { await initHashline(); });
 
@@ -44,11 +44,11 @@ describe('Invariant A — deterministic parity (MCP compact and L3 parser agree)
       '',
       line,
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
       `    3:ab {++${target}++}`,
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.type).toBe(ChangeType.Insertion);
     expect(ins!.anchored).toBe(true);
@@ -72,11 +72,11 @@ describe('Invariant A — deterministic parity (MCP compact and L3 parser agree)
       '',
       line,
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
       `    3:ab {~~provides~>${target}~~}`,
     ].join('\n');
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     expect(sub!.type).toBe(ChangeType.Substitution);
     expect(sub!.anchored).toBe(true);
@@ -98,11 +98,11 @@ describe('Invariant A — deterministic parity (MCP compact and L3 parser agree)
       '',
       line,
       '',
-      '[^ct-1]: @alice | 2026-03-16 | highlight | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | highlight | proposed',
       `    3:ab {==${target}==}`,
     ].join('\n');
     const doc = parser.parse(l3);
-    const hi = doc.getChanges().find(c => c.id === 'ct-1');
+    const hi = doc.getChanges().find(c => c.id === 'cn-1');
     expect(hi).toBeDefined();
     expect(hi!.type).toBe(ChangeType.Highlight);
     expect(hi!.anchored).toBe(true);
@@ -130,11 +130,11 @@ describe('Invariant B — ambiguity parity (both systems reject ambiguous text)'
       '',
       line,
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
       `    3:ab {++${target}++}`,
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.anchored).toBe(false);
     // Must NOT silently use line-start offset
@@ -155,11 +155,11 @@ describe('Invariant B — ambiguity parity (both systems reject ambiguous text)'
       '',
       line,
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
       `    3:ab {~~could~>${target}~~}`,
     ].join('\n');
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     expect(sub!.anchored).toBe(false);
   });
@@ -180,11 +180,11 @@ describe('Invariant B — ambiguity parity (both systems reject ambiguous text)'
       '',
       line,
       '',
-      '[^ct-1]: @alice | 2026-03-16 | highlight | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | highlight | proposed',
       `    3:ab {==${target}==}{>>needs revision`,
     ].join('\n');
     const doc = parser.parse(l3);
-    const hi = doc.getChanges().find(c => c.id === 'ct-1');
+    const hi = doc.getChanges().find(c => c.id === 'cn-1');
     expect(hi).toBeDefined();
     // Best-effort: anchored at line-start, comment preserved
     expect(hi!.anchored).toBe(true);
@@ -204,11 +204,11 @@ describe('Invariant B — ambiguity parity (both systems reject ambiguous text)'
       '',
       line,
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
       `    3:ab {++${target}++}`,
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.anchored).toBe(false);
   });
@@ -228,21 +228,21 @@ describe('Invariant C — L2→L3 round-trip (expansion ensures deterministic an
       // The inserted "world" will land next to "Hello" in the clean body.
       // After strip: "Hello world and world again." — "world" is ambiguous.
       // Converter uses buildContextualL3EditOp to prefix context, making it unique.
-      'Hello {++world ++}[^ct-1]and world again.',
+      'Hello {++world ++}[^cn-1]and world again.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
     ].join('\n');
 
     const l3 = await convertL2ToL3(l2);
 
     // Verify the L3 was produced
-    expect(l3).toMatch(/\[\^ct-1\]/);
+    expect(l3).toMatch(/\[\^cn-1\]/);
     expect(l3).toMatch(/\d+:[a-f0-9]{2} .*\{\+\+/); // has edit-op line (allows contextual prefix)
 
     // Parse the L3 and verify the change is anchored
     const doc = parser.parse(l3);
     const changes = doc.getChanges();
-    const ins = changes.find(c => c.id === 'ct-1');
+    const ins = changes.find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.type).toBe(ChangeType.Insertion);
     // The key assertion: converter's expansion ensures anchored:true
@@ -251,21 +251,21 @@ describe('Invariant C — L2→L3 round-trip (expansion ensures deterministic an
 
   it('substitution where new-text is unique: round-trip preserves anchoring', async () => {
     // NOTE: footnote ref must be placed immediately after the CriticMarkup token
-    // (not at the end of the line) so the parser assigns ct-1 to the inline substitution
-    // rather than auto-generating a new ID for the inline change and treating ct-1 as
+    // (not at the end of the line) so the parser assigns cn-1 to the inline substitution
+    // rather than auto-generating a new ID for the inline change and treating cn-1 as
     // a separate footnote-metadata-only node.
     const l2 = [
       '# Doc',
       '',
-      'The system {~~provides~>delivers~~}[^ct-1] excellent outcomes.',
+      'The system {~~provides~>delivers~~}[^cn-1] excellent outcomes.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
     ].join('\n');
 
     const l3 = await convertL2ToL3(l2);
 
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     expect(sub!.type).toBe(ChangeType.Substitution);
     expect(sub!.anchored).toBe(true);

@@ -6,7 +6,7 @@ A tracked file has three parts: (1) a tracking header on line 1 (an HTML comment
 
 ## Three Views
 
-ChangeTracks provides four views of the same tracked file. Each view is a computed projection that omits, summarizes, or restructures information depending on what you need. Unlike visual toggles that just change rendering, these views can produce entirely different output from the same source file.
+ChangeDown provides four views of the same tracked file. Each view is a computed projection that omits, summarizes, or restructures information depending on what you need. Unlike visual toggles that just change rendering, these views can produce entirely different output from the same source file.
 
 | View | Alias | What you see |
 |------|-------|--------------|
@@ -85,7 +85,7 @@ This is not hypothetical -- it is a well-known addressing problem in concurrent 
 
 ### How LINE:HASH works
 
-Every line gets a 2-character hash computed from its content. The algorithm strips trailing carriage returns and footnote references (`[^ct-N]` anchors) from the line, then removes all whitespace. xxHash32 (a fast, non-cryptographic hash function) is applied to the resulting UTF-8 bytes, taken modulo 256 and formatted as lowercase hex. An agent addresses lines as `LINE:HASH` -- for example, `47:a3`.
+Every line gets a 2-character hash computed from its content. The algorithm strips trailing carriage returns and footnote references (`[^cn-N]` anchors) from the line, then removes all whitespace. xxHash32 (a fast, non-cryptographic hash function) is applied to the resulting UTF-8 bytes, taken modulo 256 and formatted as lowercase hex. An agent addresses lines as `LINE:HASH` -- for example, `47:a3`.
 
 When an agent proposes an edit at `47:a3`, the server checks: does line 47 still have hash `a3`? If yes, proceed. If no, reject with a clear error.
 
@@ -135,13 +135,13 @@ An agent can read the file once and propose many changes in a single batch. All 
 - Proposals do not shift line numbers for other proposals in the same batch
 - The server applies the batch atomically
 
-Example: an agent reads once, finds 15 issues across the document, and submits them all in one `propose_change` call with a `changes` array. One read, one write, 15 edits. All coordinates in a batch reference the pre-change state of the file -- the server resolves them atomically, so edits within the same batch cannot interfere with each other's line numbers or hashes. [Benchmark data](how-changetracks-is-benchmarked.md) showed this pattern achieving ~8x fewer tool calls compared to the baseline workflow on one task (Sonnet 4.5 medians on task8: 3 tool calls vs 25; N=3 runs per surface).
+Example: an agent reads once, finds 15 issues across the document, and submits them all in one `propose_change` call with a `changes` array. One read, one write, 15 edits. All coordinates in a batch reference the pre-change state of the file -- the server resolves them atomically, so edits within the same batch cannot interfere with each other's line numbers or hashes. [Benchmark data](how-changedown-is-benchmarked.md) showed this pattern achieving ~8x fewer tool calls compared to the baseline workflow on one task (Sonnet 4.5 medians on task8: 3 tool calls vs 25; N=3 runs per surface).
 
 ### The blank-line problem
 
 Every blank line contains the same content: nothing. If the hash function only considered the line's own text, every blank line in the document would hash to the same value. In practice, benchmark testing revealed one model (Minimax M2.5) latching onto repeated blank-line hashes -- a "hash attractor" effect where the agent would reference the wrong blank line because all blank lines looked identical in the coordinate space. Sonnet 4.5 was unaffected.
 
-ChangeTracks solves this with structural context. When hashing a blank line, the algorithm incorporates the stripped content of the nearest non-blank line above, the stripped content of the nearest non-blank line below, and the distance from the nearest non-blank line above. This gives each blank line a unique hash based on where it sits in the document's structure. The computation stays O(n) for the full document because all lines are pre-computed in a single pass.
+ChangeDown solves this with structural context. When hashing a blank line, the algorithm incorporates the stripped content of the nearest non-blank line above, the stripped content of the nearest non-blank line below, and the distance from the nearest non-blank line above. This gives each blank line a unique hash based on where it sits in the document's structure. The computation stays O(n) for the full document because all lines are pre-computed in a single pass.
 
 ## Multi-Author Collaboration
 
@@ -149,7 +149,7 @@ ChangeTracks solves this with structural context. When hashing a blank line, the
 
 Every change carries an author. Human authors use plain names (`@alice`, `@bob`). AI agent authors use the `ai:` namespace (`@ai:claude-opus-4.6`, `@ai:sonnet-4.5`). The namespace makes it immediately visible whether a change was proposed by a human or an agent.
 
-Author enforcement is configurable per project in `.changetracks/config.toml`:
+Author enforcement is configurable per project in `.changedown/config.toml`:
 
 ```toml
 [author]
@@ -195,7 +195,7 @@ sequenceDiagram
 
 ## Why It All Lives in the File
 
-There is no database behind ChangeTracks. No server state that outlives the process. The [footnotes](glossary.md) at the bottom of the file ARE the deliberation record -- who proposed what, when, why, what was discussed, and how it was resolved.
+There is no database behind ChangeDown. No server state that outlives the process. The [footnotes](glossary.md) at the bottom of the file ARE the deliberation record -- who proposed what, when, why, what was discussed, and how it was resolved.
 
 The views are projections computed on read. The file is always the source of truth.
 
@@ -207,7 +207,7 @@ git log -p -S '' --all
 
 This reconstructs the full lifecycle of change `ct-4` -- when it was proposed, who reviewed it, what was discussed, when it was resolved. The search works because git's `-S` flag uses fixed-string matching by default (not regex), so `` is matched literally as the footnote reference -- the `[^` is not interpreted as a regex negation character class. No special git configuration is required beyond a standard repository with history.
 
-This is what distinguishes ChangeTracks from Google Docs suggestions, GitHub PR reviews, and similar systems where the discussion lives in a separate database. In those systems, the reasoning is accessed through that system's interface. Here, the reasoning travels with the text. Move the file to a different repository, a different editor, a different machine -- the deliberation record comes along. It is plain markdown all the way down.
+This is what distinguishes ChangeDown from Google Docs suggestions, GitHub PR reviews, and similar systems where the discussion lives in a separate database. In those systems, the reasoning is accessed through that system's interface. Here, the reasoning travels with the text. Move the file to a different repository, a different editor, a different machine -- the deliberation record comes along. It is plain markdown all the way down.
 
-See the [Glossary](glossary.md) for term definitions, [How Track Changes Works](how-track-changes-works.md) for CriticMarkup basics, [How ChangeTracks Is Tested](how-changetracks-is-tested.md) for the testing strategy, and [How ChangeTracks Is Benchmarked](how-changetracks-is-benchmarked.md) for performance data behind the efficiency claims in this document.
+See the [Glossary](glossary.md) for term definitions, [How Track Changes Works](how-track-changes-works.md) for CriticMarkup basics, [How ChangeDown Is Tested](how-changedown-is-tested.md) for the testing strategy, and [How ChangeDown Is Benchmarked](how-changedown-is-benchmarked.md) for performance data behind the efficiency claims in this document.
 # Read /tmp/rehead/6008bdb1d194c058.txt instead of re-running

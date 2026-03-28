@@ -12,22 +12,22 @@ installVscodeMock();
 
 import { When, Then, Before } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { ChangeType, ChangeStatus } from '@changetracks/core';
-import { CHANGE_COLORS, AUTHOR_PALETTE, getChangeStyle } from 'changetracks-vscode/internals';
-import type { ChangeStyleInfo, ThemeColor } from 'changetracks-vscode/internals';
-import type { ChangeTracksWorld } from './world';
+import { ChangeType, ChangeStatus } from '@changedown/core';
+import { CHANGE_COLORS, AUTHOR_PALETTE, getChangeStyle } from 'changedown-vscode/internals';
+import type { ChangeStyleInfo, ThemeColor } from 'changedown-vscode/internals';
+import type { ChangeDownWorld } from './world';
 
 // ── Extend World with visual semantics test state ────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         changeStyle?: ChangeStyleInfo;
     }
 }
 
 // ── Lifecycle ────────────────────────────────────────────────────────
 
-Before({ tags: '@fast and @VS1' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @VS1' }, function (this: ChangeDownWorld) {
     this.changeStyle = undefined;
 });
 
@@ -49,7 +49,7 @@ const CHANGE_STATUS_MAP: Record<string, ChangeStatus> = {
 
 // ── Then steps: color palette ────────────────────────────────────────
 
-Then('the color palette has entry {string}', function (this: ChangeTracksWorld, typeName: string) {
+Then('the color palette has entry {string}', function (this: ChangeDownWorld, typeName: string) {
     assert.ok(
         (CHANGE_COLORS as Record<string, unknown>)[typeName],
         `CHANGE_COLORS should have "${typeName}" entry`
@@ -66,7 +66,7 @@ Then('deletion foreground has light and dark variants', function () {
     assert.ok(CHANGE_COLORS.deletion.dark, 'deletion should have dark color');
 });
 
-Then('the author palette has {int} entries', function (this: ChangeTracksWorld, expected: number) {
+Then('the author palette has {int} entries', function (this: ChangeDownWorld, expected: number) {
     assert.strictEqual(AUTHOR_PALETTE.length, expected);
 });
 
@@ -80,7 +80,7 @@ Then('each author palette entry has light and dark variants', function () {
 // ── When steps: getChangeStyle ───────────────────────────────────────
 
 When('I get the change style for {string} with status {string}', function (
-    this: ChangeTracksWorld, typeName: string, statusName: string
+    this: ChangeDownWorld, typeName: string, statusName: string
 ) {
     const type = CHANGE_TYPE_MAP[typeName.toLowerCase()];
     assert.ok(type !== undefined, `Unknown change type "${typeName}"`);
@@ -90,7 +90,7 @@ When('I get the change style for {string} with status {string}', function (
 });
 
 When('I get the change style for {string} with status {string} and move role {string}', function (
-    this: ChangeTracksWorld, typeName: string, statusName: string, moveRole: string
+    this: ChangeDownWorld, typeName: string, statusName: string, moveRole: string
 ) {
     const type = CHANGE_TYPE_MAP[typeName.toLowerCase()];
     assert.ok(type !== undefined, `Unknown change type "${typeName}"`);
@@ -101,12 +101,12 @@ When('I get the change style for {string} with status {string} and move role {st
 
 // ── Then steps: style assertions ─────────────────────────────────────
 
-Then('the CSS class is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the CSS class is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.changeStyle, 'No change style computed');
     assert.strictEqual(this.changeStyle.cssClass, expected);
 });
 
-Then('the CSS class contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the CSS class contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.changeStyle, 'No change style computed');
     assert.ok(
         this.changeStyle.cssClass.includes(expected),
@@ -114,22 +114,22 @@ Then('the CSS class contains {string}', function (this: ChangeTracksWorld, expec
     );
 });
 
-Then('the HTML tag is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the HTML tag is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.changeStyle, 'No change style computed');
     assert.strictEqual(this.changeStyle.htmlTag, expected);
 });
 
-Then('strikethrough is {word}', function (this: ChangeTracksWorld, expected: string) {
+Then('strikethrough is {word}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.changeStyle, 'No change style computed');
     assert.strictEqual(this.changeStyle.strikethrough, expected === 'true');
 });
 
-Then('the foreground matches the insertion color', function (this: ChangeTracksWorld) {
+Then('the foreground matches the insertion color', function (this: ChangeDownWorld) {
     assert.ok(this.changeStyle, 'No change style computed');
     assert.deepStrictEqual(this.changeStyle.foreground, CHANGE_COLORS.insertion);
 });
 
-Then('the foreground matches the move color', function (this: ChangeTracksWorld) {
+Then('the foreground matches the move color', function (this: ChangeDownWorld) {
     assert.ok(this.changeStyle, 'No change style computed');
     assert.deepStrictEqual(this.changeStyle.foreground, CHANGE_COLORS.move as ThemeColor);
 });

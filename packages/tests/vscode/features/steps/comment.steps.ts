@@ -1,20 +1,20 @@
 /**
  * @fast tier step definitions for comment insertion tests (COM1).
  *
- * Tests the core insertComment function from @changetracks/core.
+ * Tests the core insertComment function from @changedown/core.
  * No VS Code dependency — pure in-process text transformation tests.
  */
 
 import { Given, When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { insertComment } from '@changetracks/core';
-import type { TextEdit } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+import { insertComment } from '@changedown/core';
+import type { TextEdit } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 
-// ── Extend ChangeTracksWorld with comment insertion state ─────────────
+// ── Extend ChangeDownWorld with comment insertion state ─────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         commentDocText?: string;
         commentCursorOffset?: number;
         commentSelectionStart?: number;
@@ -32,7 +32,7 @@ function applyEdit(text: string, edit: TextEdit): string {
 
 // ── Given ────────────────────────────────────────────────────────────
 
-Given('a comment document with text {string}', function (this: ChangeTracksWorld, text: string) {
+Given('a comment document with text {string}', function (this: ChangeDownWorld, text: string) {
     this.commentDocText = text;
     this.commentResultText = undefined;
     this.commentSelectionStart = undefined;
@@ -40,17 +40,17 @@ Given('a comment document with text {string}', function (this: ChangeTracksWorld
     this.commentSelectedText = undefined;
 });
 
-Given('no text is selected', function (this: ChangeTracksWorld) {
+Given('no text is selected', function (this: ChangeDownWorld) {
     this.commentSelectionStart = undefined;
     this.commentSelectionEnd = undefined;
     this.commentSelectedText = undefined;
 });
 
-Given('the comment cursor is at offset {int}', function (this: ChangeTracksWorld, offset: number) {
+Given('the comment cursor is at offset {int}', function (this: ChangeDownWorld, offset: number) {
     this.commentCursorOffset = offset;
 });
 
-Given('text is selected from offset {int} to offset {int}', function (this: ChangeTracksWorld, start: number, end: number) {
+Given('text is selected from offset {int} to offset {int}', function (this: ChangeDownWorld, start: number, end: number) {
     assert.ok(this.commentDocText !== undefined, 'Comment document text not set');
     this.commentSelectionStart = start;
     this.commentSelectionEnd = end;
@@ -60,7 +60,7 @@ Given('text is selected from offset {int} to offset {int}', function (this: Chan
 
 // ── When ─────────────────────────────────────────────────────────────
 
-When('I insert comment {string}', function (this: ChangeTracksWorld, commentText: string) {
+When('I insert comment {string}', function (this: ChangeDownWorld, commentText: string) {
     assert.ok(this.commentDocText !== undefined, 'Comment document text not set');
     assert.ok(this.commentCursorOffset !== undefined, 'Comment cursor offset not set');
 
@@ -80,7 +80,7 @@ When('I insert comment {string}', function (this: ChangeTracksWorld, commentText
 });
 
 When('I insert another comment at offset {int} with text {string}', function (
-    this: ChangeTracksWorld, offset: number, commentText: string
+    this: ChangeDownWorld, offset: number, commentText: string
 ) {
     assert.ok(this.commentResultText !== undefined, 'No previous comment result to build on');
 
@@ -90,7 +90,7 @@ When('I insert another comment at offset {int} with text {string}', function (
 
 // ── Then ─────────────────────────────────────────────────────────────
 
-Then('the comment result text contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the comment result text contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.commentResultText !== undefined, 'No comment result text');
     assert.ok(
         this.commentResultText!.includes(expected),
@@ -99,7 +99,7 @@ Then('the comment result text contains {string}', function (this: ChangeTracksWo
 });
 
 Then('the comment result text contains at least {int} comment marker(s)', function (
-    this: ChangeTracksWorld, minCount: number
+    this: ChangeDownWorld, minCount: number
 ) {
     assert.ok(this.commentResultText !== undefined, 'No comment result text');
     const matches = this.commentResultText!.match(/\{>>/g) || [];

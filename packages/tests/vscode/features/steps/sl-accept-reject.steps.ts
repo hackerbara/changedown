@@ -9,7 +9,7 @@
 
 import { Given, When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import {
     waitForQuickPick,
     updateSettingDirect,
@@ -20,18 +20,18 @@ import {
 Given(
     'reasonRequired is set to false',
     { timeout: 5000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
-        await updateSettingDirect(this.page, 'changetracks.reasonRequired', false);
+        await updateSettingDirect(this.page, 'changedown.reasonRequired', false);
     }
 );
 
 Given(
     'reasonRequired is set to true',
     { timeout: 5000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
-        await updateSettingDirect(this.page, 'changetracks.reasonRequired', true);
+        await updateSettingDirect(this.page, 'changedown.reasonRequired', true);
     }
 );
 
@@ -40,7 +40,7 @@ Given(
 Then(
     'a QuickPick appears with items {string}, {string}, {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, item1: string, item2: string, item3: string) {
+    async function (this: ChangeDownWorld, item1: string, item2: string, item3: string) {
         assert.ok(this.page, 'Page not available');
         const items = await waitForQuickPick(this.page, 10000);
         const expected = [item1, item2, item3];
@@ -58,7 +58,7 @@ Then(
 Then(
     'an InputBox appears with prompt containing {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, promptText: string) {
+    async function (this: ChangeDownWorld, promptText: string) {
         assert.ok(this.page, 'Page not available');
         await this.page.waitForSelector('.quick-input-widget[style*="display: flex"]', { timeout: 8000 });
         const prompt = await this.page.evaluate(`(() => {
@@ -81,7 +81,7 @@ Then(
 Then(
     'an InputBox appears (not a QuickPick)',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         await this.page.waitForSelector('.quick-input-widget[style*="display: flex"] input[type="text"]', { timeout: 8000 });
         const hasListItems = await this.page.evaluate(`(() => {
@@ -100,7 +100,7 @@ Then(
 When(
     'I press Enter without typing (empty submission)',
     { timeout: 5000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         const input = await this.page.$('.quick-input-widget input[type="text"]');
         assert.ok(input, 'InputBox input not found');
@@ -115,7 +115,7 @@ When(
 Then(
     'the InputBox shows validation error {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, expectedError: string) {
+    async function (this: ChangeDownWorld, expectedError: string) {
         assert.ok(this.page, 'Page not available');
         const errorText = await this.page.evaluate(`(() => {
             const msg = document.querySelector('.quick-input-message');

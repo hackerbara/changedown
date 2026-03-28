@@ -103,24 +103,24 @@ Feature: C11 - Accept and Reject Operations
   # ===== Footnote reference preservation =====
 
   Scenario: Accept insertion preserves footnote reference
-    Given the text is "Hello {++beautiful ++}[^ct-1]world"
+    Given the text is "Hello {++beautiful ++}[^cn-1]world"
     When I parse the text
     And I accept change 0
-    Then the resulting text contains "[^ct-1]"
+    Then the resulting text contains "[^cn-1]"
     And the resulting text contains "beautiful"
 
   Scenario: Accept deletion preserves footnote reference
-    Given the text is "Hello {--ugly --}[^ct-1]world"
+    Given the text is "Hello {--ugly --}[^cn-1]world"
     When I parse the text
     And I accept change 0
-    Then the resulting text contains "[^ct-1]"
+    Then the resulting text contains "[^cn-1]"
     And the resulting text does not contain "ugly"
 
   Scenario: Reject insertion preserves footnote reference
-    Given the text is "Hello {++beautiful ++}[^ct-1]world"
+    Given the text is "Hello {++beautiful ++}[^cn-1]world"
     When I parse the text
     And I reject change 0
-    Then the resulting text contains "[^ct-1]"
+    Then the resulting text contains "[^cn-1]"
     And the resulting text does not contain "beautiful"
 
   # ===== Multiple changes in reverse document order =====
@@ -170,31 +170,31 @@ Feature: C11 - Accept and Reject Operations
   Scenario: computeFootnoteStatusEdits updates proposed to accepted
     Given the text is:
       """
-      Hello {++world++}[^ct-1]
+      Hello {++world++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-02-17 | ins | proposed
+      [^cn-1]: @alice | 2026-02-17 | ins | proposed
       """
-    When I compute footnote status edits for "ct-1" to "accepted"
+    When I compute footnote status edits for "cn-1" to "accepted"
     And I apply the status edits
     Then the resulting text contains "| accepted"
 
   Scenario: computeFootnoteStatusEdits updates proposed to rejected
     Given the text is:
       """
-      Hello {--world--}[^ct-2]
+      Hello {--world--}[^cn-2]
 
-      [^ct-2]: @alice | 2026-02-17 | del | proposed
+      [^cn-2]: @alice | 2026-02-17 | del | proposed
       """
-    When I compute footnote status edits for "ct-2" to "rejected"
+    When I compute footnote status edits for "cn-2" to "rejected"
     And I apply the status edits
     Then the resulting text contains "| rejected"
 
   Scenario: Already matching status produces no edits
     Given the text is:
       """
-      [^ct-1]: @alice | 2026-02-17 | ins | accepted
+      [^cn-1]: @alice | 2026-02-17 | ins | accepted
       """
-    When I compute footnote status edits for "ct-1" to "accepted"
+    When I compute footnote status edits for "cn-1" to "accepted"
     Then the footnote status edits are empty
 
   # ===== Edge cases: empty content =====
@@ -333,20 +333,20 @@ Feature: C11 - Accept and Reject Operations
   Scenario: computeApprovalLineEdit inserts approved line after footnote header
     Given the text is:
       """
-      Hello {++world++}[^ct-1] end
+      Hello {++world++}[^cn-1] end
 
-      [^ct-1]: @alice | 2026-02-10 | ins | proposed
+      [^cn-1]: @alice | 2026-02-10 | ins | proposed
       """
-    When I compute approval line edit for "ct-1" as "accepted" by "carol" on "2026-02-12"
+    When I compute approval line edit for "cn-1" as "accepted" by "carol" on "2026-02-12"
     And I apply the approval edit
     Then the resulting text contains "approved: @carol 2026-02-12"
 
   Scenario: computeApprovalLineEdit returns null for missing footnote
     Given the text is:
       """
-      Hello [^ct-1]
+      Hello [^cn-1]
 
-      [^ct-1]: @alice | 2026-02-10 | ins | proposed
+      [^cn-1]: @alice | 2026-02-10 | ins | proposed
       """
-    When I compute approval line edit for "ct-99" as "accepted" by "alice" on "2026-02-12"
+    When I compute approval line edit for "cn-99" as "accepted" by "alice" on "2026-02-12"
     Then the approval edit is null

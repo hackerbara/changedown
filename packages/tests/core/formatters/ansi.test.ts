@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatAnsi, ThreeZoneDocument } from '@changetracks/core/internals';
+import { formatAnsi, ThreeZoneDocument } from '@changedown/core/internals';
 
 function stripAnsi(str: string): string {
   return str.replace(/\x1b\[[0-9;]*m/g, '');
@@ -140,7 +140,7 @@ describe('formatAnsi', () => {
       lines: [{
         margin: { lineNumber: 1, hash: 'a3', flags: [] },
         content: [{ type: 'plain', text: 'Content.' }],
-        metadata: [{ changeId: 'ct-1', author: '@alice', reason: 'fix', replyCount: 2 }],
+        metadata: [{ changeId: 'cn-1', author: '@alice', reason: 'fix', replyCount: 2 }],
         rawLineNumber: 1,
       }],
     };
@@ -243,7 +243,7 @@ describe('formatAnsi', () => {
         margin: { lineNumber: 1, hash: 'a3', flags: [] },
         content: [
           { type: 'plain', text: 'Hello' },
-          { type: 'anchor', text: '[^ct-1]' },
+          { type: 'anchor', text: '[^cn-1]' },
           { type: 'plain', text: ' world.' },
         ],
         metadata: [],
@@ -252,7 +252,7 @@ describe('formatAnsi', () => {
     };
     const output = formatAnsi(doc);
     const plain = stripAnsi(output);
-    expect(!plain.includes('[^ct-1]')).toBeTruthy();
+    expect(!plain.includes('[^cn-1]')).toBeTruthy();
     expect(plain.includes('Hello world.')).toBeTruthy();
   });
 
@@ -284,7 +284,7 @@ describe('formatAnsi', () => {
       lines: [{
         margin: { lineNumber: 1, hash: 'a3', flags: [] },
         content: [{ type: 'plain', text: 'Content.' }],
-        metadata: [{ changeId: 'ct-1', author: '@bob', reason: 'typo', replyCount: 1 }],
+        metadata: [{ changeId: 'cn-1', author: '@bob', reason: 'typo', replyCount: 1 }],
         rawLineNumber: 1,
       }],
     };

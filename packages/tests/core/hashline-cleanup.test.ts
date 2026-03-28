@@ -4,7 +4,7 @@ import {
   detectNoOp,
   relocateHashRef,
   stripBoundaryEcho,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 describe('hashline-cleanup', () => {
   // ─── stripHashlinePrefixes ──────────────────────────────────────────

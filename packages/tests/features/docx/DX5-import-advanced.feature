@@ -19,7 +19,7 @@ Feature: DX5 - Advanced Import Scenarios
     Given a DOCX fixture "word-online-minimal-test.docx"
     When I import the DOCX file
     Then the import succeeds
-    And the imported markdown contains "ctrcks.com/v1"
+    And the imported markdown contains "changedown.com/v1"
 
   @import @fast
   Scenario: Import handles multi-paragraph insertions

@@ -6,24 +6,24 @@ Feature: MOV2 — Move operations deep coverage
 
   Background:
     Given I open "journey-move-ops.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
     And I position the cursor at line 1 column 1
 
   # ── Move pair structure ──────────────────────────────────────
 
   Scenario: MOV2-01 Move fixture contains linked from/to pair
-    Then the document contains "[^ct-20.1]"
-    And the document contains "[^ct-20.2]"
-    And the document contains "[^ct-20]"
+    Then the document contains "[^cn-20.1]"
+    And the document contains "[^cn-20.2]"
+    And the document contains "[^cn-20]"
 
   Scenario: MOV2-02 Move from-side is a deletion
     Then the document contains "{--"
-    And the document contains "[^ct-20.1]"
+    And the document contains "[^cn-20.1]"
 
   Scenario: MOV2-03 Move to-side is an insertion
     Then the document contains "{++"
-    And the document contains "[^ct-20.2]"
+    And the document contains "[^cn-20.2]"
 
   # ── Navigation between move pair ─────────────────────────────
 
@@ -35,14 +35,14 @@ Feature: MOV2 — Move operations deep coverage
     And I navigate to the next change
     And I navigate to the next change
     And I record the cursor line
-    And I execute "ChangeTracks: Go to Linked Change"
+    And I execute "ChangeDown: Go to Linked Change"
     Then the cursor moved to a different line
 
   Scenario: MOV2-05 Go to linked change navigates to->from
     When I navigate to the next change
     And I navigate to the next change
     And I record the cursor line
-    And I execute "ChangeTracks: Go to Linked Change"
+    And I execute "ChangeDown: Go to Linked Change"
     Then the cursor moved to a different line
 
   # ── CodeLens for moves ───────────────────────────────────────
@@ -62,5 +62,5 @@ Feature: MOV2 — Move operations deep coverage
   # ── Second move pair ─────────────────────────────────────────
 
   Scenario: MOV2-08 Second move pair has separate linked IDs
-    Then the document contains "[^ct-23.1]"
-    And the document contains "[^ct-23.2]"
+    Then the document contains "[^cn-23.1]"
+    And the document contains "[^cn-23.2]"

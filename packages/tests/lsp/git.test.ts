@@ -15,11 +15,11 @@ import {
     getPreviousVersion,
     fileHasUncommittedChanges,
     getWorkspaceRoot,
-} from '@changetracks/lsp-server/internals';
+} from '@changedown/lsp-server/internals';
 
 /** Create a temporary directory for a test git repo */
 function createTempDir(): string {
-    return fs.mkdtempSync(path.join(os.tmpdir(), 'changetracks-git-test-'));
+    return fs.mkdtempSync(path.join(os.tmpdir(), 'changedown-git-test-'));
 }
 
 /** Initialize a git repo in the given directory with a deterministic config */

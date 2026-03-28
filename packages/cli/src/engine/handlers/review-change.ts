@@ -4,7 +4,7 @@ import { optionalStrArg } from '../args.js';
 import { resolveAuthor } from '../author.js';
 import { isFileInScope } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
-import { applyReview, VALID_DECISIONS, type Decision, type ApplyReviewSuccess, type ApplyReviewError } from '@changetracks/core';
+import { applyReview, VALID_DECISIONS, type Decision, type ApplyReviewSuccess, type ApplyReviewError } from '@changedown/core';
 import { applyBlockingAnnotation } from '../shared/blocking-annotation.js';
 import { SessionState } from '../state.js';
 import { rerecordState } from '../state-utils.js';
@@ -27,7 +27,7 @@ export const reviewChangeTool = {
       },
       change_id: {
         type: 'string',
-        description: "e.g., 'ct-7' or 'ct-7.2'",
+        description: "e.g., 'cn-7' or 'cn-7.2'",
       },
       decision: {
         type: 'string',
@@ -63,8 +63,8 @@ export interface ReviewChangeResult {
 
 // Re-export types and values that other CLI modules depend on.
 // Note: applyReview is NOT re-exported from here; consumers should import
-// it directly from '@changetracks/core'.
-export { VALID_DECISIONS, type Decision, type ApplyReviewSuccess, type ApplyReviewError } from '@changetracks/core';
+// it directly from '@changedown/core'.
+export { VALID_DECISIONS, type Decision, type ApplyReviewSuccess, type ApplyReviewError } from '@changedown/core';
 
 /**
  * Handles a `review_change` tool call.
@@ -115,7 +115,7 @@ export async function handleReviewChange(
     if (!isFileInScope(filePath, config, projectDir)) {
       return errorResult(
         `File is not in scope for tracking: "${filePath}". ` +
-          'Check .changetracks/config.toml include/exclude patterns.'
+          'Check .changedown/config.toml include/exclude patterns.'
       );
     }
 

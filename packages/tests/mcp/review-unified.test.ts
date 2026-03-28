@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleReviewChanges } from '@changetracks/mcp/internals';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleReviewChanges } from '@changedown/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -15,11 +15,11 @@ const TS_RE = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z';
 describe('unified review_changes with responses and settle', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-review-unified-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-review-unified-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -82,14 +82,14 @@ describe('unified review_changes with responses and settle', () => {
     const content = [
       '# Test Doc',
       '',
-      `This has a {~~tpyo~>typo~~}[^ct-1] in it.`,
+      `This has a {~~tpyo~>typo~~}[^cn-1] in it.`,
       '',
-      `And a {++new paragraph++}[^ct-2] added.`,
+      `And a {++new paragraph++}[^cn-2] added.`,
       '',
-      `[^ct-1]: @alice | 2026-02-17 | sub | proposed`,
+      `[^cn-1]: @alice | 2026-02-17 | sub | proposed`,
       `    @alice 2026-02-17: spelling fix`,
       '',
-      `[^ct-2]: @bob | 2026-02-17 | ins | proposed`,
+      `[^cn-2]: @bob | 2026-02-17 | ins | proposed`,
       `    @bob 2026-02-17: missing content`,
     ].join('\n');
     await fs.writeFile(filePath, content);
@@ -105,8 +105,8 @@ describe('unified review_changes with responses and settle', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'looks good' },
-          { change_id: 'ct-2', decision: 'reject', reason: 'not needed' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'looks good' },
+          { change_id: 'cn-2', decision: 'reject', reason: 'not needed' },
         ],
       },
       resolver,
@@ -116,10 +116,10 @@ describe('unified review_changes with responses and settle', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data.results).toHaveLength(2);
-    expect(data.results[0].change_id).toBe('ct-1');
+    expect(data.results[0].change_id).toBe('cn-1');
     expect(data.results[0].decision).toBe('approve');
     expect(data.results[0].status_updated).toBe(true);
-    expect(data.results[1].change_id).toBe('ct-2');
+    expect(data.results[1].change_id).toBe('cn-2');
     expect(data.results[1].decision).toBe('reject');
     expect(data.results[1].status_updated).toBe(true);
 
@@ -139,8 +139,8 @@ describe('unified review_changes with responses and settle', () => {
       {
         file: filePath,
         responses: [
-          { change_id: 'ct-1', response: 'I agree with this fix', label: 'praise' },
-          { change_id: 'ct-2', response: 'Is this the right place for it?' },
+          { change_id: 'cn-1', response: 'I agree with this fix', label: 'praise' },
+          { change_id: 'cn-2', response: 'Is this the right place for it?' },
         ],
       },
       resolver,
@@ -150,9 +150,9 @@ describe('unified review_changes with responses and settle', () => {
     expect(result.isError).toBeUndefined();
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    // Response to ct-1 with label
+    // Response to cn-1 with label
     expect(modified).toMatch(new RegExp(`@ai:claude-opus-4.6 ${TS_RE} \\[praise\\]: I agree with this fix`));
-    // Response to ct-2 without label
+    // Response to cn-2 without label
     expect(modified).toMatch(new RegExp(`@ai:claude-opus-4.6 ${TS_RE}: Is this the right place for it\\?`));
     // Original footnote headers and content untouched — no status change from responses
     expect(modified).toContain('| proposed');
@@ -169,10 +169,10 @@ describe('unified review_changes with responses and settle', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'correct fix' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'correct fix' },
         ],
         responses: [
-          { change_id: 'ct-2', response: 'Is this the right place?', label: 'question' },
+          { change_id: 'cn-2', response: 'Is this the right place?', label: 'question' },
         ],
       },
       resolver,
@@ -182,13 +182,13 @@ describe('unified review_changes with responses and settle', () => {
     expect(result.isError).toBeUndefined();
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    // Review applied to ct-1
+    // Review applied to cn-1
     expect(modified).toContain('| accepted');
     expect(modified).toMatch(new RegExp(`approved: @ai:claude-opus-4.6 ${TS_RE} "correct fix"`));
-    // Response applied to ct-2
+    // Response applied to cn-2
     expect(modified).toMatch(new RegExp(`@ai:claude-opus-4.6 ${TS_RE} \\[question\\]: Is this the right place\\?`));
-    // ct-2 status unchanged
-    const sc2Header = modified.split('\n').find(l => l.startsWith('[^ct-2]:'));
+    // cn-2 status unchanged
+    const sc2Header = modified.split('\n').find(l => l.startsWith('[^cn-2]:'));
     expect(sc2Header).toContain('| proposed');
   });
 
@@ -201,8 +201,8 @@ describe('unified review_changes with responses and settle', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'good spelling fix' },
-          { change_id: 'ct-2', decision: 'approve', reason: 'needed content' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'good spelling fix' },
+          { change_id: 'cn-2', decision: 'approve', reason: 'needed content' },
         ],
         settle: true,
       },
@@ -232,8 +232,8 @@ describe('unified review_changes with responses and settle', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'good fix' },
-          { change_id: 'ct-2', decision: 'approve', reason: 'good addition' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'good fix' },
+          { change_id: 'cn-2', decision: 'approve', reason: 'good addition' },
         ],
         settle: true,
       },
@@ -245,11 +245,11 @@ describe('unified review_changes with responses and settle', () => {
 
     const modified = await fs.readFile(filePath, 'utf-8');
     // Layer 1 compaction: footnote definitions preserved for audit trail
-    expect(modified).toContain('[^ct-1]:');
-    expect(modified).toContain('[^ct-2]:');
+    expect(modified).toContain('[^cn-1]:');
+    expect(modified).toContain('[^cn-2]:');
     // Inline footnote refs preserved
-    expect(modified).toContain('[^ct-1]');
-    expect(modified).toContain('[^ct-2]');
+    expect(modified).toContain('[^cn-1]');
+    expect(modified).toContain('[^cn-2]');
     // Status should be accepted in footnotes
     expect(modified).toContain('| accepted');
     expect(modified).not.toContain('| proposed');
@@ -264,8 +264,8 @@ describe('unified review_changes with responses and settle', () => {
       {
         file: filePath,
         responses: [
-          { change_id: 'ct-1', response: 'Good fix' },
-          { change_id: 'ct-99', response: 'This change does not exist' },
+          { change_id: 'cn-1', response: 'Good fix' },
+          { change_id: 'cn-99', response: 'This change does not exist' },
         ],
       },
       resolver,
@@ -304,9 +304,9 @@ describe('unified review_changes with responses and settle', () => {
     const content = [
       '# Doc',
       '',
-      `This has a {~~tpyo~>typo~~}[^ct-1] fix.`,
+      `This has a {~~tpyo~>typo~~}[^cn-1] fix.`,
       '',
-      `[^ct-1]: @alice | 2026-02-17 | sub | accepted`,
+      `[^cn-1]: @alice | 2026-02-17 | sub | accepted`,
       `    @alice 2026-02-17: spelling fix`,
       `    approved: @bob 2026-02-17 "looks good"`,
     ].join('\n');
@@ -330,7 +330,7 @@ describe('unified review_changes with responses and settle', () => {
     // Settled text present
     expect(modified).toContain('typo');
     // Footnote definition preserved (Layer 1)
-    expect(modified).toContain('[^ct-1]:');
+    expect(modified).toContain('[^cn-1]:');
     expect(modified).toContain('| accepted');
   });
 });

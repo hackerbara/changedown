@@ -1,7 +1,7 @@
 /**
- * Core configuration types for ChangeTracks.
+ * Core configuration types for ChangeDown.
  *
- * Defines the full ChangeTracksConfig interface shared across all packages.
+ * Defines the full ChangeDownConfig interface shared across all packages.
  * CLI-specific sections (hooks, protocol, meta) are added by CLIConfig in
  * the CLI package.
  */
@@ -28,10 +28,10 @@ export interface CoherenceConfig {
 }
 
 // ---------------------------------------------------------------------------
-// ChangeTracksConfig — the canonical config shape owned by core
+// ChangeDownConfig — the canonical config shape owned by core
 // ---------------------------------------------------------------------------
 
-export interface ChangeTracksConfig {
+export interface ChangeDownConfig {
   tracking: {
     include: string[];
     exclude: string[];
@@ -76,7 +76,7 @@ export interface ChangeTracksConfig {
 export type ReasonRequirement = HumanAgentSplit;
 
 /**
- * @deprecated Use `ChangeTracksConfig` instead. Kept for backward
+ * @deprecated Use `ChangeDownConfig` instead. Kept for backward
  * compatibility during the transition period.
  */
 export interface ProjectReviewConfig {
@@ -88,7 +88,7 @@ export interface ProjectReviewConfig {
 // Defaults
 // ---------------------------------------------------------------------------
 
-export const DEFAULT_CONFIG: ChangeTracksConfig = {
+export const DEFAULT_CONFIG: ChangeDownConfig = {
   tracking: {
     include: ['**/*.md'],
     exclude: ['node_modules/**', 'dist/**'],

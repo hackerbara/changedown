@@ -1,7 +1,7 @@
 /**
  * Lightweight footnote parser for metadata extraction.
  *
- * Parses `[^ct-N]: @author | date | type | status` header lines and their
+ * Parses `[^cn-N]: @author | date | type | status` header lines and their
  * indented continuation lines (metadata key-value pairs and thread replies).
  *
  * This serves a different purpose from CriticMarkupParser.parseFootnoteDefinitions()
@@ -12,7 +12,7 @@
 
 /**
  * Parsed footnote definition.
- * Extracted from `[^ct-N]: @author | date | type | status` header lines
+ * Extracted from `[^cn-N]: @author | date | type | status` header lines
  * plus indented metadata and thread reply lines.
  */
 import { FOOTNOTE_DEF_LENIENT, FOOTNOTE_THREAD_REPLY } from './footnote-patterns.js';
@@ -20,7 +20,7 @@ import { findFootnoteBlockStart } from './footnote-utils.js';
 import { parseTimestamp, type Timestamp } from './timestamp.js';
 
 export interface FootnoteInfo {
-  id: string;             // e.g. "ct-1", "ct-2.3"
+  id: string;             // e.g. "cn-1", "cn-2.3"
   author: string;         // e.g. "@alice", "@ai:claude-opus-4.6"
   /** @deprecated Use timestamp.date */
   date: string;           // e.g. "2026-02-17"
@@ -50,7 +50,7 @@ const RE_FOOTNOTE_META = /^\s+([\w-]+):\s*(.*)/;
 
 /**
  * Parse all footnote definitions from file content.
- * Returns a Map keyed by the footnote ID (e.g. "ct-1").
+ * Returns a Map keyed by the footnote ID (e.g. "cn-1").
  */
 export function parseFootnotes(content: string): Map<string, FootnoteInfo> {
   const lines = content.split('\n');

@@ -6,13 +6,13 @@ Feature: MTB1 — Multi-tab behavior
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   # ── Panel state on load ────────────────────────────────────
 
   Scenario: MTB1-01 Panel shows changes for active document
-    And I open the ChangeTracks sidebar
+    And I open the ChangeDown sidebar
     Then the Review Panel shows change cards
 
   Scenario: MTB1-02 Status bar shows change count
@@ -21,11 +21,11 @@ Feature: MTB1 — Multi-tab behavior
   # ── View mode independence ─────────────────────────────────
 
   Scenario: MTB1-03 View mode defaults to review on open
-    And I open the ChangeTracks sidebar
+    And I open the ChangeDown sidebar
     Then the active view mode is "review"
 
   Scenario: MTB1-04 View mode change persists within session
-    And I open the ChangeTracks sidebar
+    And I open the ChangeDown sidebar
     When I toggle Smart View
     Then the active view mode is "changes"
     When I toggle Smart View
@@ -53,13 +53,13 @@ Feature: MTB1 — Multi-tab behavior
   @fixture(no-header)
   Scenario: MTB1-07 Empty document has no decorations
     Given I open "no-header.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     Then no decorations are visible
 
   @fixture(journey-accept-reject) @destructive
   Scenario: MTB1-08 Accept all removes markup in current document
     Given I open "journey-accept-reject.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
     When I accept all changes
     Then the editor text does not contain "{++"

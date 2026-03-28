@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline, computeLineHash } from '@changetracks/core';
+import { initHashline, computeLineHash } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -18,7 +18,7 @@ describe('protocol modes end-to-end', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-e2e-modes-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-e2e-modes-'));
     state = new SessionState();
   });
 
@@ -27,7 +27,7 @@ describe('protocol modes end-to-end', () => {
   });
 
   it('full round-trip: read -> propose_change (compact) -> read updated', async () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
       author: { default: 'ai:e2e-test', enforcement: 'optional' },
       hooks: { enforcement: 'warn', exclude: [] },
@@ -66,7 +66,7 @@ describe('protocol modes end-to-end', () => {
 
     // Verify response structure
     const responseData = JSON.parse(proposeResult.content[0].text);
-    expect(responseData.change_id).toBe('ct-1');
+    expect(responseData.change_id).toBe('cn-1');
     expect(responseData.type).toBe('sub');
 
     // Step 3: Read again to verify the change was applied
@@ -82,12 +82,12 @@ describe('protocol modes end-to-end', () => {
     // The file should now contain CriticMarkup substitution
     const fileOnDisk = await fs.readFile(filePath, 'utf-8');
     expect(fileOnDisk).toContain('{~~quick brown~>slow red~~}');
-    expect(fileOnDisk).toContain('[^ct-1]');
+    expect(fileOnDisk).toContain('[^cn-1]');
     expect(fileOnDisk).toContain('change animal speed');
   });
 
   it('round-trip with insertion: read -> +text -> read', async () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
       author: { default: 'ai:e2e-test', enforcement: 'optional' },
       hooks: { enforcement: 'warn', exclude: [] },
@@ -133,7 +133,7 @@ describe('protocol modes end-to-end', () => {
   });
 
   it('round-trip with deletion: read -> -text -> read', async () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
       author: { default: 'ai:e2e-test', enforcement: 'optional' },
       hooks: { enforcement: 'warn', exclude: [] },
@@ -172,7 +172,7 @@ describe('protocol modes end-to-end', () => {
   });
 
   it('chained edits: two propose_change calls on the same file', async () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
       author: { default: 'ai:e2e-test', enforcement: 'optional' },
       hooks: { enforcement: 'warn', exclude: [] },
@@ -222,13 +222,13 @@ describe('protocol modes end-to-end', () => {
     const fileOnDisk = await fs.readFile(filePath, 'utf-8');
     expect(fileOnDisk).toContain('{~~alpha~>ALPHA~~}');
     expect(fileOnDisk).toContain('{~~gamma~>GAMMA~~}');
-    expect(fileOnDisk).toContain('[^ct-1]');
-    expect(fileOnDisk).toContain('[^ct-2]');
+    expect(fileOnDisk).toContain('[^cn-1]');
+    expect(fileOnDisk).toContain('[^cn-2]');
   });
 
   it('env var switches mode without config change', async () => {
     // Start with classic config
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
       author: { default: 'ai:e2e-test', enforcement: 'optional' },
       hooks: { enforcement: 'warn', exclude: [] },
@@ -253,8 +253,8 @@ describe('protocol modes end-to-end', () => {
     expect(classicResult.content[0].text).toContain('classic');
 
     // With env var override: compact mode, at/op should work
-    const origEnv = process.env['CHANGETRACKS_PROTOCOL_MODE'];
-    process.env['CHANGETRACKS_PROTOCOL_MODE'] = 'compact';
+    const origEnv = process.env['CHANGEDOWN_PROTOCOL_MODE'];
+    process.env['CHANGEDOWN_PROTOCOL_MODE'] = 'compact';
     try {
       const content = await fs.readFile(filePath, 'utf-8');
       const contentLines = content.split('\n');
@@ -270,13 +270,13 @@ describe('protocol modes end-to-end', () => {
       const modified = await fs.readFile(filePath, 'utf-8');
       expect(modified).toContain('{~~hello~>goodbye~~}');
     } finally {
-      if (origEnv === undefined) delete process.env['CHANGETRACKS_PROTOCOL_MODE'];
-      else process.env['CHANGETRACKS_PROTOCOL_MODE'] = origEnv;
+      if (origEnv === undefined) delete process.env['CHANGEDOWN_PROTOCOL_MODE'];
+      else process.env['CHANGEDOWN_PROTOCOL_MODE'] = origEnv;
     }
   });
 
   it('read output reflects compact tip when in compact mode', async () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
       author: { default: 'ai:e2e-test', enforcement: 'optional' },
       hooks: { enforcement: 'warn', exclude: [] },
@@ -299,7 +299,7 @@ describe('protocol modes end-to-end', () => {
   });
 
   it('classic read output does NOT contain compact tip', async () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
       author: { default: 'ai:e2e-test', enforcement: 'optional' },
       hooks: { enforcement: 'warn', exclude: [] },

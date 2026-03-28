@@ -1,4 +1,4 @@
-import { CriticMarkupParser, ChangeType, ChangeStatus } from '@changetracks/core';
+import { CriticMarkupParser, ChangeType, ChangeStatus } from '@changedown/core';
 
 export interface ChangeListEntry {
   change_id: string;

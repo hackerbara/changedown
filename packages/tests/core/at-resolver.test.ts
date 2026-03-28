@@ -4,7 +4,7 @@ import {
   resolveAt,
   initHashline,
   computeLineHash,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 // ─── parseAt ─────────────────────────────────────────────────────────────────
 

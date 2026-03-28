@@ -1,36 +1,36 @@
-# ChangeTracks Format Specification
+# ChangeDown Format Specification
 
 **Version:** 0.3.0
 **Date:** 2026-02-13
 **Status:** Draft
 
-ChangeTracks is a format for encoding change tracking and deliberation directly into text files. Changes, discussion, approvals, and revision history live in the file itself — readable by any text editor, parseable by any tool, consumable by any LLM. No external database. No proprietary binary format. Intent in the byte stream.
+ChangeDown is a format for encoding change tracking and deliberation directly into text files. Changes, discussion, approvals, and revision history live in the file itself — readable by any text editor, parseable by any tool, consumable by any LLM. No external database. No proprietary binary format. Intent in the byte stream.
 
 ## File Tracking Header
 
-An HTML comment on the first line of the file declares whether that file is tracked by ChangeTracks:
+An HTML comment on the first line of the file declares whether that file is tracked by ChangeDown:
 
 ```
-<!-- ctrcks.com/v1: tracked -->
+<!-- changedown.com/v1: tracked -->
 ```
 
 or explicitly opted out:
 
 ```
-<!-- ctrcks.com/v1: untracked -->
+<!-- changedown.com/v1: untracked -->
 ```
 
 **Placement:** Line 1 of the file. If the file has YAML frontmatter (`---`), the header goes on the first line after the closing `---`.
 
 **Three-layer precedence** (highest wins):
 
-1. **File header** — `<!-- ctrcks.com/v1: tracked|untracked -->` in the file itself
-2. **Project config** — `[tracking] default` in `.changetracks/config.toml`
+1. **File header** — `<!-- changedown.com/v1: tracked|untracked -->` in the file itself
+2. **Project config** — `[tracking] default` in `.changedown/config.toml`
 3. **Global default** — `tracked` for files matching include globs, `untracked` otherwise
 
 The file header is the authoritative signal. Tools auto-insert it on the first tracked edit. Humans and agents can add or change it manually.
 
-**Relationship to the legacy breadcrumb:** The informational comment `<!-- changetracks: https://ctrcks.com/spec -->` is a spec URL breadcrumb, not a tracking directive. When both are present, the `v1` header takes precedence and the breadcrumb is purely informational.
+**Relationship to the legacy breadcrumb:** The informational comment `<!-- changedown: https://changedown.com/spec -->` is a spec URL breadcrumb, not a tracking directive. When both are present, the `v1` header takes precedence and the breadcrumb is purely informational.
 
 ## Inline Change Syntax
 
@@ -58,7 +58,7 @@ Each inline change can have a footnote reference linking it to structured metada
 The API should use GraphQL for the public interface.
 ```
 
-`[^ct-N]` is a standard markdown footnote reference. IDs are document-unique and monotonically increasing.
+`[^cn-N]` is a standard markdown footnote reference. IDs are document-unique and monotonically increasing.
 
 ### Grouped Changes (Dotted IDs)
 
@@ -83,7 +83,7 @@ Each change ID maps to a footnote definition with structured metadata and option
 ### Header Line
 
 ```
-[^ct-N]: @author | date | type | status
+[^cn-N]: @author | date | type | status
 ```
 
 | Field | Values | Notes |
@@ -218,13 +218,13 @@ No explicit separator between metadata and discussion. Each line self-identifies
 
 The format is layered. Use as much or as little as you want. The boundary between levels is structural: **what container carries the metadata** (none, comment, or footnote).
 
-**Level 0 — CriticMarkup (substrate).** No IDs, no footnotes, no metadata. Write `some text` and you're using ChangeTracks. Not "participation" in the metadata sense — just the markup.
+**Level 0 — CriticMarkup (substrate).** No IDs, no footnotes, no metadata. Write `some text` and you're using ChangeDown. Not "participation" in the metadata sense — just the markup.
 
 ```markdown
 The API should use GraphQL for the public interface.
 ```
 
-**Level 1 — Adjacent comment with metadata.** An attached comment (``, no whitespace between change and comment) carries metadata with pipe-separated fields. Same `|` separator as the Level 2 footnote header. Use as few or as many fields as needed. No `[^ct-N]` required.
+**Level 1 — Adjacent comment with metadata.** An attached comment (``, no whitespace between change and comment) carries metadata with pipe-separated fields. Same `|` separator as the Level 2 footnote header. Use as few or as many fields as needed. No `[^cn-N]` required.
 
 ```markdown
 The API should use GraphQL for the public interface.
@@ -236,7 +236,7 @@ The API should use GraphQL for the public interface.
 
 Conventions inside the comment: `@name` or `@ai:model` for author, ISO 8601 for date, `proposed`/`accepted`/`rejected` for status, `|` between fields. Order is flexible; whitespace around `|` is tolerated.
 
-**Level 2 — Footnote (full deliberation).** `[^ct-N]` footnote ref + footnote definition. When you need threading, discussion, multiple reviewer approvals, revision history, or context anchoring — anything that doesn't fit in one inline comment.
+**Level 2 — Footnote (full deliberation).** `[^cn-N]` footnote ref + footnote definition. When you need threading, discussion, multiple reviewer approvals, revision history, or context anchoring — anything that doesn't fit in one inline comment.
 
 ```markdown
 The API should use GraphQL for the public interface.
@@ -256,7 +256,7 @@ Each level is a strict superset. A Level 2 file is valid Level 1 is valid Level 
 
 ## Code File Format
 
-For non-markdown files, ChangeTracks uses CriticMarkup syntax within language-native comments, with optional footnotes for full deliberation. This mirrors the markdown format structure while respecting code file constraints.
+For non-markdown files, ChangeDown uses CriticMarkup syntax within language-native comments, with optional footnotes for full deliberation. This mirrors the markdown format structure while respecting code file constraints.
 
 ### The Core Pattern
 
@@ -345,7 +345,7 @@ For changes spanning multiple lines, use range delimiters (see **Range Delimiter
 
 ## Cross-File References (Reserved)
 
-The syntax `filename[^ct-N]` is reserved for referencing changes in other files:
+The syntax `filename[^cn-N]` is reserved for referencing changes in other files:
 
 ```
 see api.md

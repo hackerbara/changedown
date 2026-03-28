@@ -1,12 +1,12 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import type { ChangeTracksWorld } from './world.js';
+import type { ChangeDownWorld } from './world.js';
 
 // =============================================================================
 // Given — set up raw text for parsing
 // =============================================================================
 
-Given('the text {string}', function (this: ChangeTracksWorld, text: string) {
+Given('the text {string}', function (this: ChangeDownWorld, text: string) {
   // Cucumber passes literal \n as two characters; convert to real newlines
   this.lastText = text.replace(/\\n/g, '\n');
 });
@@ -15,7 +15,7 @@ Given('the text {string}', function (this: ChangeTracksWorld, text: string) {
 // When — parse the text
 // =============================================================================
 
-When('I parse the text', function (this: ChangeTracksWorld) {
+When('I parse the text', function (this: ChangeDownWorld) {
   this.lastDoc = this.parser.parse(this.lastText);
 });
 
@@ -23,13 +23,13 @@ When('I parse the text', function (this: ChangeTracksWorld) {
 // Then — change count
 // =============================================================================
 
-Then('there is 1 change', function (this: ChangeTracksWorld) {
+Then('there is 1 change', function (this: ChangeDownWorld) {
   assert.ok(this.lastDoc, 'No document was parsed');
   const changes = this.lastDoc.getChanges();
   assert.equal(changes.length, 1, `Expected 1 change but got ${changes.length}`);
 });
 
-Then('there are {int} changes', function (this: ChangeTracksWorld, count: number) {
+Then('there are {int} changes', function (this: ChangeDownWorld, count: number) {
   assert.ok(this.lastDoc, 'No document was parsed');
   const changes = this.lastDoc.getChanges();
   assert.equal(changes.length, count, `Expected ${count} changes but got ${changes.length}`);
@@ -41,7 +41,7 @@ Then('there are {int} changes', function (this: ChangeTracksWorld, count: number
 
 Then(
   'change {int} is type {string}',
-  function (this: ChangeTracksWorld, index: number, expectedType: string) {
+  function (this: ChangeDownWorld, index: number, expectedType: string) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const changes = this.lastDoc.getChanges();
     const c = changes[index - 1];
@@ -56,7 +56,7 @@ Then(
 
 Then(
   'change {int} has modified text {string}',
-  function (this: ChangeTracksWorld, index: number, expected: string) {
+  function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -67,7 +67,7 @@ Then(
 
 Then(
   'change {int} has original text {string}',
-  function (this: ChangeTracksWorld, index: number, expected: string) {
+  function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -78,7 +78,7 @@ Then(
 
 Then(
   'change {int} has no original text',
-  function (this: ChangeTracksWorld, index: number) {
+  function (this: ChangeDownWorld, index: number) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -88,7 +88,7 @@ Then(
 
 Then(
   'change {int} has no modified text',
-  function (this: ChangeTracksWorld, index: number) {
+  function (this: ChangeDownWorld, index: number) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -102,7 +102,7 @@ Then(
 
 Then(
   'change {int} has range {int} to {int}',
-  function (this: ChangeTracksWorld, index: number, start: number, end: number) {
+  function (this: ChangeDownWorld, index: number, start: number, end: number) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -112,7 +112,7 @@ Then(
 
 Then(
   'change {int} has content range {int} to {int}',
-  function (this: ChangeTracksWorld, index: number, start: number, end: number) {
+  function (this: ChangeDownWorld, index: number, start: number, end: number) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -122,7 +122,7 @@ Then(
 
 Then(
   'change {int} has original range {int} to {int}',
-  function (this: ChangeTracksWorld, index: number, start: number, end: number) {
+  function (this: ChangeDownWorld, index: number, start: number, end: number) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -132,7 +132,7 @@ Then(
 
 Then(
   'change {int} has modified range {int} to {int}',
-  function (this: ChangeTracksWorld, index: number, start: number, end: number) {
+  function (this: ChangeDownWorld, index: number, start: number, end: number) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -146,7 +146,7 @@ Then(
 
 Then(
   'change {int} has id {string}',
-  function (this: ChangeTracksWorld, index: number, expectedId: string) {
+  function (this: ChangeDownWorld, index: number, expectedId: string) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -160,7 +160,7 @@ Then(
 
 Then(
   'change {int} has comment {string}',
-  function (this: ChangeTracksWorld, index: number, expected: string) {
+  function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -171,7 +171,7 @@ Then(
 
 Then(
   'change {int} has no metadata',
-  function (this: ChangeTracksWorld, index: number) {
+  function (this: ChangeDownWorld, index: number) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -185,7 +185,7 @@ Then(
 
 Then(
   'all changes have status {string}',
-  function (this: ChangeTracksWorld, expectedStatus: string) {
+  function (this: ChangeDownWorld, expectedStatus: string) {
     assert.ok(this.lastDoc, 'No document was parsed');
     const changes = this.lastDoc.getChanges();
     for (const c of changes) {
@@ -198,7 +198,7 @@ Then(
 // Then — document order assertion
 // =============================================================================
 
-Then('changes are in document order', function (this: ChangeTracksWorld) {
+Then('changes are in document order', function (this: ChangeDownWorld) {
   assert.ok(this.lastDoc, 'No document was parsed');
   const changes = this.lastDoc.getChanges();
   for (let i = 1; i < changes.length; i++) {

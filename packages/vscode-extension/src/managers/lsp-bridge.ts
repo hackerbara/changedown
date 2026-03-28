@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import type { PendingOverlay, ChangeNode } from '@changetracks/core';
-import { scanMaxCtId } from '@changetracks/core';
+import type { PendingOverlay, ChangeNode } from '@changedown/core';
+import { scanMaxCnId } from '@changedown/core';
 import type { BatchEditSender } from '../lsp-client';
 import { invalidateDecorationCache } from '../lsp-client';
 import { DocumentStateManager } from './document-state-manager';
@@ -157,7 +157,7 @@ export class LspBridge implements vscode.Disposable {
     // ── Promotion lifecycle ───────────────────────────────────────────────
 
     /**
-     * Called when LSP sends changetracks/promotionStarting.
+     * Called when LSP sends changedown/promotionStarting.
      * Sets the isConverting guard to suppress tracking during the workspace/applyEdit.
      */
     public handlePromotionStarting(uri: string): void {
@@ -166,7 +166,7 @@ export class LspBridge implements vscode.Disposable {
     }
 
     /**
-     * Called when LSP sends changetracks/promotionComplete.
+     * Called when LSP sends changedown/promotionComplete.
      * Clears isConverting, updates shadow/scId via DocumentStateManager,
      * then fires onDidCompletePromotion for controller to refresh surfaces.
      */
@@ -180,7 +180,7 @@ export class LspBridge implements vscode.Disposable {
                 const promotedText = editor.document.getText();
                 const pState = this.docStateManager.ensureDocState(uri, editor.document.version, promotedText);
                 pState.shadow = promotedText;
-                const maxId = scanMaxCtId(promotedText);
+                const maxId = scanMaxCnId(promotedText);
                 pState.nextScId = maxId + 1;
             }
         }
@@ -280,7 +280,7 @@ export class LspBridge implements vscode.Disposable {
             return { reasonRequired: { human: false } };
         }
         try {
-            const result = await this.lspClient.sendRequest('changetracks/getProjectConfig', {});
+            const result = await this.lspClient.sendRequest('changedown/getProjectConfig', {});
             return result as { reasonRequired: { human: boolean } };
         } catch {
             return { reasonRequired: { human: false } };

@@ -1,6 +1,6 @@
 import type { BridgeConfig } from './types.js';
 
-const NAMESPACE = 'changetracks.lexicalBridge';
+const NAMESPACE = 'changedown.lexicalBridge';
 
 const DEFAULT_CONFIG: BridgeConfig = {
   enabled: true,

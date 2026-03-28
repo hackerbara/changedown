@@ -6,12 +6,12 @@
  * Produces AnnotationCard objects for the sidebar panel.
  */
 
-import { ChangeNode, ChangeType } from '@changetracks/core';
+import { ChangeNode, ChangeType } from '@changedown/core';
 
 export interface AnnotationCard {
-    /** Unique ID for linking to inline anchor: "ct-pair-{range.start}" */
+    /** Unique ID for linking to inline anchor: "cn-pair-{range.start}" */
     pairId: string;
-    /** The change's ID (e.g. "ct-5") */
+    /** The change's ID (e.g. "cn-5") */
     changeId: string;
     /** Change type: 'insertion', 'deletion', 'substitution', 'comment', 'highlight' */
     type: string;
@@ -92,7 +92,7 @@ export function buildAnnotationCards(changes: ChangeNode[], src: string): Annota
 
         // For Highlights with an adjacent Comment, use the highlight's pairId
         // so the sidebar card links to the correct inline element
-        const pairId = `ct-pair-${c.range.start}`;
+        const pairId = `cn-pair-${c.range.start}`;
 
         // For Comments preceded by an adjacent Highlight, use the highlight's
         // range.start for pairId consistency (matches replacements.ts behavior)
@@ -101,7 +101,7 @@ export function buildAnnotationCards(changes: ChangeNode[], src: string): Annota
             const idx = changes.indexOf(c);
             const prev = idx > 0 ? changes[idx - 1] : undefined;
             if (prev && prev.type === ChangeType.Highlight && c.range.start === prev.range.end) {
-                effectivePairId = `ct-pair-${prev.range.start}`;
+                effectivePairId = `cn-pair-${prev.range.start}`;
             }
         }
 

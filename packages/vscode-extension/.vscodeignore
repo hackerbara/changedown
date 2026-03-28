@@ -1,6 +1,6 @@
 .vscode/**
 .vscode-test/**
-.changetracks/**
+.changedown/**
 src/**
 out/**
 !out/extension.js

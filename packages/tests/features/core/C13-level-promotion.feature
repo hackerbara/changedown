@@ -3,7 +3,7 @@ Feature: Level promotion and descent
   CriticMarkup changes exist at three metadata levels:
     Level 0: bare markup ({++text++})
     Level 1: markup + adjacent comment ({++text++}{>>@author|proposed<<})
-    Level 2: markup + footnote ref + footnote definition ({++text++}[^ct-1] ... [^ct-1]: ...)
+    Level 2: markup + footnote ref + footnote definition ({++text++}[^cn-1] ... [^cn-1]: ...)
 
   Promotion adds metadata; descent (compaction) removes it.
 
@@ -28,21 +28,21 @@ Feature: Level promotion and descent
 
   Scenario: Promote substitution from Level 1 to Level 2
     Given a CriticMarkup text "{~~REST~>GraphQL~~}{>>@alice|2026-02-13|sub|proposed<<}"
-    When I promote change 0 to Level 2 with id "ct-1"
-    Then the result contains "{~~REST~>GraphQL~~}[^ct-1]"
-    And the result contains "[^ct-1]: @alice | 2026-02-13 | sub | proposed"
+    When I promote change 0 to Level 2 with id "cn-1"
+    Then the result contains "{~~REST~>GraphQL~~}[^cn-1]"
+    And the result contains "[^cn-1]: @alice | 2026-02-13 | sub | proposed"
 
   # ── Level 2 → Level 1: compact footnote to adjacent comment ──────
 
   Scenario: Compact substitution from Level 2 to Level 1
     Given a CriticMarkup text:
       """
-      {~~REST~>GraphQL~~}[^ct-1]
+      {~~REST~>GraphQL~~}[^cn-1]
 
-      [^ct-1]: @alice | 2026-02-13 | sub | accepted
+      [^cn-1]: @alice | 2026-02-13 | sub | accepted
           approved: @carol 2026-02-15
       """
-    When I compact change "ct-1" to Level 1
+    When I compact change "cn-1" to Level 1
     Then the result is "{~~REST~>GraphQL~~}{>>@alice|2026-02-13|sub|accepted<<}"
 
   # ── Level 1 → Level 0: strip adjacent comment ────────────────────
@@ -101,9 +101,9 @@ Feature: Level promotion and descent
   Scenario: Level 2 classification — has footnote ref
     Given the markup text with footnotes:
       """
-      {~~REST~>GraphQL~~}[^ct-1]
+      {~~REST~>GraphQL~~}[^cn-1]
 
-      [^ct-1]: @alice | 2026-02-13 | sub | proposed
+      [^cn-1]: @alice | 2026-02-13 | sub | proposed
       """
     When I parse the markup
     Then there is 1 change

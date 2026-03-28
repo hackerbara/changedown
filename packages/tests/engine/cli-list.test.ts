@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { initHashline } from '@changetracks/core';
-import { runCommand } from 'changetracks/cli-runner';
+import { initHashline } from '@changedown/core';
+import { runCommand } from 'changedown/cli-runner';
 
 describe('sc list', () => {
   let tmpDir: string;
@@ -13,8 +13,8 @@ describe('sc list', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-list-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-list-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -30,7 +30,7 @@ describe('sc list', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      '<!-- ctrcks.com/v1: tracked -->\nThe {++quick++}[^ct-1] brown fox\n\n[^ct-1]: @alice | 2026-02-15 | ins | proposed\n    reason: test change\n',
+      '<!-- changedown.com/v1: tracked -->\nThe {++quick++}[^cn-1] brown fox\n\n[^cn-1]: @alice | 2026-02-15 | ins | proposed\n    reason: test change\n',
     );
     const result = await runCommand('list', [filePath], {
       outputFormat: 'json',
@@ -41,7 +41,7 @@ describe('sc list', () => {
     const items = result.data.items as Record<string, unknown>[];
     expect(Array.isArray(items)).toBe(true);
     expect(items.length).toBeGreaterThanOrEqual(1);
-    expect(items[0]).toHaveProperty('change_id', 'ct-1');
+    expect(items[0]).toHaveProperty('change_id', 'cn-1');
     expect(items[0]).toHaveProperty('type', 'ins');
     expect(items[0]).toHaveProperty('status', 'proposed');
   });
@@ -50,10 +50,10 @@ describe('sc list', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      '<!-- ctrcks.com/v1: tracked -->\n' +
-        'The {++quick++}[^ct-1] {++slow++}[^ct-2] fox\n\n' +
-        '[^ct-1]: @alice | 2026-02-15 | ins | proposed\n' +
-        '[^ct-2]: @bob | 2026-02-15 | ins | proposed\n',
+      '<!-- changedown.com/v1: tracked -->\n' +
+        'The {++quick++}[^cn-1] {++slow++}[^cn-2] fox\n\n' +
+        '[^cn-1]: @alice | 2026-02-15 | ins | proposed\n' +
+        '[^cn-2]: @bob | 2026-02-15 | ins | proposed\n',
     );
     const result = await runCommand('list', [filePath, '--author', '@alice'], {
       outputFormat: 'json',
@@ -63,7 +63,7 @@ describe('sc list', () => {
     const items = result.data.items as Record<string, unknown>[];
     expect(Array.isArray(items)).toBe(true);
     expect(items.length).toBe(1);
-    expect(items[0]).toHaveProperty('change_id', 'ct-1');
+    expect(items[0]).toHaveProperty('change_id', 'cn-1');
     expect(items[0]).toHaveProperty('author', '@alice');
   });
 
@@ -71,10 +71,10 @@ describe('sc list', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      '<!-- ctrcks.com/v1: tracked -->\n' +
-        'The {++quick++}[^ct-1] {--slow--}[^ct-2] fox\n\n' +
-        '[^ct-1]: @alice | 2026-02-15 | ins | proposed\n' +
-        '[^ct-2]: @alice | 2026-02-15 | del | accepted\n',
+      '<!-- changedown.com/v1: tracked -->\n' +
+        'The {++quick++}[^cn-1] {--slow--}[^cn-2] fox\n\n' +
+        '[^cn-1]: @alice | 2026-02-15 | ins | proposed\n' +
+        '[^cn-2]: @alice | 2026-02-15 | del | accepted\n',
     );
     const result = await runCommand(
       'list',
@@ -89,8 +89,8 @@ describe('sc list', () => {
     expect(Array.isArray(items)).toBe(true);
     expect(items.length).toBe(2);
     const ids = items.map((i: Record<string, unknown>) => i.change_id);
-    expect(ids).toContain('ct-1');
-    expect(ids).toContain('ct-2');
+    expect(ids).toContain('cn-1');
+    expect(ids).toContain('cn-2');
   });
 
   it('returns USAGE_ERROR with no path argument', async () => {

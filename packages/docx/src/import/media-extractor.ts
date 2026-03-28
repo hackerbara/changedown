@@ -106,7 +106,8 @@ export function inventoryImages(mediaDir: string): ImageInfo[] {
     let dimensions = { widthIn: FALLBACK_WIDTH_INCHES, heightIn: FALLBACK_HEIGHT_INCHES };
 
     try {
-      const result = imageSize(filePath);
+      const fileData = new Uint8Array(fs.readFileSync(filePath));
+      const result = imageSize(fileData);
       if (result.width && result.height) {
         dimensions = {
           widthIn: pixelsToInches(result.width),

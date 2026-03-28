@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import type { ChangeNode, PendingOverlay } from '@changetracks/core';
-import { scanMaxCtId, generateFootnoteDefinition, convertL3ToL2 } from '@changetracks/core';
+import type { ChangeNode, PendingOverlay } from '@changedown/core';
+import { scanMaxCnId, generateFootnoteDefinition, convertL3ToL2 } from '@changedown/core';
 import { PendingEditManager } from '../PendingEditManager';
 import { positionToOffset } from '../converters';
 import { getOutputChannel } from '../output-channel';
@@ -18,7 +18,7 @@ import type { ExtDocumentState } from '../document-state';
 export function isCriticMarkupSyntax(text: string): boolean {
     return text.includes('{++') || text.includes('{--') || text.includes('{~~') ||
         text.includes('{==') || text.includes('{>>') ||
-        text.includes('[^ct-');
+        text.includes('[^cn-');
 }
 
 // ── Types ──────────────────────────────────────────────────────────────
@@ -125,7 +125,7 @@ export class EditTrackingManager implements vscode.Disposable {
             // allocateScId callback
             () => {
                 const editor = vscode.window.activeTextEditor;
-                if (!editor) { return 'ct-0'; }
+                if (!editor) { return 'cn-0'; }
                 return this.docStateManager.allocateScId(editor.document.uri.toString());
             },
             // onChangeTracked callback — appends footnote definition
@@ -173,7 +173,7 @@ export class EditTrackingManager implements vscode.Disposable {
     /** Set tracking mode AND update the context key in one call. */
     public setTrackingModeWithContextKey(value: boolean): void {
         this._trackingMode = value;
-        setContextKey('changetracks:trackingEnabled', value);
+        setContextKey('changedown:trackingEnabled', value);
         this._onDidChangeTrackingMode.fire(value);
     }
 
@@ -245,14 +245,14 @@ export class EditTrackingManager implements vscode.Disposable {
         const text = editor.document.getText();
         const currentlyTracked = this._trackingMode;
         const newValue = currentlyTracked ? 'untracked' : 'tracked';
-        const header = `<!-- ctrcks.com/v1: ${newValue} -->`;
+        const header = `<!-- changedown.com/v1: ${newValue} -->`;
 
-        const headerRegex = /^<!--\s*ctrcks\.com\/v1:\s*(tracked|untracked)\s*-->/m;
+        const headerRegex = /^<!--\s*changedown\.com\/v1:\s*(tracked|untracked)\s*-->/m;
         const headerMatch = text.match(headerRegex);
 
         // Flip local state immediately for responsiveness
         this._trackingMode = !this._trackingMode;
-        setContextKey('changetracks:trackingEnabled', this._trackingMode);
+        setContextKey('changedown:trackingEnabled', this._trackingMode);
 
         // Record user's explicit choice — trumps LSP documentState and header reads
         const docUri = editor.document.uri.toString();
@@ -268,7 +268,7 @@ export class EditTrackingManager implements vscode.Disposable {
         if (this._trackingMode && editor) {
             const docText = editor.document.getText();
             toggleState.shadow = docText;
-            const maxId = scanMaxCtId(docText);
+            const maxId = scanMaxCnId(docText);
             toggleState.nextScId = maxId + 1;
         }
 
@@ -296,12 +296,12 @@ export class EditTrackingManager implements vscode.Disposable {
             // Rollback all state mutations
             this._trackingMode = currentlyTracked;
             toggleState.userTrackingOverride = undefined;
-            setContextKey('changetracks:trackingEnabled', currentlyTracked);
+            setContextKey('changedown:trackingEnabled', currentlyTracked);
             getOutputChannel()?.appendLine('[tracking] header write failed — rolling back state');
             return;
         }
 
-        vscode.window.showInformationMessage(`ChangeTracks Tracking: ${this._trackingMode ? 'ON' : 'OFF'}`);
+        vscode.window.showInformationMessage(`ChangeDown Tracking: ${this._trackingMode ? 'ON' : 'OFF'}`);
         this.docStateManager.scheduleNotifyChanges();
     }
 
@@ -671,7 +671,7 @@ export class EditTrackingManager implements vscode.Disposable {
         const selectedText = editor.document.getText(editor.selection);
         const docUri = editor.document.uri.toString();
 
-        // Allocate a parent move ID (e.g., ct-17)
+        // Allocate a parent move ID (e.g., cn-17)
         const cutState = this.docStateManager.ensureDocState(docUri, editor.document.version, editor.document.getText());
         const current = cutState.nextScId;
         cutState.nextScId = current + 1;
@@ -683,7 +683,7 @@ export class EditTrackingManager implements vscode.Disposable {
         };
 
         // Set move context on PendingEditManager so the next deletion
-        // wraps with a dotted child ID (e.g., [^ct-17.1])
+        // wraps with a dotted child ID (e.g., [^cn-17.1])
         this.pendingEditManager.setMoveContext({
             parentId: current,
             childSuffix: '.1',
@@ -694,7 +694,7 @@ export class EditTrackingManager implements vscode.Disposable {
      * Prepare paste as move completion.
      * Called before the actual clipboard paste happens.
      * If there's a matching pending cut within 60s, sets up the
-     * insertion to use the dotted child ID ([^ct-N.2]).
+     * insertion to use the dotted child ID ([^cn-N.2]).
      */
     public preparePasteAsMove(): void {
         if (!this.pendingCut) return;
@@ -726,7 +726,7 @@ export class EditTrackingManager implements vscode.Disposable {
 
                 const author = this.callbacks.getAuthor(editor.document.uri);
                 const date = new Date().toISOString().slice(0, 10);
-                const footnote = generateFootnoteDefinition(`ct-${moveId}`, 'move', author, date);
+                const footnote = generateFootnoteDefinition(`cn-${moveId}`, 'move', author, date);
 
                 this._isApplyingTrackedEdit = true;
                 try {

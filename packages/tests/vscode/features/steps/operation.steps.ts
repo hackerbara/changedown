@@ -4,14 +4,14 @@ import {
     CriticMarkupParser, ChangeType,
     computeAccept, computeReject,
     computeFootnoteStatusEdits, computeApprovalLineEdit, computeFootnoteArchiveLineEdit,
-} from '@changetracks/core';
-import type { ChangeNode, TextEdit } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+} from '@changedown/core';
+import type { ChangeNode, TextEdit } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 import { applyEdit, applyEditsReverse } from './test-utils';
 
-// Extend ChangeTracksWorld with operation state for @fast tier accept/reject scenarios
+// Extend ChangeDownWorld with operation state for @fast tier accept/reject scenarios
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         operationText?: string;
         operationChanges?: ChangeNode[];
         cursorOffset?: number;
@@ -34,43 +34,43 @@ function findChangeAtOffset(changes: ChangeNode[], offset: number): ChangeNode |
 
 // ── Given ───────────────────────────────────────────────────────────
 
-Given('a document with text:', function (this: ChangeTracksWorld, docString: string) {
+Given('a document with text:', function (this: ChangeDownWorld, docString: string) {
     this.operationText = docString;
     this.operationChanges = parseDocument(docString);
 });
 
-Given('a document with text {string}', function (this: ChangeTracksWorld, text: string) {
+Given('a document with text {string}', function (this: ChangeDownWorld, text: string) {
     this.operationText = text;
     this.operationChanges = parseDocument(text);
 });
 
-Given('the cursor is at offset {int}', function (this: ChangeTracksWorld, offset: number) {
+Given('the cursor is at offset {int}', function (this: ChangeDownWorld, offset: number) {
     this.cursorOffset = offset;
 });
 
-Given('reviewer identity is {string}', function (this: ChangeTracksWorld, identity: string) {
+Given('reviewer identity is {string}', function (this: ChangeDownWorld, identity: string) {
     this.reviewerIdentity = identity;
 });
 
-Given('author identity is {string}', function (this: ChangeTracksWorld, identity: string) {
+Given('author identity is {string}', function (this: ChangeDownWorld, identity: string) {
     this.authorIdentity = identity;
 });
 
-Given('archive on accept is enabled', function (this: ChangeTracksWorld) {
+Given('archive on accept is enabled', function (this: ChangeDownWorld) {
     this.archiveOnAccept = true;
 });
 
-Given('no reviewer identity is set', function (this: ChangeTracksWorld) {
+Given('no reviewer identity is set', function (this: ChangeDownWorld) {
     this.reviewerIdentity = undefined;
 });
 
-Given('no author identity is set', function (this: ChangeTracksWorld) {
+Given('no author identity is set', function (this: ChangeDownWorld) {
     this.authorIdentity = undefined;
 });
 
 // ── When ────────────────────────────────────────────────────────────
 
-When('I accept the change at the cursor', function (this: ChangeTracksWorld) {
+When('I accept the change at the cursor', function (this: ChangeDownWorld) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
     assert.ok(this.cursorOffset !== undefined, 'Cursor offset not set');
 
@@ -82,7 +82,7 @@ When('I accept the change at the cursor', function (this: ChangeTracksWorld) {
     this.operationChanges = parseDocument(this.operationText);
 });
 
-When('I reject the change at the cursor', function (this: ChangeTracksWorld) {
+When('I reject the change at the cursor', function (this: ChangeDownWorld) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
     assert.ok(this.cursorOffset !== undefined, 'Cursor offset not set');
 
@@ -94,7 +94,7 @@ When('I reject the change at the cursor', function (this: ChangeTracksWorld) {
     this.operationChanges = parseDocument(this.operationText);
 });
 
-When('I try to accept the change at the cursor', function (this: ChangeTracksWorld) {
+When('I try to accept the change at the cursor', function (this: ChangeDownWorld) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
     assert.ok(this.cursorOffset !== undefined, 'Cursor offset not set');
 
@@ -109,7 +109,7 @@ When('I try to accept the change at the cursor', function (this: ChangeTracksWor
     this.operationChanges = parseDocument(this.operationText);
 });
 
-When('I accept all changes in the document', function (this: ChangeTracksWorld) {
+When('I accept all changes in the document', function (this: ChangeDownWorld) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
 
     if (!this.operationChanges || this.operationChanges.length === 0) return;
@@ -119,7 +119,7 @@ When('I accept all changes in the document', function (this: ChangeTracksWorld) 
     this.operationChanges = parseDocument(this.operationText);
 });
 
-When('I reject all changes in the document', function (this: ChangeTracksWorld) {
+When('I reject all changes in the document', function (this: ChangeDownWorld) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
 
     if (!this.operationChanges || this.operationChanges.length === 0) return;
@@ -129,7 +129,7 @@ When('I reject all changes in the document', function (this: ChangeTracksWorld) 
     this.operationChanges = parseDocument(this.operationText);
 });
 
-When('I accept the change at the cursor with footnote update', function (this: ChangeTracksWorld) {
+When('I accept the change at the cursor with footnote update', function (this: ChangeDownWorld) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
     assert.ok(this.cursorOffset !== undefined, 'Cursor offset not set');
 
@@ -141,7 +141,7 @@ When('I accept the change at the cursor with footnote update', function (this: C
 
     allEdits.push(computeAccept(change));
 
-    if (change.id.startsWith('ct-')) {
+    if (change.id.startsWith('cn-')) {
         const statusEdits = computeFootnoteStatusEdits(this.operationText!, [change.id], 'accepted');
         allEdits.push(...statusEdits);
 
@@ -167,7 +167,7 @@ When('I accept the change at the cursor with footnote update', function (this: C
     this.operationChanges = parseDocument(this.operationText);
 });
 
-When('I reject the change at the cursor with footnote update', function (this: ChangeTracksWorld) {
+When('I reject the change at the cursor with footnote update', function (this: ChangeDownWorld) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
     assert.ok(this.cursorOffset !== undefined, 'Cursor offset not set');
 
@@ -178,7 +178,7 @@ When('I reject the change at the cursor with footnote update', function (this: C
 
     allEdits.push(computeReject(change));
 
-    if (change.id.startsWith('ct-')) {
+    if (change.id.startsWith('cn-')) {
         const statusEdits = computeFootnoteStatusEdits(this.operationText!, [change.id], 'rejected');
         allEdits.push(...statusEdits);
 
@@ -195,14 +195,14 @@ When('I reject the change at the cursor with footnote update', function (this: C
     this.operationChanges = parseDocument(this.operationText);
 });
 
-When('I accept all changes with footnote update', function (this: ChangeTracksWorld) {
+When('I accept all changes with footnote update', function (this: ChangeDownWorld) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
 
     if (!this.operationChanges || this.operationChanges.length === 0) return;
 
     const allEdits: TextEdit[] = [];
     const changeIds = this.operationChanges
-        .filter(c => c.id.startsWith('ct-'))
+        .filter(c => c.id.startsWith('cn-'))
         .map(c => c.id);
 
     for (const change of this.operationChanges) {
@@ -228,14 +228,14 @@ When('I accept all changes with footnote update', function (this: ChangeTracksWo
     this.operationChanges = parseDocument(this.operationText);
 });
 
-When('I reject all changes with footnote update', function (this: ChangeTracksWorld) {
+When('I reject all changes with footnote update', function (this: ChangeDownWorld) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
 
     if (!this.operationChanges || this.operationChanges.length === 0) return;
 
     const allEdits: TextEdit[] = [];
     const changeIds = this.operationChanges
-        .filter(c => c.id.startsWith('ct-'))
+        .filter(c => c.id.startsWith('cn-'))
         .map(c => c.id);
 
     for (const change of this.operationChanges) {
@@ -263,91 +263,91 @@ When('I reject all changes with footnote update', function (this: ChangeTracksWo
 
 // ── Then ────────────────────────────────────────────────────────────
 
-Then('the document text is:', function (this: ChangeTracksWorld, expected: string) {
+Then('the document text is:', function (this: ChangeDownWorld, expected: string) {
     assert.strictEqual(this.operationText, expected);
 });
 
-Then('the document text is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the document text is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.strictEqual(this.operationText, expected);
 });
 
-Then('the document text contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the document text contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(
         this.operationText!.includes(expected),
         `Expected document to contain "${expected}" but got:\n${this.operationText}`
     );
 });
 
-Then('the document text does not contain {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the document text does not contain {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(
         !this.operationText!.includes(expected),
         `Expected document to NOT contain "${expected}" but it does:\n${this.operationText}`
     );
 });
 
-Then('the parser finds {int} change(s) remaining', function (this: ChangeTracksWorld, expected: number) {
+Then('the parser finds {int} change(s) remaining', function (this: ChangeDownWorld, expected: number) {
     assert.strictEqual(this.operationChanges!.length, expected);
 });
 
-Then('the document is unchanged', function (this: ChangeTracksWorld) {
+Then('the document is unchanged', function (this: ChangeDownWorld) {
     // operationText should still be its original value — no edits applied
     // This step is only meaningful when used with "no change at cursor" scenarios
     // which are verified via the exact text assertion
 });
 
-Then('the document contains footnote status {string}', function (this: ChangeTracksWorld, status: string) {
+Then('the document contains footnote status {string}', function (this: ChangeDownWorld, status: string) {
     assert.ok(
         this.operationText!.includes(`| ${status}`),
         `Expected footnote status "${status}" in:\n${this.operationText}`
     );
 });
 
-Then('the document contains approval from {string}', function (this: ChangeTracksWorld, author: string) {
+Then('the document contains approval from {string}', function (this: ChangeDownWorld, author: string) {
     assert.ok(
         this.operationText!.includes('approved:') && this.operationText!.includes(author),
         `Expected approval from "${author}" in:\n${this.operationText}`
     );
 });
 
-Then('the document contains rejection from {string}', function (this: ChangeTracksWorld, author: string) {
+Then('the document contains rejection from {string}', function (this: ChangeDownWorld, author: string) {
     assert.ok(
         this.operationText!.includes('rejected:') && this.operationText!.includes(author),
         `Expected rejection from "${author}" in:\n${this.operationText}`
     );
 });
 
-Then('the document text does not contain {string} line', function (this: ChangeTracksWorld, keyword: string) {
+Then('the document text does not contain {string} line', function (this: ChangeDownWorld, keyword: string) {
     assert.ok(
         !this.operationText!.includes(`${keyword}:`),
         `Expected no "${keyword}:" line in:\n${this.operationText}`
     );
 });
 
-Then('the document contains archive line', function (this: ChangeTracksWorld) {
+Then('the document contains archive line', function (this: ChangeDownWorld) {
     assert.ok(
         this.operationText!.includes('archive:'),
         `Expected archive: line in:\n${this.operationText}`
     );
 });
 
-Then('the approval line matches format {string}', function (this: ChangeTracksWorld, pattern: string) {
+Then('the approval line matches format {string}', function (this: ChangeDownWorld, pattern: string) {
     const approvalLine = this.operationText!.split('\n').find(l => l.includes('approved:'));
     assert.ok(approvalLine, 'No approval line found');
     const re = new RegExp(pattern);
     assert.ok(re.test(approvalLine!), `Approval line "${approvalLine}" does not match pattern "${pattern}"`);
 });
 
-Then('{int} approval lines from {string} exist', function (this: ChangeTracksWorld, count: number, author: string) {
+Then('{int} approval lines from {string} exist', function (this: ChangeDownWorld, count: number, author: string) {
     const matches = this.operationText!.match(new RegExp(`approved:\\s*${author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g')) || [];
     assert.strictEqual(matches.length, count, `Expected ${count} approval lines from ${author}, found ${matches.length}`);
 });
 
-Then('{int} rejection lines from {string} exist', function (this: ChangeTracksWorld, count: number, author: string) {
+Then('{int} rejection lines from {string} exist', function (this: ChangeDownWorld, count: number, author: string) {
     const matches = this.operationText!.match(new RegExp(`rejected:\\s*${author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g')) || [];
     assert.strictEqual(matches.length, count, `Expected ${count} rejection lines from ${author}, found ${matches.length}`);
 });
 
-Then('the approval line contains todays UTC date', function (this: ChangeTracksWorld) {
+Then('the approval line contains todays UTC date', function (this: ChangeDownWorld) {
     const expectedDate = new Date().toISOString().slice(0, 10);
     const approvalLine = this.operationText!.split('\n').find(l => l.includes('approved:'));
     assert.ok(approvalLine, 'No approval line found');

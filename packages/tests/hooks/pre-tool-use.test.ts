@@ -2,16 +2,16 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handlePreToolUse } from 'changetracks-hooks/internals';
-import type { HookInput } from 'changetracks-hooks/internals';
+import { handlePreToolUse } from 'changedown-hooks/internals';
+import type { HookInput } from 'changedown-hooks/internals';
 
 describe('PreToolUse handler', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-pre-'));
-    // Create .changetracks dir with config
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-pre-'));
+    // Create .changedown dir with config
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     await fs.writeFile(
       path.join(scDir, 'config.toml'),
@@ -54,7 +54,7 @@ describe('PreToolUse handler', () => {
     expect(result.hookSpecificOutput).toBeDefined();
     expect(result.hookSpecificOutput!.hookEventName).toBe('PreToolUse');
     expect(result.hookSpecificOutput!.permissionDecision).toBe('allow');
-    expect(result.hookSpecificOutput!.additionalContext).toContain('tracked by ChangeTracks');
+    expect(result.hookSpecificOutput!.additionalContext).toContain('tracked by ChangeDown');
   });
 
   it('returns empty object for out-of-scope file (allows — hooks fail-open)', async () => {
@@ -92,7 +92,7 @@ describe('PreToolUse handler', () => {
   });
 
   it('returns empty object for read_tracked_file even with enforcement=block', async () => {
-    const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+    const configPath = path.join(tmpDir, '.changedown', 'config.toml');
     await fs.writeFile(
       configPath,
       `[tracking]\ninclude = ["**/*.md"]\nexclude = ["node_modules/**"]\n\n[hooks]\nenforcement = "block"\n`,
@@ -116,7 +116,7 @@ describe('PreToolUse handler', () => {
 
   describe('hashline tip', () => {
     it('includes hashline tip in warn message when hashline enabled', async () => {
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(
         configPath,
         `[tracking]\ninclude = ["**/*.md"]\nexclude = ["node_modules/**"]\n\n[author]\ndefault = "ai:claude-opus-4.6"\n\n[hashline]\nenabled = true\n`,
@@ -164,7 +164,7 @@ describe('PreToolUse handler', () => {
     });
 
     it('includes hashline tip in block message when hashline enabled', async () => {
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(
         configPath,
         `[tracking]\ninclude = ["**/*.md"]\nexclude = ["node_modules/**"]\n\n[hooks]\nenforcement = "block"\n\n[hashline]\nenabled = true\n`,
@@ -194,7 +194,7 @@ describe('PreToolUse handler', () => {
     });
 
     it('does NOT include hashline tip in block message when hashline disabled', async () => {
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(
         configPath,
         `[tracking]\ninclude = ["**/*.md"]\nexclude = ["node_modules/**"]\n\n[hooks]\nenforcement = "block"\n`,
@@ -226,7 +226,7 @@ describe('PreToolUse handler', () => {
   describe('enforcement mode', () => {
     it('enforcement=block returns permissionDecision=deny with propose_change instructions', async () => {
       // Write config with enforcement=block
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(
         configPath,
         `[tracking]\ninclude = ["**/*.md"]\nexclude = ["node_modules/**"]\n\n[author]\ndefault = "ai:claude-opus-4.6"\n\n[hooks]\nenforcement = "block"\n`,
@@ -276,7 +276,7 @@ describe('PreToolUse handler', () => {
     });
 
     it('enforcement=block + file not in scope returns empty (allows)', async () => {
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(
         configPath,
         `[tracking]\ninclude = ["**/*.md"]\nexclude = ["node_modules/**"]\n\n[hooks]\nenforcement = "block"\n`,
@@ -306,7 +306,7 @@ describe('PreToolUse handler', () => {
 
   describe('policy.mode = permissive', () => {
     it('passes through Edit on tracked files without warning', async () => {
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(configPath, '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "permissive"\n', 'utf-8');
       const mdPath = path.join(tmpDir, 'readme.md');
       await fs.writeFile(mdPath, '# Hello', 'utf-8');
@@ -322,7 +322,7 @@ describe('PreToolUse handler', () => {
 
   describe('policy.mode = strict', () => {
     it('blocks Edit on tracked files with warm redirect', async () => {
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(configPath, '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\n', 'utf-8');
       const mdPath = path.join(tmpDir, 'readme.md');
       await fs.writeFile(mdPath, '# Hello', 'utf-8');
@@ -341,7 +341,7 @@ describe('PreToolUse handler', () => {
 
   describe('policy.mode = safety-net', () => {
     it('allows Edit with advisory on tracked files', async () => {
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(configPath, '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "safety-net"\n', 'utf-8');
       const mdPath = path.join(tmpDir, 'readme.md');
       await fs.writeFile(mdPath, '# Hello', 'utf-8');

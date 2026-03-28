@@ -2,7 +2,7 @@
  * @fast tier step definitions for ENS — ensureL2 promotion.
  *
  * Tests the core ensureL2() function that promotes L0 changes to L2
- * by inserting [^ct-N] refs and appending footnote definitions.
+ * by inserting [^cn-N] refs and appending footnote definitions.
  */
 
 import { Given, When, Then, Before } from '@cucumber/cucumber';
@@ -10,14 +10,14 @@ import { strict as assert } from 'assert';
 import {
     CriticMarkupParser,
     ensureL2,
-} from '@changetracks/core';
-import type { EnsureL2Result } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+} from '@changedown/core';
+import type { EnsureL2Result } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 
 // ── Extend World with ensureL2 state ────────────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         ensureL2DocText?: string;
         ensureL2Result?: EnsureL2Result;
     }
@@ -25,18 +25,18 @@ declare module './world' {
 
 // ── Lifecycle ────────────────────────────────────────────────────────
 
-Before({ tags: '@fast and @ENS' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @ENS' }, function (this: ChangeDownWorld) {
     this.ensureL2DocText = undefined;
     this.ensureL2Result = undefined;
 });
 
 // ── Step definitions ─────────────────────────────────────────────────
 
-Given('an ensureL2 document with text:', function (this: ChangeTracksWorld, docString: string) {
+Given('an ensureL2 document with text:', function (this: ChangeDownWorld, docString: string) {
     this.ensureL2DocText = docString;
 });
 
-When('I call ensureL2 on the change at offset {int}', function (this: ChangeTracksWorld, offset: number) {
+When('I call ensureL2 on the change at offset {int}', function (this: ChangeDownWorld, offset: number) {
     assert.ok(this.ensureL2DocText !== undefined, 'Document text not set');
     this.ensureL2Result = ensureL2(this.ensureL2DocText, offset, {
         author: 'alice',
@@ -44,7 +44,7 @@ When('I call ensureL2 on the change at offset {int}', function (this: ChangeTrac
     });
 });
 
-When('I call ensureL2 on the change containing {string}', function (this: ChangeTracksWorld, searchText: string) {
+When('I call ensureL2 on the change containing {string}', function (this: ChangeDownWorld, searchText: string) {
     assert.ok(this.ensureL2DocText !== undefined, 'Document text not set');
     // Find the offset of the search text within the document
     const offset = this.ensureL2DocText.indexOf(searchText);
@@ -56,7 +56,7 @@ When('I call ensureL2 on the change containing {string}', function (this: Change
 });
 
 When('I call ensureL2 on the change at offset {int} with author {string} and date {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     offset: number,
     author: string,
     _date: string,
@@ -68,16 +68,16 @@ When('I call ensureL2 on the change at offset {int} with author {string} and dat
     });
 });
 
-Then('the ensureL2 result text contains a footnote reference', function (this: ChangeTracksWorld) {
+Then('the ensureL2 result text contains a footnote reference', function (this: ChangeDownWorld) {
     assert.ok(this.ensureL2Result, 'No ensureL2 result');
     assert.ok(
-        /\[\^ct-\d+\][^:]/.test(this.ensureL2Result.text) || /\[\^ct-\d+\]$/.test(this.ensureL2Result.text),
+        /\[\^cn-\d+\][^:]/.test(this.ensureL2Result.text) || /\[\^cn-\d+\]$/.test(this.ensureL2Result.text),
         `Result text does not contain a footnote reference.\nText:\n${this.ensureL2Result.text}`
     );
 });
 
 Then('the ensureL2 result text contains a footnote block starting with {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     expected: string,
 ) {
     assert.ok(this.ensureL2Result, 'No ensureL2 result');
@@ -87,28 +87,28 @@ Then('the ensureL2 result text contains a footnote block starting with {string}'
     );
 });
 
-Then('the ensureL2 result changeId is {string}', function (this: ChangeTracksWorld, expectedId: string) {
+Then('the ensureL2 result changeId is {string}', function (this: ChangeDownWorld, expectedId: string) {
     assert.ok(this.ensureL2Result, 'No ensureL2 result');
     assert.equal(this.ensureL2Result.changeId, expectedId);
 });
 
-Then('the ensureL2 result promoted is true', function (this: ChangeTracksWorld) {
+Then('the ensureL2 result promoted is true', function (this: ChangeDownWorld) {
     assert.ok(this.ensureL2Result, 'No ensureL2 result');
     assert.strictEqual(this.ensureL2Result.promoted, true);
 });
 
-Then('the ensureL2 result promoted is false', function (this: ChangeTracksWorld) {
+Then('the ensureL2 result promoted is false', function (this: ChangeDownWorld) {
     assert.ok(this.ensureL2Result, 'No ensureL2 result');
     assert.strictEqual(this.ensureL2Result.promoted, false);
 });
 
-Then('the ensureL2 result text is unchanged', function (this: ChangeTracksWorld) {
+Then('the ensureL2 result text is unchanged', function (this: ChangeDownWorld) {
     assert.ok(this.ensureL2Result, 'No ensureL2 result');
     assert.ok(this.ensureL2DocText !== undefined, 'Original doc text not set');
     assert.equal(this.ensureL2Result.text, this.ensureL2DocText);
 });
 
-Then('the ensureL2 result text contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the ensureL2 result text contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.ensureL2Result, 'No ensureL2 result');
     assert.ok(
         this.ensureL2Result.text.includes(expected),
@@ -116,7 +116,7 @@ Then('the ensureL2 result text contains {string}', function (this: ChangeTracksW
     );
 });
 
-Then('the ensureL2 result text matches {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the ensureL2 result text matches {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.ensureL2Result, 'No ensureL2 result');
     assert.ok(
         this.ensureL2Result.text.includes(expected),
@@ -125,7 +125,7 @@ Then('the ensureL2 result text matches {string}', function (this: ChangeTracksWo
 });
 
 Then('the ensureL2 footnote block for {word} contains today\'s date', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
 ) {
     assert.ok(this.ensureL2Result, 'No ensureL2 result');
@@ -151,7 +151,7 @@ Then('the ensureL2 footnote block for {word} contains today\'s date', function (
 });
 
 Then('the ensureL2 footnote block for {word} contains {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     expected: string,
 ) {
@@ -177,12 +177,12 @@ Then('the ensureL2 footnote block for {word} contains {string}', function (
 });
 
 Then('only the {string} change has a footnote reference in the ensureL2 result', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     expectedChange: string,
 ) {
     assert.ok(this.ensureL2Result, 'No ensureL2 result');
     const text = this.ensureL2Result.text;
-    // The promoted change should have [^ct-N] after its closing delimiter
+    // The promoted change should have [^cn-N] after its closing delimiter
     // Parse to verify
     const parser = new CriticMarkupParser();
     const doc = parser.parse(text);
@@ -199,7 +199,7 @@ Then('only the {string} change has a footnote reference in the ensureL2 result',
 });
 
 Then('the {string} and {string} changes remain L0 in the ensureL2 result', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     change1: string,
     change2: string,
 ) {

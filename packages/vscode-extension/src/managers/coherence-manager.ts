@@ -28,12 +28,12 @@ export class CoherenceManager implements vscode.Disposable {
         if (cs.rate < cs.threshold && this.lastNotifiedUri !== uri) {
             this.lastNotifiedUri = uri;
             vscode.window.showInformationMessage(
-                `ChangeTracks: ${cs.unresolvedCount} anchor${cs.unresolvedCount === 1 ? '' : 's'} could not be resolved. External or manual edits are the most common cause.`,
+                `ChangeDown: ${cs.unresolvedCount} anchor${cs.unresolvedCount === 1 ? '' : 's'} could not be resolved. External or manual edits are the most common cause.`,
                 'Inspect',
                 'Dismiss'
             ).then(choice => {
                 if (choice === 'Inspect') {
-                    vscode.commands.executeCommand('changetracks.inspectUnresolved');
+                    vscode.commands.executeCommand('changedown.inspectUnresolved');
                 }
             });
         }

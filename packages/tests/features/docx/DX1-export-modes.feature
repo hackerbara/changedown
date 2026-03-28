@@ -10,9 +10,9 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Tracked mode - insertion becomes w:ins
     Given CriticMarkup markdown:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -23,9 +23,9 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Tracked mode - deletion becomes w:del
     Given CriticMarkup markdown:
       """
-      Hello {--world--}[^ct-1].
+      Hello {--world--}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -36,9 +36,9 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Tracked mode - substitution becomes w:del plus w:ins
     Given CriticMarkup markdown:
       """
-      Hello {~~world~>earth~~}[^ct-1].
+      Hello {~~world~>earth~~}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | sub | proposed
+      [^cn-1]: @alice | 2026-01-15 | sub | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -49,10 +49,10 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Tracked mode - multiple changes on one line
     Given CriticMarkup markdown:
       """
-      The {++quick++}[^ct-1] brown {--slow--}[^ct-2] fox.
+      The {++quick++}[^cn-1] brown {--slow--}[^cn-2] fox.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-15 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-15 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -64,9 +64,9 @@ Feature: DX1 - Export Mode Matrix
       """
       First paragraph {++with insertion
 
-      spanning two paragraphs++}[^ct-1] end.
+      spanning two paragraphs++}[^cn-1] end.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -76,12 +76,12 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Tracked mode - export stats accuracy
     Given CriticMarkup markdown:
       """
-      {++ins1++}[^ct-1] {++ins2++}[^ct-2] {--del1--}[^ct-3] {~~old~>new~~}[^ct-4]
+      {++ins1++}[^cn-1] {++ins2++}[^cn-2] {--del1--}[^cn-3] {~~old~>new~~}[^cn-4]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @alice | 2026-01-15 | ins | proposed
-      [^ct-3]: @bob | 2026-01-15 | del | proposed
-      [^ct-4]: @carol | 2026-01-15 | sub | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @alice | 2026-01-15 | ins | proposed
+      [^cn-3]: @bob | 2026-01-15 | del | proposed
+      [^cn-4]: @carol | 2026-01-15 | sub | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -92,9 +92,9 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Tracked mode - custom title in export
     Given CriticMarkup markdown:
       """
-      {++hello++}[^ct-1]
+      {++hello++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and title "My Custom Title"
     Then the export succeeds
@@ -106,9 +106,9 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Settled mode - accepted insertion settles to plain text
     Given CriticMarkup markdown:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | accepted
+      [^cn-1]: @alice | 2026-01-15 | ins | accepted
       """
     When I export to DOCX with mode "settled"
     Then the export succeeds
@@ -119,9 +119,9 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Settled mode - rejected insertion is removed entirely
     Given CriticMarkup markdown:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | rejected
+      [^cn-1]: @alice | 2026-01-15 | ins | rejected
       """
     When I export to DOCX with mode "settled"
     Then the export succeeds
@@ -133,9 +133,9 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Settled mode - proposed insertion stays as tracked change
     Given CriticMarkup markdown:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "settled"
     Then the export succeeds
@@ -146,9 +146,9 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Settled mode - accepted deletion settles (text removed)
     Given CriticMarkup markdown:
       """
-      Hello {--world--}[^ct-1] end.
+      Hello {--world--}[^cn-1] end.
 
-      [^ct-1]: @alice | 2026-01-15 | del | accepted
+      [^cn-1]: @alice | 2026-01-15 | del | accepted
       """
     When I export to DOCX with mode "settled"
     Then the export succeeds
@@ -159,9 +159,9 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Settled mode - rejected deletion is restored
     Given CriticMarkup markdown:
       """
-      Hello {--world--}[^ct-1] end.
+      Hello {--world--}[^cn-1] end.
 
-      [^ct-1]: @alice | 2026-01-15 | del | rejected
+      [^cn-1]: @alice | 2026-01-15 | del | rejected
       """
     When I export to DOCX with mode "settled"
     Then the export succeeds
@@ -172,9 +172,9 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Settled mode - substitution with accepted status
     Given CriticMarkup markdown:
       """
-      Hello {~~world~>earth~~}[^ct-1].
+      Hello {~~world~>earth~~}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | sub | accepted
+      [^cn-1]: @alice | 2026-01-15 | sub | accepted
       """
     When I export to DOCX with mode "settled"
     Then the export succeeds
@@ -187,10 +187,10 @@ Feature: DX1 - Export Mode Matrix
   Scenario: Clean mode - strips all markup entirely
     Given CriticMarkup markdown:
       """
-      Hello {++world++}[^ct-1] and {--removed--}[^ct-2].
+      Hello {++world++}[^cn-1] and {--removed--}[^cn-2].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-15 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-15 | del | proposed
       """
     When I export to DOCX with mode "clean"
     Then the export succeeds
@@ -203,13 +203,13 @@ Feature: DX1 - Export Mode Matrix
       """
       # Main Title
 
-      First paragraph with {++added++}[^ct-1] text.
+      First paragraph with {++added++}[^cn-1] text.
 
       ## Subtitle
 
       Second paragraph.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "clean"
     Then the export succeeds

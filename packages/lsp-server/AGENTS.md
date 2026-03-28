@@ -1,15 +1,15 @@
-# LSP Server — @changetracks/lsp-server
+# LSP Server — @changedown/lsp-server
 
 Language Server Protocol server. Wraps core parser and operations into
 LSP capabilities. The extension communicates with core through this server.
 
 ## Build & Test
 
-    npm run build -w @changetracks/lsp-server   # Build
+    npm run build -w @changedown/lsp-server   # Build
     npm run test:lsp                             # Vitest (from root)
     cd packages/tests && npx vitest run lsp/     # Direct vitest
 
-Standalone binary: `dist/bin/server.js` → `changetracks-lsp`
+Standalone binary: `dist/bin/server.js` → `changedown-lsp`
 
 ## Source Layout
 
@@ -23,7 +23,7 @@ Standalone binary: `dist/bin/server.js` → `changetracks-lsp`
 
 ## Server State
 
-The `ChangetracksServer` class maintains per-document state in Maps:
+The `ChangedownServer` class maintains per-document state in Maps:
 
 | Field | Type | Purpose |
 |-------|------|---------|
@@ -85,7 +85,7 @@ Cursor-gated by default (`codeLensMode: 'cursor'`).
 ## Pending Edit Manager
 
 Server-side `PendingEditManager` handles edit crystallization when tracking events
-arrive via `changetracks/trackingEvent` notification. Uses core `processEvent()`
+arrive via `changedown/trackingEvent` notification. Uses core `processEvent()`
 state machine. Effects: crystallize (wrap in CriticMarkup, emit `pendingEditFlushed`),
 mergeAdjacent, updatePendingOverlay. Safety-net timer auto-flushes at configurable threshold.
 
@@ -108,5 +108,5 @@ request/notification tables. Key handlers:
 
 ## Dependencies
 
-Imports `@changetracks/core` directly. Uses `vscode-languageserver` (^9.0.1).
-Narrow import from CLI: only `parseConfigToml` and `DEFAULT_CONFIG` from `changetracks/config`.
+Imports `@changedown/core` directly. Uses `vscode-languageserver` (^9.0.1).
+Narrow import from CLI: only `parseConfigToml` and `DEFAULT_CONFIG` from `changedown/config`.

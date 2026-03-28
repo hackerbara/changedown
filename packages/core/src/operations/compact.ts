@@ -15,7 +15,7 @@
  */
 
 import { splitBodyAndFootnotes, FOOTNOTE_ID_PATTERN } from '../footnote-patterns.js';
-import { scanMaxCtId } from './footnote-generator.js';
+import { scanMaxCnId } from './footnote-generator.js';
 import { FootnoteNativeParser } from '../parser/footnote-native-parser.js';
 import { initHashline } from '../hashline.js';
 import { computeReject } from './accept-reject.js';
@@ -70,7 +70,7 @@ export interface CompactionSurface {
 /** Module-level singleton — avoids per-call parser allocation. */
 const l3Parser = new FootnoteNativeParser();
 
-/** Matches `supersedes: ct-N` inside a footnote body. Captures the ID in group 1. */
+/** Matches `supersedes: cn-N` inside a footnote body. Captures the ID in group 1. */
 const RE_SUPERSEDES = new RegExp(`^\\s+supersedes:\\s+(${FOOTNOTE_ID_PATTERN})\\s*$`);
 
 /**
@@ -157,7 +157,7 @@ export async function analyzeCompactionCandidates(l3Text: string): Promise<Compa
  */
 export interface CompactionRequest {
   /**
-   * Footnote IDs to compact (e.g. `['ct-1', 'ct-3']`), or `'all-decided'`
+   * Footnote IDs to compact (e.g. `['cn-1', 'cn-3']`), or `'all-decided'`
    * to compact all accepted/rejected footnotes.
    */
   targets: string[] | 'all-decided';
@@ -178,14 +178,14 @@ export interface CompactionRequest {
  * Result of self-sufficiency verification after compaction.
  *
  * Three complementary checks:
- * - Dangling body refs: body [^ct-N] references pointing to removed footnotes
+ * - Dangling body refs: body [^cn-N] references pointing to removed footnotes
  * - Anchor resolution: surviving footnotes' LINE:HASH anchors resolving against the body
  * - Supersedes integrity: surviving footnotes' supersedes: refs pointing to footnotes missing from both surviving and removed
  */
 export interface VerificationResult {
   /** True if all three checks pass. */
   valid: boolean;
-  /** Body [^ct-N] refs pointing to footnotes removed during compaction. */
+  /** Body [^cn-N] refs pointing to footnotes removed during compaction. */
   danglingRefs: string[];
   /** Percentage of surviving footnotes whose anchors resolved (0..100 integer). */
   anchorCoherence: number;
@@ -223,8 +223,8 @@ export interface CompactedDocument {
  *    targeted, include consumed predecessors)
  * 3. Apply body mutations for targeted proposed changes being rejected
  * 4. Remove targeted footnote blocks from the footnote section
- * 5. Insert a compaction-boundary footnote with the next available ct-ID
- * 6. Reassemble and verify (check for dangling [^ct-N] refs)
+ * 5. Insert a compaction-boundary footnote with the next available cn-ID
+ * 6. Reassemble and verify (check for dangling [^cn-N] refs)
  *
  * @param l3Text - Full text of an L3 document.
  * @param request - Compaction request specifying targets and policies.
@@ -330,9 +330,9 @@ export async function compact(l3Text: string, request: CompactionRequest): Promi
   }
 
   // ── Step 5: Insert compaction-boundary footnote ──────────────────────────
-  // Scan the ORIGINAL text for max ct-ID to ensure boundary gets a fresh ID.
-  const maxId = scanMaxCtId(l3Text);
-  const boundaryId = `ct-${maxId + 1}`;
+  // Scan the ORIGINAL text for max cn-ID to ensure boundary gets a fresh ID.
+  const maxId = scanMaxCnId(l3Text);
+  const boundaryId = `cn-${maxId + 1}`;
 
   const boundaryLines: string[] = [`[^${boundaryId}]: compaction-boundary`];
   if (request.boundaryMeta) {
@@ -412,7 +412,7 @@ export async function compactL2(
 }
 
 /**
- * Check for dangling [^ct-N] refs in the body pointing to removed footnotes.
+ * Check for dangling [^cn-N] refs in the body pointing to removed footnotes.
  * Internal helper — returns only the dangling ref portion of verification.
  */
 function verifyCompaction(resultText: string, removedIds: string[]): { danglingRefs: string[] } {
@@ -437,8 +437,8 @@ function verifyCompaction(resultText: string, removedIds: string[]): { danglingR
 /**
  * Check for dangling `supersedes:` references in surviving footnotes.
  *
- * A supersedes: ct-X reference is dangling if ct-X is absent from BOTH
- * the surviving footnotes AND the removedIds. This means ct-X should
+ * A supersedes: cn-X reference is dangling if cn-X is absent from BOTH
+ * the surviving footnotes AND the removedIds. This means cn-X should
  * exist in the slice but doesn't — document corruption or compaction bug.
  *
  * References to removed footnotes (in removedIds) are cross-boundary

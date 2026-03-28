@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ChangeNode, ChangeStatus } from '@changetracks/core';
+import { ChangeNode, ChangeStatus } from '@changedown/core';
 import type { ExtensionController } from './controller';
 import { coreRangeToVscode, positionToOffset } from './converters';
 import { typeLabel, typeLabelCapitalized } from './visual-semantics';
@@ -8,7 +8,7 @@ const REFRESH_THREADS_DEBOUNCE_MS = 100;
 
 /**
  * Maps footnoted ChangeNodes to VS Code CommentThreads. Provides:
- * - Diamond gutter icons for changes with [^ct-N] footnotes
+ * - Diamond gutter icons for changes with [^cn-N] footnotes
  * - "+" hover icon on Level 0 changes (via CommentingRangeProvider)
  * - Threaded discussions with author attribution
  * - Accept/Reject action buttons on threads
@@ -25,8 +25,8 @@ export class ChangeComments implements vscode.Disposable {
     private getViewMode?: () => string | undefined
   ) {
     this.commentController = vscode.comments.createCommentController(
-      'changetracks',
-      'ChangeTracks Changes'
+      'changedown',
+      'ChangeDown Changes'
     );
 
     // "+" icon: on every line in markdown (native add-comment); on Level 0 change lines only for other docs
@@ -65,7 +65,7 @@ export class ChangeComments implements vscode.Disposable {
   }
 
   /**
-   * If the cursor is inside a footnoted change (ct-*), expand its comment thread so the peek opens.
+   * If the cursor is inside a footnoted change (cn-*), expand its comment thread so the peek opens.
    */
   private expandThreadForChangeAtCursor(): void {
     const doc = this.getDocument();
@@ -152,7 +152,7 @@ export class ChangeComments implements vscode.Disposable {
   }
 
   private getClickToShowComments(): boolean {
-    return vscode.workspace.getConfiguration('changetracks').get<boolean>('clickToShowComments', true);
+    return vscode.workspace.getConfiguration('changedown').get<boolean>('clickToShowComments', true);
   }
 
   private scheduleRefreshThreads(): void {
@@ -178,7 +178,7 @@ export class ChangeComments implements vscode.Disposable {
   }
 
   /**
-   * Returns ranges of Level 0 changes (CriticMarkup without [^ct-N] footnote).
+   * Returns ranges of Level 0 changes (CriticMarkup without [^cn-N] footnote).
    * Used for non-markdown (e.g. sidecar) where we only allow commenting on existing changes.
    */
   private getLevel0Ranges(document: vscode.TextDocument): vscode.Range[] {
@@ -286,7 +286,7 @@ export class ChangeComments implements vscode.Disposable {
         // Create new thread
         const newComments = this.buildComments(change);
         const thread = this.commentController.createCommentThread(doc.uri, range, newComments);
-        thread.contextValue = 'changetracksThread';
+        thread.contextValue = 'changedownThread';
         const author = change.metadata?.author ?? change.inlineMetadata?.author ?? 'unknown';
         thread.label = `${typeLabelCapitalized(change.type)} by ${author}`;
         thread.canReply = true;

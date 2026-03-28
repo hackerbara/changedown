@@ -4,7 +4,7 @@ import { optionalStrArg, strArg } from '../args.js';
 import { resolveAuthor } from '../author.js';
 import { isFileInScope } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
-import { computeSupersedeResult, countFootnoteHeadersWithStatus } from '@changetracks/core';
+import { computeSupersedeResult, countFootnoteHeadersWithStatus } from '@changedown/core';
 import { toRelativePath } from '../path-utils.js';
 import { SessionState } from '../state.js';
 import { rerecordState } from '../state-utils.js';
@@ -12,13 +12,13 @@ import { settleRejectedChanges } from './settle.js';
 /**
  * Tool definition for the supersede_change MCP tool.
  * Atomically rejects an old change and proposes a replacement,
- * linking them via `supersedes: ct-N` in the new footnote.
+ * linking them via `supersedes: cn-N` in the new footnote.
  */
 export const supersedeChangeTool = {
   name: 'supersede_change',
   description:
     'Atomically reject an existing proposed change and propose a replacement. ' +
-    'The old change is rejected and the new change\'s footnote includes a `supersedes: ct-N` link. ' +
+    'The old change is rejected and the new change\'s footnote includes a `supersedes: cn-N` link. ' +
     'Use this instead of separate reject + propose calls when replacing a change with a better version.',
   inputSchema: {
     type: 'object' as const,
@@ -29,7 +29,7 @@ export const supersedeChangeTool = {
       },
       change_id: {
         type: 'string',
-        description: 'The change ID to supersede (e.g., \'ct-1\'). Must be in proposed status.',
+        description: 'The change ID to supersede (e.g., \'cn-1\'). Must be in proposed status.',
       },
       old_text: {
         type: 'string',
@@ -73,7 +73,7 @@ export interface SupersedeChangeResult {
  * 2. Rejects the old change (updates footnote status)
  * 3. Settles (compacts) the rejected markup if auto_on_reject is enabled
  * 4. Proposes the new replacement change
- * 5. Adds `supersedes: ct-N` to the new change's footnote
+ * 5. Adds `supersedes: cn-N` to the new change's footnote
  */
 export async function handleSupersedeChange(
   args: Record<string, unknown>,
@@ -106,7 +106,7 @@ export async function handleSupersedeChange(
     if (!isFileInScope(filePath, config, projectDir)) {
       return errorResult(
         `File is not in scope for tracking: "${filePath}". ` +
-          'Check .changetracks/config.toml include/exclude patterns.'
+          'Check .changedown/config.toml include/exclude patterns.'
       );
     }
 
@@ -156,7 +156,7 @@ export async function handleSupersedeChange(
 
     // 8. Build response
     const relativePath = toRelativePath(projectDir, filePath);
-    const footnoteCount = (fileContent.match(/^\[\^ct-\d+(?:\.\d+)?\]:/gm) || []).length;
+    const footnoteCount = (fileContent.match(/^\[\^cn-\d+(?:\.\d+)?\]:/gm) || []).length;
     const proposedCount = countFootnoteHeadersWithStatus(fileContent, 'proposed');
     const acceptedCount = countFootnoteHeadersWithStatus(fileContent, 'accepted');
     const rejectedCount = countFootnoteHeadersWithStatus(fileContent, 'rejected');

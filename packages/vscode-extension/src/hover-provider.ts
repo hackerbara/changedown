@@ -1,11 +1,11 @@
 /**
- * Hover provider for ChangeTracks changes.
+ * Hover provider for ChangeDown changes.
  * Shows comment/reason tooltip when hovering over any change that has metadata.comment.
  * This guarantees hover works regardless of decoration or LSP hover behavior.
  */
 
 import * as vscode from 'vscode';
-import { ChangeNode, ChangeType } from '@changetracks/core';
+import { ChangeNode, ChangeType } from '@changedown/core';
 import { positionToOffset } from './converters';
 import type { ExtensionController } from './controller';
 

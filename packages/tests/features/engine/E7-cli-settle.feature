@@ -9,9 +9,9 @@ Feature: E7 - CLI Settle
   Scenario: Settles an accepted insertion — removes markup, keeps text
     Given content for settlement:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-02-01 | ins | accepted
+      [^cn-1]: @alice | 2026-02-01 | ins | accepted
           reason: added greeting
       """
     When I compute settlement
@@ -25,9 +25,9 @@ Feature: E7 - CLI Settle
   Scenario: Settles an accepted deletion — removes markup and deleted text
     Given content for settlement:
       """
-      Hello {--world--}[^ct-1] there.
+      Hello {--world--}[^cn-1] there.
 
-      [^ct-1]: @alice | 2026-02-01 | del | accepted
+      [^cn-1]: @alice | 2026-02-01 | del | accepted
           reason: removed word
       """
     When I compute settlement
@@ -42,9 +42,9 @@ Feature: E7 - CLI Settle
   Scenario: Settles a rejected insertion — removes markup and inserted text
     Given content for settlement:
       """
-      Hello {++world++}[^ct-1] there.
+      Hello {++world++}[^cn-1] there.
 
-      [^ct-1]: @alice | 2026-02-01 | ins | rejected
+      [^cn-1]: @alice | 2026-02-01 | ins | rejected
           reason: not needed
       """
     When I compute settlement
@@ -56,9 +56,9 @@ Feature: E7 - CLI Settle
   Scenario: Settles a rejected deletion — removes markup, restores deleted text
     Given content for settlement:
       """
-      Hello {--world--}[^ct-1] there.
+      Hello {--world--}[^cn-1] there.
 
-      [^ct-1]: @alice | 2026-02-01 | del | rejected
+      [^cn-1]: @alice | 2026-02-01 | del | rejected
           reason: keep it
       """
     When I compute settlement
@@ -93,11 +93,11 @@ Feature: E7 - CLI Settle
   Scenario: Settles only accepted and rejected, leaves proposed
     Given content for settlement:
       """
-      {++added++}[^ct-1] and {--removed--}[^ct-2] and {++pending++}.
+      {++added++}[^cn-1] and {--removed--}[^cn-2] and {++pending++}.
 
-      [^ct-1]: @alice | 2026-02-01 | ins | accepted
+      [^cn-1]: @alice | 2026-02-01 | ins | accepted
           reason: keep
-      [^ct-2]: @bob | 2026-02-01 | del | rejected
+      [^cn-2]: @bob | 2026-02-01 | del | rejected
           reason: restore
       """
     When I compute settlement
@@ -111,9 +111,9 @@ Feature: E7 - CLI Settle
   Scenario: Running settlement twice produces the same content
     Given content for settlement:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-02-01 | ins | accepted
+      [^cn-1]: @alice | 2026-02-01 | ins | accepted
           reason: added greeting
       """
     When I compute settlement
@@ -125,9 +125,9 @@ Feature: E7 - CLI Settle
   Scenario: Dry-run reports count without modifying content
     Given content for settlement:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-02-01 | ins | accepted
+      [^cn-1]: @alice | 2026-02-01 | ins | accepted
           reason: added greeting
       """
     When I compute settlement as dry-run

@@ -1,6 +1,6 @@
 export type PolicyMode = 'strict' | 'safety-net' | 'permissive';
 export type CreationTracking = 'none' | 'footnote' | 'inline';
-export interface ChangeTracksConfig {
+export interface ChangeDownConfig {
     tracking: {
         include: string[];
         exclude: string[];
@@ -49,5 +49,5 @@ export interface ChangeTracksConfig {
         compact_threshold: number;
     };
 }
-export declare const DEFAULT_CONFIG: ChangeTracksConfig;
+export declare const DEFAULT_CONFIG: ChangeDownConfig;
 export { loadConfig, parseConfigToml, findConfigFile, resolveProjectDir, resolveProtocolMode, isFileInScope, derivePolicyMode, asStringArray, } from './loader.js';

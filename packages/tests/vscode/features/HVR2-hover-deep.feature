@@ -6,7 +6,7 @@ Feature: HVR2 — Hover provider deep coverage
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   # ── Per-type metadata ────────────────────────────────────────
@@ -44,14 +44,14 @@ Feature: HVR2 — Hover provider deep coverage
 
   Scenario: HVR2-07 Hover on multi-line insertion shows metadata
     When I position the cursor at line 7 column 10
-    Then hovering shows text containing "ct-"
+    Then hovering shows text containing "cn-"
 
   # ── Untracked file ───────────────────────────────────────────
 
   @fixture(no-header)
   Scenario: HVR2-08 Hover on untracked file shows no metadata
     Given I open "no-header.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     When I position the cursor at line 1 column 5
     Then hovering shows text containing "Add Comment"
     # On untracked files, only the discovery hint appears — no change metadata

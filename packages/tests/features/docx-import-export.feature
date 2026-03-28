@@ -42,7 +42,7 @@ Feature: DOCX Import and Export
   Scenario: Import produces footnote annotations
     Given a DOCX fixture "word-online-minimal-test.docx"
     When I import the DOCX file
-    Then the markdown contains footnote definitions matching "[^ct-"
+    Then the markdown contains footnote definitions matching "[^cn-"
     And each tracked change has a corresponding footnote
 
   # --- Export scenarios ---
@@ -53,10 +53,10 @@ Feature: DOCX Import and Export
       """
       # Test Document
 
-      This has {++an insertion++}[^ct-1] and {--a deletion--}[^ct-2].
+      This has {++an insertion++}[^cn-1] and {--a deletion--}[^cn-2].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-16 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-16 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -69,9 +69,9 @@ Feature: DOCX Import and Export
   Scenario: Export in clean mode produces no tracked changes
     Given CriticMarkup markdown:
       """
-      Text with {++added++}[^ct-1] words.
+      Text with {++added++}[^cn-1] words.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "clean"
     Then the export succeeds
@@ -82,10 +82,10 @@ Feature: DOCX Import and Export
   Scenario: Export in settled mode applies accepted changes
     Given CriticMarkup markdown:
       """
-      Before {++accepted text++}[^ct-1] middle {++proposed text++}[^ct-2] after.
+      Before {++accepted text++}[^cn-1] middle {++proposed text++}[^cn-2] after.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | accepted
-      [^ct-2]: @bob | 2026-01-16 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | accepted
+      [^cn-2]: @bob | 2026-01-16 | ins | proposed
       """
     When I export to DOCX with mode "settled"
     Then the export succeeds
@@ -96,9 +96,9 @@ Feature: DOCX Import and Export
   Scenario: Export includes Word Online compatibility patches
     Given CriticMarkup markdown:
       """
-      {++hello++}[^ct-1]
+      {++hello++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with Word Online compatibility
     Then the DOCX document.xml contains "w14:paraId"
@@ -119,10 +119,10 @@ Feature: DOCX Import and Export
       """
       # Round Trip
 
-      This has {++an insertion++}[^ct-1] and {--a deletion--}[^ct-2].
+      This has {++an insertion++}[^cn-1] and {--a deletion--}[^cn-2].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-16 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-16 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -157,9 +157,9 @@ Feature: DOCX Import and Export
   Scenario: Export handles unicode content
     Given CriticMarkup markdown:
       """
-      {++Zürich Straße++}[^ct-1]
+      {++Zürich Straße++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -169,9 +169,9 @@ Feature: DOCX Import and Export
   Scenario: Author names round-trip correctly
     Given CriticMarkup markdown:
       """
-      {++text++}[^ct-1]
+      {++text++}[^cn-1]
 
-      [^ct-1]: @alice-chen | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice-chen | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export stats list author "Alice Chen"

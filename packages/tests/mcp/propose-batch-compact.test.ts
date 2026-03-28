@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeBatch } from '@changetracks/mcp/internals';
-import { computeLineHash } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeBatch } from '@changedown/mcp/internals';
+import { computeLineHash } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -21,7 +21,7 @@ describe('propose_batch compact mode', () => {
   let state: SessionState;
   let resolver: ConfigResolver;
 
-  const compactConfig: ChangeTracksConfig = {
+  const compactConfig: ChangeDownConfig = {
     tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
     author: { default: 'ai:test-agent', enforcement: 'optional' },
     hooks: { enforcement: 'warn', exclude: [] },
@@ -41,7 +41,7 @@ describe('propose_batch compact mode', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-batch-compact-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-batch-compact-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -100,7 +100,7 @@ describe('propose_batch compact mode', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.group_id).toMatch(/^ct-\d+$/);
+    expect(data.group_id).toMatch(/^cn-\d+$/);
     expect(data.applied).toHaveLength(2);
   });
 
@@ -201,7 +201,7 @@ describe('propose_batch compact mode', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data.applied).toHaveLength(2);
-    expect(data.group_id).toMatch(/^ct-\d+$/);
+    expect(data.group_id).toMatch(/^cn-\d+$/);
 
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('{~~one~>ONE~~}');
@@ -211,7 +211,7 @@ describe('propose_batch compact mode', () => {
   });
 
   it('rejects compact ops when protocol mode is classic', async () => {
-    const classicConfig: ChangeTracksConfig = {
+    const classicConfig: ChangeDownConfig = {
       ...compactConfig,
       protocol: { ...compactConfig.protocol, mode: 'classic' as const },
     };
@@ -446,15 +446,15 @@ describe('propose_batch compact mode', () => {
   // Regression: exact scenario from user research — compact batch with at/op
   // fails when auto_header inserts a tracking header that shifts line numbers.
 
-  it('handles document with [^ct- patterns inside code fences', async () => {
-    // Regression test: bodyLineCount must not falsely detect [^ct- patterns
+  it('handles document with [^cn- patterns inside code fences', async () => {
+    // Regression test: bodyLineCount must not falsely detect [^cn- patterns
     // inside code fences as the footnote block start. If it does,
     // cumulativeDelta is wrong and later ops target the wrong lines.
     const content = [
       '# Design Doc',
       '',
       '```markdown',
-      '[^ct-5]: @alice | 2026-03-14 | ins | proposed',
+      '[^cn-5]: @alice | 2026-03-14 | ins | proposed',
       '    image-dimensions: 2.5in x 1.8in',
       '```',
       '',
@@ -529,7 +529,7 @@ describe('propose_batch compact mode', () => {
     expect(data.applied).toHaveLength(2);
 
     const written = await fs.readFile(filePath, 'utf-8');
-    expect(written).toContain('<!-- ctrcks.com/v1: tracked -->');
+    expect(written).toContain('<!-- changedown.com/v1: tracked -->');
     expect(written).toContain('{++New section after blank line++}');
     expect(written).toContain('{~~one~>1~~}');
   });

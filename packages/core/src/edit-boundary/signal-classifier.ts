@@ -22,6 +22,17 @@ export function classifySignal(event: EditEvent, state: EditBoundaryState): Sign
     return 'hard-break';
   }
 
+  // 1b. Cursor move: flush if cursor left the pending buffer's active range
+  if (event.type === 'cursorMove') {
+    const buf = pending;
+    if (!buf) return 'ignore';
+    // Pure deletion buffers exempt — user is likely pressing Backspace repeatedly
+    if (buf.currentText.length === 0 && buf.originalText.length > 0) return 'ignore';
+    const outside = event.offset < buf.anchorOffset ||
+                    event.offset > buf.anchorOffset + buf.currentText.length;
+    return outside ? 'hard-break' : 'ignore';
+  }
+
   // 2. During IME composition, ignore regular edits
   if (isComposing) {
     return 'ignore';

@@ -4,7 +4,7 @@
  * Extracted from get-change.ts and list-changes.ts to eliminate duplication.
  */
 
-import { ChangeType } from '@changetracks/core';
+import { ChangeType } from '@changedown/core';
 
 /**
  * Map from core ChangeType enum values to short string labels used in

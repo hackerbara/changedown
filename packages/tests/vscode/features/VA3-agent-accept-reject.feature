@@ -3,7 +3,7 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Accept and reject operations on agent-created changes update both
   the document body (removing CriticMarkup delimiters) and the footnote
   section (status updates, approval/rejection lines). Footnote references
-  [^ct-N] are preserved in the body for audit trail.
+  [^cn-N] are preserved in the body for audit trail.
 
   Background:
     Given reviewer identity is "human:reviewer"
@@ -13,14 +13,14 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Scenario: Accept agent insertion updates footnote to accepted
     Given a document with text:
       """
-      Hello {++world++}[^ct-1] end
+      Hello {++world++}[^cn-1] end
 
-      [^ct-1]: @ai:claude | 2026-02-10T09:00:00Z | ins | proposed
+      [^cn-1]: @ai:claude | 2026-02-10T09:00:00Z | ins | proposed
           Added for clarity
       """
     And the cursor is at offset 10
     When I accept the change at the cursor with footnote update
-    Then the document text starts with "Hello world[^ct-1] end"
+    Then the document text starts with "Hello world[^cn-1] end"
     And the document contains footnote status "accepted"
     And the document text does not contain "| proposed"
     And the document contains approval from "@human:reviewer"
@@ -29,13 +29,13 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Scenario: Reject agent insertion removes text and updates footnote
     Given a document with text:
       """
-      Hello {++world++}[^ct-1] end
+      Hello {++world++}[^cn-1] end
 
-      [^ct-1]: @ai:claude | 2026-02-10T09:00:00Z | ins | proposed
+      [^cn-1]: @ai:claude | 2026-02-10T09:00:00Z | ins | proposed
       """
     And the cursor is at offset 10
     When I reject the change at the cursor with footnote update
-    Then the document text starts with "Hello [^ct-1] end"
+    Then the document text starts with "Hello [^cn-1] end"
     And the document contains footnote status "rejected"
     And the document text does not contain "| proposed"
     And the document contains rejection from "@human:reviewer"
@@ -43,51 +43,51 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Scenario: Accept agent substitution keeps new text
     Given a document with text:
       """
-      {~~REST~>GraphQL~~}[^ct-1] API
+      {~~REST~>GraphQL~~}[^cn-1] API
 
-      [^ct-1]: @ai:claude | 2026-02-10T09:00:00Z | sub | proposed
+      [^cn-1]: @ai:claude | 2026-02-10T09:00:00Z | sub | proposed
           Better query flexibility
       """
     And the cursor is at offset 5
     When I accept the change at the cursor with footnote update
-    Then the document text starts with "GraphQL[^ct-1] API"
+    Then the document text starts with "GraphQL[^cn-1] API"
     And the document contains footnote status "accepted"
     And the document text does not contain "| proposed"
 
   Scenario: Reject agent substitution restores original text
     Given a document with text:
       """
-      {~~REST~>GraphQL~~}[^ct-1] API
+      {~~REST~>GraphQL~~}[^cn-1] API
 
-      [^ct-1]: @ai:claude | 2026-02-10T09:00:00Z | sub | proposed
+      [^cn-1]: @ai:claude | 2026-02-10T09:00:00Z | sub | proposed
       """
     And the cursor is at offset 5
     When I reject the change at the cursor with footnote update
-    Then the document text starts with "REST[^ct-1] API"
+    Then the document text starts with "REST[^cn-1] API"
     And the document contains footnote status "rejected"
 
   Scenario: Accept agent deletion removes the deleted text
     Given a document with text:
       """
-      Keep {--remove this--}[^ct-1] keep
+      Keep {--remove this--}[^cn-1] keep
 
-      [^ct-1]: @ai:claude | 2026-02-10T09:00:00Z | del | proposed
+      [^cn-1]: @ai:claude | 2026-02-10T09:00:00Z | del | proposed
       """
     And the cursor is at offset 10
     When I accept the change at the cursor with footnote update
-    Then the document text starts with "Keep [^ct-1] keep"
+    Then the document text starts with "Keep [^cn-1] keep"
     And the document contains footnote status "accepted"
 
   Scenario: Reject agent deletion keeps the deleted text
     Given a document with text:
       """
-      Keep {--remove this--}[^ct-1] keep
+      Keep {--remove this--}[^cn-1] keep
 
-      [^ct-1]: @ai:claude | 2026-02-10T09:00:00Z | del | proposed
+      [^cn-1]: @ai:claude | 2026-02-10T09:00:00Z | del | proposed
       """
     And the cursor is at offset 10
     When I reject the change at the cursor with footnote update
-    Then the document text starts with "Keep remove this[^ct-1] keep"
+    Then the document text starts with "Keep remove this[^cn-1] keep"
     And the document contains footnote status "rejected"
 
   # ─── Accept All / Reject All with Agent Footnotes ────────────────
@@ -95,13 +95,13 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Scenario: Accept All accepts all agent-proposed changes
     Given a document with text:
       """
-      The {~~REST~>GraphQL~~}[^ct-1] API.
-      Auth uses {~~keys~>OAuth2~~}[^ct-2].
-      {++Rate limiting added.++}[^ct-3]
+      The {~~REST~>GraphQL~~}[^cn-1] API.
+      Auth uses {~~keys~>OAuth2~~}[^cn-2].
+      {++Rate limiting added.++}[^cn-3]
 
-      [^ct-1]: @ai:claude | 2026-02-10 | sub | proposed
-      [^ct-2]: @ai:drafter | 2026-02-10 | sub | proposed
-      [^ct-3]: @ai:claude | 2026-02-10 | ins | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-2]: @ai:drafter | 2026-02-10 | sub | proposed
+      [^cn-3]: @ai:claude | 2026-02-10 | ins | proposed
       """
     When I accept all changes with footnote update
     Then the document text does not contain "{~~"
@@ -116,13 +116,13 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Scenario: Reject All reverts all agent changes
     Given a document with text:
       """
-      The {~~REST~>GraphQL~~}[^ct-1] API.
-      Auth uses {~~keys~>OAuth2~~}[^ct-2].
-      {++Rate limiting added.++}[^ct-3]
+      The {~~REST~>GraphQL~~}[^cn-1] API.
+      Auth uses {~~keys~>OAuth2~~}[^cn-2].
+      {++Rate limiting added.++}[^cn-3]
 
-      [^ct-1]: @ai:claude | 2026-02-10 | sub | proposed
-      [^ct-2]: @ai:drafter | 2026-02-10 | sub | proposed
-      [^ct-3]: @ai:claude | 2026-02-10 | ins | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-2]: @ai:drafter | 2026-02-10 | sub | proposed
+      [^cn-3]: @ai:claude | 2026-02-10 | ins | proposed
       """
     When I reject all changes with footnote update
     Then the document text does not contain "{~~"
@@ -139,9 +139,9 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Scenario: Accept preserves discussion thread in footnote
     Given a document with text:
       """
-      {~~old~>new~~}[^ct-1]
+      {~~old~>new~~}[^cn-1]
 
-      [^ct-1]: @ai:drafter | 2026-02-10 | sub | proposed
+      [^cn-1]: @ai:drafter | 2026-02-10 | sub | proposed
           Original reasoning
           @ai:reviewer 2026-02-10: Needs improvement
             @ai:drafter 2026-02-10: Updated per feedback
@@ -157,9 +157,9 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Scenario: Reject preserves discussion thread in footnote
     Given a document with text:
       """
-      {~~old~>new~~}[^ct-1]
+      {~~old~>new~~}[^cn-1]
 
-      [^ct-1]: @ai:drafter | 2026-02-10 | sub | proposed
+      [^cn-1]: @ai:drafter | 2026-02-10 | sub | proposed
           Original reasoning
           @ai:reviewer 2026-02-10: Needs improvement
       """
@@ -177,9 +177,9 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
     And no author identity is set
     And a document with text:
       """
-      Hello {++world++}[^ct-1] end
+      Hello {++world++}[^cn-1] end
 
-      [^ct-1]: @ai:bot | 2026-02-12 | ins | proposed
+      [^cn-1]: @ai:bot | 2026-02-12 | ins | proposed
       """
     And the cursor is at offset 10
     When I accept the change at the cursor with footnote update
@@ -189,9 +189,9 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Scenario: Approval line format matches spec
     Given a document with text:
       """
-      Hello {++world++}[^ct-1] end
+      Hello {++world++}[^cn-1] end
 
-      [^ct-1]: @ai:bot | 2026-02-12 | ins | proposed
+      [^cn-1]: @ai:bot | 2026-02-12 | ins | proposed
       """
     And the cursor is at offset 10
     When I accept the change at the cursor with footnote update
@@ -201,9 +201,9 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Scenario: Rejection line format matches spec
     Given a document with text:
       """
-      Hello {--remove--}[^ct-1] end
+      Hello {--remove--}[^cn-1] end
 
-      [^ct-1]: @ai:bot | 2026-02-12 | del | proposed
+      [^cn-1]: @ai:bot | 2026-02-12 | del | proposed
       """
     And the cursor is at offset 10
     When I reject the change at the cursor with footnote update
@@ -212,34 +212,34 @@ Feature: Accept/Reject Agent Changes with Footnote Lifecycle
   Scenario: Footnote ref preserved in body after accept
     Given a document with text:
       """
-      Text {++inserted++}[^ct-1] more
+      Text {++inserted++}[^cn-1] more
 
-      [^ct-1]: @ai:claude | 2026-02-10 | ins | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | ins | proposed
       """
     And the cursor is at offset 10
     When I accept the change at the cursor with footnote update
-    Then the document text contains "[^ct-1]"
-    And the document text starts with "Text inserted[^ct-1] more"
+    Then the document text contains "[^cn-1]"
+    And the document text starts with "Text inserted[^cn-1] more"
 
   Scenario: Footnote ref preserved in body after reject
     Given a document with text:
       """
-      Text {++inserted++}[^ct-1] more
+      Text {++inserted++}[^cn-1] more
 
-      [^ct-1]: @ai:claude | 2026-02-10 | ins | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | ins | proposed
       """
     And the cursor is at offset 10
     When I reject the change at the cursor with footnote update
-    Then the document text contains "[^ct-1]"
-    And the document text starts with "Text [^ct-1] more"
+    Then the document text contains "[^cn-1]"
+    And the document text starts with "Text [^cn-1] more"
 
   Scenario: Multi-agent document Accept All updates all footnotes
     Given a document with text:
       """
-      {++first++}[^ct-1] and {++second++}[^ct-2]
+      {++first++}[^cn-1] and {++second++}[^cn-2]
 
-      [^ct-1]: @ai:claude | 2026-02-10 | ins | proposed
-      [^ct-2]: @ai:drafter | 2026-02-10 | ins | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | ins | proposed
+      [^cn-2]: @ai:drafter | 2026-02-10 | ins | proposed
       """
     When I accept all changes with footnote update
     Then the document text does not contain "| proposed"

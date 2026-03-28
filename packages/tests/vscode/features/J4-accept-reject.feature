@@ -6,7 +6,7 @@ Feature: Accept/reject changes from all entry points
 
   Background:
     Given I open "journey-accept-reject.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   Scenario: Accept insertion via keyboard

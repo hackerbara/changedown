@@ -6,7 +6,7 @@ import {
   parseLineRef,
   validateLineRef,
   HashlineMismatchError,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 describe('hashline', () => {
   beforeAll(async () => {
@@ -73,21 +73,21 @@ describe('hashline', () => {
       expect(hash).toMatch(/^[0-9a-f]{2}$/);
     });
 
-    it('strips footnote refs [^ct-N] before hashing (whitespace-class)', () => {
+    it('strips footnote refs [^cn-N] before hashing (whitespace-class)', () => {
       const plain = computeLineHash(0, 'some text here');
-      const withRef = computeLineHash(0, 'some text[^ct-1] here');
+      const withRef = computeLineHash(0, 'some text[^cn-1] here');
       expect(withRef).toBe(plain);
     });
 
-    it('strips dotted footnote refs [^ct-N.M] before hashing', () => {
+    it('strips dotted footnote refs [^cn-N.M] before hashing', () => {
       const plain = computeLineHash(0, 'some text here');
-      const withRef = computeLineHash(0, 'some text[^ct-2.3] here');
+      const withRef = computeLineHash(0, 'some text[^cn-2.3] here');
       expect(withRef).toBe(plain);
     });
 
     it('strips multiple footnote refs before hashing', () => {
       const plain = computeLineHash(0, 'text more');
-      const withRefs = computeLineHash(0, 'text[^ct-1][^ct-2.1] more');
+      const withRefs = computeLineHash(0, 'text[^cn-1][^cn-2.1] more');
       expect(withRefs).toBe(plain);
     });
   });

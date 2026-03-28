@@ -1,5 +1,5 @@
 /**
- * Unicode-tolerant text normalization for ChangeTracks.
+ * Unicode-tolerant text normalization for ChangeDown.
  *
  * ADR-022: Pluggable normalizer architecture.
  *

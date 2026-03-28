@@ -43,11 +43,11 @@ Feature: Error recovery and resilience
     Then the change is applied normally with CriticMarkup
 
   Scenario: Invalid change_id in review
-    Given a proposed change ct-1 exists
-    When I call review_changes with change_id "ct-999"
+    Given a proposed change cn-1 exists
+    When I call review_changes with change_id "cn-999"
     Then the response contains a per-change error (not a top-level crash)
     And the error mentions "not found"
-    When I review the valid change ct-1
+    When I review the valid change cn-1
     Then the review succeeds
 
   Scenario: Author enforcement in required mode

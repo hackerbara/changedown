@@ -1,5 +1,5 @@
 import { beforeAll } from 'vitest';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 
 beforeAll(async () => {
   await initHashline();

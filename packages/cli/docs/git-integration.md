@@ -1,7 +1,7 @@
-<!-- ctrcks.com/v1: tracked -->
+<!-- changedown.com/v1: tracked -->
 # Git Integration
 
-ChangeTracks's `sc diff` command renders CriticMarkup with ANSI colors in the terminal. You can integrate it with git as a custom diff driver so `git diff` and tools like lazygit automatically show colored CriticMarkup.
+ChangeDown's `sc diff` command renders CriticMarkup with ANSI colors in the terminal. You can integrate it with git as a custom diff driver so `git diff` and tools like lazygit automatically show colored CriticMarkup.
 
 ## Setup
 
@@ -10,7 +10,7 @@ ChangeTracks's `sc diff` command renders CriticMarkup with ANSI colors in the te
 Add to your `~/.gitconfig` (or project `.git/config`):
 
 ```ini
-[diff "changetracks"]
+[diff "changedown"]
   command = sc
 ```
 
@@ -24,10 +24,10 @@ The `sc` binary detects this 7-argument pattern automatically and renders the ne
 In your project's `.gitattributes` (or `~/.config/git/attributes` for global):
 
 ```gitattributes
-*.md diff=changetracks
+*.md diff=changedown
 ```
 
-This tells git to use the `changetracks` diff driver for all markdown files.
+This tells git to use the `changedown` diff driver for all markdown files.
 
 ### 3. Verify
 
@@ -70,15 +70,15 @@ cd packages/cli && npm link
 # Now `sc` is available globally
 
 # To unlink later:
-npm unlink -g @changetracks/cli
+npm unlink -g @changedown/cli
 ```
 
 Or add an alias:
 
 ```bash
-alias sc="node /path/to/changetracks/packages/cli/dist/index.js"
+alias sc="node /path/to/changedown/packages/cli/dist/index.js"
 ```
 
 
-[^ct-1]: ai:claude-opus-4.6 | 2026-02-26 | creation | proposed
+[^cn-1]: ai:claude-opus-4.6 | 2026-02-26 | creation | proposed
     ai:claude-opus-4.6 2026-02-26: File created

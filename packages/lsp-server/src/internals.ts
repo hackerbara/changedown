@@ -20,17 +20,17 @@ export * from './capabilities/code-actions';
 export * from './capabilities/code-lens';
 export * from './capabilities/diagnostics';
 export * from './capabilities/document-links';
+export * from './capabilities/folding-ranges';
 export * from './capabilities/semantic-tokens';
 
-// Re-export LSP types and values that tests need (vscode-languageserver lacks
-// an exports map, so NodeNext moduleResolution can't resolve it directly)
+// Re-export LSP types and values that tests need
 export {
   Position,
   Range,
   CodeActionKind,
   DiagnosticSeverity,
   TextDocumentSyncKind,
-} from 'vscode-languageserver/node';
+} from 'vscode-languageserver';
 export type {
   Connection,
   InitializeParams,
@@ -41,4 +41,5 @@ export type {
   Command,
   Diagnostic,
   SemanticTokensLegend,
-} from 'vscode-languageserver/node';
+  FoldingRange,
+} from 'vscode-languageserver';

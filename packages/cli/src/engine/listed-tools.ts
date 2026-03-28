@@ -1,4 +1,4 @@
-import type { ChangeTracksConfig } from './config.js';
+import type { ChangeDownConfig } from './config.js';
 import { reviewChangesTool } from './handlers/review-changes.js';
 import { readTrackedFileTool } from './handlers/read-tracked-file.js';
 import { amendChangeTool } from './handlers/amend-change.js';
@@ -54,7 +54,7 @@ const AUTHOR_REQUIRED_SUFFIX = ' In this project author is required.';
  * the requirement before the first write (at list_tools time).
  * Uses protocol mode to select the correct propose_change schema (classic vs compact).
  */
-export function getListedToolsWithConfig(config: ChangeTracksConfig, mode: 'classic' | 'compact' = 'classic'): ListedTool[] {
+export function getListedToolsWithConfig(config: ChangeDownConfig, mode: 'classic' | 'compact' = 'classic'): ListedTool[] {
   const tools = getListedTools(mode);
   const suffix =
     config.author?.enforcement === 'required' ? AUTHOR_REQUIRED_SUFFIX : '';

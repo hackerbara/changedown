@@ -219,7 +219,7 @@ Feature: VIS1 -- Visual Regression Baselines
     Given VS Code is open with visual fixture "insertion-single.md"
     When I position the cursor at line 2 column 0
     And I press "End"
-    And I execute "ChangeTracks: Toggle Tracking"
+    And I execute "ChangeDown: Toggle Tracking"
     And I wait 500 milliseconds
     And I type " extra text" into the editor
     And I wait 1000 milliseconds

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Patches Cursor's workbench.desktop.main.js to inline the ChangeTracks
+ * Patches Cursor's workbench.desktop.main.js to inline the ChangeDown
  * lexical bridge script and CSS. Run with: node install.mjs [--uninstall]
  *
  * Requires Cursor to be closed. Restart Cursor after patching.
@@ -11,8 +11,8 @@ import { fileURLToPath } from 'url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-const PATCH_MARKER = '/* CHANGETRACKS_LEXICAL_BRIDGE */';
-const PATCH_END = '/* END_CHANGETRACKS_LEXICAL_BRIDGE */';
+const PATCH_MARKER = '/* CHANGEDOWN_LEXICAL_BRIDGE */';
+const PATCH_END = '/* END_CHANGEDOWN_LEXICAL_BRIDGE */';
 
 const WORKBENCH_PATH = '/Applications/Cursor.app/Contents/Resources/app/out/vs/workbench/workbench.desktop.main.js';
 
@@ -49,13 +49,13 @@ ${PATCH_MARKER}
 ;(function() {
   /* Inject CSS */
   var style = document.createElement('style');
-  style.dataset.changetracks = 'lexical-css';
+  style.dataset.changedown = 'lexical-css';
   style.textContent = ${JSON.stringify(bridgeCss)};
   document.head.appendChild(style);
 
   /* Inject bridge script */
   var script = document.createElement('script');
-  script.dataset.changetracks = 'lexical-bridge';
+  script.dataset.changedown = 'lexical-bridge';
   script.textContent = ${JSON.stringify(bridgeJs)};
   document.head.appendChild(script);
 })();

@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
-import { initHashline } from '@changetracks/core';
-import { computeLineHash } from '@changetracks/mcp/internals';
+import { initHashline } from '@changedown/core';
+import { computeLineHash } from '@changedown/mcp/internals';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 
 /**
  * Helper: compute hash for a 1-indexed line in a file content string.
@@ -23,7 +23,7 @@ describe('ISSUE-5: Highlight type in propose_change response', () => {
   let state: SessionState;
   let resolver: ConfigResolver;
 
-  const compactConfig: ChangeTracksConfig = {
+  const compactConfig: ChangeDownConfig = {
     tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
     author: { default: 'ai:test', enforcement: 'optional' },
     hooks: { enforcement: 'warn', exclude: [] },
@@ -37,7 +37,7 @@ describe('ISSUE-5: Highlight type in propose_change response', () => {
   beforeAll(async () => { await initHashline(); });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-highlight-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-highlight-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -114,6 +114,6 @@ describe('ISSUE-5: Highlight type in propose_change response', () => {
     expect(result.isError).toBeUndefined();
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('{==this claim==}');
-    expect(modified).toContain('[^ct-1]');
+    expect(modified).toContain('[^cn-1]');
   });
 });

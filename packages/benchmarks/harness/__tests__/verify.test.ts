@@ -83,18 +83,18 @@ describe("extractSettledText", () => {
 
   it("strips CriticMarkup for surface F via computeSettledText", async () => {
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "verify-test-"));
-    const content = "The {~~depolyed~>deployed~~}[^ct-1] app.\n\n[^ct-1]: @ai:test | 2026-01-01 | sub | accepted\n";
+    const content = "The {~~depolyed~>deployed~~}[^cn-1] app.\n\n[^cn-1]: @ai:test | 2026-01-01 | sub | accepted\n";
     await fs.writeFile(path.join(tmpDir, "doc.md"), content);
     const result = await extractSettledText(tmpDir, "F");
     expect(result).toContain("deployed");
     expect(result).not.toContain("{~~");
-    expect(result).not.toContain("[^ct-1]");
+    expect(result).not.toContain("[^cn-1]");
     await fs.rm(tmpDir, { recursive: true });
   });
 
   it("handles surface G same as F", async () => {
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "verify-test-"));
-    const content = "Text {++added++}[^ct-1] here.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed\n";
+    const content = "Text {++added++}[^cn-1] here.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed\n";
     await fs.writeFile(path.join(tmpDir, "doc.md"), content);
     const result = await extractSettledText(tmpDir, "G");
     expect(result).toContain("added");
@@ -105,25 +105,25 @@ describe("extractSettledText", () => {
 
 describe("scoreDecisions", () => {
   const fileWithFootnotes = `
-Some content {++added text++}[^ct-1]
+Some content {++added text++}[^cn-1]
 
-More {~~REST~>GraphQL~~}[^ct-2] here.
+More {~~REST~>GraphQL~~}[^cn-2] here.
 
-{--Removed paragraph.--}[^ct-3]
+{--Removed paragraph.--}[^cn-3]
 
-[^ct-1]: @ai:agent | 2026-02-27 | ins | accepted
+[^cn-1]: @ai:agent | 2026-02-27 | ins | accepted
     reason: Good addition
 
-[^ct-2]: @ai:agent | 2026-02-27 | sub | rejected
+[^cn-2]: @ai:agent | 2026-02-27 | sub | rejected
     reason: REST is better
 
-[^ct-3]: @ai:agent | 2026-02-27 | del | proposed
+[^cn-3]: @ai:agent | 2026-02-27 | del | proposed
     reason: Not sure about this
 `;
 
   it("scores correct accept decision", () => {
     const decisions: Decision[] = [
-      { id: "ct-1", expected: "accept" },
+      { id: "cn-1", expected: "accept" },
     ];
     const result = scoreDecisions(fileWithFootnotes, decisions);
     expect(result.results[0].correct).toBe(true);
@@ -132,7 +132,7 @@ More {~~REST~>GraphQL~~}[^ct-2] here.
 
   it("scores correct reject decision", () => {
     const decisions: Decision[] = [
-      { id: "ct-2", expected: "reject" },
+      { id: "cn-2", expected: "reject" },
     ];
     const result = scoreDecisions(fileWithFootnotes, decisions);
     expect(result.results[0].correct).toBe(true);
@@ -140,7 +140,7 @@ More {~~REST~>GraphQL~~}[^ct-2] here.
 
   it("scores incorrect decision (expected reject, got proposed)", () => {
     const decisions: Decision[] = [
-      { id: "ct-3", expected: "reject" },
+      { id: "cn-3", expected: "reject" },
     ];
     const result = scoreDecisions(fileWithFootnotes, decisions);
     expect(result.results[0].correct).toBe(false);
@@ -149,7 +149,7 @@ More {~~REST~>GraphQL~~}[^ct-2] here.
 
   it("handles not_found proposals", () => {
     const decisions: Decision[] = [
-      { id: "ct-99", expected: "accept" },
+      { id: "cn-99", expected: "accept" },
     ];
     const result = scoreDecisions(fileWithFootnotes, decisions);
     expect(result.results[0].actual).toBe("not_found");
@@ -159,7 +159,7 @@ More {~~REST~>GraphQL~~}[^ct-2] here.
   it("checks amended_contains for amend decisions", () => {
     const amendedFile = fileWithFootnotes.replace("GraphQL", "gRPC").replace("rejected", "accepted");
     const decisions: Decision[] = [
-      { id: "ct-2", expected: "amend", amended_contains: "gRPC" },
+      { id: "cn-2", expected: "amend", amended_contains: "gRPC" },
     ];
     const result = scoreDecisions(amendedFile, decisions);
     expect(result.results[0].amendedTextMatch).toBe(true);
@@ -167,9 +167,9 @@ More {~~REST~>GraphQL~~}[^ct-2] here.
 
   it("reports accuracy correctly", () => {
     const decisions: Decision[] = [
-      { id: "ct-1", expected: "accept" },
-      { id: "ct-2", expected: "reject" },
-      { id: "ct-3", expected: "reject" },
+      { id: "cn-1", expected: "accept" },
+      { id: "cn-2", expected: "reject" },
+      { id: "cn-3", expected: "reject" },
     ];
     const result = scoreDecisions(fileWithFootnotes, decisions);
     expect(result.correct).toBe(2);
@@ -260,12 +260,12 @@ describe("verify", () => {
       scoring: {
         corrections: [],
         decisions: [
-          { id: "ct-1", expected: "accept" },
+          { id: "cn-1", expected: "accept" },
         ],
       },
     }));
 
-    const content = "Text {++added++}[^ct-1] here.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | accepted\n";
+    const content = "Text {++added++}[^cn-1] here.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | accepted\n";
     await fs.writeFile(path.join(afterDir, "doc.md"), content);
 
     const result = await verify(afterDir, path.join(tmpFixture, "assertions.json"), "F");

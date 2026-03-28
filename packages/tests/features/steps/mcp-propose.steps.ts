@@ -6,16 +6,16 @@
  */
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 
 // =============================================================================
 // State tracking for multi-step scenarios
 // =============================================================================
 
 /** Store multiple results for sequential change scenarios */
-const resultHistory: WeakMap<ChangeTracksWorld, Array<{ result: any; data: any }>> = new WeakMap();
+const resultHistory: WeakMap<ChangeDownWorld, Array<{ result: any; data: any }>> = new WeakMap();
 
-function pushResult(world: ChangeTracksWorld, result: any) {
+function pushResult(world: ChangeDownWorld, result: any) {
   if (!resultHistory.has(world)) resultHistory.set(world, []);
   resultHistory.get(world)!.push({
     result,
@@ -29,7 +29,7 @@ function pushResult(world: ChangeTracksWorld, result: any) {
 
 When(
   'I call propose_change with reasoning {string}',
-  async function (this: ChangeTracksWorld, reasoning: string) {
+  async function (this: ChangeDownWorld, reasoning: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -47,7 +47,7 @@ When(
 
 When(
   'I call propose_change without an explicit author',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -65,7 +65,7 @@ When(
 
 When(
   'I call propose_change with author {string}',
-  async function (this: ChangeTracksWorld, author: string) {
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -84,7 +84,7 @@ When(
 
 When(
   'I call propose_change with old_text {string}',
-  async function (this: ChangeTracksWorld, oldText: string) {
+  async function (this: ChangeDownWorld, oldText: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -102,7 +102,7 @@ When(
 
 When(
   'I call propose_change on {string}',
-  async function (this: ChangeTracksWorld, fileName: string) {
+  async function (this: ChangeDownWorld, fileName: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.get(fileName);
     assert.ok(filePath, `No file named "${fileName}" in this scenario`);
@@ -120,7 +120,7 @@ When(
 
 When(
   'I call propose_change with raw = true',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -143,7 +143,7 @@ When(
 
 When(
   'I call propose_change with old_text {string} and new_text {string}',
-  async function (this: ChangeTracksWorld, oldText: string, newText: string) {
+  async function (this: ChangeDownWorld, oldText: string, newText: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -166,7 +166,7 @@ When(
 
 Given(
   'the file contains {string} appearing {int} times',
-  async function (this: ChangeTracksWorld, _text: string, _count: number) {
+  async function (this: ChangeDownWorld, _text: string, _count: number) {
     // The design.md Background already has "the" appearing 3 times
     // This is a documentation step -- the file is already set up
   },
@@ -174,7 +174,7 @@ Given(
 
 Given(
   'a file {string} outside the include pattern',
-  async function (this: ChangeTracksWorld, fileName: string) {
+  async function (this: ChangeDownWorld, fileName: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = await this.ctx.createFile(fileName, 'hello');
     this.files.set(fileName, filePath);
@@ -187,7 +187,7 @@ Given(
 
 Then(
   'the file contains the multi-line substitution markup',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -199,7 +199,7 @@ Then(
 
 Then(
   'the footnote for the change contains {string}',
-  async function (this: ChangeTracksWorld, expected: string) {
+  async function (this: ChangeDownWorld, expected: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -212,7 +212,7 @@ Then(
 
 Then(
   'the footnote header contains {string}',
-  async function (this: ChangeTracksWorld, expected: string) {
+  async function (this: ChangeDownWorld, expected: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -225,7 +225,7 @@ Then(
 
 Then(
   'the error message mentions {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult).toLowerCase();
     assert.ok(
@@ -237,7 +237,7 @@ Then(
 
 Then(
   'the error message mentions {string} or {string}',
-  function (this: ChangeTracksWorld, alt1: string, alt2: string) {
+  function (this: ChangeDownWorld, alt1: string, alt2: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult).toLowerCase();
     assert.ok(
@@ -249,7 +249,7 @@ Then(
 
 Then(
   'the error mentions {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult).toLowerCase();
     const lowerExpected = expected.toLowerCase();
@@ -272,7 +272,7 @@ Then(
 
 Then(
   'the first change has id {string}',
-  function (this: ChangeTracksWorld, expectedId: string) {
+  function (this: ChangeDownWorld, expectedId: string) {
     const history = resultHistory.get(this);
     assert.ok(history && history.length >= 1, 'No results in history');
     assert.equal(history[0].data.change_id, expectedId);
@@ -281,7 +281,7 @@ Then(
 
 Then(
   'the second change has id {string}',
-  function (this: ChangeTracksWorld, expectedId: string) {
+  function (this: ChangeDownWorld, expectedId: string) {
     const history = resultHistory.get(this);
     assert.ok(history && history.length >= 2, 'Not enough results in history');
     assert.equal(history[1].data.change_id, expectedId);
@@ -290,7 +290,7 @@ Then(
 
 Then(
   'the file contains both {string} and {string}',
-  async function (this: ChangeTracksWorld, str1: string, str2: string) {
+  async function (this: ChangeDownWorld, str1: string, str2: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -301,7 +301,7 @@ Then(
 
 Then(
   'the file does NOT contain CriticMarkup delimiters',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -314,7 +314,7 @@ Then(
 
 Then(
   'the replacement is applied directly',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -339,11 +339,11 @@ function extractLineHash(text: string, targetText: string): { line: number; hash
 }
 
 /** Store last committed view text for hash extraction in subsequent steps */
-const lastCommittedView: WeakMap<ChangeTracksWorld, string> = new WeakMap();
+const lastCommittedView: WeakMap<ChangeDownWorld, string> = new WeakMap();
 
 When(
   'I call propose_change with start_hash = {string}',
-  async function (this: ChangeTracksWorld, hash: string) {
+  async function (this: ChangeDownWorld, hash: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -363,7 +363,7 @@ When(
 
 When(
   'I call read_tracked_file again with view = {string}',
-  async function (this: ChangeTracksWorld, view: string) {
+  async function (this: ChangeDownWorld, view: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -380,7 +380,7 @@ When(
 
 When(
   'I propose change {int} on line {int}',
-  async function (this: ChangeTracksWorld, changeNum: number, _lineNum: number) {
+  async function (this: ChangeDownWorld, changeNum: number, _lineNum: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -417,7 +417,7 @@ When(
 
 Then(
   'the hashes reflect the updated file \\(including new footnotes)',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     // Verify the committed view has LINE:HASH coordinates
@@ -427,18 +427,18 @@ Then(
 
 Then(
   'both changes are in the file with sequential IDs',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    assert.ok(disk.includes('[^ct-1]'), 'Expected ct-1 in file');
-    assert.ok(disk.includes('[^ct-2]'), 'Expected ct-2 in file');
+    assert.ok(disk.includes('[^cn-1]'), 'Expected cn-1 in file');
+    assert.ok(disk.includes('[^cn-2]'), 'Expected cn-2 in file');
   },
 );
 
 Given(
   'the file already has a pending substitution on {string}',
-  async function (this: ChangeTracksWorld, target: string) {
+  async function (this: ChangeDownWorld, target: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -452,7 +452,7 @@ Given(
 
 Then(
   'the output shows the ORIGINAL text {string} \\(pending reverted)',
-  function (this: ChangeTracksWorld, original: string) {
+  function (this: ChangeDownWorld, original: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes(original), `Expected original text "${original}" in committed view`);
@@ -461,7 +461,7 @@ Then(
 
 Then(
   'pending changes are marked with [P] flags',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.match(text, /P\|/, 'Expected P flag in committed view');
@@ -470,7 +470,7 @@ Then(
 
 Then(
   'accepted changes show their accepted text',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     // Documentation step -- verifies the committed view format
     // In current test setup no accepted changes exist, assertion is trivially true
     assert.ok(this.lastResult, 'No MCP result available');
@@ -479,7 +479,7 @@ Then(
 
 Then(
   'the response contains LINE:HASH coordinates per line',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     lastCommittedView.set(this, text);
@@ -489,7 +489,7 @@ Then(
 
 Then(
   'no CriticMarkup delimiters appear in the output',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     const delimiters = ['{++', '++}', '{--', '--}', '{~~', '~~}'];

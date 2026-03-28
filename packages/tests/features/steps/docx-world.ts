@@ -1,11 +1,11 @@
 import { World, setWorldConstructor, Before, After } from '@cucumber/cucumber';
 import * as fs from 'node:fs';
-import type { ImportStats, ExportStats } from '@changetracks/docx';
+import type { ImportStats, ExportStats } from '@changedown/docx';
 
 /**
  * Lightweight Cucumber World for DOCX import/export BDD tests.
  *
- * This avoids the full ChangeTracksWorld which depends on ScenarioContext
+ * This avoids the full ChangeDownWorld which depends on ScenarioContext
  * and MCP packages that are not built in the docx worktree.
  */
 export class DocxWorld extends World {

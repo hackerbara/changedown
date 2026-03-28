@@ -53,19 +53,19 @@ describe('AJ1: Agent editorial cycle', () => {
 
     // Batch returns grouped dotted IDs under a parent group
     const proposeData = ctx.parseResult(proposeResult);
-    expect(proposeData.group_id).toBe('ct-1');
+    expect(proposeData.group_id).toBe('cn-1');
     expect(proposeData.applied).toHaveLength(3);
     const changeIds = (proposeData.applied as Array<{ change_id: string }>).map(c => c.change_id);
-    expect(changeIds).toEqual(['ct-1.1', 'ct-1.2', 'ct-1.3']);
+    expect(changeIds).toEqual(['cn-1.1', 'cn-1.2', 'cn-1.3']);
 
     // Verify disk state: 3 substitution markups + 3 proposed footnotes
     const disk1 = await ctx.readDisk(filePath);
     expect(disk1).toContain('{~~no caching~>Redis caching with 5-minute TTL~~}');
     expect(disk1).toContain('{~~500ms~>50ms~~}');
     expect(disk1).toContain('{~~no rate limiting~>rate limiting at 1000 req/min~~}');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.1', 'proposed');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.2', 'proposed');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.3', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.1', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.2', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.3', 'proposed');
 
     // ── Phase 3: Re-read meta view to verify proposed count ────────────
     const read2 = await ctx.read(filePath, { view: 'meta' });
@@ -73,20 +73,20 @@ describe('AJ1: Agent editorial cycle', () => {
     const metaText2 = ctx.resultText(read2);
 
     // Meta header should show proposed changes (at least the child footnotes)
-    // The meta renderer counts footnotes by status. Group footnote (ct-1) is type 'group',
-    // child footnotes (ct-1.1, ct-1.2, ct-1.3) are type 'sub' with status 'proposed'.
+    // The meta renderer counts footnotes by status. Group footnote (cn-1) is type 'group',
+    // child footnotes (cn-1.1, cn-1.2, cn-1.3) are type 'sub' with status 'proposed'.
     expect(metaText2).toMatch(/proposed/);
     // Inline annotations should appear at change locations
-    expect(metaText2).toContain('ct-1.1');
-    expect(metaText2).toContain('ct-1.2');
-    expect(metaText2).toContain('ct-1.3');
+    expect(metaText2).toContain('cn-1.1');
+    expect(metaText2).toContain('cn-1.2');
+    expect(metaText2).toContain('cn-1.3');
 
     // ── Phase 4: Self-review — approve all 3 changes ───────────────────
     const reviewResult = await ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-1.1', decision: 'approve', reason: 'Good improvement' },
-        { change_id: 'ct-1.2', decision: 'approve', reason: 'Confirmed latency improvement' },
-        { change_id: 'ct-1.3', decision: 'approve', reason: 'Security best practice' },
+        { change_id: 'cn-1.1', decision: 'approve', reason: 'Good improvement' },
+        { change_id: 'cn-1.2', decision: 'approve', reason: 'Confirmed latency improvement' },
+        { change_id: 'cn-1.3', decision: 'approve', reason: 'Security best practice' },
       ],
     });
     expect(reviewResult.isError).toBeUndefined();
@@ -96,9 +96,9 @@ describe('AJ1: Agent editorial cycle', () => {
     expect(reviewData.settled).toBeDefined();
     const settledIds = reviewData.settled as string[];
     expect(settledIds).toHaveLength(3);
-    expect(settledIds).toContain('ct-1.1');
-    expect(settledIds).toContain('ct-1.2');
-    expect(settledIds).toContain('ct-1.3');
+    expect(settledIds).toContain('cn-1.1');
+    expect(settledIds).toContain('cn-1.2');
+    expect(settledIds).toContain('cn-1.3');
 
     // ── Phase 5: Verify clean state ────────────────────────────────────
     // No CriticMarkup delimiters in body
@@ -111,9 +111,9 @@ describe('AJ1: Agent editorial cycle', () => {
     expect(disk2).toContain('rate limiting at 1000 req/min');
 
     // Footnotes persist with accepted status (Layer 1 compaction keeps footnotes)
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.1', 'accepted');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.2', 'accepted');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.3', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.1', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.2', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.3', 'accepted');
 
     // Read content view confirms clean prose
     const read3 = await ctx.read(filePath, { view: 'content' });
@@ -158,7 +158,7 @@ describe('AJ1: Agent editorial cycle', () => {
     });
     expect(proposeResult.isError).toBeUndefined();
     const proposeData = ctx.parseResult(proposeResult);
-    expect(proposeData.change_id).toBe('ct-1');
+    expect(proposeData.change_id).toBe('cn-1');
 
     // Verify markup on disk
     const disk1 = await ctx.readDisk(filePath);
@@ -178,7 +178,7 @@ describe('AJ1: Agent editorial cycle', () => {
 
     // ── Phase 4: Approve and auto-settle ───────────────────────────────
     const reviewResult = await ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'Looks good' }],
+      reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'Looks good' }],
     });
     expect(reviewResult.isError).toBeUndefined();
 
@@ -213,14 +213,14 @@ describe('AJ1: Agent editorial cycle', () => {
     });
     expect(propose1.isError).toBeUndefined();
     const data1 = ctx.parseResult(propose1);
-    expect(data1.change_id).toBe('ct-1');
+    expect(data1.change_id).toBe('cn-1');
     expect(data1.type).toBe('sub');
 
     // ── Step 2: Read to verify markup ──────────────────────────────────
     const read1 = await ctx.read(filePath, { view: 'meta' });
     expect(read1.isError).toBeUndefined();
     const metaText1 = ctx.resultText(read1);
-    expect(metaText1).toContain('ct-1');
+    expect(metaText1).toContain('cn-1');
     expect(metaText1).toMatch(/proposed/);
 
     // ── Step 3: Propose change 2 (substitution) ────────────────────────
@@ -231,21 +231,21 @@ describe('AJ1: Agent editorial cycle', () => {
     });
     expect(propose2.isError).toBeUndefined();
     const data2 = ctx.parseResult(propose2);
-    expect(data2.change_id).toBe('ct-2');
+    expect(data2.change_id).toBe('cn-2');
     expect(data2.type).toBe('sub');
 
     // ── Step 4: Read to verify both changes ────────────────────────────
     const read2 = await ctx.read(filePath, { view: 'meta' });
     expect(read2.isError).toBeUndefined();
     const metaText2 = ctx.resultText(read2);
-    expect(metaText2).toContain('ct-1');
-    expect(metaText2).toContain('ct-2');
+    expect(metaText2).toContain('cn-1');
+    expect(metaText2).toContain('cn-2');
 
     // ── Step 5: Approve both changes ───────────────────────────────────
     const reviewResult = await ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-1', decision: 'approve', reason: 'Good' },
-        { change_id: 'ct-2', decision: 'approve', reason: 'Good' },
+        { change_id: 'cn-1', decision: 'approve', reason: 'Good' },
+        { change_id: 'cn-2', decision: 'approve', reason: 'Good' },
       ],
     });
     expect(reviewResult.isError).toBeUndefined();
@@ -254,8 +254,8 @@ describe('AJ1: Agent editorial cycle', () => {
     // Auto-settlement should fire
     expect(reviewData.settled).toBeDefined();
     const settledIds = reviewData.settled as string[];
-    expect(settledIds).toContain('ct-1');
-    expect(settledIds).toContain('ct-2');
+    expect(settledIds).toContain('cn-1');
+    expect(settledIds).toContain('cn-2');
 
     // ── Step 6: Verify final state ─────────────────────────────────────
     await ctx.assertNoMarkupInBody(filePath);
@@ -265,7 +265,7 @@ describe('AJ1: Agent editorial cycle', () => {
     expect(disk).toContain('rate limiting at 1000 req/min');
 
     // Both footnotes accepted
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
-    await ctx.assertFootnoteStatus(filePath, 'ct-2', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-2', 'accepted');
   });
 });

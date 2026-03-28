@@ -2,7 +2,7 @@
  * Review view builder — produces a ThreeZoneDocument with typed CriticMarkup spans.
  *
  * The review view is the richest view: it preserves all CriticMarkup inline,
- * identifies `[^ct-N]` footnote refs as anchor spans (preserving the caret), and projects
+ * identifies `[^cn-N]` footnote refs as anchor spans (preserving the caret), and projects
  * footnote metadata into Zone 3 (LineMetadata[]) on each line.
  *
  * Three zones per line:
@@ -55,10 +55,10 @@ import type {
 const CRITIC_MARKUP_RE = /\{\+\+((?:[^+]|\+(?!\+\}))*?)\+\+\}|\{--((?:[^-]|-(?!-\}))*?)--\}|\{~~((?:[^~]|~(?!>))*?)~>((?:[^~]|~(?!~\}))*?)~~\}|\{==((?:[^=]|=(?!=\}))*?)==\}|\{>>((?:[^<]|<(?!<\}))*?)<<\}/g;
 
 /**
- * Matches a footnote reference `[^ct-N]` or `[^ct-N.M]`.
- * Capture group 1: the ID (e.g. "ct-1", "ct-2.3").
+ * Matches a footnote reference `[^cn-N]` or `[^cn-N.M]`.
+ * Capture group 1: the ID (e.g. "cn-1", "cn-2.3").
  */
-const FOOTNOTE_REF_RE = /\[\^(ct-\d+(?:\.\d+)?)\]/g;
+const FOOTNOTE_REF_RE = /\[\^(cn-\d+(?:\.\d+)?)\]/g;
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -77,7 +77,7 @@ export interface ReviewBuildOptions {
  * 2. Find and exclude footnote section lines (+ preceding blank line)
  * 3. For each content line:
  *    a. Decompose CriticMarkup into typed ContentSpan[]
- *    b. Identify [^ct-N] refs as anchor spans (preserving caret)
+ *    b. Identify [^cn-N] refs as anchor spans (preserving caret)
  *    c. Build Zone 3 metadata from referenced footnotes
  *    d. Compute flags from footnote statuses
  * 4. Build deliberation header with aggregate counts
@@ -185,7 +185,7 @@ export function buildReviewDocument(
  *
  * Strategy:
  * 1. Find all CriticMarkup regions via regex
- * 2. Between regions, identify [^ct-N] footnote refs as anchor spans
+ * 2. Between regions, identify [^cn-N] footnote refs as anchor spans
  * 3. Emit typed spans for each region
  */
 function buildContentSpans(
@@ -255,7 +255,7 @@ function buildContentSpans(
 }
 
 /**
- * Process a plain text segment, identifying `[^ct-N]` footnote refs as
+ * Process a plain text segment, identifying `[^cn-N]` footnote refs as
  * anchor spans (preserving the caret for raw-file consistency).
  */
 function emitPlainAndAnchors(
@@ -277,7 +277,7 @@ function emitPlainAndAnchors(
     }
 
     if (node) {
-      // Known footnote: emit [^ct-N] anchor (preserving caret for raw-file consistency)
+      // Known footnote: emit [^cn-N] anchor (preserving caret for raw-file consistency)
       spans.push({ type: 'anchor', text: `[^${node.id}]` });
     } else {
       // Unknown ref: keep as plain text

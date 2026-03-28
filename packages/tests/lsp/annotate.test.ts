@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createServer, ChangetracksServer, PreviousVersionResult } from '@changetracks/lsp-server/internals';
-import type { WorkspaceEdit } from '@changetracks/lsp-server/internals';
+import { ChangedownServer, PreviousVersionResult } from '@changedown/lsp-server/internals';
+import type { WorkspaceEdit } from '@changedown/lsp-server/internals';
 
 /**
- * Tests for the changetracks/annotate custom request handler.
+ * Tests for the changedown/annotate custom request handler.
  *
  * The handler takes { textDocument: { uri } }, looks up git history,
  * runs the appropriate annotator (markdown or sidecar), and returns
@@ -42,6 +42,7 @@ function createMockConnection(): any {
     onDidSaveTextDocument: (handler: any) => { handlers.didSave = handler; },
     onHover: (handler: any) => { handlers.hover = handler; },
     onCodeLens: (handler: any) => { handlers.codeLens = handler; },
+    onFoldingRanges: (handler: any) => { handlers.foldingRanges = handler; },
     onCodeAction: (handler: any) => { handlers.codeAction = handler; },
     onDocumentLinks: (handler: any) => { handlers.documentLinks = handler; },
     onRequest: (method: string, handler: any) => { requestHandlers[method] = handler; },
@@ -67,7 +68,7 @@ function createMockConnection(): any {
  * This replaces the real git module functions with controllable mocks.
  */
 function stubGit(
-  server: ChangetracksServer,
+  server: ChangedownServer,
   options: {
     workspaceRoot?: string | undefined;
     previousVersion?: PreviousVersionResult | undefined;
@@ -81,22 +82,22 @@ function stubGit(
 // Test suite
 // ---------------------------------------------------------------------------
 
-describe('changetracks/annotate handler', () => {
+describe('changedown/annotate handler', () => {
 
-  let server: ChangetracksServer;
+  let server: ChangedownServer;
   let mockConnection: any;
 
   beforeEach(() => {
     mockConnection = createMockConnection();
-    server = createServer(mockConnection);
+    server = new ChangedownServer(mockConnection);
   });
 
   // -----------------------------------------------------------------------
   // Handler registration
   // -----------------------------------------------------------------------
 
-  it('should register changetracks/annotate as a request handler', () => {
-    expect(mockConnection._requestHandlers['changetracks/annotate']).toBeTruthy();
+  it('should register changedown/annotate as a request handler', () => {
+    expect(mockConnection._requestHandlers['changedown/annotate']).toBeTruthy();
   });
 
   // -----------------------------------------------------------------------
@@ -187,9 +188,9 @@ describe('changetracks/annotate handler', () => {
       expect(edits).toHaveLength(1);
 
       const newText = edits[0].newText;
-      // Sidecar annotations use `# ct-N` tags and a sidecar block
-      expect(newText.includes('# ct-')).toBeTruthy();
-      expect(newText.includes('-- ChangeTracks')).toBeTruthy();
+      // Sidecar annotations use `# cn-N` tags and a sidecar block
+      expect(newText.includes('# cn-')).toBeTruthy();
+      expect(newText.includes('-- ChangeDown')).toBeTruthy();
     });
 
     it('should include author and date metadata in sidecar annotations', async () => {
@@ -227,8 +228,8 @@ describe('changetracks/annotate handler', () => {
       expect(result).toBeTruthy();
       const newText = result!.changes![uri][0].newText;
       // JavaScript uses // for comments
-      expect(newText.includes('// ct-')).toBeTruthy();
-      expect(newText.includes('// -- ChangeTracks')).toBeTruthy();
+      expect(newText.includes('// cn-')).toBeTruthy();
+      expect(newText.includes('// -- ChangeDown')).toBeTruthy();
     });
   });
 
@@ -293,7 +294,7 @@ describe('changetracks/annotate handler', () => {
 
     it('should return null when file already contains sidecar annotations', async () => {
       const uri = 'file:///project/main.py';
-      const textWithSidecar = 'x = 1  # ct-1\n\n# -- ChangeTracks ---\n# [^ct-1]: ins | pending\n';
+      const textWithSidecar = 'x = 1  # cn-1\n\n# -- ChangeDown ---\n# [^cn-1]: ins | pending\n';
 
       server.handleDocumentOpen(uri, textWithSidecar, 'python');
       stubGit(server, {

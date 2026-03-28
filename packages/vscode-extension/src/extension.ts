@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { ExtensionController } from './controller';
-import { createLanguageClient, setDecorationDataHandler, setViewModeChangedHandler, setDocumentStateHandler, setPromotionStartHandler, setPromotionCompleteHandler, setCoherenceHandler, clearStatusBarDocument } from './lsp-client';
+import { createLanguageClient, setDecorationDataHandler, setViewModeChangedHandler, setDocumentStateHandler, setPromotionStartHandler, setPromotionCompleteHandler, setCoherenceHandler, clearStatusBarDocument, setAutoFoldHandler } from './lsp-client';
 import { LanguageClient } from 'vscode-languageclient/node';
 import { annotateFromGit } from './annotate-command';
 import { MoveCodeLensProvider } from './move-code-lens';
@@ -12,24 +12,23 @@ import { SettingsPanelProvider } from './settings-panel';
 import { ProjectStatusModel } from './project-status';
 import { registerHoverProvider } from './hover-provider';
 import { ResolvedContentProvider, RESOLVED_SCHEME, toResolvedUri, GitOriginalContentProvider, GIT_ORIGINAL_SCHEME } from './resolved-content-provider';
-import { ChangetracksSCM } from './changetracks-scm';
+import { ChangedownSCM } from './changedown-scm';
 import { CurrentDocumentService } from './current-document-service';
 import { ChangeComments } from './change-comments';
 import { ChangeTimelineProvider } from './change-timeline';
-import type { PendingOverlay } from '@changetracks/core';
+import type { PendingOverlay } from '@changedown/core';
 import type { ViewMode } from './view-mode';
-import { SIDECAR_BLOCK_MARKER } from '@changetracks/core';
-import { changetracksPlugin } from './preview/plugin';
+import { SIDECAR_BLOCK_MARKER } from '@changedown/core';
+import { changedownPlugin } from '@changedown/preview';
 import { setOutputChannel } from './output-channel';
 import { registerChangeCommands, registerScmCommands, registerCommentCommands, registerTestCommands, registerSetupCommands, type ChangeCommandsContext } from './commands';
 import { DocxEditorProvider } from './docx/docx-editor-provider';
-import { ChangeTracksFoldingProvider } from './folding-provider';
 import { ProjectedView } from './projected-view';
 import { GitGutterManager, GUTTER_STRATEGY } from './git-gutter-manager';
 import type { GutterStrategy } from './git-gutter-manager';
 
 let controller: ExtensionController;
-let scmInstance: ChangetracksSCM | null = null;
+let scmInstance: ChangedownSCM | null = null;
 let changeComments: ChangeComments | { getChangeIdForThread: () => undefined };
 let client: LanguageClient;
 // P1-19: Removed duplicate statusBarItem — StatusBarManager in lsp-client.ts handles it
@@ -39,24 +38,24 @@ let gutterManager: GitGutterManager | null = null;
 // Output channel for error logging
 export let outputChannel: vscode.OutputChannel;
 
-// Per-instance temp file path for test bridge. Uses CHANGETRACKS_TEST_INSTANCE_ID
+// Per-instance temp file path for test bridge. Uses CHANGEDOWN_TEST_INSTANCE_ID
 // env var (set by Playwright harness) to prevent cross-instance contamination.
 function testDocPath(): string {
-    const id = process.env.CHANGETRACKS_TEST_INSTANCE_ID;
+    const id = process.env.CHANGEDOWN_TEST_INSTANCE_ID;
     const suffix = id ? `-${id}` : '';
-    return path.join(os.tmpdir(), `changetracks-test-doc${suffix}.json`);
+    return path.join(os.tmpdir(), `changedown-test-doc${suffix}.json`);
 }
 
 export async function activate(context: vscode.ExtensionContext) {
     // Create output channel for error logging
-    outputChannel = vscode.window.createOutputChannel('ChangeTracks');
+    outputChannel = vscode.window.createOutputChannel('ChangeDown');
     setOutputChannel(outputChannel);
     context.subscriptions.push(outputChannel);
 
     const isDevMode = context.extensionMode === vscode.ExtensionMode.Development;
 
     // Log activation context for debugging initialization issues
-    outputChannel.appendLine(`[activate] ChangeTracks activating (v${context.extension.packageJSON.version})`);
+    outputChannel.appendLine(`[activate] ChangeDown activating (v${context.extension.packageJSON.version})`);
     outputChannel.appendLine(`[activate] activeTextEditor: ${vscode.window.activeTextEditor?.document.uri.fsPath ?? 'none'}`);
     outputChannel.appendLine(`[activate] visibleTextEditors: ${vscode.window.visibleTextEditors.length}`);
     outputChannel.appendLine(`[activate] workspaceFolders: ${vscode.workspace.workspaceFolders?.length ?? 0}`);
@@ -65,11 +64,11 @@ export async function activate(context: vscode.ExtensionContext) {
     // --- First-install / upgrade detection (deferred, never blocks activation) ---
     setTimeout(() => {
         try {
-            const VERSION_KEY = 'changetracks.version';
+            const VERSION_KEY = 'changedown.version';
             const currentVersion: string = context.extension.packageJSON.version;
             const previousVersion = context.globalState.get<string>(VERSION_KEY);
-            const walkthroughMode = vscode.workspace.getConfiguration('changetracks').get<string>('showWalkthroughOnStartup') || 'firstInstall';
-            const walkthroughId = `${context.extension.id}#changetracks.getStarted`;
+            const walkthroughMode = vscode.workspace.getConfiguration('changedown').get<string>('showWalkthroughOnStartup') || 'firstInstall';
+            const walkthroughId = `${context.extension.id}#changedown.getStarted`;
 
             if (walkthroughMode === 'always') {
                 vscode.commands.executeCommand('workbench.action.openWalkthrough', walkthroughId, false);
@@ -78,7 +77,7 @@ export async function activate(context: vscode.ExtensionContext) {
                     vscode.commands.executeCommand('workbench.action.openWalkthrough', walkthroughId, false);
                 } else if (currentVersion !== previousVersion) {
                     void vscode.window.showInformationMessage(
-                        `ChangeTracks updated to v${currentVersion}.`,
+                        `ChangeDown updated to v${currentVersion}.`,
                         'Open Walkthrough'
                     ).then(action => {
                         if (action === 'Open Walkthrough') {
@@ -97,7 +96,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Initialize xxhash-wasm before creating the controller — the FootnoteNativeParser
     // calls computeLineHash synchronously during parsing. Without this, opening an L3
     // document at startup crashes with "xxhash-wasm not initialized".
-    const { initHashline } = await import('@changetracks/core');
+    const { initHashline } = await import('@changedown/core');
     await initHashline();
 
     // Create controller first so decorationDataHandler is wired before LSP sync.
@@ -107,16 +106,6 @@ export async function activate(context: vscode.ExtensionContext) {
     // Recover any orphaned swap files from a previous crash while in projected view
     ProjectedView.recoverCrashBackups();
 
-    // Register folding provider for hidden deletion regions in Simple mode
-    const foldingProvider = new ChangeTracksFoldingProvider();
-    context.subscriptions.push(
-        vscode.languages.registerFoldingRangeProvider(
-            { language: 'markdown' },
-            foldingProvider
-        )
-    );
-    controller.setFoldingProvider(foldingProvider);
-
     // Wire LSP decoration data to controller refresh (fixes LSP push never triggering refresh)
     setDecorationDataHandler((uri, changes) => {
         controller.handleDecorationDataUpdate(uri, changes);
@@ -124,9 +113,35 @@ export async function activate(context: vscode.ExtensionContext) {
             // Test bridge: signal that decorationData has arrived for this URI.
             // Enables Playwright tests to poll for LSP readiness without command palette overhead.
             try {
-                const signalPath = path.join(os.tmpdir(), 'changetracks-test-decoration-ready.json');
+                const signalPath = path.join(os.tmpdir(), 'changedown-test-decoration-ready.json');
                 fs.writeFileSync(signalPath, JSON.stringify({ uri, changeCount: changes.length, timestamp: Date.now() }));
             } catch { /* non-critical */ }
+        }
+    });
+
+    // Wire auto-fold hints from LSP decoration data
+    setAutoFoldHandler((lines: number[]) => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) return;
+        // Level 2 (edit-op) lines come first, Level 1 (section) last.
+        // Fold inner first, then outer, to preserve nested fold state.
+        const editOpLines = lines.slice(0, -1);
+        const sectionLine = lines[lines.length - 1];
+        if (editOpLines.length > 0) {
+            vscode.commands.executeCommand('editor.fold', {
+                selectionLines: editOpLines,
+                levels: 1,
+            }).then(() => {
+                vscode.commands.executeCommand('editor.fold', {
+                    selectionLines: [sectionLine],
+                    levels: 1,
+                }).then(undefined, () => {});
+            }, () => {});
+        } else {
+            vscode.commands.executeCommand('editor.fold', {
+                selectionLines: [sectionLine],
+                levels: 1,
+            }).then(undefined, () => {});
         }
     });
 
@@ -166,13 +181,13 @@ export async function activate(context: vscode.ExtensionContext) {
         // LSP ready — wire overlay sender and getChanges client
         controller.setOverlaySender((uri: string, overlay: PendingOverlay | null) => {
             if (client?.isRunning?.()) {
-                client.sendNotification('changetracks/pendingOverlay', { uri, overlay });
+                client.sendNotification('changedown/pendingOverlay', { uri, overlay });
             }
         });
-        // Wire view mode sender: controller sends changetracks/setViewMode to LSP on mode change
+        // Wire view mode sender: controller sends changedown/setViewMode to LSP on mode change
         controller.setViewModeSender((uri: string, viewMode: ViewMode) => {
             if (client?.isRunning?.()) {
-                client.sendNotification('changetracks/setViewMode', {
+                client.sendNotification('changedown/setViewMode', {
                     textDocument: { uri },
                     viewMode,
                 });
@@ -181,21 +196,21 @@ export async function activate(context: vscode.ExtensionContext) {
         controller.setLspClient(client);
         controller.setCursorPositionSender((uri: string, line: number, changeId?: string) => {
             if (client?.isRunning?.()) {
-                client.sendNotification('changetracks/cursorPosition', {
+                client.sendNotification('changedown/cursorPosition', {
                     textDocument: { uri },
                     line,
                     changeId,
                 });
             }
         });
-        const initialMode = vscode.workspace.getConfiguration('changetracks').get<string>('codeLensMode', 'cursor');
-        client.sendNotification('changetracks/setCodeLensMode', { mode: initialMode });
+        const initialMode = vscode.workspace.getConfiguration('changedown').get<string>('codeLensMode', 'cursor');
+        client.sendNotification('changedown/setCodeLensMode', { mode: initialMode });
         // Wire batch edit sender for save/projected-view coordination
         controller.setBatchEditSender((action, uri) => {
             if (client?.isRunning?.()) {
                 const method = action === 'start'
-                    ? 'changetracks/batchEditStart'
-                    : 'changetracks/batchEditEnd';
+                    ? 'changedown/batchEditStart'
+                    : 'changedown/batchEditEnd';
                 client.sendNotification(method, { uri });
             }
         });
@@ -205,13 +220,13 @@ export async function activate(context: vscode.ExtensionContext) {
         // Degraded mode: commands work, decorations arrive when LSP connects
     });
 
-    // Wire codeLensMode config watcher: send changetracks/setCodeLensMode to LSP on change
+    // Wire codeLensMode config watcher: send changedown/setCodeLensMode to LSP on change
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('changetracks.codeLensMode')) {
-                const mode = vscode.workspace.getConfiguration('changetracks').get<string>('codeLensMode', 'cursor');
+            if (e.affectsConfiguration('changedown.codeLensMode')) {
+                const mode = vscode.workspace.getConfiguration('changedown').get<string>('codeLensMode', 'cursor');
                 if (client?.isRunning?.()) {
-                    client.sendNotification('changetracks/setCodeLensMode', { mode });
+                    client.sendNotification('changedown/setCodeLensMode', { mode });
                 }
             }
         })
@@ -227,14 +242,14 @@ export async function activate(context: vscode.ExtensionContext) {
     // Config file watching
     const configPattern = new vscode.RelativePattern(
         vscode.workspace.workspaceFolders?.[0]?.uri ?? vscode.Uri.file('.'),
-        '.changetracks/config.toml'
+        '.changedown/config.toml'
     );
     const configWatcher = vscode.workspace.createFileSystemWatcher(configPattern);
 
     const loadConfigFromDisk = async () => {
         const folders = vscode.workspace.workspaceFolders;
         if (!folders) return;
-        const configPath = vscode.Uri.joinPath(folders[0].uri, '.changetracks', 'config.toml');
+        const configPath = vscode.Uri.joinPath(folders[0].uri, '.changedown', 'config.toml');
         try {
             const content = await vscode.workspace.fs.readFile(configPath);
             statusModel.updateFromToml(new TextDecoder().decode(content));
@@ -268,7 +283,7 @@ export async function activate(context: vscode.ExtensionContext) {
         onDidChangeChanges: (listener) => controller.onDidChangeChanges(listener),
     });
     context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider('changetracksReview', reviewPanelProvider),
+        vscode.window.registerWebviewViewProvider('changedownReview', reviewPanelProvider),
         reviewPanelProvider
     );
 
@@ -282,7 +297,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Settings Panel (WebviewView)
     const settingsPanelProvider = new SettingsPanelProvider(statusModel);
     context.subscriptions.push(
-        vscode.window.registerWebviewViewProvider('changetracksSettings', settingsPanelProvider),
+        vscode.window.registerWebviewViewProvider('changedownSettings', settingsPanelProvider),
         settingsPanelProvider
     );
 
@@ -294,7 +309,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 settingsPanelProvider.postMessageToWebview({ type: 'saveResult', success: false });
                 return;
             }
-            const dirUri = vscode.Uri.joinPath(folders[0].uri, '.changetracks');
+            const dirUri = vscode.Uri.joinPath(folders[0].uri, '.changedown');
             const fileUri = vscode.Uri.joinPath(dirUri, 'config.toml');
             try {
                 try {
@@ -304,7 +319,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 }
                 await vscode.workspace.fs.writeFile(fileUri, new TextEncoder().encode(toml));
                 settingsPanelProvider.postMessageToWebview({ type: 'saveResult', success: true });
-                vscode.window.showInformationMessage('ChangeTracks settings saved.');
+                vscode.window.showInformationMessage('ChangeDown settings saved.');
             } catch (err: any) {
                 settingsPanelProvider.postMessageToWebview({ type: 'saveResult', success: false });
                 vscode.window.showErrorMessage(`Failed to save settings: ${err.message}`);
@@ -331,18 +346,18 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     // Git gutter management: silence Git's QuickDiff for markdown files with changes
-    const gutterStrategy = vscode.workspace.getConfiguration('changetracks').get<GutterStrategy>('gutterStrategy', GUTTER_STRATEGY.AUTO);
+    const gutterStrategy = vscode.workspace.getConfiguration('changedown').get<GutterStrategy>('gutterStrategy', GUTTER_STRATEGY.AUTO);
     const gm = new GitGutterManager(outputChannel);
-    gm.setWarningShown(context.workspaceState.get<boolean>('changetracks.gutterWarningShown', false));
+    gm.setWarningShown(context.workspaceState.get<boolean>('changedown.gutterWarningShown', false));
 
     // SCM provider (gutter diff integration + resource list when not legacy)
     // Create SCM AFTER gutter manager — SCM wires index→flag sync internally
     // Wrapped in try/catch: SCM constructor runs async workspace scans and file
     // watchers that can fail in restricted environments. A SCM crash must NOT
     // prevent decorations, panels, or commands from working.
-    let scm: ChangetracksSCM | null = null;
+    let scm: ChangedownSCM | null = null;
     try {
-        scm = new ChangetracksSCM(context, () => controller, gm, gutterStrategy);
+        scm = new ChangedownSCM(context, () => controller, gm, gutterStrategy);
         scmInstance = scm;
         context.subscriptions.push(scm);
     } catch (err: any) {
@@ -357,7 +372,7 @@ export async function activate(context: vscode.ExtensionContext) {
         context.subscriptions.push(gm);
 
         // Suppress git's QuickDiff gutter if the user setting allows it.
-        const suppressEnabled = vscode.workspace.getConfiguration('changetracks').get<boolean>('suppressGitGutter', true);
+        const suppressEnabled = vscode.workspace.getConfiguration('changedown').get<boolean>('suppressGitGutter', true);
         if (suppressEnabled) {
             suppressGitQuickDiff(outputChannel, context);
         } else {
@@ -372,15 +387,15 @@ export async function activate(context: vscode.ExtensionContext) {
     // Persist warning state across VS Code restarts
     context.subscriptions.push({
         dispose: () => {
-            context.workspaceState.update('changetracks.gutterWarningShown', gm.wasWarningShown());
+            context.workspaceState.update('changedown.gutterWarningShown', gm.wasWarningShown());
         }
     });
 
     // Config change listeners
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('changetracks.gutterStrategy')) {
-                const strategy = vscode.workspace.getConfiguration('changetracks').get<GutterStrategy>('gutterStrategy', GUTTER_STRATEGY.AUTO);
+            if (e.affectsConfiguration('changedown.gutterStrategy')) {
+                const strategy = vscode.workspace.getConfiguration('changedown').get<GutterStrategy>('gutterStrategy', GUTTER_STRATEGY.AUTO);
                 const shouldEnable = strategy !== GUTTER_STRATEGY.OFF && strategy !== GUTTER_STRATEGY.PROPOSED_API;
                 gutterManager?.setEnabled(shouldEnable);
             }
@@ -430,7 +445,7 @@ export async function activate(context: vscode.ExtensionContext) {
             // Enables Playwright tests to read cursor line without command palette.
             vscode.window.onDidChangeTextEditorSelection((e) => {
                 if (e.textEditor.document.languageId === 'markdown') {
-                    const statePath = path.join(os.tmpdir(), 'changetracks-test-cursor.json');
+                    const statePath = path.join(os.tmpdir(), 'changedown-test-cursor.json');
                     fs.writeFileSync(statePath, JSON.stringify({
                         line: e.selections[0].active.line + 1, // 1-based
                         timestamp: Date.now(),
@@ -477,7 +492,7 @@ export async function activate(context: vscode.ExtensionContext) {
             if (!editor) return;
 
             // Auto-annotate from git (existing logic)
-            const config = vscode.workspace.getConfiguration('changetracks');
+            const config = vscode.workspace.getConfiguration('changedown');
             if (!config.get<boolean>('annotateOnOpen', false)) return;
 
             // Only process real files
@@ -504,12 +519,12 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // DOCX custom editor: "Open With..." → ChangeTracks DOCX Editor
+    // DOCX custom editor: "Open With..." → ChangeDown DOCX Editor
     context.subscriptions.push(DocxEditorProvider.register(context));
 
     // Export to DOCX command (editor title button + side panel button)
     context.subscriptions.push(
-        vscode.commands.registerCommand('changetracks.exportToDocx', async () => {
+        vscode.commands.registerCommand('changedown.exportToDocx', async () => {
             const editor = vscode.window.activeTextEditor;
             if (!editor || editor.document.languageId !== 'markdown') {
                 vscode.window.showWarningMessage('Open a markdown file to export to DOCX.');
@@ -517,7 +532,7 @@ export async function activate(context: vscode.ExtensionContext) {
             }
 
             const mdPath = editor.document.uri.fsPath;
-            const defaultDocxPath = mdPath.replace(/-changetracks\.md$/i, '.docx').replace(/\.md$/i, '.docx');
+            const defaultDocxPath = mdPath.replace(/-changedown\.md$/i, '.docx').replace(/\.md$/i, '.docx');
             const defaultUri = vscode.Uri.file(defaultDocxPath);
 
             const saveUri = await vscode.window.showSaveDialog({
@@ -529,19 +544,20 @@ export async function activate(context: vscode.ExtensionContext) {
 
             try {
                 const markdown = editor.document.getText();
-                const { exportDocx } = await import('@changetracks/docx');
+                const { exportDocx } = await import('@changedown/docx');
 
                 // Derive media folder from the markdown file path.
-                // Convention: foo-changetracks.md → foo_media/, or foo.md → foo_media/
+                // Convention: foo-changedown.md → foo_media/, or foo.md → foo_media/
                 const mdDir = path.dirname(mdPath);
                 const docxBasename = path.basename(mdPath)
-                    .replace(/-changetracks\.md$/i, '')
+                    .replace(/-changedown\.md$/i, '')
                     .replace(/\.md$/i, '');
                 const mediaDir = path.join(mdDir, `${docxBasename}_media`);
                 const hasMedia = fs.existsSync(mediaDir);
 
                 const { buffer, stats } = await exportDocx(markdown, {
                     mediaDir: hasMedia ? mediaDir : undefined,
+                    fileReader: hasMedia ? (p: string) => { try { return new Uint8Array(fs.readFileSync(p)); } catch { return null; } } : undefined,
                 });
 
                 await vscode.workspace.fs.writeFile(saveUri, new Uint8Array(buffer));
@@ -571,7 +587,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // Markdown preview: register CriticMarkup rendering plugin
     return {
         extendMarkdownIt(md: any) {
-            return md.use(changetracksPlugin);
+            return md.use(changedownPlugin);
         }
     };
 }
@@ -579,12 +595,12 @@ export async function activate(context: vscode.ExtensionContext) {
 // ── Git QuickDiff suppression ───────────────────────────────────────────────
 
 const SCM_DIFF_SETTING = 'scm.diffDecorations';
-const ORIGINAL_SETTING_KEY = 'changetracks.originalDiffDecorations';
+const ORIGINAL_SETTING_KEY = 'changedown.originalDiffDecorations';
 
 /**
  * Suppress git's QuickDiff gutter by setting scm.diffDecorations to "none".
  * Saves the user's original value so it can be restored via toggle command.
- * ChangeTracks' own decorations (via createTextEditorDecorationType) are unaffected.
+ * ChangeDown' own decorations (via createTextEditorDecorationType) are unaffected.
  */
 function suppressGitQuickDiff(output: vscode.OutputChannel, context: vscode.ExtensionContext): void {
     const config = vscode.workspace.getConfiguration();
@@ -606,7 +622,7 @@ function suppressGitQuickDiff(output: vscode.OutputChannel, context: vscode.Exte
 /** Register the toggle command (used whether suppression is on or off). */
 function registerGitGutterToggle(output: vscode.OutputChannel, context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('changetracks.toggleGitGutter', () => {
+        vscode.commands.registerCommand('changedown.toggleGitGutter', () => {
             const cfg = vscode.workspace.getConfiguration();
             const val = cfg.get<string>(SCM_DIFF_SETTING, 'all');
             if (val === 'none') {
@@ -618,18 +634,18 @@ function registerGitGutterToggle(output: vscode.OutputChannel, context: vscode.E
                 context.workspaceState.update(ORIGINAL_SETTING_KEY, val);
                 cfg.update(SCM_DIFF_SETTING, 'none', vscode.ConfigurationTarget.Workspace);
                 output.appendLine('[gutter] suppressed git QuickDiff');
-                vscode.window.showInformationMessage('Git gutter suppressed. ChangeTracks decorations still active.');
+                vscode.window.showInformationMessage('Git gutter suppressed. ChangeDown decorations still active.');
             }
         })
     );
 }
 
-/** React to changetracks.suppressGitGutter setting changes at runtime. */
+/** React to changedown.suppressGitGutter setting changes at runtime. */
 function watchSuppressGitGutterSetting(output: vscode.OutputChannel, context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (!e.affectsConfiguration('changetracks.suppressGitGutter')) return;
-            const enabled = vscode.workspace.getConfiguration('changetracks').get<boolean>('suppressGitGutter', true);
+            if (!e.affectsConfiguration('changedown.suppressGitGutter')) return;
+            const enabled = vscode.workspace.getConfiguration('changedown').get<boolean>('suppressGitGutter', true);
             const cfg = vscode.workspace.getConfiguration();
             if (enabled) {
                 const current = cfg.get<string>(SCM_DIFF_SETTING, 'all');

@@ -1,8 +1,8 @@
 /**
- * Tracking header parsing, generation, and insertion for ChangeTracks files.
+ * Tracking header parsing, generation, and insertion for ChangeDown files.
  *
  * ADR-021: File-level tracking headers.
- * Header format: `<!-- ctrcks.com/v1: tracked|untracked -->`
+ * Header format: `<!-- changedown.com/v1: tracked|untracked -->`
  *
  * Precedence: File header > Project config > Global default.
  */
@@ -22,7 +22,7 @@ export interface TrackingHeader {
  * Regex matching the tracking header comment.
  * Allows flexible whitespace inside the HTML comment.
  */
-const TRACKING_HEADER_RE = /<!--\s*ctrcks\.com\/v(\d+):\s*(tracked|untracked)\s*-->/;
+export const TRACKING_HEADER_RE = /<!--\s*(?:changedown\.com|ctrcks\.com)\/v(\d+):\s*(tracked|untracked)\s*-->/;
 
 /**
  * Maximum number of lines to scan for a tracking header (0-indexed: lines 0..4).
@@ -30,11 +30,11 @@ const TRACKING_HEADER_RE = /<!--\s*ctrcks\.com\/v(\d+):\s*(tracked|untracked)\s*
 const MAX_SCAN_LINES = 5;
 
 /**
- * Parse the first 5 lines of `text` for a ChangeTracks tracking header.
+ * Parse the first 5 lines of `text` for a ChangeDown tracking header.
  *
  * Returns a `TrackingHeader` if found, or `null` if no valid header exists
  * within the first 5 lines. Legacy breadcrumb comments
- * (`<!-- changetracks: https://ctrcks.com/spec -->`) are explicitly
+ * (`<!-- changedown: https://changedown.com/spec -->`) are explicitly
  * NOT treated as tracking headers.
  */
 export function parseTrackingHeader(text: string): TrackingHeader | null {
@@ -64,7 +64,7 @@ export function parseTrackingHeader(text: string): TrackingHeader | null {
  * Generate a tracking header comment string.
  */
 export function generateTrackingHeader(status: 'tracked' | 'untracked'): string {
-  return `<!-- ctrcks.com/v1: ${status} -->`;
+  return `<!-- changedown.com/v1: ${status} -->`;
 }
 
 /**

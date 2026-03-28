@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyEdit, shouldLogEdit } from 'changetracks-hooks/internals';
+import { classifyEdit, shouldLogEdit } from 'changedown-hooks/internals';
 
 describe('classifyEdit', () => {
   it('classifies Write as creation', () => {

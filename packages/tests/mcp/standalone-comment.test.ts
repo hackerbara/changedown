@@ -7,17 +7,17 @@
  * no way to add a comment on unchanged text.
  *
  * The fix: standalone comments with `at:` coordinates should be allowed.
- * They insert `{>>comment text<<}[^ct-N]` at the end of the target line
+ * They insert `{>>comment text<<}[^cn-N]` at the end of the target line
  * and create a footnote definition with `type: comment | status: proposed`.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -31,7 +31,7 @@ function extractCoordinate(outputLine: string): { lineNum: number; hash: string 
   return { lineNum: parseInt(m[1], 10), hash: m[2] };
 }
 
-const compactConfig: ChangeTracksConfig = {
+const compactConfig: ChangeDownConfig = {
   tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
   author: { default: 'ai:test-agent', enforcement: 'optional' },
   hooks: { enforcement: 'warn', exclude: [] },
@@ -50,7 +50,7 @@ describe('standalone comment via propose_change (compact mode)', () => {
   beforeAll(async () => { await initHashline(); });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-standalone-comment-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-standalone-comment-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -95,7 +95,7 @@ describe('standalone comment via propose_change (compact mode)', () => {
     // Parse the response
     const data = JSON.parse(result.content[0].text);
     expect(data.type).toBe('comment');
-    expect(data.change_id).toMatch(/^ct-\d+$/);
+    expect(data.change_id).toMatch(/^cn-\d+$/);
 
     // Verify the file was modified correctly
     const modified = await fs.readFile(filePath, 'utf-8');
@@ -178,10 +178,10 @@ describe('standalone comment via propose_change (compact mode)', () => {
   it('standalone comment works alongside existing tracked changes', async () => {
     const fileContent = [
       '# Title',
-      '{++New paragraph added++}[^ct-1]',
+      '{++New paragraph added++}[^cn-1]',
       'Existing paragraph.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
     ].join('\n');
 
     const filePath = path.join(tmpDir, 'doc4.md');
@@ -205,17 +205,17 @@ describe('standalone comment via propose_change (compact mode)', () => {
     expect(result.isError).toBeUndefined();
 
     const data = JSON.parse(result.content[0].text);
-    // ID should be ct-2 since ct-1 already exists
-    expect(data.change_id).toBe('ct-2');
+    // ID should be cn-2 since cn-1 already exists
+    expect(data.change_id).toBe('cn-2');
     expect(data.type).toBe('comment');
 
     const modified = await fs.readFile(filePath, 'utf-8');
     // Both changes exist
-    expect(modified).toContain('{++New paragraph added++}[^ct-1]');
-    expect(modified).toContain('{>>needs review<<}[^ct-2]');
+    expect(modified).toContain('{++New paragraph added++}[^cn-1]');
+    expect(modified).toContain('{>>needs review<<}[^cn-2]');
     // Both footnotes exist
-    expect(modified).toMatch(/\[\^ct-1\]:.*ins.*proposed/);
-    expect(modified).toMatch(/\[\^ct-2\]:.*comment.*proposed/);
+    expect(modified).toMatch(/\[\^cn-1\]:.*ins.*proposed/);
+    expect(modified).toMatch(/\[\^cn-2\]:.*comment.*proposed/);
   });
 
   it('footnote does not duplicate inline comment text', async () => {
@@ -270,7 +270,7 @@ describe('standalone comment via propose_change (compact mode)', () => {
   });
 
   describe('level 1 (inline metadata, no footnote)', () => {
-    const level1Config: ChangeTracksConfig = {
+    const level1Config: ChangeDownConfig = {
       ...compactConfig,
       protocol: { ...compactConfig.protocol, level: 1 },
     };
@@ -316,8 +316,8 @@ describe('standalone comment via propose_change (compact mode)', () => {
       // Level 1: inline metadata comment with author|date|type|status
       expect(modified).toMatch(/\{>>@ai:test-agent\|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\|comment\|proposed<<\}/);
 
-      // No footnote definition line (level 2 would produce [^ct-N]:)
-      expect(modified).not.toMatch(/^\[\^ct-\d+\]:/m);
+      // No footnote definition line (level 2 would produce [^cn-N]:)
+      expect(modified).not.toMatch(/^\[\^cn-\d+\]:/m);
     });
   });
 });

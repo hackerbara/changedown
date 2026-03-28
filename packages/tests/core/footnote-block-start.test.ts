@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findFootnoteBlockStart } from '@changetracks/core/internals';
+import { findFootnoteBlockStart } from '@changedown/core/internals';
 
 describe('findFootnoteBlockStart', () => {
   it('returns lines.length for content without footnotes', () => {
@@ -12,7 +12,7 @@ describe('findFootnoteBlockStart', () => {
       '# Title',
       'Body text here.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
       '    reason: spelling fix',
     ];
     expect(findFootnoteBlockStart(lines)).toBe(3);
@@ -23,27 +23,27 @@ describe('findFootnoteBlockStart', () => {
       '# Title',
       'Body.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
       '    reason: fix',
-      '[^ct-2]: @bob | 2026-02-17 | del | accepted',
+      '[^cn-2]: @bob | 2026-02-17 | del | accepted',
       '    approved: @alice 2026-02-17 "ok"',
     ];
     expect(findFootnoteBlockStart(lines)).toBe(3);
   });
 
-  it('ignores [^ct- inside CriticMarkup substitution wrapping a code fence', () => {
+  it('ignores [^cn- inside CriticMarkup substitution wrapping a code fence', () => {
     const lines = [
       '# Title',
       'Body paragraph.',
       '```markdown',
-      '[^ct-5]: @alice | 2026-03-14 | ins | proposed',
+      '[^cn-5]: @alice | 2026-03-14 | ins | proposed',
       '    image-dimensions: 2.5in x 1.8in',
-      '[^ct-6]: @system | 2026-03-14 | image | proposed',
+      '[^cn-6]: @system | 2026-03-14 | image | proposed',
       '    image-dimensions: 4.0in x 3.0in',
       '```',
       'More body text.',
       '',
-      '[^ct-1]: @alice | 2026-03-14 | creation | proposed',
+      '[^cn-1]: @alice | 2026-03-14 | creation | proposed',
       '    @alice 2026-03-14T16:50:21Z: File created',
     ];
     // Should find the REAL footnote at index 10, not the false positives inside the code fence
@@ -51,35 +51,35 @@ describe('findFootnoteBlockStart', () => {
   });
 
 
-  it('ignores [^ct- inside CriticMarkup substitution (no code fence)', () => {
+  it('ignores [^cn- inside CriticMarkup substitution (no code fence)', () => {
     const lines = [
       '# Title',
       'Body paragraph.',
       'new text',
       '',
-      '[^ct-1]: @alice | 2026-03-14 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-14 | ins | proposed',
     ];
-    // The [^ct-5] on index 2 is inside CriticMarkup, not a real footnote
+    // The [^cn-5] on index 2 is inside CriticMarkup, not a real footnote
     expect(findFootnoteBlockStart(lines)).toBe(4);
   });
 
-  it('ignores [^ct- inside a code fence in body', () => {
+  it('ignores [^cn- inside a code fence in body', () => {
     const lines = [
       '# Title',
       '```markdown',
-      '[^ct-5]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-5]: @alice | 2026-02-17 | ins | proposed',
       '```',
       'Body text.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
     ];
     expect(findFootnoteBlockStart(lines)).toBe(6);
   });
 
   it('handles file that is entirely footnotes', () => {
     const lines = [
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
-      '[^ct-2]: @bob | 2026-02-17 | del | accepted',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-2]: @bob | 2026-02-17 | del | accepted',
     ];
     expect(findFootnoteBlockStart(lines)).toBe(0);
   });
@@ -93,7 +93,7 @@ describe('findFootnoteBlockStart', () => {
     const lines = [
       'Body.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
       '',
       '',
     ];
@@ -105,10 +105,10 @@ describe('findFootnoteBlockStart', () => {
     const lines = [
       'Body.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
       '    reason: fix',
       '',
-      '[^ct-2]: @bob | 2026-02-17 | del | accepted',
+      '[^cn-2]: @bob | 2026-02-17 | del | accepted',
     ];
     expect(findFootnoteBlockStart(lines)).toBe(2);
   });
@@ -117,19 +117,19 @@ describe('findFootnoteBlockStart', () => {
     const lines = [
       'Body.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
       '    reason: fix',
-      '[^ct-2]: garbled content here',
+      '[^cn-2]: garbled content here',
     ];
-    // FOOTNOTE_DEF_START matches [^ct-2]: even though header is malformed
+    // FOOTNOTE_DEF_START matches [^cn-2]: even though header is malformed
     expect(findFootnoteBlockStart(lines)).toBe(2);
   });
 
-  it('handles dotted IDs (ct-N.M)', () => {
+  it('handles dotted IDs (cn-N.M)', () => {
     const lines = [
       'Body.',
       '',
-      '[^ct-5.2]: @alice | 2026-02-17 | del | proposed',
+      '[^cn-5.2]: @alice | 2026-02-17 | del | proposed',
     ];
     expect(findFootnoteBlockStart(lines)).toBe(2);
   });
@@ -138,7 +138,7 @@ describe('findFootnoteBlockStart', () => {
     const lines = [
       'Body.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | sub | proposed',
       '    reason: complex change',
       '  @bob 2026-02-18: short indent reply',
       '        deep indent content',

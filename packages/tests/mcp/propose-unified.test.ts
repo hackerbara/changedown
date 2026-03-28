@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -25,7 +25,7 @@ const TODAY = new Date().toISOString().slice(0, 10);
 describe('unified propose_change with changes array', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeAll(async () => {
@@ -33,7 +33,7 @@ describe('unified propose_change with changes array', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-unified-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-unified-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -88,12 +88,12 @@ describe('unified propose_change with changes array', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     // Single change in array should produce a flat change_id (not dotted)
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.type).toBe('sub');
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{~~tpyo~>typo~~}[^ct-1]');
-    expect(modified).toContain(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`);
+    expect(modified).toContain('{~~tpyo~>typo~~}[^cn-1]');
+    expect(modified).toContain(`[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`);
     // Reasoning should appear in footnote
     expect(modified).toContain('spelling fix');
   });
@@ -120,10 +120,10 @@ describe('unified propose_change with changes array', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     // Multi-change should create a group with dotted IDs
-    expect(data.group_id).toMatch(/^ct-\d+$/);
+    expect(data.group_id).toMatch(/^cn-\d+$/);
     expect(data.applied).toHaveLength(2);
-    expect(data.applied[0].change_id).toMatch(/^ct-\d+\.1$/);
-    expect(data.applied[1].change_id).toMatch(/^ct-\d+\.2$/);
+    expect(data.applied[0].change_id).toMatch(/^cn-\d+\.1$/);
+    expect(data.applied[1].change_id).toMatch(/^cn-\d+\.2$/);
 
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('{~~tpyo~>typo~~}');
@@ -151,11 +151,11 @@ describe('unified propose_change with changes array', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.type).toBe('sub');
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{~~tpyo~>typo~~}[^ct-1]');
+    expect(modified).toContain('{~~tpyo~>typo~~}[^cn-1]');
   });
 
   // ─── Test 4: Mixed: legacy params ignored when changes array present ────
@@ -215,7 +215,7 @@ describe('unified propose_change with changes array', () => {
   // ─── Test 6: Compact format (at/op) when protocol.mode = 'compact' ─────
 
   it('compact format (at/op) in changes array when protocol.mode = compact', async () => {
-    const compactConfig: ChangeTracksConfig = {
+    const compactConfig: ChangeDownConfig = {
       ...config,
       protocol: { ...config.protocol, mode: 'compact' },
       hashline: { enabled: true, auto_remap: false },
@@ -337,7 +337,7 @@ describe('unified propose_change with changes array', () => {
     expect(modified).not.toContain('++}');
     expect(modified).not.toContain('--}');
     // No footnotes should be generated
-    expect(modified).not.toContain('[^ct-');
+    expect(modified).not.toContain('[^cn-');
   });
 
   // ─── Test 10b: string-encoded changes array is parsed gracefully ─────────
@@ -360,7 +360,7 @@ describe('unified propose_change with changes array', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
 
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('{~~tpyo~>typo~~}');
@@ -430,7 +430,7 @@ describe('unified propose_change with changes array', () => {
   // ─── Test 10: raw=true denied in strict mode ────────────────────────────
 
   it('raw=true denied in strict mode', async () => {
-    const strictConfig: ChangeTracksConfig = {
+    const strictConfig: ChangeDownConfig = {
       ...config,
       policy: { mode: 'strict', creation_tracking: 'footnote' },
     };

@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 import {
   loadConfig,
   resolveAuthor,
   resolveTrackingStatus,
-} from 'changetracks/engine';
-import type { ChangeTracksConfig } from 'changetracks/engine';
-import type { ResolveAuthorResult } from 'changetracks/engine';
+} from 'changedown/engine';
+import type { ChangeDownConfig } from 'changedown/engine';
+import type { ResolveAuthorResult } from 'changedown/engine';
 
 // =============================================================================
 // E1 – Config Resolution steps
@@ -19,19 +19,19 @@ import type { ResolveAuthorResult } from 'changetracks/engine';
 /** Temp directory and loaded config, stored on the world for E1 scenarios */
 interface E1State {
   tmpDir: string;
-  loadedConfig: ChangeTracksConfig | null;
+  loadedConfig: ChangeDownConfig | null;
 }
 
 const e1Key = Symbol('e1');
 
-function getE1(world: ChangeTracksWorld): E1State {
+function getE1(world: ChangeDownWorld): E1State {
   if (!(world as any)[e1Key]) {
     (world as any)[e1Key] = { tmpDir: '', loadedConfig: null };
   }
   return (world as any)[e1Key];
 }
 
-After(async function (this: ChangeTracksWorld) {
+After(async function (this: ChangeDownWorld) {
   const e1 = (this as any)[e1Key] as E1State | undefined;
   if (e1?.tmpDir) {
     await fs.rm(e1.tmpDir, { recursive: true, force: true }).catch(() => {});
@@ -40,17 +40,17 @@ After(async function (this: ChangeTracksWorld) {
 
 Given(
   'a fresh ScenarioContext',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const e1 = getE1(this);
-    e1.tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-e1-'));
+    e1.tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-e1-'));
   },
 );
 
 Given(
   'a config.toml with:',
-  async function (this: ChangeTracksWorld, content: string) {
+  async function (this: ChangeDownWorld, content: string) {
     const e1 = getE1(this);
-    const configDir = path.join(e1.tmpDir, '.changetracks');
+    const configDir = path.join(e1.tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(path.join(configDir, 'config.toml'), content, 'utf-8');
   },
@@ -58,7 +58,7 @@ Given(
 
 When(
   'I load config from an empty directory',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const e1 = getE1(this);
     e1.loadedConfig = await loadConfig(e1.tmpDir);
   },
@@ -66,7 +66,7 @@ When(
 
 When(
   'I load config from the project directory',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const e1 = getE1(this);
     e1.loadedConfig = await loadConfig(e1.tmpDir);
   },
@@ -74,7 +74,7 @@ When(
 
 // --- Generic config assertion helpers ---
 
-function getConfigValue(config: ChangeTracksConfig, path: string): unknown {
+function getConfigValue(config: ChangeDownConfig, path: string): unknown {
   const parts = path.split('.');
   let obj: unknown = config;
   for (const p of parts) {
@@ -86,7 +86,7 @@ function getConfigValue(config: ChangeTracksConfig, path: string): unknown {
 
 Then(
   'the config {word}.{word} is {string}',
-  function (this: ChangeTracksWorld, section: string, key: string, expected: string) {
+  function (this: ChangeDownWorld, section: string, key: string, expected: string) {
     const e1 = getE1(this);
     assert.ok(e1.loadedConfig, 'No config loaded');
     const actual = getConfigValue(e1.loadedConfig, `${section}.${key}`);
@@ -102,7 +102,7 @@ Then(
 
 Then(
   /^the config (\w+)\.(\w+) equals JSON (.+)$/,
-  function (this: ChangeTracksWorld, section: string, key: string, jsonStr: string) {
+  function (this: ChangeDownWorld, section: string, key: string, jsonStr: string) {
     const e1 = getE1(this);
     assert.ok(e1.loadedConfig, 'No config loaded');
     const actual = getConfigValue(e1.loadedConfig, `${section}.${key}`);
@@ -113,7 +113,7 @@ Then(
 
 Then(
   'the config {word}.{word} is true',
-  function (this: ChangeTracksWorld, section: string, key: string) {
+  function (this: ChangeDownWorld, section: string, key: string) {
     const e1 = getE1(this);
     assert.ok(e1.loadedConfig, 'No config loaded');
     const actual = getConfigValue(e1.loadedConfig, `${section}.${key}`);
@@ -123,7 +123,7 @@ Then(
 
 Then(
   'the config {word}.{word} is false',
-  function (this: ChangeTracksWorld, section: string, key: string) {
+  function (this: ChangeDownWorld, section: string, key: string) {
     const e1 = getE1(this);
     assert.ok(e1.loadedConfig, 'No config loaded');
     const actual = getConfigValue(e1.loadedConfig, `${section}.${key}`);
@@ -133,7 +133,7 @@ Then(
 
 Then(
   'the config {word}.{word} contains {string}',
-  function (this: ChangeTracksWorld, section: string, key: string, expected: string) {
+  function (this: ChangeDownWorld, section: string, key: string, expected: string) {
     const e1 = getE1(this);
     assert.ok(e1.loadedConfig, 'No config loaded');
     const actual = getConfigValue(e1.loadedConfig, `${section}.${key}`);
@@ -161,7 +161,7 @@ interface E2State {
 
 const e2Key = Symbol('e2');
 
-function getE2(world: ChangeTracksWorld): E2State {
+function getE2(world: ChangeDownWorld): E2State {
   if (!(world as any)[e2Key]) {
     (world as any)[e2Key] = { trackingResult: null };
   }
@@ -170,7 +170,7 @@ function getE2(world: ChangeTracksWorld): E2State {
 
 When(
   'I resolve tracking status for {string}',
-  async function (this: ChangeTracksWorld, name: string) {
+  async function (this: ChangeDownWorld, name: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.get(name);
     assert.ok(filePath, `No file named "${name}" in this scenario`);
@@ -182,7 +182,7 @@ When(
 
 Then(
   'the tracking status is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const e2 = getE2(this);
     assert.ok(e2.trackingResult, 'No tracking result available');
     assert.strictEqual(e2.trackingResult.status, expected);
@@ -191,7 +191,7 @@ Then(
 
 Then(
   'the tracking source is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const e2 = getE2(this);
     assert.ok(e2.trackingResult, 'No tracking result available');
     assert.strictEqual(e2.trackingResult.source, expected);
@@ -200,7 +200,7 @@ Then(
 
 Then(
   'the tracking header_present is true',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const e2 = getE2(this);
     assert.ok(e2.trackingResult, 'No tracking result available');
     assert.strictEqual(e2.trackingResult.header_present, true);
@@ -209,7 +209,7 @@ Then(
 
 Then(
   'the tracking header_present is false',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const e2 = getE2(this);
     assert.ok(e2.trackingResult, 'No tracking result available');
     assert.strictEqual(e2.trackingResult.header_present, false);
@@ -226,15 +226,15 @@ interface E3State {
 
 const e3Key = Symbol('e3');
 
-function getE3(world: ChangeTracksWorld): E3State {
+function getE3(world: ChangeDownWorld): E3State {
   if (!(world as any)[e3Key]) {
     (world as any)[e3Key] = { authorResult: null };
   }
   return (world as any)[e3Key];
 }
 
-/** Build a full ChangeTracksConfig from accumulated configOverrides */
-function buildAuthorConfig(world: ChangeTracksWorld): ChangeTracksConfig {
+/** Build a full ChangeDownConfig from accumulated configOverrides */
+function buildAuthorConfig(world: ChangeDownWorld): ChangeDownConfig {
   const overrides = world.configOverrides;
   return {
     tracking: { include: ['**/*.md'], exclude: ['node_modules/**'], default: 'tracked', auto_header: true },
@@ -253,7 +253,7 @@ function buildAuthorConfig(world: ChangeTracksWorld): ChangeTracksConfig {
 
 When(
   'I resolve author {string} for tool {string}',
-  function (this: ChangeTracksWorld, author: string, toolName: string) {
+  function (this: ChangeDownWorld, author: string, toolName: string) {
     const e3 = getE3(this);
     e3.authorResult = resolveAuthor(author, buildAuthorConfig(this), toolName);
   },
@@ -261,7 +261,7 @@ When(
 
 When(
   'I resolve author without explicit value for tool {string}',
-  function (this: ChangeTracksWorld, toolName: string) {
+  function (this: ChangeDownWorld, toolName: string) {
     const e3 = getE3(this);
     e3.authorResult = resolveAuthor(undefined, buildAuthorConfig(this), toolName);
   },
@@ -269,7 +269,7 @@ When(
 
 Then(
   'the resolved author is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const e3 = getE3(this);
     assert.ok(e3.authorResult, 'No author result available');
     assert.strictEqual(e3.authorResult.author, expected);
@@ -278,7 +278,7 @@ Then(
 
 Then(
   'there is no author error',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const e3 = getE3(this);
     assert.ok(e3.authorResult, 'No author result available');
     assert.strictEqual(e3.authorResult.error, undefined);
@@ -287,7 +287,7 @@ Then(
 
 Then(
   'there is an author error',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const e3 = getE3(this);
     assert.ok(e3.authorResult, 'No author result available');
     assert.ok(e3.authorResult.error, 'Expected an author error but got none');
@@ -296,7 +296,7 @@ Then(
 
 Then(
   'the author error message contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const e3 = getE3(this);
     assert.ok(e3.authorResult, 'No author result available');
     assert.ok(e3.authorResult.error, 'Expected an author error');
@@ -313,7 +313,7 @@ Then(
 
 When(
   'I call read_tracked_file for {string} with view = {string}',
-  async function (this: ChangeTracksWorld, name: string, view: string) {
+  async function (this: ChangeDownWorld, name: string, view: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.get(name);
     assert.ok(filePath, `No file named "${name}" in this scenario`);
@@ -327,7 +327,7 @@ When(
 
 Then(
   'the session records lastReadView {string} for {string}',
-  function (this: ChangeTracksWorld, expectedView: string, name: string) {
+  function (this: ChangeDownWorld, expectedView: string, name: string) {
     assert.ok(this.ctx, 'No context initialized');
     const filePath = this.files.get(name);
     assert.ok(filePath, `No file named "${name}"`);
@@ -338,7 +338,7 @@ Then(
 
 Then(
   'the session is not stale for {string}',
-  async function (this: ChangeTracksWorld, name: string) {
+  async function (this: ChangeDownWorld, name: string) {
     assert.ok(this.ctx, 'No context initialized');
     const filePath = this.files.get(name);
     assert.ok(filePath, `No file named "${name}"`);
@@ -349,7 +349,7 @@ Then(
 
 Then(
   'the session teardown completes without error',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.ctx, 'No context initialized');
     // Teardown should complete without throwing
     await this.ctx.teardown();
@@ -364,14 +364,14 @@ Then(
 
 Given(
   'guide delivery is enabled',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     this.showGuide = true;
   },
 );
 
 Then(
   'the response has {int} content items total',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.strictEqual(
       this.lastResult.content.length,
@@ -383,7 +383,7 @@ Then(
 
 Then(
   'the first content item contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.ok(this.lastResult.content.length > 0, 'No content items in result');
     const firstText = this.lastResult.content[0].text;

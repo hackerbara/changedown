@@ -19,8 +19,8 @@ import {
     invalidateDecorationCache,
     transformCachedDecorations,
 } from '../../vscode-extension/src/range-transform.js';
-import { ChangeType, ChangeStatus } from '@changetracks/core';
-import type { ChangeNode } from '@changetracks/core';
+import { ChangeType, ChangeStatus } from '@changedown/core';
+import type { ChangeNode } from '@changedown/core';
 
 const URI = 'file:///version-test.md';
 

@@ -3,237 +3,237 @@
  * Color values match visual-semantics.ts — manual sync. */
 
 /* === Insertions === */
-.vscode-light .ct-ins { color: #1E824C; }
-.vscode-dark .ct-ins  { color: #66BB6A; }
+.vscode-light .cn-ins { color: #1E824C; }
+.vscode-dark .cn-ins  { color: #66BB6A; }
 
 /* === Deletions === */
-.vscode-light .ct-del { color: #C0392B; text-decoration: line-through; }
-.vscode-dark .ct-del  { color: #EF5350; text-decoration: line-through; }
+.vscode-light .cn-del { color: #C0392B; text-decoration: line-through; }
+.vscode-dark .cn-del  { color: #EF5350; text-decoration: line-through; }
 
 /* === Substitution (deletion side) === */
-.vscode-light .ct-sub-del { color: #C0392B; text-decoration: line-through; }
-.vscode-dark .ct-sub-del  { color: #EF5350; text-decoration: line-through; }
+.vscode-light .cn-sub-del { color: #C0392B; text-decoration: line-through; }
+.vscode-dark .cn-sub-del  { color: #EF5350; text-decoration: line-through; }
 
 /* === Substitution (insertion side) === */
-.vscode-light .ct-sub-ins { color: #1E824C; }
-.vscode-dark .ct-sub-ins  { color: #66BB6A; }
+.vscode-light .cn-sub-ins { color: #1E824C; }
+.vscode-dark .cn-sub-ins  { color: #66BB6A; }
 
 /* === Highlights === */
-.ct-hl { background: rgba(255,255,0,0.3); padding: 0 2px; border-radius: 2px; }
+.cn-hl { background: rgba(255,255,0,0.3); padding: 0 2px; border-radius: 2px; }
 
 /* === Comments === */
-.ct-comment { cursor: help; font-size: 0.85em; color: var(--vscode-descriptionForeground, #666); }
+.cn-comment { cursor: help; font-size: 0.85em; color: var(--vscode-descriptionForeground, #666); }
 
 /* === Move operations === */
-.vscode-light .ct-move-from { color: #8E44AD; text-decoration: line-through; }
-.vscode-dark .ct-move-from  { color: #CE93D8; text-decoration: line-through; }
-.vscode-light .ct-move-to   { color: #8E44AD; text-decoration: underline; }
-.vscode-dark .ct-move-to    { color: #CE93D8; text-decoration: underline; }
+.vscode-light .cn-move-from { color: #8E44AD; text-decoration: line-through; }
+.vscode-dark .cn-move-from  { color: #CE93D8; text-decoration: line-through; }
+.vscode-light .cn-move-to   { color: #8E44AD; text-decoration: underline; }
+.vscode-dark .cn-move-to    { color: #CE93D8; text-decoration: underline; }
 
 /* === Status modifiers === */
-.ct-accepted { opacity: 0.6; }
-.ct-rejected { opacity: 0.5; font-style: italic; }
+.cn-accepted { opacity: 0.6; }
+.cn-rejected { opacity: 0.5; font-style: italic; }
 
 /* === Footnote refs (inline badges) === */
-.ct-ref {
+.cn-ref {
     font-size: 0.75em;
     vertical-align: super;
     padding: 0 3px;
     border-radius: 3px;
     font-family: var(--vscode-editor-font-family, monospace);
 }
-.vscode-light .ct-ref { color: #2980B9; background: rgba(41,128,185,0.1); }
-.vscode-dark .ct-ref   { color: #64B5F6; background: rgba(100,181,246,0.15); }
+.vscode-light .cn-ref { color: #2980B9; background: rgba(41,128,185,0.1); }
+.vscode-dark .cn-ref   { color: #64B5F6; background: rgba(100,181,246,0.15); }
 
 /* === Footnote definitions panel === */
-.ct-footnotes {
+.cn-footnotes {
     border-top: 1px solid var(--vscode-editorWidget-border, #ccc);
     margin-top: 2em;
     padding-top: 1em;
     font-size: 0.9em;
 }
-.ct-footnote {
+.cn-footnote {
     margin-bottom: 0.75em;
     padding: 0.4em 0.6em;
     border-radius: 4px;
 }
-.vscode-light .ct-footnote { background: rgba(0,0,0,0.03); }
-.vscode-dark .ct-footnote  { background: rgba(255,255,255,0.04); }
+.vscode-light .cn-footnote { background: rgba(0,0,0,0.03); }
+.vscode-dark .cn-footnote  { background: rgba(255,255,255,0.04); }
 
-.ct-ref-badge {
+.cn-ref-badge {
     font-weight: bold;
     font-family: var(--vscode-editor-font-family, monospace);
     margin-right: 0.5em;
 }
-.ct-fn-author { margin-right: 0.5em; font-weight: 500; }
-.ct-fn-date   { margin-right: 0.5em; color: var(--vscode-descriptionForeground, #666); font-size: 0.9em; }
-.ct-fn-status {
+.cn-fn-author { margin-right: 0.5em; font-weight: 500; }
+.cn-fn-date   { margin-right: 0.5em; color: var(--vscode-descriptionForeground, #666); font-size: 0.9em; }
+.cn-fn-status {
     display: inline-block;
     padding: 0.1em 0.5em;
     border-radius: 3px;
     font-size: 0.8em;
     font-weight: 500;
 }
-.vscode-light .ct-fn-status.ct-proposed { background: rgba(41,128,185,0.15); color: #2980B9; }
-.vscode-dark .ct-fn-status.ct-proposed  { background: rgba(100,181,246,0.2); color: #64B5F6; }
-.vscode-light .ct-fn-status.ct-accepted { background: rgba(30,130,76,0.15); color: #1E824C; }
-.vscode-dark .ct-fn-status.ct-accepted  { background: rgba(102,187,106,0.2); color: #66BB6A; }
-.vscode-light .ct-fn-status.ct-rejected { background: rgba(192,57,43,0.15); color: #C0392B; }
-.vscode-dark .ct-fn-status.ct-rejected  { background: rgba(239,83,80,0.2); color: #EF5350; }
+.vscode-light .cn-fn-status.cn-proposed { background: rgba(41,128,185,0.15); color: #2980B9; }
+.vscode-dark .cn-fn-status.cn-proposed  { background: rgba(100,181,246,0.2); color: #64B5F6; }
+.vscode-light .cn-fn-status.cn-accepted { background: rgba(30,130,76,0.15); color: #1E824C; }
+.vscode-dark .cn-fn-status.cn-accepted  { background: rgba(102,187,106,0.2); color: #66BB6A; }
+.vscode-light .cn-fn-status.cn-rejected { background: rgba(192,57,43,0.15); color: #C0392B; }
+.vscode-dark .cn-fn-status.cn-rejected  { background: rgba(239,83,80,0.2); color: #EF5350; }
 
-.ct-fn-comment { margin-top: 0.3em; color: var(--vscode-foreground, #333); }
+.cn-fn-comment { margin-top: 0.3em; color: var(--vscode-foreground, #333); }
 
 /* === CriticMarkup inside code fences === */
-pre code .ct-ins,
-pre code .ct-del,
-pre code .ct-sub-del,
-pre code .ct-sub-ins,
-pre code .ct-hl,
-pre code .ct-move-from,
-pre code .ct-move-to {
+pre code .cn-ins,
+pre code .cn-del,
+pre code .cn-sub-del,
+pre code .cn-sub-ins,
+pre code .cn-hl,
+pre code .cn-move-from,
+pre code .cn-move-to {
     font-family: inherit;
     font-size: inherit;
 }
 
 /* === Deliberation: Context === */
-.ct-fn-context {
+.cn-fn-context {
     margin: 0.4em 0;
     padding: 0.3em 0.6em;
     border-left: 3px solid var(--vscode-editorWidget-border, #ccc);
     font-style: italic;
     color: var(--vscode-foreground, #333);
 }
-.ct-ctx-changed { font-weight: 600; font-style: normal; }
+.cn-ctx-changed { font-weight: 600; font-style: normal; }
 
 /* === Deliberation: Verdicts (approval/rejection/request-changes) === */
-.ct-fn-approval, .ct-fn-rejection, .ct-fn-request-changes {
+.cn-fn-approval, .cn-fn-rejection, .cn-fn-request-changes {
     margin: 0.2em 0;
     padding: 0.15em 0.4em;
     border-radius: 3px;
     font-size: 0.85em;
 }
-.ct-fn-verdict-label { font-weight: 600; }
-.vscode-light .ct-fn-approval { background: rgba(30,130,76,0.08); }
-.vscode-dark .ct-fn-approval  { background: rgba(102,187,106,0.1); }
-.vscode-light .ct-fn-rejection { background: rgba(192,57,43,0.08); }
-.vscode-dark .ct-fn-rejection  { background: rgba(239,83,80,0.1); }
-.vscode-light .ct-fn-request-changes { background: rgba(230,126,34,0.08); }
-.vscode-dark .ct-fn-request-changes  { background: rgba(255,183,77,0.1); }
-.ct-fn-reviewer { font-weight: 500; }
-.ct-fn-reason { color: var(--vscode-descriptionForeground, #666); }
+.cn-fn-verdict-label { font-weight: 600; }
+.vscode-light .cn-fn-approval { background: rgba(30,130,76,0.08); }
+.vscode-dark .cn-fn-approval  { background: rgba(102,187,106,0.1); }
+.vscode-light .cn-fn-rejection { background: rgba(192,57,43,0.08); }
+.vscode-dark .cn-fn-rejection  { background: rgba(239,83,80,0.1); }
+.vscode-light .cn-fn-request-changes { background: rgba(230,126,34,0.08); }
+.vscode-dark .cn-fn-request-changes  { background: rgba(255,183,77,0.1); }
+.cn-fn-reviewer { font-weight: 500; }
+.cn-fn-reason { color: var(--vscode-descriptionForeground, #666); }
 
 /* === Deliberation: Revisions === */
-.ct-fn-revisions {
+.cn-fn-revisions {
     margin: 0.4em 0;
     padding: 0.3em 0;
     border-left: 2px solid var(--vscode-editorWidget-border, #ccc);
     padding-left: 0.6em;
 }
-.ct-fn-revision { margin: 0.15em 0; font-size: 0.85em; }
-.ct-fn-rev-label { font-weight: 600; font-family: var(--vscode-editor-font-family, monospace); }
-.ct-fn-rev-text { font-style: italic; }
+.cn-fn-revision { margin: 0.15em 0; font-size: 0.85em; }
+.cn-fn-rev-label { font-weight: 600; font-family: var(--vscode-editor-font-family, monospace); }
+.cn-fn-rev-text { font-style: italic; }
 
 /* === Deliberation: Discussion threads === */
-.ct-fn-discussion { margin: 0.5em 0; }
-.ct-discussion-comment {
+.cn-fn-discussion { margin: 0.5em 0; }
+.cn-discussion-comment {
     margin: 0.2em 0;
     padding: 0.2em 0.4em;
     border-radius: 3px;
     font-size: 0.9em;
 }
-.vscode-light .ct-discussion-comment { background: rgba(0,0,0,0.02); }
-.vscode-dark .ct-discussion-comment  { background: rgba(255,255,255,0.03); }
+.vscode-light .cn-discussion-comment { background: rgba(0,0,0,0.02); }
+.vscode-dark .cn-discussion-comment  { background: rgba(255,255,255,0.03); }
 
 /* Comment text body */
-.ct-fn-text { color: var(--vscode-foreground, #333); }
+.cn-fn-text { color: var(--vscode-foreground, #333); }
 
 /* Comment labels */
-.ct-label {
+.cn-label {
     display: inline-block;
     padding: 0 0.4em;
     border-radius: 3px;
     font-size: 0.8em;
     font-weight: 500;
 }
-.vscode-light .ct-label { background: rgba(41,128,185,0.12); color: #2980B9; }
-.vscode-dark .ct-label   { background: rgba(100,181,246,0.15); color: #64B5F6; }
+.vscode-light .cn-label { background: rgba(41,128,185,0.12); color: #2980B9; }
+.vscode-dark .cn-label   { background: rgba(100,181,246,0.15); color: #64B5F6; }
 
 /* === Deliberation: Resolution === */
-.ct-fn-resolution {
+.cn-fn-resolution {
     margin: 0.4em 0;
     padding: 0.3em 0.5em;
     border-radius: 3px;
     font-size: 0.85em;
     font-weight: 500;
 }
-.ct-fn-resolution-icon { margin-right: 0.3em; }
-.vscode-light .ct-resolved { background: rgba(30,130,76,0.1); color: #1E824C; }
-.vscode-dark .ct-resolved  { background: rgba(102,187,106,0.12); color: #66BB6A; }
-.vscode-light .ct-open { background: rgba(230,126,34,0.1); color: #E67E22; }
-.vscode-dark .ct-open  { background: rgba(255,183,77,0.12); color: #FFB74D; }
+.cn-fn-resolution-icon { margin-right: 0.3em; }
+.vscode-light .cn-resolved { background: rgba(30,130,76,0.1); color: #1E824C; }
+.vscode-dark .cn-resolved  { background: rgba(102,187,106,0.12); color: #66BB6A; }
+.vscode-light .cn-open { background: rgba(230,126,34,0.1); color: #E67E22; }
+.vscode-dark .cn-open  { background: rgba(255,183,77,0.12); color: #FFB74D; }
 
 /* === Footnote anchor linking === */
-.ct-ref a {
+.cn-ref a {
     text-decoration: none;
     color: inherit;
 }
-.ct-ref a:hover { text-decoration: underline; }
+.cn-ref a:hover { text-decoration: underline; }
 
-.ct-fn-backlink {
+.cn-fn-backlink {
     text-decoration: none;
     font-size: 0.8em;
     opacity: 0.5;
     margin-left: 0.3em;
 }
-.ct-fn-backlink:hover { opacity: 1; }
+.cn-fn-backlink:hover { opacity: 1; }
 
 /* === Move directional labels === */
-.ct-move-label {
+.cn-move-label {
     font-size: 0.75em;
     font-style: italic;
     text-decoration: none;
     opacity: 0.7;
     margin: 0 0.3em;
 }
-.vscode-light .ct-move-label { color: #8E44AD; }
-.vscode-dark .ct-move-label  { color: #CE93D8; }
-.ct-move-label:hover { opacity: 1; text-decoration: underline; }
+.vscode-light .cn-move-label { color: #8E44AD; }
+.vscode-dark .cn-move-label  { color: #CE93D8; }
+.cn-move-label:hover { opacity: 1; text-decoration: underline; }
 
 /* === Anchor metadata (summary + projected modes) === */
-.ct-anchor-meta {
+.cn-anchor-meta {
     font-size: 0.75em;
     margin-left: 0.3em;
     opacity: 0.7;
 }
-.ct-anchor-author { font-weight: 500; }
-.ct-anchor-status {
+.cn-anchor-author { font-weight: 500; }
+.cn-anchor-status {
     display: inline-block;
     padding: 0 0.3em;
     border-radius: 2px;
 }
-.vscode-light .ct-anchor-status.ct-proposed { background: rgba(41,128,185,0.12); }
-.vscode-dark .ct-anchor-status.ct-proposed  { background: rgba(100,181,246,0.15); }
-.vscode-light .ct-anchor-status.ct-accepted { background: rgba(30,130,76,0.12); }
-.vscode-dark .ct-anchor-status.ct-accepted  { background: rgba(102,187,106,0.15); }
-.vscode-light .ct-anchor-status.ct-rejected { background: rgba(192,57,43,0.12); }
-.vscode-dark .ct-anchor-status.ct-rejected  { background: rgba(239,83,80,0.15); }
+.vscode-light .cn-anchor-status.cn-proposed { background: rgba(41,128,185,0.12); }
+.vscode-dark .cn-anchor-status.cn-proposed  { background: rgba(100,181,246,0.15); }
+.vscode-light .cn-anchor-status.cn-accepted { background: rgba(30,130,76,0.12); }
+.vscode-dark .cn-anchor-status.cn-accepted  { background: rgba(102,187,106,0.15); }
+.vscode-light .cn-anchor-status.cn-rejected { background: rgba(192,57,43,0.12); }
+.vscode-dark .cn-anchor-status.cn-rejected  { background: rgba(239,83,80,0.15); }
 
 /* === Projected mode: richer anchor metadata === */
-.ct-anchor-projected { display: inline-flex; gap: 0.3em; align-items: baseline; }
-.ct-anchor-date { opacity: 0.6; font-size: 0.85em; }
-.ct-anchor-comment {
+.cn-anchor-projected { display: inline-flex; gap: 0.3em; align-items: baseline; }
+.cn-anchor-date { opacity: 0.6; font-size: 0.85em; }
+.cn-anchor-comment {
     max-width: 30em;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     opacity: 0.8;
 }
-.ct-anchor-approvals { font-size: 0.85em; }
-.vscode-light .ct-anchor-approvals { color: #1E824C; }
-.vscode-dark .ct-anchor-approvals  { color: #66BB6A; }
+.cn-anchor-approvals { font-size: 0.85em; }
+.vscode-light .cn-anchor-approvals { color: #1E824C; }
+.vscode-dark .cn-anchor-approvals  { color: #66BB6A; }
 
 /* Discussion-only footnote container (projected mode) */
-.ct-fn-discussion-only {
+.cn-fn-discussion-only {
     border-top: none;
     padding-top: 0.5em;
 }

@@ -6,14 +6,14 @@
  */
 
 import { CodeLens, Command, Range } from 'vscode-languageserver';
-import { ChangeNode, ChangeStatus, isGhostNode } from '@changetracks/core';
-import type { ViewName } from '@changetracks/core';
+import { ChangeNode, ChangeStatus, isGhostNode } from '@changedown/core';
+import type { ViewName } from '@changedown/core';
 import { offsetToPosition } from '../converters';
 
 /** CodeLens display mode */
 export type CodeLensMode = 'cursor' | 'always' | 'off';
 
-/** Cursor state sent from extension via changetracks/cursorPosition notification */
+/** Cursor state sent from extension via changedown/cursorPosition notification */
 export interface CursorState {
   line: number;       // zero-indexed line number
   changeId?: string;  // id of change cursor is inside, or undefined
@@ -48,7 +48,7 @@ export function createCodeLenses(
         range: Range.create(0, 0, 0, 0),
         command: Command.create(
           `⚠ ${unresolvedCount} unresolved anchor${unresolvedCount === 1 ? '' : 's'}`,
-          'changetracks.inspectUnresolved'
+          'changedown.inspectUnresolved'
         ),
       });
     }
@@ -109,7 +109,7 @@ function buildAlwaysModeLenses(actionable: ChangeNode[], text: string): CodeLens
       range: lensRange,
       command: Command.create(
         `Accept${snippet}${suffix}`,
-        'changetracks.acceptChange',
+        'changedown.acceptChange',
         change.id
       )
     });
@@ -118,7 +118,7 @@ function buildAlwaysModeLenses(actionable: ChangeNode[], text: string): CodeLens
       range: lensRange,
       command: Command.create(
         `Reject${snippet}${suffix}`,
-        'changetracks.rejectChange',
+        'changedown.rejectChange',
         change.id
       )
     });
@@ -163,7 +163,7 @@ function buildCursorModeLenses(
           range: lensRange,
           command: Command.create(
             `Accept${suffix}`,
-            'changetracks.acceptChange',
+            'changedown.acceptChange',
             focused.id
           )
         },
@@ -171,7 +171,7 @@ function buildCursorModeLenses(
           range: lensRange,
           command: Command.create(
             `Reject${suffix}`,
-            'changetracks.rejectChange',
+            'changedown.rejectChange',
             focused.id
           )
         }
@@ -192,14 +192,14 @@ function buildCursorModeLenses(
       range: lensRange,
       command: Command.create(
         `Accept All (${onLine.length})${suffix}`,
-        'changetracks.acceptAllOnLine'
+        'changedown.acceptAllOnLine'
       )
     },
     {
       range: lensRange,
       command: Command.create(
         `Reject All (${onLine.length})${suffix}`,
-        'changetracks.rejectAllOnLine'
+        'changedown.rejectAllOnLine'
       )
     }
   ];

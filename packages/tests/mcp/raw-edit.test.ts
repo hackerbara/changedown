@@ -1,19 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleRawEdit } from '@changetracks/mcp/internals';
+import { handleRawEdit } from '@changedown/mcp/internals';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 
 describe('handleRawEdit', () => {
   let tmpDir: string;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-raw-edit-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-raw-edit-test-'));
     config = {
       tracking: {
         include: ['**/*.md'],
@@ -158,13 +158,13 @@ describe('handleRawEdit', () => {
 
   it('success with markup in old_text: warning includes removal of annotations and footnotes', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    const content = 'Before {++added++}[^ct-1] and {--removed--}[^ct-2] after.\n\n[^ct-1]: @a | 2026-02-11 | ins | proposed\n[^ct-2]: @a | 2026-02-11 | del | proposed';
+    const content = 'Before {++added++}[^cn-1] and {--removed--}[^cn-2] after.\n\n[^cn-1]: @a | 2026-02-11 | ins | proposed\n[^cn-2]: @a | 2026-02-11 | del | proposed';
     await fs.writeFile(filePath, content);
 
     const result = await handleRawEdit(
       {
         file: filePath,
-        old_text: '{++added++}[^ct-1] and {--removed--}[^ct-2]',
+        old_text: '{++added++}[^cn-1] and {--removed--}[^cn-2]',
         new_text: 'replaced',
         reason: 'cleanup',
       },
@@ -182,12 +182,12 @@ describe('handleRawEdit', () => {
 
   it('success with only footnotes in old_text: warning mentions footnotes only', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, 'Text [^ct-1] and [^ct-2] here.');
+    await fs.writeFile(filePath, 'Text [^cn-1] and [^cn-2] here.');
 
     const result = await handleRawEdit(
       {
         file: filePath,
-        old_text: '[^ct-1] and [^ct-2]',
+        old_text: '[^cn-1] and [^cn-2]',
         new_text: '',
         reason: 'removing refs',
       },

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { insertComment, TextEdit } from '@changetracks/core/internals';
+import { insertComment, TextEdit } from '@changedown/core/internals';
 
 function applyEdit(text: string, edit: TextEdit): string {
   return text.substring(0, edit.offset) + edit.newText + text.substring(edit.offset + edit.length);

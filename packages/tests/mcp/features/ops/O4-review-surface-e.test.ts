@@ -59,18 +59,18 @@ describe('O4: Review changes via Surface E (committed view)', () => {
     // The committed view reverts pending, so we see the original text
     expect(text).toContain('timeout = 30');
 
-    // Use get_change to inspect ct-1 before approving
-    const getResult = await ctx.getChange(filePath, 'ct-1');
+    // Use get_change to inspect cn-1 before approving
+    const getResult = await ctx.getChange(filePath, 'cn-1');
     expect(getResult.isError).toBeUndefined();
     const changeDetail = ctx.resultText(getResult);
-    expect(changeDetail).toContain('ct-1');
+    expect(changeDetail).toContain('cn-1');
 
     // Approve the identified change
     const reviewResult = await ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'verified' }],
+      reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'verified' }],
     });
     expect(reviewResult.isError).toBeUndefined();
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
 
     // Subsequent committed view should show accepted text with A flag (not P)
     const readAfter = await ctx.read(filePath, { view: 'committed' });
@@ -104,7 +104,7 @@ describe('O4: Review changes via Surface E (committed view)', () => {
 
       // Approve -- auto-settlement should fire
       const reviewResult = await ctxAutoSettle.review(filePath, {
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'good' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'good' }],
       });
       expect(reviewResult.isError).toBeUndefined();
 
@@ -115,7 +115,7 @@ describe('O4: Review changes via Surface E (committed view)', () => {
       expect(disk).not.toContain('~>');
 
       // Footnote persists (Layer 1 only -- footnotes not removed)
-      expect(disk).toContain('[^ct-1]');
+      expect(disk).toContain('[^cn-1]');
       expect(disk).toContain('accepted');
 
       // Subsequent reads show clean text at that location

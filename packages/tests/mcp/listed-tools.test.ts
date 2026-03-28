@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { getListedTools, getListedToolsWithConfig } from '@changetracks/mcp/internals';
-import type { ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { getListedTools, getListedToolsWithConfig } from '@changedown/mcp/internals';
+import type { ChangeDownConfig } from '@changedown/mcp/internals';
 
 describe('getListedTools (MCP tool surface)', () => {
   it('returns exactly 7 tools (final surface)', () => {
@@ -75,7 +75,7 @@ describe('getListedTools (MCP tool surface)', () => {
 
 describe('getListedToolsWithConfig', () => {
   it('when author enforcement is optional, returns same author description as getListedTools', () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: { include: [], exclude: [], default: 'tracked', auto_header: true },
       author: { default: '', enforcement: 'optional' },
       hooks: { enforcement: 'warn', exclude: [] },
@@ -96,7 +96,7 @@ describe('getListedToolsWithConfig', () => {
   });
 
   it('when author enforcement is required, appends hint to author param description', () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: { include: [], exclude: [], default: 'tracked', auto_header: true },
       author: { default: 'ai:composer', enforcement: 'required' },
       hooks: { enforcement: 'warn', exclude: [] },

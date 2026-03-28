@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parseOp } from '@changetracks/mcp/internals';
-import { findUniqueMatch } from '@changetracks/mcp/internals';
-import { defaultNormalizer } from '@changetracks/core';
+import { parseOp } from '@changedown/mcp/internals';
+import { findUniqueMatch } from '@changedown/mcp/internals';
+import { defaultNormalizer } from '@changedown/core';
 
 describe('ISSUE-4: Quote matching in op parameter', () => {
 

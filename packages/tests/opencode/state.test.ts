@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SessionState, ActiveGroup } from '@changetracks/opencode-plugin/internals';
+import { SessionState, ActiveGroup } from '@changedown/opencode-plugin/internals';
 
 describe('SessionState', () => {
   let state: SessionState;
@@ -11,42 +11,42 @@ describe('SessionState', () => {
   describe('getNextId', () => {
     it('generates sequential IDs starting from 1', () => {
       const id1 = state.getNextId('/test/file.ts', '');
-      expect(id1).toBe('ct-1');
+      expect(id1).toBe('cn-1');
 
       const id2 = state.getNextId('/test/file.ts', '');
-      expect(id2).toBe('ct-2');
+      expect(id2).toBe('cn-2');
 
       const id3 = state.getNextId('/test/file.ts', '');
-      expect(id3).toBe('ct-3');
+      expect(id3).toBe('cn-3');
     });
 
     it('scans existing IDs in text to find max', () => {
-      const text = 'Some [^ct-5] and [^ct-10] content';
+      const text = 'Some [^cn-5] and [^cn-10] content';
       const id = state.getNextId('/test/file.ts', text);
-      expect(id).toBe('ct-11');
+      expect(id).toBe('cn-11');
     });
 
     it('maintains separate counters per file', () => {
       const id1 = state.getNextId('/test/file1.ts', '');
-      expect(id1).toBe('ct-1');
+      expect(id1).toBe('cn-1');
 
       const id2 = state.getNextId('/test/file2.ts', '');
-      expect(id2).toBe('ct-1');
+      expect(id2).toBe('cn-1');
 
       const id3 = state.getNextId('/test/file1.ts', '');
-      expect(id3).toBe('ct-2');
+      expect(id3).toBe('cn-2');
     });
   });
 
   describe('resetFile', () => {
     it('resets file counter correctly', () => {
       const id1 = state.getNextId('/test/file.ts', '');
-      expect(id1).toBe('ct-1');
+      expect(id1).toBe('cn-1');
 
       state.resetFile('/test/file.ts');
 
       const id2 = state.getNextId('/test/file.ts', '');
-      expect(id2).toBe('ct-1');
+      expect(id2).toBe('cn-1');
     });
 
     it('does not affect other files when resetting', () => {
@@ -58,7 +58,7 @@ describe('SessionState', () => {
       state.resetFile('/test/file1.ts');
 
       const id = state.getNextId('/test/file2.ts', '');
-      expect(id).toBe('ct-2');
+      expect(id).toBe('cn-2');
     });
   });
 
@@ -73,7 +73,7 @@ describe('SessionState', () => {
 
     it('beginGroup creates parent ID and returns group ID', () => {
       const groupId = state.beginGroup('Test group');
-      expect(groupId).toBe('ct-1');
+      expect(groupId).toBe('cn-1');
       expect(state.hasActiveGroup()).toBe(true);
     });
 
@@ -81,13 +81,13 @@ describe('SessionState', () => {
       state.beginGroup('Test group');
       
       const childId1 = state.getNextId('/test/file.ts', '');
-      expect(childId1).toBe('ct-1.1');
+      expect(childId1).toBe('cn-1.1');
 
       const childId2 = state.getNextId('/test/file.ts', '');
-      expect(childId2).toBe('ct-1.2');
+      expect(childId2).toBe('cn-1.2');
 
       const childId3 = state.getNextId('/test/file.ts', '');
-      expect(childId3).toBe('ct-1.3');
+      expect(childId3).toBe('cn-1.3');
     });
 
     it('endGroup returns summary and clears active group', () => {
@@ -97,10 +97,10 @@ describe('SessionState', () => {
 
       const summary = state.endGroup();
 
-      expect(summary.id).toBe('ct-1');
+      expect(summary.id).toBe('cn-1');
       expect(summary.description).toBe('Test group');
       expect(summary.reasoning).toBe('Test reasoning');
-      expect(summary.childIds).toEqual(['ct-1.1', 'ct-1.2']);
+      expect(summary.childIds).toEqual(['cn-1.1', 'cn-1.2']);
       expect(summary.files).toContain('/test/file.ts');
       expect(state.hasActiveGroup()).toBe(false);
     });
@@ -115,11 +115,11 @@ describe('SessionState', () => {
     });
 
     it('incorporates knownMaxId when beginning group', () => {
-      state.getNextId('/test/file.ts', ''); // ct-1
-      state.getNextId('/test/file.ts', ''); // ct-2
+      state.getNextId('/test/file.ts', ''); // cn-1
+      state.getNextId('/test/file.ts', ''); // cn-2
 
       const groupId = state.beginGroup('Test group', undefined, 10);
-      expect(groupId).toBe('ct-11');
+      expect(groupId).toBe('cn-11');
     });
 
     it('ActiveGroup tracks childIds and files', () => {
@@ -132,7 +132,7 @@ describe('SessionState', () => {
       const activeGroup = state.getActiveGroup();
       expect(activeGroup).not.toBeNull();
       expect(activeGroup?.childCount).toBe(3);
-      expect(activeGroup?.childIds).toEqual(['ct-1.1', 'ct-1.2', 'ct-1.3']);
+      expect(activeGroup?.childIds).toEqual(['cn-1.1', 'cn-1.2', 'cn-1.3']);
       expect(activeGroup?.files.size).toBe(2);
       expect(activeGroup?.files.has('/test/file1.ts')).toBe(true);
       expect(activeGroup?.files.has('/test/file2.ts')).toBe(true);

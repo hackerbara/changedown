@@ -6,15 +6,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handlePreToolUse } from 'changetracks-hooks/internals';
-import type { HookInput } from 'changetracks-hooks/internals';
+import { handlePreToolUse } from 'changedown-hooks/internals';
+import type { HookInput } from 'changedown-hooks/internals';
 
 describe('Claude Code PreToolUse adapter — I/O contract', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-adapter-pre-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-adapter-pre-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     // Default safety-net config
     await fs.writeFile(
@@ -119,7 +119,7 @@ describe('Claude Code PreToolUse adapter — I/O contract', () => {
 
   it('returns hookSpecificOutput with permissionDecision=deny in strict mode', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\n',
       'utf-8',
     );
@@ -141,7 +141,7 @@ describe('Claude Code PreToolUse adapter — I/O contract', () => {
 
   it('returns empty object in permissive mode (no interference)', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "permissive"\n',
       'utf-8',
     );
@@ -175,7 +175,7 @@ describe('Claude Code PreToolUse adapter — I/O contract', () => {
   describe('warm redirect in strict mode', () => {
     beforeEach(async () => {
       await fs.writeFile(
-        path.join(tmpDir, '.changetracks', 'config.toml'),
+        path.join(tmpDir, '.changedown', 'config.toml'),
         '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\n\n[protocol]\nmode = "classic"\n',
         'utf-8',
       );
@@ -247,7 +247,7 @@ describe('Claude Code PreToolUse adapter — I/O contract', () => {
 
     it('deny reason uses compact at+op syntax when protocol is compact and hashline is enabled', async () => {
       await fs.writeFile(
-        path.join(tmpDir, '.changetracks', 'config.toml'),
+        path.join(tmpDir, '.changedown', 'config.toml'),
         '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\n\n[protocol]\nmode = "compact"\n\n[hashline]\nenabled = true\n',
         'utf-8',
       );
@@ -312,7 +312,7 @@ describe('Claude Code PreToolUse adapter — I/O contract', () => {
 
     it('denies Read in strict mode on tracked file with warm redirect', async () => {
       await fs.writeFile(
-        path.join(tmpDir, '.changetracks', 'config.toml'),
+        path.join(tmpDir, '.changedown', 'config.toml'),
         '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\n\n[author]\ndefault = "ai:test"\n',
         'utf-8',
       );

@@ -12,7 +12,7 @@ import { computeSettlement } from './commands/settle.js';
 import { publishSettled } from './commands/publish.js';
 import { handleImport } from './commands/import.js';
 import { handleExport } from './commands/export.js';
-import type { ThreeZoneViewName } from '@changetracks/core';
+import type { ThreeZoneViewName } from '@changedown/core';
 import { parseGlobalArgs } from './cli-parse.js';
 import { runCommand } from './cli-runner.js';
 import { formatResult } from './cli-output.js';
@@ -60,7 +60,7 @@ if (!firstArg || USER_COMMANDS.has(firstArg)) {
 
 function runUserCommands(): void {
   const program = new Command();
-  program.name('sc').description('ChangeTracks CLI').version(CLI_VERSION);
+  program.name('sc').description('ChangeDown CLI').version(CLI_VERSION);
 
   program
     .command('status <file>')

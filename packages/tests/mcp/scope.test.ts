@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { resolveTrackingStatus } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { resolveTrackingStatus } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -15,7 +15,7 @@ describe('resolveTrackingStatus', () => {
     auto_header: boolean;
     enforcement: 'warn' | 'block';
     mode: 'strict' | 'normalized';
-  }>): ChangeTracksConfig => ({
+  }>): ChangeDownConfig => ({
     tracking: {
       include: overrides?.include ?? ['**/*.md'],
       exclude: overrides?.exclude ?? ['node_modules/**', 'dist/**'],
@@ -32,7 +32,7 @@ describe('resolveTrackingStatus', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-scope-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-scope-test-'));
   });
 
   afterEach(async () => {
@@ -41,7 +41,7 @@ describe('resolveTrackingStatus', () => {
 
   it('returns file_header source when file has tracked header', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\n# Hello\n');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\n# Hello\n');
 
     const result = await resolveTrackingStatus(filePath, makeConfig(), tmpDir);
 
@@ -54,7 +54,7 @@ describe('resolveTrackingStatus', () => {
 
   it('returns file_header source with untracked status when file has untracked header', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: untracked -->\n# Hello\n');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: untracked -->\n# Hello\n');
 
     const result = await resolveTrackingStatus(filePath, makeConfig(), tmpDir);
 
@@ -133,7 +133,7 @@ describe('resolveTrackingStatus', () => {
 
   it('file header overrides project config even when config says untracked', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\n# Hello\n');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\n# Hello\n');
 
     const config = makeConfig({ default: 'untracked' });
     const result = await resolveTrackingStatus(filePath, config, tmpDir);
@@ -146,7 +146,7 @@ describe('resolveTrackingStatus', () => {
 
   it('file header with untracked overrides project config default tracked', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: untracked -->\n# Hello\n');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: untracked -->\n# Hello\n');
 
     const config = makeConfig({ default: 'tracked' });
     const result = await resolveTrackingStatus(filePath, config, tmpDir);
@@ -161,7 +161,7 @@ describe('resolveTrackingStatus', () => {
       '---',
       'title: My Doc',
       '---',
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Content',
     ].join('\n'));
 

@@ -21,7 +21,7 @@ import { FOOTNOTE_DEF_START, FOOTNOTE_CONTINUATION, FOOTNOTE_L3_EDIT_OP, splitBo
 // ─── CriticMarkup insertion helpers ──────────────────────────────────────────
 
 /**
- * Build the CriticMarkup inline markup for a change node, plus the [^ct-N] ref.
+ * Build the CriticMarkup inline markup for a change node, plus the [^cn-N] ref.
  * Returns [markup, offset_delta] where offset_delta is the net character count
  * added to the body (positive = added chars, negative = removed chars).
  */
@@ -46,7 +46,7 @@ function buildInlineMarkup(change: ChangeNode, bodyText: string): {
 
     case ChangeType.Deletion: {
       // Zero-width range — original text is not in body.
-      // Insert {--originalText--}[^ct-N] at the anchor.
+      // Insert {--originalText--}[^cn-N] at the anchor.
       return { replacement: `{--${originalText ?? ''}--}${ref}` };
     }
 
@@ -71,7 +71,7 @@ function buildInlineMarkup(change: ChangeNode, bodyText: string): {
     }
 
     case ChangeType.Comment: {
-      // Zero-width anchor; insert {>>comment<<}[^ct-N].
+      // Zero-width anchor; insert {>>comment<<}[^cn-N].
       const comment = metadata?.comment ?? '';
       return { replacement: `{>>${comment}<<}${ref}` };
     }
@@ -166,7 +166,7 @@ export async function convertL3ToL2(text: string): Promise<string> {
 
     if (FOOTNOTE_DEF_START.test(line)) {
       // Footnote definition header — keep it and look up this change's status
-      const idMatch = line.match(/^\[\^(ct-[\w.]+)\]:/);
+      const idMatch = line.match(/^\[\^(cn-[\w.]+)\]:/);
       const changeId = idMatch ? idMatch[1] : '';
       const changeStatus = statusMap.get(changeId);
 

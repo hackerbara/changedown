@@ -1,9 +1,9 @@
-<!-- ctrcks.com/v1: untracked -->
+<!-- changedown.com/v1: untracked -->
 # Tool Shaping: What We Learned Building an Editing Protocol for AI Agents
 
 Can Bölük tested 16 models on the same coding tasks with different tool interfaces. The weakest model jumped from 6.7% to 68.3% -- not from a better model, but from a better harness. His conclusion: ["You're blaming the pilot for the landing gear."](https://blog.can.ac/2026/02/12/the-harness-problem/)
 
-I've been finding the same thing working with Claude and other agents on this project. We built [ChangeTracks](https://github.com/hackerbara/changetracks) -- a track-changes editing protocol for AI agents -- and spent months shaping the tools until the interface matched how agents actually think through complex editing tasks
+I've been finding the same thing working with Claude and other agents on this project. We built [ChangeDown](https://github.com/hackerbara/changedown) -- a track-changes editing protocol for AI agents -- and spent months shaping the tools until the interface matched how agents actually think through complex editing tasks
 
 ## The Experiment
 
@@ -30,7 +30,7 @@ git commit -m "Switch to GraphQL to reduce N+1 query problem"
 
 Two calls for one conceptual action. The edit and its reasoning live in different places -- different tools, different moments in the session. And after each edit, the document shifts. Line numbers change. Content moves. So the agent needs to re-read the file to orient itself before making the next fix. For 32 errors, that adds up fast.
 
-**Surface F is ChangeTracks Classic.** Same edit, one call:
+**Surface F is ChangeDown Classic.** Same edit, one call:
 
 ```json
 {
@@ -43,7 +43,7 @@ Two calls for one conceptual action. The edit and its reasoning live in differen
 
 The reasoning moved into the edit. No separate git command -- the `reason` field is part of the tool call. The server wraps this into a [CriticMarkup](https://criticmarkup.com) change record with author, timestamp, and an audit trail stored as markdown footnotes. The agent is still targeting edits by reproducing the original text, but it's doing one thing per call instead of two.
 
-**Surface G is ChangeTracks Compact.** Same edit:
+**Surface G is ChangeDown Compact.** Same edit:
 
 ```json
 {
@@ -125,11 +125,11 @@ Both of these have the same shape. The agent does the right thing, the protocol 
 
 ## Go Deeper
 
-- [ChangeTracks and Hashlines Explained](changetracks-and-hashlines-explained.md) -- full from-zero introduction with diagrams
-- [How ChangeTracks Is Benchmarked](how-changetracks-is-benchmarked.md) -- methodology, limitations, and all the honest caveats
+- [ChangeDown and Hashlines Explained](changedown-and-hashlines-explained.md) -- full from-zero introduction with diagrams
+- [How ChangeDown Is Benchmarked](how-changedown-is-benchmarked.md) -- methodology, limitations, and all the honest caveats
 - [The Harness Problem](https://blog.can.ac/2026/02/12/the-harness-problem/) -- Can Bölük's original post that inspired our hashline implementation
-- [GitHub repo](https://github.com/hackerbara/changetracks) -- source, benchmarks, install instructions
+- [GitHub repo](https://github.com/hackerbara/changedown) -- source, benchmarks, install instructions
 
-**Caveats:** These are exploratory findings from early benchmarking, not rigorous proof. Sample sizes are small (1–3 runs per cell), two models were tested, and the benchmark authors are the protocol designers. The benchmarks were a debugging tool as much as a measurement tool -- every spiral we found led to a concrete fix. The full limitations section in our [methodology doc](how-changetracks-is-benchmarked.md#limitations) explains more.
+**Caveats:** These are exploratory findings from early benchmarking, not rigorous proof. Sample sizes are small (1–3 runs per cell), two models were tested, and the benchmark authors are the protocol designers. The benchmarks were a debugging tool as much as a measurement tool -- every spiral we found led to a concrete fix. The full limitations section in our [methodology doc](how-changedown-is-benchmarked.md#limitations) explains more.
 
-*"The best tool isn't the thinnest possible tool. It's the one that matches the user's cognitive unit."* -- from an agent's reflection after a day of benchmarking, preserved in the project's [LLM Garden](https://github.com/hackerbara/changetracks/tree/main/llm-garden-public)
+*"The best tool isn't the thinnest possible tool. It's the one that matches the user's cognitive unit."* -- from an agent's reflection after a day of benchmarking, preserved in the project's [LLM Garden](https://github.com/hackerbara/changedown/tree/main/llm-garden-public)

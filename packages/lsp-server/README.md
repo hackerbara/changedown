@@ -1,10 +1,10 @@
-# @changetracks/lsp-server
+# @changedown/lsp-server
 
-Language Server Protocol server for ChangeTracks.
+Language Server Protocol server for ChangeDown.
 
 Provides semantic tokens, diagnostics, and code actions for CriticMarkup in any LSP-compatible editor.
 
-See [ChangeTracks](https://github.com/hackerbara/changetracks) for full documentation.
+See [ChangeDown](https://github.com/hackerbara/changedown) for full documentation.
 
 ## License
 

@@ -1,6 +1,6 @@
-# @changetracks/benchmarks
+# @changedown/benchmarks
 
-Edit surface benchmark suite for ChangeTracks. Measures how different editing tool surfaces affect agent efficiency (tokens, rounds, duration) when performing document editing tasks.
+Edit surface benchmark suite for ChangeDown. Measures how different editing tool surfaces affect agent efficiency (tokens, rounds, duration) when performing document editing tasks.
 
 ## Quick Start
 

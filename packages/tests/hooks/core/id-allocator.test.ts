@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { scanMaxId, allocateIds } from 'changetracks-hooks/internals';
+import { scanMaxId, allocateIds } from 'changedown-hooks/internals';
 
 describe('scanMaxId', () => {
-  it('finds max ct-N in text', () => {
-    const text = 'Some text [^ct-3] and [^ct-7] here [^ct-2]';
+  it('finds max cn-N in text', () => {
+    const text = 'Some text [^cn-3] and [^cn-7] here [^cn-2]';
     expect(scanMaxId(text)).toBe(7);
   });
 
@@ -12,7 +12,7 @@ describe('scanMaxId', () => {
   });
 
   it('handles dotted IDs', () => {
-    const text = '[^ct-5.1] [^ct-5.2] [^ct-3]';
+    const text = '[^cn-5.1] [^cn-5.2] [^cn-3]';
     expect(scanMaxId(text)).toBe(5);
   });
 });
@@ -20,11 +20,11 @@ describe('scanMaxId', () => {
 describe('allocateIds', () => {
   it('allocates flat IDs for single edit', () => {
     const ids = allocateIds(1, 5);
-    expect(ids).toEqual(['ct-6']);
+    expect(ids).toEqual(['cn-6']);
   });
 
   it('allocates dotted IDs for multiple edits', () => {
     const ids = allocateIds(3, 5);
-    expect(ids).toEqual(['ct-6.1', 'ct-6.2', 'ct-6.3']);
+    expect(ids).toEqual(['cn-6.1', 'cn-6.2', 'cn-6.3']);
   });
 });

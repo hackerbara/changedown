@@ -1,5 +1,5 @@
 // packages/benchmarks/harness/verify.ts
-import { computeSettledText, parseFootnotes, type FootnoteInfo } from "@changetracks/core";
+import { computeSettledText, parseFootnotes, type FootnoteInfo } from "@changedown/core";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { SurfaceId } from "./workflows.js";
@@ -170,7 +170,7 @@ export async function extractSettledText(afterDir: string, surface: SurfaceId, e
   }
 
   // Strip tracking header — golden files don't contain it
-  return text.replace(/^<!-- changetracks\.dev\/v1: tracked -->\n*/, "");
+  return text.replace(/^<!-- changedown\.dev\/v1: tracked -->\n*/, "");
 }
 
 // --- Decision Scoring ---

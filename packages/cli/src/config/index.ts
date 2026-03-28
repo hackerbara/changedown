@@ -1,15 +1,15 @@
-// changetracks/config — shared config schema, types, and TOML loader
+// changedown/config — shared config schema, types, and TOML loader
 //
-// Core owns the canonical ChangeTracksConfig interface.
+// Core owns the canonical ChangeDownConfig interface.
 // CLI extends it with hooks, protocol, and meta sections.
 
 import {
   DEFAULT_CONFIG as CORE_DEFAULT,
-  type ChangeTracksConfig as CoreConfig,
-} from '@changetracks/core';
+  type ChangeDownConfig as CoreConfig,
+} from '@changedown/core';
 
-// Re-export core types so downstream consumers can import from 'changetracks/config'
-export { type PolicyMode, type CreationTracking, type HumanAgentSplit, type CoherenceConfig } from '@changetracks/core';
+// Re-export core types so downstream consumers can import from 'changedown/config'
+export { type PolicyMode, type CreationTracking, type HumanAgentSplit, type CoherenceConfig } from '@changedown/core';
 
 // ---------------------------------------------------------------------------
 // CLIConfig — extends core with CLI-only sections
@@ -32,14 +32,14 @@ export interface CLIConfig extends CoreConfig {
 }
 
 // ---------------------------------------------------------------------------
-// Backward compat: ChangeTracksConfig = CLIConfig
+// Backward compat: ChangeDownConfig = CLIConfig
 //
 // All downstream packages (hooks-impl, mcp-server, opencode-plugin) and
-// ~80+ test files import `ChangeTracksConfig` from the CLI. To avoid a
+// ~80+ test files import `ChangeDownConfig` from the CLI. To avoid a
 // massive rename, we keep the alias.
 // ---------------------------------------------------------------------------
 
-export type ChangeTracksConfig = CLIConfig;
+export type ChangeDownConfig = CLIConfig;
 
 // ---------------------------------------------------------------------------
 // Default config

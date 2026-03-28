@@ -1,9 +1,9 @@
 ---
 name: testing
-description: How to write and run tests in the ChangeTracks monorepo. Use before writing any test code.
+description: How to write and run tests in the ChangeDown monorepo. Use before writing any test code.
 ---
 
-# ChangeTracks Testing Guide
+# ChangeDown Testing Guide
 
 ## Two-Tier Testing Model
 
@@ -56,7 +56,7 @@ Before adding a bridge command → check `packages/vscode-extension/src/commands
 VS Code extension tests use Playwright to control an Electron instance. The harness has specific patterns that MUST be followed:
 
 **Bridge commands (use these, not command palette):**
-- `executeCommandViaBridge(page, 'changetracks.commandName')` — reliable command execution
+- `executeCommandViaBridge(page, 'changedown.commandName')` — reliable command execution
 - `updateSettingDirect(page, key, value)` — write to settings.json directly
 - `getDocumentText(page, { instanceId })` — reads temp file IPC, not Monaco DOM
 - `queryPanelState(page)` — reads panel state via bridge (local helper in panel.steps.ts)

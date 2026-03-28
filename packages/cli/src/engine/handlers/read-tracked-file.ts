@@ -11,12 +11,12 @@ import {
   type ThreeZoneViewName,
   type ThreeZoneDocument,
   type ThreeZoneLine,
-} from '@changetracks/core';
+} from '@changedown/core';
 import { errorResult } from '../shared/error-result.js';
 import { optionalStrArg } from '../args.js';
 import { ConfigResolver } from '../config-resolver.js';
 import { resolveProtocolMode } from '../config.js';
-import type { ChangeTracksConfig } from '../../config/index.js';
+import type { ChangeDownConfig } from '../../config/index.js';
 import { resolveTrackingStatus } from '../scope.js';
 import { SessionState, type ViewName } from '../state.js';
 import { composeGuide } from '../guide-composer.js';
@@ -145,7 +145,7 @@ function toCanonicalView(internalView: string): ViewName {
  */
 function maybeComposeGuide(
   state: SessionState,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
   explicit = false,
 ): string {
   if (!explicit && state.isGuideSuppressed()) return '';
@@ -266,7 +266,7 @@ export async function handleReadTrackedFile(
         return errorResult(
           `This project requires view "${config.policy.default_view}" (view_policy = "require"). ` +
           `Requested view "${requestedView}" is not allowed. ` +
-          `Change view_policy to "suggest" in .changetracks/config.toml to allow view selection.`,
+          `Change view_policy to "suggest" in .changedown/config.toml to allow view selection.`,
         );
       }
     }
@@ -290,7 +290,7 @@ export async function handleReadTrackedFile(
       // Committed view requires hashline for coordinate-based addressing
       if (effectiveView === 'committed') {
         return errorResult(
-          'Committed view requires hashline mode. Enable hashline in .changetracks/config.toml: [hashline] enabled = true'
+          'Committed view requires hashline mode. Enable hashline in .changedown/config.toml: [hashline] enabled = true'
         );
       }
 
@@ -359,7 +359,7 @@ export async function handleReadTrackedFile(
       if (nonHashProtocolMode === 'compact') {
         headerWithoutHashlineTip = headerWithoutHashlineTip.replace(
           /## tip:.*/,
-          '## tip: Hashline addressing is disabled but compact mode requires it. Enable in .changetracks/config.toml: [hashline] enabled = true',
+          '## tip: Hashline addressing is disabled but compact mode requires it. Enable in .changedown/config.toml: [hashline] enabled = true',
         );
       }
       const contentToShow =

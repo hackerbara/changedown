@@ -4,7 +4,7 @@ import { TokenType } from './tokens.js';
 import { FOOTNOTE_REF_ANCHORED, FOOTNOTE_DEF_STRICT } from '../footnote-patterns.js';
 import { tryMatchFenceOpen, tryMatchFenceClose, skipInlineCode } from './code-zones.js';
 import { parseTimestamp } from '../timestamp.js';
-import { scanMaxCtId } from '../operations/footnote-generator.js';
+import { scanMaxCnId } from '../operations/footnote-generator.js';
 
 function parseInlineMetadata(raw: string): InlineMetadata {
   const result: InlineMetadata = { raw };
@@ -98,7 +98,7 @@ export class CriticMarkupParser {
   private static readonly REASON_RE = /^reason:\s+(.+)$/;
 
   parse(text: string, options?: ParseOptions): VirtualDocument {
-    this.idBase = scanMaxCtId(text);
+    this.idBase = scanMaxCnId(text);
     const changes: ChangeNode[] = [];
     let position = 0;
     let changeCounter = 0;
@@ -181,13 +181,13 @@ export class CriticMarkupParser {
         // Update atLineStart based on the character before the new position
         atLineStart = position > 0 && text.charCodeAt(position - 1) === 10;
       } else {
-        // Check for standalone footnote ref [^ct-N] not attached to CriticMarkup
+        // Check for standalone footnote ref [^cn-N] not attached to CriticMarkup
         if (ch === 91 && text.charCodeAt(position + 1) === 94) { // '[^'
           const remaining = text.substring(position, position + 30);
           const refMatch = remaining.match(CriticMarkupParser.FOOTNOTE_REF);
           if (refMatch) {
             const afterRef = position + refMatch[0].length;
-            // Skip footnote definitions — [^ct-N]: is a definition, not a standalone ref
+            // Skip footnote definitions — [^cn-N]: is a definition, not a standalone ref
             if (text.charCodeAt(afterRef) !== 58) { // not ':'
               const refId = refMatch[1];
               // Only track if not already claimed by a CriticMarkup change
@@ -211,20 +211,20 @@ export class CriticMarkupParser {
     this.resolveMoveGroups(changes, footnotes);
 
     // Renumber unanchored changes sequentially after all anchored IDs are settled.
-    // Anchored changes already have their ct-N from footnote refs. Unanchored ones
-    // get the next available ct-N after both idBase and any anchored IDs in this parse.
+    // Anchored changes already have their cn-N from footnote refs. Unanchored ones
+    // get the next available cn-N after both idBase and any anchored IDs in this parse.
     const usedIds = new Set<number>();
     for (const c of changes) {
       if (c.anchored) {
-        const m = c.id.match(/^ct-(\d+)(?:\.\d+)?$/);
+        const m = c.id.match(/^cn-(\d+)(?:\.\d+)?$/);
         if (m) usedIds.add(parseInt(m[1], 10));
       }
     }
     let nextId = this.idBase;
-    const unanchored = changes.filter(c => !c.anchored && c.id.startsWith('ct-'));
+    const unanchored = changes.filter(c => !c.anchored && c.id.startsWith('cn-'));
     for (const c of unanchored) {
       do { nextId++; } while (usedIds.has(nextId));
-      c.id = `ct-${nextId}`;
+      c.id = `cn-${nextId}`;
     }
 
     return new VirtualDocument(changes);
@@ -398,10 +398,10 @@ export class CriticMarkupParser {
 
     // Fast exit: find the first footnote definition line to avoid splitting the entire document
     let searchStart = 0;
-    if (text.startsWith('[^ct-')) {
+    if (text.startsWith('[^cn-')) {
       searchStart = 0;
     } else {
-      const firstDef = text.indexOf('\n[^ct-');
+      const firstDef = text.indexOf('\n[^cn-');
       if (firstDef === -1) return map;
       searchStart = firstDef + 1;
     }
@@ -707,7 +707,7 @@ export class CriticMarkupParser {
           type,
           status,
           range: { start: offset, end: offset + refLength },
-          contentRange: { start: offset, end: offset + refLength }, // covers [^ct-N] ref
+          contentRange: { start: offset, end: offset + refLength }, // covers [^cn-N] ref
           level: 2,
           settled: true,
           anchored: true,
@@ -784,7 +784,7 @@ export class CriticMarkupParser {
     const match = remaining.match(CriticMarkupParser.FOOTNOTE_REF);
     if (match) {
       node.id = match[1];
-      node.footnoteRefStart = node.range.end; // boundary before [^ct-N]
+      node.footnoteRefStart = node.range.end; // boundary before [^cn-N]
       node.range = { start: node.range.start, end: node.range.end + match[0].length };
       node.level = 2;
       node.anchored = true;
@@ -796,6 +796,6 @@ export class CriticMarkupParser {
   }
 
   private assignId(counter: number): string {
-    return `ct-${this.idBase + counter + 1}`;
+    return `cn-${this.idBase + counter + 1}`;
   }
 }

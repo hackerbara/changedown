@@ -14,15 +14,15 @@ import {
     ChangeStatus,
     compactToLevel1,
     compactToLevel0,
-} from '@changetracks/core';
-import type { ChangeNode } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+} from '@changedown/core';
+import type { ChangeNode } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 import { findChangeById } from './test-utils';
 
 // ── Extend World with LV8 compaction state ──────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         lv8ResultText?: string;
         lv8Error?: string;
         lv8Warning?: string;
@@ -31,7 +31,7 @@ declare module './world' {
 
 // ── Lifecycle ───────────────────────────────────────────────────────
 
-Before({ tags: '@fast and @LV8' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @LV8' }, function (this: ChangeDownWorld) {
     this.lv8ResultText = undefined;
     this.lv8Error = undefined;
     this.lv8Warning = undefined;
@@ -84,7 +84,7 @@ function compactFully(text: string, changeId: string): string {
 
 // ── Step definitions ────────────────────────────────────────────────
 
-When('I compact {word} to L1', function (this: ChangeTracksWorld, changeId: string) {
+When('I compact {word} to L1', function (this: ChangeDownWorld, changeId: string) {
     assert.ok(this.lifecycleDocText !== undefined, 'Document text not set — use "a lifecycle document with text:" first');
 
     const change = findChangeById(this.lifecycleDocText!, changeId);
@@ -99,7 +99,7 @@ When('I compact {word} to L1', function (this: ChangeTracksWorld, changeId: stri
     this.lv8ResultText = compactToLevel1(this.lifecycleDocText!, changeId);
 });
 
-When('I compact {word} fully', function (this: ChangeTracksWorld, changeId: string) {
+When('I compact {word} fully', function (this: ChangeDownWorld, changeId: string) {
     assert.ok(this.lifecycleDocText !== undefined, 'Document text not set — use "a lifecycle document with text:" first');
 
     const change = findChangeById(this.lifecycleDocText!, changeId);
@@ -114,7 +114,7 @@ When('I compact {word} fully', function (this: ChangeTracksWorld, changeId: stri
     this.lv8ResultText = compactFully(this.lifecycleDocText!, changeId);
 });
 
-When('I try to compact {word}', function (this: ChangeTracksWorld, changeId: string) {
+When('I try to compact {word}', function (this: ChangeDownWorld, changeId: string) {
     assert.ok(this.lifecycleDocText !== undefined, 'Document text not set — use "a lifecycle document with text:" first');
 
     const change = findChangeById(this.lifecycleDocText!, changeId);
@@ -137,7 +137,7 @@ When('I try to compact {word}', function (this: ChangeTracksWorld, changeId: str
 
 // ── Then: assertions on compaction result ────────────────────────────
 
-Then('the compaction result contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the compaction result contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lv8ResultText, 'No compaction result — run a compaction action first');
     assert.ok(
         this.lv8ResultText.includes(expected),
@@ -145,7 +145,7 @@ Then('the compaction result contains {string}', function (this: ChangeTracksWorl
     );
 });
 
-Then('the compaction result does not contain {string}', function (this: ChangeTracksWorld, unexpected: string) {
+Then('the compaction result does not contain {string}', function (this: ChangeDownWorld, unexpected: string) {
     assert.ok(this.lv8ResultText, 'No compaction result — run a compaction action first');
     assert.ok(
         !this.lv8ResultText.includes(unexpected),
@@ -153,7 +153,7 @@ Then('the compaction result does not contain {string}', function (this: ChangeTr
     );
 });
 
-Then('compaction is blocked with {string}', function (this: ChangeTracksWorld, expectedError: string) {
+Then('compaction is blocked with {string}', function (this: ChangeDownWorld, expectedError: string) {
     assert.ok(this.lv8Error, 'Expected compaction to be blocked but no error was set');
     assert.ok(
         this.lv8Error.includes(expectedError),
@@ -161,7 +161,7 @@ Then('compaction is blocked with {string}', function (this: ChangeTracksWorld, e
     );
 });
 
-Then('a warning is shown about {string}', function (this: ChangeTracksWorld, expectedWarning: string) {
+Then('a warning is shown about {string}', function (this: ChangeDownWorld, expectedWarning: string) {
     assert.ok(this.lv8Warning, 'Expected compaction warning but none was set');
     assert.ok(
         this.lv8Warning.includes(expectedWarning),

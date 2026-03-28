@@ -4,8 +4,12 @@ import type {
     EditEvent,
     EditBoundaryState,
     EditBoundaryEffect,
+    FullCrystallizeEffect,
     ChangeNode,
-} from '@changetracks/core';
+} from '@changedown/core';
+
+/** Legacy crystallize effect shape (VS Code PEM uses minimal context, never gets FullCrystallizeEffect) */
+type LegacyCrystallizeEffect = Exclude<Extract<EditBoundaryEffect, { type: 'crystallize' }>, FullCrystallizeEffect>;
 import {
     processEvent,
     DEFAULT_EDIT_BOUNDARY_CONFIG,
@@ -16,7 +20,7 @@ import {
     ChangeType as CoreChangeType,
     changeTypeToAbbrev,
     ChangeStatus,
-} from '@changetracks/core';
+} from '@changedown/core';
 import { offsetToPosition } from './converters';
 import { getOutputChannel } from './output-channel';
 
@@ -370,7 +374,10 @@ export class PendingEditManager {
             for (const effect of effects) {
                 switch (effect.type) {
                     case 'crystallize':
-                        await this.executeCrystallize(effect);
+                        // VS Code PEM uses minimal context — only legacy crystallize effects arrive
+                        if ('changeType' in effect) {
+                            await this.executeCrystallize(effect);
+                        }
                         break;
                     case 'mergeAdjacent':
                         await this.mergeAdjacentChanges(effect.offset);
@@ -397,7 +404,7 @@ export class PendingEditManager {
      * In L3 format (clean body + footnotes), no body edit is performed.
      * Instead, a footnote definition with LINE:HASH {edit-op} is appended.
      */
-    private async executeCrystallize(effect: Extract<EditBoundaryEffect, { type: 'crystallize' }>): Promise<void> {
+    private async executeCrystallize(effect: LegacyCrystallizeEffect): Promise<void> {
         const doc = this.getDocument(this.pendingUri ?? undefined);
         if (!doc) {
             this.log('crystallize: document no longer visible, abandoning');
@@ -470,7 +477,7 @@ export class PendingEditManager {
      * - substitution: footnote body: LINE:HASH {~~originalText~>currentText~~}
      */
     private async crystallizeL3(
-        effect: Extract<EditBoundaryEffect, { type: 'crystallize' }>,
+        effect: LegacyCrystallizeEffect,
         doc: vscode.TextDocument,
         text: string,
     ): Promise<void> {
@@ -548,7 +555,7 @@ export class PendingEditManager {
 
     private consumeScId(): string | undefined {
         if (this.moveContext) {
-            const scId = `ct-${this.moveContext.parentId}${this.moveContext.childSuffix}`;
+            const scId = `cn-${this.moveContext.parentId}${this.moveContext.childSuffix}`;
             this.moveContext = null;
             return scId;
         }

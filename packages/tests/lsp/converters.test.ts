@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { offsetToPosition, positionToOffset, offsetRangeToLspRange, lspRangeToOffsetRange, Position, Range } from '@changetracks/lsp-server/internals';
+import { offsetToPosition, positionToOffset, offsetRangeToLspRange, lspRangeToOffsetRange, Position, Range } from '@changedown/lsp-server/internals';
 
 describe('Converters', () => {
   describe('offsetToPosition', () => {

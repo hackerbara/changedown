@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initHashline, computeLineHash } from '@changetracks/core';
-import { tryRelocate, type RelocationResult } from '@changetracks/mcp/internals';
+import { initHashline, computeLineHash } from '@changedown/core';
+import { tryRelocate, type RelocationResult } from '@changedown/mcp/internals';
 
 beforeAll(async () => {
   await initHashline();

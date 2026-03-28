@@ -6,7 +6,7 @@
  * StdioClientTransport, and verifies end-to-end JSON-RPC round-trips.
  *
  * PREREQUISITE: The MCP server must be compiled before running these tests.
- *   cd changetracks-plugin/mcp-server && npm run build
+ *   cd changedown-plugin/mcp-server && npm run build
  */
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -17,10 +17,10 @@ import * as os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 // Resolve the compiled server entry point.
-// The MCP server dist is at changetracks-plugin/mcp-server/dist/index.js
+// The MCP server dist is at changedown-plugin/mcp-server/dist/index.js
 // This test file is at packages/tests/mcp/features/protocol/
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SERVER_ENTRY = path.resolve(__dirname, '../../../../../changetracks-plugin/mcp-server/dist/index.js');
+const SERVER_ENTRY = path.resolve(__dirname, '../../../../../changedown-plugin/mcp-server/dist/index.js');
 
 /** Timeout for individual MCP operations (server startup is slow) */
 const OP_TIMEOUT = 15_000;
@@ -77,12 +77,12 @@ level = 2
 }
 
 /**
- * Helper: create a temp project directory with .changetracks/config.toml
+ * Helper: create a temp project directory with .changedown/config.toml
  * and optionally seed files.
  */
 async function createTmpProject(): Promise<string> {
-  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-p1-'));
-  const configDir = path.join(tmpDir, '.changetracks');
+  const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-p1-'));
+  const configDir = path.join(tmpDir, '.changedown');
   await fs.mkdir(configDir, { recursive: true });
   await fs.writeFile(path.join(configDir, 'config.toml'), minimalConfigToml(), 'utf-8');
   return tmpDir;
@@ -98,7 +98,7 @@ async function seedFile(projectDir: string, name: string, content: string): Prom
 }
 
 /**
- * Helper: spawn an MCP client connected to the changetracks server via stdio.
+ * Helper: spawn an MCP client connected to the changedown server via stdio.
  */
 async function createMcpClient(projectDir: string): Promise<Client> {
   const transport = new StdioClientTransport({
@@ -106,7 +106,7 @@ async function createMcpClient(projectDir: string): Promise<Client> {
     args: [SERVER_ENTRY],
     env: {
       ...process.env as Record<string, string>,
-      CHANGETRACKS_PROJECT_DIR: projectDir,
+      CHANGEDOWN_PROJECT_DIR: projectDir,
     },
     stderr: 'pipe',
   });
@@ -152,7 +152,7 @@ describe('P1: MCP stdio transport smoke tests', () => {
       await fs.access(SERVER_ENTRY);
     } catch {
       throw new Error(
-        `Compiled server not found at ${SERVER_ENTRY}. Run: cd changetracks-plugin/mcp-server && npm run build`,
+        `Compiled server not found at ${SERVER_ENTRY}. Run: cd changedown-plugin/mcp-server && npm run build`,
       );
     }
   }, 10_000);
@@ -230,13 +230,13 @@ describe('P1: MCP stdio transport smoke tests', () => {
     expect(isError(proposeResult)).toBe(false);
     const proposeText = extractText(proposeResult);
     const proposeData = JSON.parse(proposeText);
-    expect(proposeData.change_id).toBe('ct-1');
+    expect(proposeData.change_id).toBe('cn-1');
     expect(proposeData.type).toBe('sub');
 
     // Verify on disk
     const diskAfterPropose = await fs.readFile(filePath, 'utf-8');
     expect(diskAfterPropose).toContain('{~~REST~>GraphQL~~}');
-    expect(diskAfterPropose).toContain('[^ct-1]');
+    expect(diskAfterPropose).toContain('[^cn-1]');
 
     // Step 3: Approve the change (auto_on_approve = true triggers settlement)
     const reviewResult = await client.callTool({
@@ -244,7 +244,7 @@ describe('P1: MCP stdio transport smoke tests', () => {
       arguments: {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'Looks good' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'Looks good' },
         ],
       },
     });
@@ -257,7 +257,7 @@ describe('P1: MCP stdio transport smoke tests', () => {
     expect(diskAfterReview).not.toContain('{~~');
     expect(diskAfterReview).not.toContain('~~}');
     // Footnote persists (Layer 1)
-    expect(diskAfterReview).toContain('[^ct-1]');
+    expect(diskAfterReview).toContain('[^cn-1]');
     expect(diskAfterReview).toContain('accepted');
   }, OP_TIMEOUT);
 
@@ -319,7 +319,7 @@ describe('P1: MCP stdio transport smoke tests', () => {
     expect(isError(result)).toBe(false);
     const text = extractText(result);
     // propose_batch returns grouped change IDs
-    expect(text).toContain('ct-1');
+    expect(text).toContain('cn-1');
 
     // Verify on disk — both changes applied
     const disk = await fs.readFile(filePath, 'utf-8');

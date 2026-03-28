@@ -30,7 +30,7 @@ Feature: Agent editorial cycle (orient -> propose -> review -> settle)
       | no caching                        | Redis caching with 5-minute TTL           | Reduce DB load                |
       | 500ms                             | 50ms                                      | Caching brings p99 under 100ms |
       | no rate limiting                  | rate limiting at 1000 req/min             | Prevent abuse                 |
-    Then the response contains grouped IDs ct-1.1, ct-1.2, ct-1.3
+    Then the response contains grouped IDs cn-1.1, cn-1.2, cn-1.3
     And the file contains 3 CriticMarkup substitutions
     And all 3 footnotes exist with status "proposed"
 
@@ -40,7 +40,7 @@ Feature: Agent editorial cycle (orient -> propose -> review -> settle)
     And the inline annotations show each change at its location
 
     # Phase 4: Self-review (approve all)
-    When I call review_changes approving ct-1.1, ct-1.2, ct-1.3
+    When I call review_changes approving cn-1.1, cn-1.2, cn-1.3
     Then all 3 changes are accepted
     And auto-settlement removes inline markup (Layer 1)
 

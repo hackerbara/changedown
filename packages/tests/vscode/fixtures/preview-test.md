@@ -14,11 +14,11 @@ This has a comment{>>This is the comment text<<} inline.
 
 ## Status-Aware (with footnotes)
 
-Added paragraph.{++New content here.++}[^ct-1]
+Added paragraph.{++New content here.++}[^cn-1]
 
-Removed paragraph.{--Old content here.--}[^ct-2]
+Removed paragraph.{--Old content here.--}[^cn-2]
 
-Changed wording.{~~original phrasing~>better phrasing~~}[^ct-3]
+Changed wording.{~~original phrasing~>better phrasing~~}[^cn-3]
 
 ## Code Fence Handling
 
@@ -28,7 +28,7 @@ def greet():
     return {~~"hello"~>"hi there"~~}
 ```
 
-```changetracks
+```changedown
 # This should render as literal text, not styled
 {++This is an example of insertion syntax++}
 {--This is an example of deletion syntax--}
@@ -40,11 +40,11 @@ The {~~Acme Corp~>TechCorp~~} announced {++today++} that it will {--shut down--}
 
 ## Footnote Definitions
 
-[^ct-1]: @alice | 2026-02-17 | insertion | proposed
+[^cn-1]: @alice | 2026-02-17 | insertion | proposed
   Added new content for the release notes.
 
-[^ct-2]: @bob | 2026-02-17 | deletion | proposed
+[^cn-2]: @bob | 2026-02-17 | deletion | proposed
   Removed outdated information.
 
-[^ct-3]: @alice | 2026-02-17 | substitution | accepted
+[^cn-3]: @alice | 2026-02-17 | substitution | accepted
   Improved clarity of the original phrasing.

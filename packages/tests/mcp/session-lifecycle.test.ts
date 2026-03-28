@@ -18,35 +18,35 @@ describe('Session lifecycle: read records view', () => {
 
   it('read with view=review records lastReadView as review', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content here.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nSome content here.\n');
     await ctx.read(filePath, { view: 'review' });
     expect(ctx.state.getLastReadView(filePath)).toBe('review');
   });
 
   it('read with view=settled records lastReadView as settled', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content here.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nSome content here.\n');
     await ctx.read(filePath, { view: 'settled' });
     expect(ctx.state.getLastReadView(filePath)).toBe('settled');
   });
 
   it('read with view=changes records lastReadView as changes', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content here.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nSome content here.\n');
     await ctx.read(filePath, { view: 'changes' });
     expect(ctx.state.getLastReadView(filePath)).toBe('changes');
   });
 
   it('read with view=raw records lastReadView as raw', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content here.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nSome content here.\n');
     await ctx.read(filePath, { view: 'raw' });
     expect(ctx.state.getLastReadView(filePath)).toBe('raw');
   });
 
   it('read with default view records lastReadView as review', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content here.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nSome content here.\n');
     await ctx.read(filePath);
     expect(ctx.state.getLastReadView(filePath)).toBe('review');
   });
@@ -70,7 +70,7 @@ describe('Session lifecycle: review-changes rerecords', () => {
 
   it('propose after approve uses fresh hashes (no staleness)', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nThe API uses REST for requests.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nThe API uses REST for requests.\n');
 
     const read1 = await ctx.read(filePath, { view: 'review' });
     expect(read1.isError).toBeUndefined();
@@ -102,7 +102,7 @@ describe('Session lifecycle: review-changes rerecords', () => {
 
   it('hashes are re-recorded after review (settled content has no markup)', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nLine one.\nLine two.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nLine one.\nLine two.\n');
 
     await ctx.read(filePath, { view: 'review' });
 
@@ -122,7 +122,7 @@ describe('Session lifecycle: review-changes rerecords', () => {
 
   it('content fingerprint is updated after review write (isStale returns false)', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nOriginal text.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nOriginal text.\n');
 
     await ctx.read(filePath, { view: 'review' });
 
@@ -145,18 +145,18 @@ describe('Session lifecycle: review-changes rerecords', () => {
 
   it('ID counter cache is reset after review so next propose re-scans', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nFirst line.\nSecond line.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nFirst line.\nSecond line.\n');
 
     await ctx.read(filePath, { view: 'review' });
 
-    // Propose first change (gets ct-1)
+    // Propose first change (gets cn-1)
     const p1 = await ctx.propose(filePath, { old_text: 'First', new_text: 'FIRST', reason: 'caps' });
     expect(p1.isError).toBeUndefined();
     const d1 = ctx.parseResult(p1);
     const changeId1 = (d1.change_id ?? (d1.results as Array<{change_id: string}>)?.[0]?.change_id) as string;
-    expect(changeId1).toBe('ct-1');
+    expect(changeId1).toBe('cn-1');
 
-    // Approve and settle ct-1
+    // Approve and settle cn-1
     const r1 = await ctx.review(filePath, {
       reviews: [{ change_id: changeId1, decision: 'approve', reason: 'ok' }],
     });
@@ -166,12 +166,12 @@ describe('Session lifecycle: review-changes rerecords', () => {
     await ctx.read(filePath, { view: 'review' });
 
     // Propose second change — the ID counter should have been reset by rerecordAfterWrite,
-    // so getNextId re-scans the file. Since ct-1 footnote still exists (Layer 1), next ID is ct-2.
+    // so getNextId re-scans the file. Since cn-1 footnote still exists (Layer 1), next ID is cn-2.
     const p2 = await ctx.propose(filePath, { old_text: 'Second', new_text: 'SECOND', reason: 'caps' });
     expect(p2.isError).toBeUndefined();
     const d2 = ctx.parseResult(p2);
     const changeId2 = (d2.change_id ?? (d2.results as Array<{change_id: string}>)?.[0]?.change_id) as string;
-    expect(changeId2).toBe('ct-2');
+    expect(changeId2).toBe('cn-2');
   });
 });
 
@@ -190,7 +190,7 @@ describe('Session lifecycle: propose rerecords', () => {
 
   it('second propose after first propose uses fresh hashes', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nLine one content.\nLine two content.\nLine three content.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nLine one content.\nLine two content.\nLine three content.\n');
 
     await ctx.read(filePath, { view: 'review' });
 
@@ -215,7 +215,7 @@ describe('Session lifecycle: propose rerecords', () => {
 
   it('content fingerprint is updated after propose', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nOriginal text here.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nOriginal text here.\n');
 
     await ctx.read(filePath, { view: 'review' });
 
@@ -248,7 +248,7 @@ describe('Session lifecycle: amend rerecords', () => {
 
   it('propose after amend uses fresh hashes', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nThe API uses REST for requests.\nAnother line here.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nThe API uses REST for requests.\nAnother line here.\n');
 
     await ctx.read(filePath, { view: 'review' });
 
@@ -279,7 +279,7 @@ describe('Session lifecycle: amend rerecords', () => {
 
   it('content fingerprint is updated after amend write', async () => {
     const filePath = await ctx.createFile('doc.md',
-      '<!-- ctrcks.com/v1: tracked -->\n# Test\nOriginal text.\n');
+      '<!-- changedown.com/v1: tracked -->\n# Test\nOriginal text.\n');
 
     await ctx.read(filePath, { view: 'review' });
 

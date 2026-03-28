@@ -1,20 +1,20 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 import {
   settledLine,
   computeSettledLineHash,
   formatTrackedHashLines,
   formatTrackedHeader,
   initHashline,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 // =============================================================================
 // Shared state extensions on the World class
 // =============================================================================
 
 declare module './world.js' {
-  interface ChangeTracksWorld {
+  interface ChangeDownWorld {
     htInput: string;
     htSettledOutput: string;
     htHash: string;
@@ -29,27 +29,27 @@ declare module './world.js' {
 // settledLine steps
 // =============================================================================
 
-Given('the settled line input is {string}', function (this: ChangeTracksWorld, text: string) {
+Given('the settled line input is {string}', function (this: ChangeDownWorld, text: string) {
   this.htInput = text;
 });
 
-Given('the settled line input is:', function (this: ChangeTracksWorld, text: string) {
+Given('the settled line input is:', function (this: ChangeDownWorld, text: string) {
   this.htInput = text;
 });
 
-When('I compute the settled line output', function (this: ChangeTracksWorld) {
+When('I compute the settled line output', function (this: ChangeDownWorld) {
   this.htSettledOutput = settledLine(this.htInput);
 });
 
-Then('the settled line output is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the settled line output is {string}', function (this: ChangeDownWorld, expected: string) {
   assert.equal(this.htSettledOutput, expected);
 });
 
-Then('the settled line output is:', function (this: ChangeTracksWorld, expected: string) {
+Then('the settled line output is:', function (this: ChangeDownWorld, expected: string) {
   assert.equal(this.htSettledOutput, expected);
 });
 
-Then('the settled line output is empty', function (this: ChangeTracksWorld) {
+Then('the settled line output is empty', function (this: ChangeDownWorld) {
   assert.equal(this.htSettledOutput, '');
 });
 
@@ -57,7 +57,7 @@ Then('the settled line output is empty', function (this: ChangeTracksWorld) {
 // computeSettledLineHash steps
 // =============================================================================
 
-Given('the hashline module is ready', async function (this: ChangeTracksWorld) {
+Given('the hashline module is ready', async function (this: ChangeDownWorld) {
   if (!this.htHashlineInitialized) {
     await initHashline();
     this.htHashlineInitialized = true;
@@ -69,25 +69,25 @@ Given('the hashline module is ready', async function (this: ChangeTracksWorld) {
 
 When(
   'I compute the settled hash at index {int} for {string}',
-  function (this: ChangeTracksWorld, idx: number, text: string) {
+  function (this: ChangeDownWorld, idx: number, text: string) {
     this.htHash = computeSettledLineHash(idx, text);
   },
 );
 
 When(
   'I compute the settled hash at index {int} for:',
-  function (this: ChangeTracksWorld, idx: number, text: string) {
+  function (this: ChangeDownWorld, idx: number, text: string) {
     this.htHash = computeSettledLineHash(idx, text);
   },
 );
 
-Then('the settled hash is a valid 2-char hex string', function (this: ChangeTracksWorld) {
+Then('the settled hash is a valid 2-char hex string', function (this: ChangeDownWorld) {
   assert.match(this.htHash, /^[0-9a-f]{2}$/);
 });
 
 When(
   'I store the settled hash as {string}',
-  function (this: ChangeTracksWorld, label: string) {
+  function (this: ChangeDownWorld, label: string) {
     if (!this.htStoredHashes) {
       this.htStoredHashes = new Map();
     }
@@ -97,7 +97,7 @@ When(
 
 Then(
   'the settled hash differs from stored {string}',
-  function (this: ChangeTracksWorld, label: string) {
+  function (this: ChangeDownWorld, label: string) {
     const stored = this.htStoredHashes.get(label);
     assert.ok(stored !== undefined, `No stored hash with label "${label}"`);
     assert.notEqual(this.htHash, stored, `Expected hashes to differ but both are "${this.htHash}"`);
@@ -106,7 +106,7 @@ Then(
 
 Then(
   'the settled hash equals stored {string}',
-  function (this: ChangeTracksWorld, label: string) {
+  function (this: ChangeDownWorld, label: string) {
     const stored = this.htStoredHashes.get(label);
     assert.ok(stored !== undefined, `No stored hash with label "${label}"`);
     assert.equal(this.htHash, stored, `Expected hashes to be equal but got "${this.htHash}" vs "${stored}"`);
@@ -119,7 +119,7 @@ Then(
 
 When(
   'I format tracked hash lines for {string}',
-  function (this: ChangeTracksWorld, content: string) {
+  function (this: ChangeDownWorld, content: string) {
     const unescaped = content.replace(/\\n/g, '\n');
     this.htFormatted = formatTrackedHashLines(unescaped);
   },
@@ -127,14 +127,14 @@ When(
 
 When(
   'I format tracked hash lines for:',
-  function (this: ChangeTracksWorld, content: string) {
+  function (this: ChangeDownWorld, content: string) {
     this.htFormatted = formatTrackedHashLines(content);
   },
 );
 
 When(
   'I format tracked hash lines with startLine {int} for {string}',
-  function (this: ChangeTracksWorld, startLine: number, content: string) {
+  function (this: ChangeDownWorld, startLine: number, content: string) {
     const unescaped = content.replace(/\\n/g, '\n');
     this.htFormatted = formatTrackedHashLines(unescaped, { startLine });
   },
@@ -142,14 +142,14 @@ When(
 
 When(
   'I format tracked hash lines with startLine {int} for:',
-  function (this: ChangeTracksWorld, startLine: number, content: string) {
+  function (this: ChangeDownWorld, startLine: number, content: string) {
     this.htFormatted = formatTrackedHashLines(content, { startLine });
   },
 );
 
 Then(
   'the tracked output has {int} lines',
-  function (this: ChangeTracksWorld, expected: number) {
+  function (this: ChangeDownWorld, expected: number) {
     const lines = this.htFormatted.split('\n');
     assert.equal(lines.length, expected);
   },
@@ -157,7 +157,7 @@ Then(
 
 Then(
   'the tracked output line {int} matches single hash format',
-  function (this: ChangeTracksWorld, lineNum: number) {
+  function (this: ChangeDownWorld, lineNum: number) {
     const lines = this.htFormatted.split('\n');
     assert.ok(lineNum >= 1 && lineNum <= lines.length, `Line ${lineNum} out of range`);
     const line = lines[lineNum - 1];
@@ -178,7 +178,7 @@ Then(
 // Alias for "tracked output line N matches ..." when used without "the"
 Then(
   'tracked output line {int} matches single hash format',
-  function (this: ChangeTracksWorld, lineNum: number) {
+  function (this: ChangeDownWorld, lineNum: number) {
     const lines = this.htFormatted.split('\n');
     assert.ok(lineNum >= 1 && lineNum <= lines.length, `Line ${lineNum} out of range`);
     const line = lines[lineNum - 1];
@@ -189,7 +189,7 @@ Then(
 
 Then(
   'all tracked output lines have pipe delimiters',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const lines = this.htFormatted.split('\n');
     for (let i = 0; i < lines.length; i++) {
       assert.ok(lines[i].includes('|'), `Line ${i + 1} missing pipe delimiter: "${lines[i]}"`);
@@ -199,7 +199,7 @@ Then(
 
 Then(
   'the tracked output line {int} starts with number {int}',
-  function (this: ChangeTracksWorld, lineNum: number, expectedNum: number) {
+  function (this: ChangeDownWorld, lineNum: number, expectedNum: number) {
     const lines = this.htFormatted.split('\n');
     assert.ok(lineNum >= 1 && lineNum <= lines.length, `Line ${lineNum} out of range`);
     const line = lines[lineNum - 1].trimStart();
@@ -212,7 +212,7 @@ Then(
 
 Then(
   'the tracked output line {int} contains {string}',
-  function (this: ChangeTracksWorld, lineNum: number, expected: string) {
+  function (this: ChangeDownWorld, lineNum: number, expected: string) {
     const lines = this.htFormatted.split('\n');
     assert.ok(lineNum >= 1 && lineNum <= lines.length, `Line ${lineNum} out of range`);
     assert.ok(
@@ -224,7 +224,7 @@ Then(
 
 Then(
   'the tracked output line {int} starts with a space-padded number',
-  function (this: ChangeTracksWorld, lineNum: number) {
+  function (this: ChangeDownWorld, lineNum: number) {
     const lines = this.htFormatted.split('\n');
     assert.ok(lineNum >= 1 && lineNum <= lines.length, `Line ${lineNum} out of range`);
     const line = lines[lineNum - 1];
@@ -243,7 +243,7 @@ Then(
 
 When(
   'I format tracked header for file {string} with content {string}',
-  function (this: ChangeTracksWorld, filePath: string, content: string) {
+  function (this: ChangeDownWorld, filePath: string, content: string) {
     const unescaped = content.replace(/\\n/g, '\n');
     this.htHeader = formatTrackedHeader(filePath, unescaped);
   },
@@ -251,14 +251,14 @@ When(
 
 When(
   'I format tracked header for file {string} with content:',
-  function (this: ChangeTracksWorld, filePath: string, content: string) {
+  function (this: ChangeDownWorld, filePath: string, content: string) {
     this.htHeader = formatTrackedHeader(filePath, content);
   },
 );
 
 When(
   'I format tracked header for file {string} with status {string} and content {string}',
-  function (this: ChangeTracksWorld, filePath: string, status: string, content: string) {
+  function (this: ChangeDownWorld, filePath: string, status: string, content: string) {
     const unescaped = content.replace(/\\n/g, '\n');
     this.htHeader = formatTrackedHeader(filePath, unescaped, status);
   },
@@ -266,14 +266,14 @@ When(
 
 When(
   'I format tracked header for file {string} with status {string} and content:',
-  function (this: ChangeTracksWorld, filePath: string, status: string, content: string) {
+  function (this: ChangeDownWorld, filePath: string, status: string, content: string) {
     this.htHeader = formatTrackedHeader(filePath, content, status);
   },
 );
 
 Then(
   'the tracked header contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(
       this.htHeader.includes(expected),
       `Expected header to contain "${expected}" but got:\n${this.htHeader}`,
@@ -283,7 +283,7 @@ Then(
 
 Then(
   'the tracked header does not contain {string}',
-  function (this: ChangeTracksWorld, unexpected: string) {
+  function (this: ChangeDownWorld, unexpected: string) {
     assert.ok(
       !this.htHeader.includes(unexpected),
       `Expected header NOT to contain "${unexpected}" but it does:\n${this.htHeader}`,

@@ -16,19 +16,19 @@ import { strict as assert } from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import { executeCommand } from '../../journeys/playwrightHarness';
 
-// ── Extend ChangeTracksWorld with LSP client state ────────────────────
+// ── Extend ChangeDownWorld with LSP client state ────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         lspClientCreated?: boolean;
         lspClientRunning?: boolean;
     }
 }
 
-const LSP_STATE_PATH = path.join(os.tmpdir(), 'changetracks-test-lsp-state.json');
+const LSP_STATE_PATH = path.join(os.tmpdir(), 'changedown-test-lsp-state.json');
 
 /**
  * Query LSP client state via the bridge command.
@@ -39,7 +39,7 @@ const LSP_STATE_PATH = path.join(os.tmpdir(), 'changetracks-test-lsp-state.json'
  */
 async function queryLspState(page: import('playwright').Page): Promise<Record<string, unknown> | null> {
     const beforeTs = Date.now();
-    await executeCommand(page, 'ChangeTracks: Test LSP Client');
+    await executeCommand(page, 'ChangeDown: Test LSP Client');
     await page.waitForTimeout(500);
     try {
         if (!fs.existsSync(LSP_STATE_PATH)) return null;
@@ -55,7 +55,7 @@ async function queryLspState(page: import('playwright').Page): Promise<Record<st
 Then(
     'the LSP client is created successfully',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
 
         const state = await queryLspState(this.page!);
@@ -74,7 +74,7 @@ Then(
 When(
     'the LSP client is started',
     { timeout: 30000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
 
         // The extension starts the client during activation.
@@ -91,7 +91,7 @@ When(
 When(
     'the LSP client is stopped',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         // The extension's client runs for the lifetime of the extension.
         // We don't actually stop it — just mark the world state.
         this.lspClientRunning = false;
@@ -103,7 +103,7 @@ When(
 Then(
     'the LSP client is running',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
 
         const state = await queryLspState(this.page!);
@@ -115,7 +115,7 @@ Then(
 Then(
     'the LSP client is not running',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         // After "stop" step, we verify the world state was updated.
         // The actual client still runs (extension lifecycle), but the
         // scenario's logical state is "stopped".
@@ -131,7 +131,7 @@ Then(
 Then(
     'notification handler {string} is registered',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, _method: string) {
+    async function (this: ChangeDownWorld, _method: string) {
         assert.ok(this.page, 'Page not available');
 
         // The extension registers all custom notification handlers in lsp-client.ts.
@@ -148,7 +148,7 @@ Then(
 Then(
     'the LSP client document selector has scheme {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, expectedScheme: string) {
+    async function (this: ChangeDownWorld, expectedScheme: string) {
         assert.ok(this.page, 'Page not available');
 
         const state = await queryLspState(this.page!);
@@ -166,7 +166,7 @@ Then(
 Then(
     'the LSP client document selector has no language filter',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
 
         const state = await queryLspState(this.page!);

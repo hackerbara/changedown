@@ -28,9 +28,9 @@ Feature: E6 - CLI Diff
   Scenario: Settled view strips resolved markup
     Given a temporary diff file "settled.md" with content:
       """
-      Hello {++world++}[^ct-1] there.
+      Hello {++world++}[^cn-1] there.
 
-      [^ct-1]: @alice | 2026-02-01 | ins | accepted
+      [^cn-1]: @alice | 2026-02-01 | ins | accepted
           reason: added greeting
       """
     When I run diff on "settled.md" with view "settled"
@@ -83,9 +83,9 @@ Feature: E6 - CLI Diff
   Scenario: Threads disabled by default — no thread expansion
     Given a temporary diff file "threaded.md" with content:
       """
-      Some {++added text++}[^ct-1] here.
+      Some {++added text++}[^cn-1] here.
 
-      [^ct-1]: @alice | 2026-02-27 | ins | proposed
+      [^cn-1]: @alice | 2026-02-27 | ins | proposed
           reason: adding context
           @bob 2026-02-27: Looks good to me
       """
@@ -95,9 +95,9 @@ Feature: E6 - CLI Diff
   Scenario: Threads enabled expands discussion replies inline
     Given a temporary diff file "threaded2.md" with content:
       """
-      Some {++added text++}[^ct-1] here.
+      Some {++added text++}[^cn-1] here.
 
-      [^ct-1]: @alice | 2026-02-27 | ins | proposed
+      [^cn-1]: @alice | 2026-02-27 | ins | proposed
           reason: adding context
           @bob 2026-02-27: Looks good to me
       """
@@ -108,13 +108,13 @@ Feature: E6 - CLI Diff
   Scenario: Thread replies from multiple changes appear in document order
     Given a temporary diff file "multi-thread.md" with content:
       """
-      First {++change one++}[^ct-1] here.
-      Second {--change two--}[^ct-2] here.
+      First {++change one++}[^cn-1] here.
+      Second {--change two--}[^cn-2] here.
 
-      [^ct-1]: @alice | 2026-02-27 | ins | proposed
+      [^cn-1]: @alice | 2026-02-27 | ins | proposed
           reason: first
           @bob 2026-02-27: Reply to first
-      [^ct-2]: @alice | 2026-02-27 | del | proposed
+      [^cn-2]: @alice | 2026-02-27 | del | proposed
           reason: second
           @carol 2026-02-27: Reply to second
       """
@@ -126,9 +126,9 @@ Feature: E6 - CLI Diff
   Scenario: No thread replies produces same output as threads disabled
     Given a temporary diff file "no-replies.md" with content:
       """
-      Some {++added text++}[^ct-1] here.
+      Some {++added text++}[^cn-1] here.
 
-      [^ct-1]: @alice | 2026-02-27 | ins | proposed
+      [^cn-1]: @alice | 2026-02-27 | ins | proposed
           reason: no replies
       """
     When I run diff on "no-replies.md" with threads enabled

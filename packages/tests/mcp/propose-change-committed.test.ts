@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -12,14 +12,14 @@ import * as os from 'node:os';
 describe('propose_change with committed hashes', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
 
   beforeAll(async () => {
     await initHashline();
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-propose-committed-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-propose-committed-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -57,10 +57,10 @@ describe('propose_change with committed hashes', () => {
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(filePath, [
       '# Title',
-      'Some text with {++pending addition++}[^ct-1] in it.',
+      'Some text with {++pending addition++}[^cn-1] in it.',
       'Clean line here.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
     ].join('\n'));
 
     const resolver = await createTestResolver(tmpDir, config);

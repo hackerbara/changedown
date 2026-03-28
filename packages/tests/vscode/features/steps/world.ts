@@ -17,7 +17,7 @@ export interface VSCodeInstance {
  * @fast scenarios: parser + SpyEditor (no VS Code launch)
  * @slow scenarios: Playwright + VS Code Electron
  */
-export class ChangeTracksWorld extends World {
+export class ChangeDownWorld extends World {
     // @slow tier
     instance?: VSCodeInstance;
     page?: Page;
@@ -36,21 +36,21 @@ export class ChangeTracksWorld extends World {
     fixtureTag?: string;
 }
 
-setWorldConstructor(ChangeTracksWorld);
+setWorldConstructor(ChangeDownWorld);
 
 // ── Temp file cleanup ────────────────────────────────────────────────
 // Bridge commands write JSON state to /tmp. Clean stale files before
 // each run so assertions never read leftovers from a previous session.
 
 const TEMP_STATE_FILES = [
-    'changetracks-test-state.json',
-    'changetracks-test-config.json',
-    'changetracks-test-ext-state.json',
-    'changetracks-test-lsp-state.json',
-    'changetracks-test-doc.json',
-    'changetracks-test-wait-changes.json',
-    'changetracks-test-cursor.json',
-    'changetracks-test-decoration-ready.json',
+    'changedown-test-state.json',
+    'changedown-test-config.json',
+    'changedown-test-ext-state.json',
+    'changedown-test-lsp-state.json',
+    'changedown-test-doc.json',
+    'changedown-test-wait-changes.json',
+    'changedown-test-cursor.json',
+    'changedown-test-decoration-ready.json',
 ].map(name => path.join(os.tmpdir(), name));
 
 BeforeAll(async function () {
@@ -92,7 +92,7 @@ export async function getOrCreateInstance(
     return sharedInstance;
 }
 
-After(async function (this: ChangeTracksWorld) {
+After(async function (this: ChangeDownWorld) {
     // If this scenario owns a non-shared instance, close it
     if (this.instance && this.instance !== sharedInstance) {
         await this.instance.app.close().catch(() => {});
@@ -100,7 +100,7 @@ After(async function (this: ChangeTracksWorld) {
     }
 });
 
-After({ tags: '@destructive' }, async function (this: ChangeTracksWorld) {
+After({ tags: '@destructive' }, async function (this: ChangeDownWorld) {
     // Restore fixture file from git to undo any modifications made by accept/reject scenarios.
     // All @slow scenario fixtures are opened via launchWithJourneyFixture, which resolves
     // them from packages/tests/vscode/fixtures/journeys/. The fixtureFile is just the filename.

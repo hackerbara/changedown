@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { loadConfig, isFileInScope, isFileExcludedFromHooks, DEFAULT_CONFIG } from '@changetracks/opencode-plugin/internals';
+import { loadConfig, isFileInScope, isFileExcludedFromHooks, DEFAULT_CONFIG } from '@changedown/opencode-plugin/internals';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -8,7 +8,7 @@ describe('loadConfig', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-config-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-config-test-'));
   });
 
   afterEach(async () => {
@@ -56,7 +56,7 @@ describe('loadConfig', () => {
   });
 
   it('parses settlement section from TOML', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -73,7 +73,7 @@ auto_on_reject = true
   });
 
   it('parses policy section from TOML', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -94,7 +94,7 @@ view_policy = "require"
   });
 
   it('parses protocol section from TOML', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -115,7 +115,7 @@ batch_reasoning = "required"
   });
 
   it('parses custom include patterns', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -136,7 +136,7 @@ exclude = ["node_modules/**", "dist/**", ".vscode-test/**"]
   });
 
   it('parses author enforcement settings', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -153,7 +153,7 @@ enforcement = "required"
   });
 
   it('returns defaults for missing sections in a partial config', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),

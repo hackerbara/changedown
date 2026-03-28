@@ -25,7 +25,7 @@ export class VirtualDocument {
    */
   static fromOverlayOnly(overlay: PendingOverlay): VirtualDocument {
     const change: ChangeNode = {
-      id: overlay.scId ?? `ct-pending-${overlay.range.start}`,
+      id: overlay.scId ?? `cn-pending-${overlay.range.start}`,
       type: ChangeType.Insertion,
       status: ChangeStatus.Proposed,
       range: overlay.range,

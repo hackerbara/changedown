@@ -6,7 +6,7 @@ Feature: I3 - Example Files
     Given a temporary empty directory
     When I copy examples to that directory
     Then the file "examples/getting-started.md" exists in that directory
-    And the example file contains "ctrcks.com/v1: tracked"
+    And the example file contains "changedown.com/v1: tracked"
     And the example file contains "Getting Started"
     And the example file contains "{++This text was added by a collaborator.++}"
     And the example file contains "{--This paragraph was removed during editing.--}"
@@ -36,7 +36,7 @@ Feature: I3 - Example Files
     And the example file contains "{~~"
     And the example file contains "{=="
     And the example file contains "{>>"
-    And the example file contains "[^ct-1]"
+    And the example file contains "[^cn-1]"
     And the example file contains "In your editor"
     And the example file contains "With an AI agent"
     And the example file contains "From the command line"

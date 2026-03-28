@@ -12,7 +12,7 @@
 | Previous change | Alt+Cmd+[ | Ctrl+Alt+[ |
 | Show diff | Alt+Cmd+D | Ctrl+Alt+D |
 | Annotate from git | Alt+Cmd+G | Ctrl+Alt+G |
-| Go to linked change | Alt+Cmd+M | Ctrl+Alt+M |[^ct-1]
+| Go to linked change | Alt+Cmd+M | Ctrl+Alt+M |[^cn-1]
 
 ### Toolbar Buttons (editor title bar)
 
@@ -32,10 +32,10 @@
 
 ### Sidebar
 
-ChangeTracks has its own Activity Bar icon. The sidebar contains two panels:
+ChangeDown has its own Activity Bar icon. The sidebar contains two panels:
 
 - **Review** — a single-page view with four cognitive zones: **Configure** (tracking toggle + view mode), **Navigate** (prev/next), **Bulk Act** (accept all / reject all), and **Changes** (scrollable change cards). Navigate, accept, and reject changes without leaving the panel.
-- **Project Settings** — visual config editor for `.changetracks/config.toml`
+- **Project Settings** — visual config editor for `.changedown/config.toml`
 
 ### Agent Workflow
 
@@ -50,14 +50,14 @@ Agents use the same CriticMarkup format. Their changes show up in the editor and
 ### CLI Commands
 
 ```
-changetracks init           # Initialize tracking in a project
-changetracks status         # Show tracked files and pending changes
-changetracks diff           # Show changes in diff format
-```[^ct-2]
-[^ct-1]: @ai:claude-opus-4.6 | 2026-02-28 | sub | accepted
+changedown init           # Initialize tracking in a project
+changedown status         # Show tracked files and pending changes
+changedown diff           # Show changes in diff format
+```[^cn-2]
+[^cn-1]: @ai:claude-opus-4.6 | 2026-02-28 | sub | accepted
     @ai:claude-opus-4.6 2026-02-28: Replace Shift+Cmd keybindings with Alt+Cmd scheme and add new bindings for git annotate and linked change navigation
     approved: @ai:claude-opus-4.6 2026-02-28 "Keybinding update from Shift+Cmd to Alt+Cmd scheme to avoid VS Code conflicts"
 
-[^ct-2]: @ai:claude-opus-4.6 | 2026-03-01 | sub | accepted
+[^cn-2]: @ai:claude-opus-4.6 | 2026-03-01 | sub | accepted
     @ai:claude-opus-4.6 2026-03-01T07:36:13Z: Add agent workflow and CLI command sections to cheat sheet for three-surface coverage
     approved: @ai:claude-opus-4.6 2026-03-01T07:36:28Z "Add agent workflow and CLI command sections for three-surface coverage"

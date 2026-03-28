@@ -27,7 +27,7 @@ describe("parseEventsFromLines", () => {
   it("groups tool_use events with their enclosing step", () => {
     const lines = [
       STEP_START("step1"),
-      TOOL_USE("changetracks_read_tracked_file", { file: "adr.md", view: "review" }, "# ADR content..."),
+      TOOL_USE("changedown_read_tracked_file", { file: "adr.md", view: "review" }, "# ADR content..."),
       STEP_FINISH("step1", { input: 100, output: 200, reasoning: 0, cache: { read: 5000 } }),
     ];
 
@@ -35,7 +35,7 @@ describe("parseEventsFromLines", () => {
     expect(steps).toHaveLength(1);
     expect(steps[0].apiTokens).toEqual({ input: 100, output: 200, reasoning: 0, cacheRead: 5000 });
     expect(steps[0].toolCalls).toHaveLength(1);
-    expect(steps[0].toolCalls[0].tool).toBe("changetracks_read_tracked_file");
+    expect(steps[0].toolCalls[0].tool).toBe("changedown_read_tracked_file");
     expect(steps[0].toolCalls[0].rawInput).toEqual({ file: "adr.md", view: "review" });
     expect(steps[0].toolCalls[0].rawOutput).toBe("# ADR content...");
   });
@@ -43,16 +43,16 @@ describe("parseEventsFromLines", () => {
   it("handles steps with multiple tool calls", () => {
     const lines = [
       STEP_START("step1"),
-      TOOL_USE("changetracks_read_tracked_file", { file: "a.md" }, "content A"),
-      TOOL_USE("changetracks_propose_change", { file: "a.md", old_text: "x", new_text: "y" }, '{"change_id":"ct-1"}'),
+      TOOL_USE("changedown_read_tracked_file", { file: "a.md" }, "content A"),
+      TOOL_USE("changedown_propose_change", { file: "a.md", old_text: "x", new_text: "y" }, '{"change_id":"cn-1"}'),
       STEP_FINISH("step1", { input: 50, output: 300, reasoning: 0, cache: { read: 1000 } }),
     ];
 
     const steps = parseEventsFromLines(lines);
     expect(steps).toHaveLength(1);
     expect(steps[0].toolCalls).toHaveLength(2);
-    expect(steps[0].toolCalls[0].tool).toBe("changetracks_read_tracked_file");
-    expect(steps[0].toolCalls[1].tool).toBe("changetracks_propose_change");
+    expect(steps[0].toolCalls[0].tool).toBe("changedown_read_tracked_file");
+    expect(steps[0].toolCalls[1].tool).toBe("changedown_propose_change");
   });
 
   it("handles steps with no tool calls", () => {
@@ -72,14 +72,14 @@ describe("parseEventsFromLines", () => {
       TOOL_USE("bash", { command: "ls" }, "file1\nfile2"),
       STEP_FINISH("s1", { input: 10, output: 20, cache: { read: 100 } }),
       STEP_START("s2"),
-      TOOL_USE("changetracks_propose_change", { file: "x.md" }, '{"ok":true}'),
+      TOOL_USE("changedown_propose_change", { file: "x.md" }, '{"ok":true}'),
       STEP_FINISH("s2", { input: 30, output: 40, cache: { read: 200 } }),
     ];
 
     const steps = parseEventsFromLines(lines);
     expect(steps).toHaveLength(2);
     expect(steps[0].toolCalls[0].tool).toBe("bash");
-    expect(steps[1].toolCalls[0].tool).toBe("changetracks_propose_change");
+    expect(steps[1].toolCalls[0].tool).toBe("changedown_propose_change");
   });
 
   it("skips blank lines and non-JSON lines", () => {
@@ -116,7 +116,7 @@ describe("aggregateByTool", () => {
         toolCalls: [
           { tool: "bash", rawInput: { command: "ls" }, rawOutput: "file1", inputTokens: 10, outputTokens: 5 },
           { tool: "bash", rawInput: { command: "pwd" }, rawOutput: "/home", inputTokens: 8, outputTokens: 4 },
-          { tool: "changetracks_read_tracked_file", rawInput: { file: "a.md" }, rawOutput: "content", inputTokens: 12, outputTokens: 50 },
+          { tool: "changedown_read_tracked_file", rawInput: { file: "a.md" }, rawOutput: "content", inputTokens: 12, outputTokens: 50 },
         ],
       },
     ];
@@ -127,9 +127,9 @@ describe("aggregateByTool", () => {
     expect(perTool["bash"].outputTokens).toBe(9);
     expect(perTool["bash"].avgInputPerCall).toBe(9);
     expect(perTool["bash"].avgOutputPerCall).toBe(4.5);
-    expect(perTool["changetracks_read_tracked_file"].calls).toBe(1);
-    expect(perTool["changetracks_read_tracked_file"].inputTokens).toBe(12);
-    expect(perTool["changetracks_read_tracked_file"].outputTokens).toBe(50);
+    expect(perTool["changedown_read_tracked_file"].calls).toBe(1);
+    expect(perTool["changedown_read_tracked_file"].inputTokens).toBe(12);
+    expect(perTool["changedown_read_tracked_file"].outputTokens).toBe(50);
   });
 });
 
@@ -147,7 +147,7 @@ describe("buildAuditReport", () => {
         stepIndex: 1,
         apiTokens: { input: 50, output: 150, reasoning: 0, cacheRead: 3000 },
         toolCalls: [
-          { tool: "changetracks_propose_change", rawInput: { file: "a.md", old_text: "x", new_text: "y" }, rawOutput: '{"change_id":"ct-1"}', inputTokens: 25, outputTokens: 12 },
+          { tool: "changedown_propose_change", rawInput: { file: "a.md", old_text: "x", new_text: "y" }, rawOutput: '{"change_id":"cn-1"}', inputTokens: 25, outputTokens: 12 },
         ],
       },
     ];
@@ -164,13 +164,13 @@ describe("buildAuditReport", () => {
 
     // Per-tool section
     expect(report.perTool["bash"].calls).toBe(1);
-    expect(report.perTool["changetracks_propose_change"].calls).toBe(1);
+    expect(report.perTool["changedown_propose_change"].calls).toBe(1);
 
     // Per-step section
     expect(report.perStep).toHaveLength(2);
     expect(report.perStep[0].step).toBe(0);
     expect(report.perStep[0].toolCalls).toHaveLength(1);
-    expect(report.perStep[1].toolCalls[0].tool).toBe("changetracks_propose_change");
+    expect(report.perStep[1].toolCalls[0].tool).toBe("changedown_propose_change");
 
     // Meta section
     expect(report.meta.tokenizer).toBe("tiktoken/cl100k_base");

@@ -6,21 +6,21 @@
 
 import { When, Then, Before } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { CriticMarkupParser } from '@changetracks/core';
-import { createCodeLenses } from '@changetracks/lsp-server';
-import type { CodeLensMode, CursorState } from '@changetracks/lsp-server';
+import { CriticMarkupParser } from '@changedown/core';
+import { createCodeLenses } from '@changedown/lsp-server';
+import type { CodeLensMode, CursorState } from '@changedown/lsp-server';
 import type { CodeLens } from 'vscode-languageserver';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 
 // ── Extend World ─────────────────────────────────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         codeLensResult?: CodeLens[];
     }
 }
 
-Before({ tags: '@fast and @CL4' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @CL4' }, function (this: ChangeDownWorld) {
     this.codeLensResult = undefined;
 });
 
@@ -49,13 +49,13 @@ function findChangeLineAndId(text: string, changeId: string): { line: number; id
 
 // ── When steps ───────────────────────────────────────────────────────
 
-When('I compute CodeLens with mode {string}', function (this: ChangeTracksWorld, mode: string) {
+When('I compute CodeLens with mode {string}', function (this: ChangeDownWorld, mode: string) {
     assert.ok(this.lifecycleDocText !== undefined, 'Document text not set');
     this.codeLensResult = parseAndComputeLenses(this.lifecycleDocText, mode as CodeLensMode);
 });
 
 When('I compute CodeLens with mode {string} and cursor inside {string}',
-    function (this: ChangeTracksWorld, mode: string, changeId: string) {
+    function (this: ChangeDownWorld, mode: string, changeId: string) {
         assert.ok(this.lifecycleDocText !== undefined, 'Document text not set');
         const { line, id } = findChangeLineAndId(this.lifecycleDocText, changeId);
         this.codeLensResult = parseAndComputeLenses(
@@ -67,7 +67,7 @@ When('I compute CodeLens with mode {string} and cursor inside {string}',
 );
 
 When('I compute CodeLens with mode {string} and cursor on line {int} outside changes',
-    function (this: ChangeTracksWorld, mode: string, line: number) {
+    function (this: ChangeDownWorld, mode: string, line: number) {
         assert.ok(this.lifecycleDocText !== undefined, 'Document text not set');
         this.codeLensResult = parseAndComputeLenses(
             this.lifecycleDocText,
@@ -79,19 +79,19 @@ When('I compute CodeLens with mode {string} and cursor on line {int} outside cha
 
 // ── Then steps ───────────────────────────────────────────────────────
 
-Then('the CodeLens array is empty', function (this: ChangeTracksWorld) {
+Then('the CodeLens array is empty', function (this: ChangeDownWorld) {
     assert.ok(this.codeLensResult !== undefined, 'No CodeLens result computed');
     assert.strictEqual(this.codeLensResult.length, 0,
         `Expected empty array, got ${this.codeLensResult.length} items: ${this.codeLensResult.map(l => l.command?.title).join(', ')}`);
 });
 
-Then('the CodeLens array has {int} items', function (this: ChangeTracksWorld, count: number) {
+Then('the CodeLens array has {int} items', function (this: ChangeDownWorld, count: number) {
     assert.ok(this.codeLensResult !== undefined, 'No CodeLens result computed');
     assert.strictEqual(this.codeLensResult.length, count,
         `Expected ${count} items, got ${this.codeLensResult.length}: ${this.codeLensResult.map(l => l.command?.title).join(', ')}`);
 });
 
-Then('CodeLens {int} title starts with {string}', function (this: ChangeTracksWorld, index: number, prefix: string) {
+Then('CodeLens {int} title starts with {string}', function (this: ChangeDownWorld, index: number, prefix: string) {
     assert.ok(this.codeLensResult !== undefined, 'No CodeLens result computed');
     assert.ok(index < this.codeLensResult.length, `Index ${index} out of range (${this.codeLensResult.length} items)`);
     const title = this.codeLensResult[index].command?.title ?? '';
@@ -99,7 +99,7 @@ Then('CodeLens {int} title starts with {string}', function (this: ChangeTracksWo
         `CodeLens[${index}] title "${title}" does not start with "${prefix}"`);
 });
 
-Then('CodeLens {int} title contains {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('CodeLens {int} title contains {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.codeLensResult !== undefined, 'No CodeLens result computed');
     assert.ok(index < this.codeLensResult.length, `Index ${index} out of range (${this.codeLensResult.length} items)`);
     const title = this.codeLensResult[index].command?.title ?? '';
@@ -107,14 +107,14 @@ Then('CodeLens {int} title contains {string}', function (this: ChangeTracksWorld
         `CodeLens[${index}] title "${title}" does not contain "${expected}"`);
 });
 
-Then('a CodeLens title contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('a CodeLens title contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.codeLensResult !== undefined, 'No CodeLens result computed');
     const found = this.codeLensResult.some(l => (l.command?.title ?? '').includes(expected));
     assert.ok(found,
         `No CodeLens title contains "${expected}". Titles: ${this.codeLensResult.map(l => l.command?.title).join(', ')}`);
 });
 
-Then('no CodeLens title starts with {string}', function (this: ChangeTracksWorld, prefix: string) {
+Then('no CodeLens title starts with {string}', function (this: ChangeDownWorld, prefix: string) {
     assert.ok(this.codeLensResult !== undefined, 'No CodeLens result computed');
     const found = this.codeLensResult.find(l => (l.command?.title ?? '').startsWith(prefix));
     assert.ok(!found,
@@ -122,7 +122,7 @@ Then('no CodeLens title starts with {string}', function (this: ChangeTracksWorld
 });
 
 Then('a CodeLens for {word} title contains {string}',
-    function (this: ChangeTracksWorld, changeId: string, expected: string) {
+    function (this: ChangeDownWorld, changeId: string, expected: string) {
         assert.ok(this.codeLensResult !== undefined, 'No CodeLens result computed');
         const matching = this.codeLensResult.filter(l => {
             const args = l.command?.arguments;

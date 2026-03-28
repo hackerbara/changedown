@@ -1,12 +1,12 @@
-# Tests Package — @changetracks/tests
+# Tests Package — @changedown/tests
 
 Unified test harness for all packages. Two tiers: Gherkin behavioral specs
-and native unit tests. See the `changetracks-testing` skill for full guide.
+and native unit tests. See the `changedown-testing` skill for full guide.
 
 ## Build & Test
 
     npm run build                    # Build everything first (required)
-    npm test -w @changetracks/tests  # Full suite (Vitest + Cucumber)
+    npm test -w @changedown/tests  # Full suite (Vitest + Cucumber)
 
     # By runner
     cd packages/tests && npx vitest run           # Unit tests (core, lsp, engine, hooks, mcp)

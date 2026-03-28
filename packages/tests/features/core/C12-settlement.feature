@@ -13,72 +13,72 @@ Feature: C12 - Settlement (Settled Text Computation)
   Scenario: Accepted insertion is absorbed
     When I compute settled text for:
       """
-      Hello {++beautiful ++}[^ct-1]world
+      Hello {++beautiful ++}[^cn-1]world
 
-      [^ct-1]: @alice | 2026-02-11 | insertion | accepted
+      [^cn-1]: @alice | 2026-02-11 | insertion | accepted
       """
     Then the settled text is "Hello beautiful world"
 
   Scenario: Accepted deletion is absorbed
     When I compute settled text for:
       """
-      Hello {--ugly --}[^ct-1]world
+      Hello {--ugly --}[^cn-1]world
 
-      [^ct-1]: @alice | 2026-02-11 | deletion | accepted
+      [^cn-1]: @alice | 2026-02-11 | deletion | accepted
       """
     Then the settled text is "Hello world"
 
   Scenario: Accepted substitution keeps new text
     When I compute settled text for:
       """
-      Hello {~~old~>new~~}[^ct-1] world
+      Hello {~~old~>new~~}[^cn-1] world
 
-      [^ct-1]: @alice | 2026-02-11 | sub | accepted
+      [^cn-1]: @alice | 2026-02-11 | sub | accepted
       """
     Then the settled text is "Hello new world"
 
   Scenario: Proposed insertion is kept in settled text (accept-all)
     When I compute settled text for:
       """
-      Hello {++maybe ++}[^ct-1]world
+      Hello {++maybe ++}[^cn-1]world
 
-      [^ct-1]: @alice | 2026-02-11 | insertion | proposed
+      [^cn-1]: @alice | 2026-02-11 | insertion | proposed
       """
     Then the settled text is "Hello maybe world"
 
   Scenario: Proposed deletion removes text (accept-all)
     When I compute settled text for:
       """
-      Hello {--keep me--}[^ct-1] world
+      Hello {--keep me--}[^cn-1] world
 
-      [^ct-1]: @alice | 2026-02-11 | deletion | proposed
+      [^cn-1]: @alice | 2026-02-11 | deletion | proposed
       """
     Then the settled text is "Hello  world"
 
   Scenario: Proposed substitution keeps new text (accept-all)
     When I compute settled text for:
       """
-      Hello {~~old~>new~~}[^ct-1] world
+      Hello {~~old~>new~~}[^cn-1] world
 
-      [^ct-1]: @alice | 2026-02-11 | sub | proposed
+      [^cn-1]: @alice | 2026-02-11 | sub | proposed
       """
     Then the settled text is "Hello new world"
 
   Scenario: Rejected insertion is still kept (accept-all)
     When I compute settled text for:
       """
-      Hello {++bad ++}[^ct-1]world
+      Hello {++bad ++}[^cn-1]world
 
-      [^ct-1]: @alice | 2026-02-11 | insertion | rejected
+      [^cn-1]: @alice | 2026-02-11 | insertion | rejected
       """
     Then the settled text is "Hello bad world"
 
   Scenario: Rejected deletion still removes text (accept-all)
     When I compute settled text for:
       """
-      Hello {--good --}[^ct-1]world
+      Hello {--good --}[^cn-1]world
 
-      [^ct-1]: @alice | 2026-02-11 | deletion | rejected
+      [^cn-1]: @alice | 2026-02-11 | deletion | rejected
       """
     Then the settled text is "Hello world"
 
@@ -103,7 +103,7 @@ Feature: C12 - Settlement (Settled Text Computation)
       """
       Hello world
 
-      [^ct-1]: @alice | 2026-02-11 | insertion | accepted
+      [^cn-1]: @alice | 2026-02-11 | insertion | accepted
           reason: testing
       """
     Then the settled text is "Hello world"
@@ -111,16 +111,16 @@ Feature: C12 - Settlement (Settled Text Computation)
   Scenario: Multiple changes with mixed statuses (accept-all)
     When I compute settled text for:
       """
-      Start {++accepted ++}[^ct-1]{++proposed ++}[^ct-2]{--rejected --}[^ct-3]end
+      Start {++accepted ++}[^cn-1]{++proposed ++}[^cn-2]{--rejected --}[^cn-3]end
 
-      [^ct-1]: @a | 2026-02-11 | ins | accepted
-      [^ct-2]: @a | 2026-02-11 | ins | proposed
-      [^ct-3]: @a | 2026-02-11 | del | rejected
+      [^cn-1]: @a | 2026-02-11 | ins | accepted
+      [^cn-2]: @a | 2026-02-11 | ins | proposed
+      [^cn-3]: @a | 2026-02-11 | del | rejected
       """
     Then the settled text is "Start accepted proposed end"
 
   Scenario: Orphaned inline footnote refs are stripped
-    When I compute settled text for "Some text[^ct-42] and more text"
+    When I compute settled text for "Some text[^cn-42] and more text"
     Then the settled text is "Some text and more text"
 
   Scenario: Highlight with attached comment
@@ -140,21 +140,21 @@ Feature: C12 - Settlement (Settled Text Computation)
   Scenario: Layer 1 settles accepted insertion and preserves footnote
     When I settle accepted changes in:
       """
-      Hello {++beautiful ++}[^ct-1]world
+      Hello {++beautiful ++}[^cn-1]world
 
-      [^ct-1]: @alice | 2026-02-11 | insertion | accepted
+      [^cn-1]: @alice | 2026-02-11 | insertion | accepted
       """
     Then the settled content contains "beautiful"
-    And the settled content contains "[^ct-1]"
+    And the settled content contains "[^cn-1]"
     And the settled content does not contain "{++"
-    And the settled IDs include "ct-1"
+    And the settled IDs include "cn-1"
 
   Scenario: Layer 1 does not touch proposed changes
     When I settle accepted changes in:
       """
-      Hello {++maybe ++}[^ct-1]world
+      Hello {++maybe ++}[^cn-1]world
 
-      [^ct-1]: @alice | 2026-02-11 | insertion | proposed
+      [^cn-1]: @alice | 2026-02-11 | insertion | proposed
       """
     Then the settled content contains "{++maybe ++}"
     And the settled IDs are empty
@@ -162,9 +162,9 @@ Feature: C12 - Settlement (Settled Text Computation)
   Scenario: Layer 1 does not touch rejected changes
     When I settle accepted changes in:
       """
-      Hello {++bad ++}[^ct-1]world
+      Hello {++bad ++}[^cn-1]world
 
-      [^ct-1]: @alice | 2026-02-11 | insertion | rejected
+      [^cn-1]: @alice | 2026-02-11 | insertion | rejected
       """
     Then the settled content contains "{++bad ++}"
     And the settled IDs are empty
@@ -174,10 +174,10 @@ Feature: C12 - Settlement (Settled Text Computation)
   Scenario: Move groups settle correctly with accept-all
     When I compute settled text for:
       """
-      {--moved text--}[^ct-1.1] ... {++moved text++}[^ct-1.2]
+      {--moved text--}[^cn-1.1] ... {++moved text++}[^cn-1.2]
 
-      [^ct-1]: @a | 2026-02-11 | move | proposed
-      [^ct-1.1]: @a | 2026-02-11 | del | proposed
-      [^ct-1.2]: @a | 2026-02-11 | ins | proposed
+      [^cn-1]: @a | 2026-02-11 | move | proposed
+      [^cn-1.1]: @a | 2026-02-11 | del | proposed
+      [^cn-1.2]: @a | 2026-02-11 | ins | proposed
       """
     Then the settled text is " ... moved text"

@@ -8,7 +8,7 @@ echo ""
 # Build and package
 npm run build
 
-VSIX="packages/vscode-extension/changetracks-vscode-$(node -p "require('./packages/vscode-extension/package.json').version").vsix"
+VSIX="packages/vscode-extension/changedown-vscode-$(node -p "require('./packages/vscode-extension/package.json').version").vsix"
 if [[ ! -f "$VSIX" ]]; then
   echo "ERROR: .vsix not found at $VSIX"
   exit 1

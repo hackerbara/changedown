@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Release orchestrator for changetracks monorepo.
+ * Release orchestrator for changedown monorepo.
  * Bumps versions, builds, tests, packages, and publishes with confirmation at each step.
  *
  * Usage: node scripts/release.mjs --version=1.0.0
@@ -54,8 +54,8 @@ const PACKAGES = [
   'packages/lsp-server',
   'packages/vscode-extension',
   'packages/opencode-plugin',
-  'changetracks-plugin/mcp-server',
-  'changetracks-plugin/hooks-impl',
+  'changedown-plugin/mcp-server',
+  'changedown-plugin/hooks-impl',
 ];
 
 /** Map of package name to version for updating cross-package dependency refs */
@@ -84,7 +84,7 @@ function updateCrossPackageDeps(pkgJson, nameVersionMap) {
 }
 
 async function main() {
-  console.log(`\n=== ChangeTracks Release v${version} ===\n`);
+  console.log(`\n=== ChangeDown Release v${version} ===\n`);
 
   // 1. Bump versions + cross-package deps
   console.log('Step 1: Bumping versions...');
@@ -115,7 +115,7 @@ async function main() {
   }
 
   // 4. npm publish (scoped — needs --access public on first publish)
-  if (await confirm('\nStep 4: Publish changetracks to npm?')) {
+  if (await confirm('\nStep 4: Publish changedown to npm?')) {
     run('npm publish --access public', { cwd: path.join(repoRoot, 'packages/cli') });
   }
 
@@ -146,10 +146,10 @@ async function main() {
   console.log(`
 === Post-Release Checklist ===
   [ ] Push: git push origin main && git push origin v${version}
-  [ ] GitHub Release: create at github.com/hackerbara/changetracks/releases/new
-      Attach: packages/vscode-extension/changetracks-vscode-${version}.vsix
-  [ ] Verify: npx changetracks init (in a fresh directory)
-  [ ] Verify: /plugin marketplace add hackerbara/changetracks (Claude Code)
+  [ ] GitHub Release: create at github.com/hackerbara/changedown/releases/new
+      Attach: packages/vscode-extension/changedown-vscode-${version}.vsix
+  [ ] Verify: npx changedown init (in a fresh directory)
+  [ ] Verify: /plugin marketplace add hackerbara/changedown (Claude Code)
 `);
 }
 

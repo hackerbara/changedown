@@ -1,4 +1,4 @@
-import type { ChangeTracksConfig } from '../config/index.js';
+import type { ChangeDownConfig } from '../config/index.js';
 import { resolveProtocolMode } from './config.js';
 
 /**
@@ -8,7 +8,7 @@ import { resolveProtocolMode } from './config.js';
  * Each section is conditionally included based on the resolved config.
  * The guide teaches: protocol syntax, identity, annotations, chaining, views.
  */
-export function composeGuide(config: ChangeTracksConfig): string {
+export function composeGuide(config: ChangeDownConfig): string {
   const sections: string[] = [];
   const protocolMode = resolveProtocolMode(config.protocol.mode);
 
@@ -47,7 +47,7 @@ export function composeGuide(config: ChangeTracksConfig): string {
 
 function composeProtocolSection(
   mode: 'classic' | 'compact',
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
 ): string {
   if (mode === 'classic') {
     return (
@@ -84,7 +84,7 @@ function composeProtocolSection(
   return lines.join('\n');
 }
 
-function composeAuthorSection(config: ChangeTracksConfig): string {
+function composeAuthorSection(config: ChangeDownConfig): string {
   if (config.author.enforcement === 'required') {
     return (
       '**Author**: Required. Pass `author="ai:YOUR-ACTUAL-MODEL"` on every propose/review call.\n' +
@@ -94,14 +94,14 @@ function composeAuthorSection(config: ChangeTracksConfig): string {
   return '**Author**: Recommended. Pass `author="ai:YOUR-MODEL"` for clear attribution.';
 }
 
-function composeViewSection(config: ChangeTracksConfig): string {
+function composeViewSection(config: ChangeDownConfig): string {
   const defaultView = config.policy.default_view ?? 'review';
 
   switch (defaultView) {
     case 'review':
       return (
         "**You're seeing**: review view — full deliberation context. CriticMarkup shows proposals " +
-        'inline, [ct-N] anchors link to end-of-line metadata.\n' +
+        'inline, [cn-N] anchors link to end-of-line metadata.\n' +
         'Other views: `changes` (clean prose + P/A flags), `settled` (accept-all preview).'
       );
     case 'changes':

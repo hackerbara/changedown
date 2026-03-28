@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ChangeTracks — Install everything
+// ChangeDown — Install everything
 // Usage: node scripts/install.mjs [--editors=code,cursor] [--dry-run]
 //
 // Full parity with the install section of build-all.sh:
@@ -40,7 +40,7 @@ const { values } = parseArgs({
 
 if (values.help) {
   console.log(`
-  ${bold('ChangeTracks Installer')}
+  ${bold('ChangeDown Installer')}
 
   Usage: node scripts/install.mjs [options]
 
@@ -142,7 +142,7 @@ function syncDir(src, dest) {
 
 // --- Start ---
 console.log(`
-  ${bold('ChangeTracks Installer')}
+  ${bold('ChangeDown Installer')}
   ${'─'.repeat(25)}
 ${dryRun ? `  ${yellow('[DRY RUN]')} — no changes will be made\n` : ''}
 `);
@@ -171,9 +171,9 @@ for (const ed of editorDefs) {
 
 // --- 2. Uninstall + install .vsix ---
 const extPkgJson = JSON.parse(readFileSync(join(SC_ROOT, 'packages', 'vscode-extension', 'package.json'), 'utf8'));
-const vsixPath = join(SC_ROOT, 'packages', 'vscode-extension', `changetracks-vscode-${extPkgJson.version}.vsix`);
+const vsixPath = join(SC_ROOT, 'packages', 'vscode-extension', `changedown-vscode-${extPkgJson.version}.vsix`);
 const localExtId = `${extPkgJson.publisher}.${extPkgJson.name}`;
-const publishedExtId = 'hackerbara.changetracks-vscode';
+const publishedExtId = 'hackerbara.changedown-vscode';
 const extIds = localExtId === publishedExtId ? [publishedExtId] : [localExtId, publishedExtId];
 if (editors.length > 0 && existsSync(vsixPath)) {
   // Pass 1: Uninstall from all editors (clean slate — both local dev and published versions)
@@ -197,7 +197,7 @@ if (editors.length > 0 && existsSync(vsixPath)) {
     process.stdout.write(`    ${ed.name}... `);
     if (run(`${ed.cmd} --install-extension "${vsixPath}"`)) {
       console.log(`${green('ok')}`);
-      console.log(`    ${dim(`Reload the ${ed.name} window to use the updated ChangeTracks extension.`)}`);
+      console.log(`    ${dim(`Reload the ${ed.name} window to use the updated ChangeDown extension.`)}`);
     } else {
       console.log(`${red('FAIL')}`);
     }
@@ -237,10 +237,10 @@ if (claudePath) {
 
   // 4b. Install plugin (idempotent — reinstalls if already present)
   process.stdout.write('    Plugin install... ');
-  if (run(`claude plugin install changetracks@hackerbara`)) {
-    console.log(`${green('ok')} (changetracks@hackerbara)`);
+  if (run(`claude plugin install changedown@hackerbara`)) {
+    console.log(`${green('ok')} (changedown@hackerbara)`);
   } else {
-    console.log(`${red('FAIL')} — run manually: claude plugin install changetracks@hackerbara`);
+    console.log(`${red('FAIL')} — run manually: claude plugin install changedown@hackerbara`);
   }
 }
 
@@ -250,25 +250,25 @@ if (hasCursor) {
   console.log('\n  Setting up Cursor MCP + hooks + skill...');
 
   // 5a. MCP config
-  const mcpServerPath = join(SC_ROOT, 'changetracks-plugin', 'mcp-server', 'dist', 'index.js');
+  const mcpServerPath = join(SC_ROOT, 'changedown-plugin', 'mcp-server', 'dist', 'index.js');
   const cursorMcpPath = join(home, '.cursor', 'mcp.json');
 
   if (existsSync(mcpServerPath)) {
     mergeJsonFile(cursorMcpPath, {
       mcpServers: {
-        'changetracks': {
+        'changedown': {
           command: 'node',
           args: [mcpServerPath]
         }
       }
     }, 'Wrote MCP config to ~/.cursor/mcp.json');
-    console.log(`    ${dim('Enable in Cursor: Settings → Features → MCP → ensure "changetracks" is on.')}`);
+    console.log(`    ${dim('Enable in Cursor: Settings → Features → MCP → ensure "changedown" is on.')}`);
   } else {
     console.log(`    ${yellow('!')} MCP server not built — run ${bold('node scripts/build.mjs')} first`);
   }
 
   // 5b. Hooks (mirrors install-hooks.sh)
-  const hooksScript = join(SC_ROOT, 'changetracks-plugin', 'cursor', 'install-hooks.sh');
+  const hooksScript = join(SC_ROOT, 'changedown-plugin', 'cursor', 'install-hooks.sh');
   process.stdout.write(`    Cursor hooks... `);
   if (existsSync(hooksScript)) {
     if (run(`bash "${hooksScript}"`, { cwd: SC_ROOT })) {
@@ -281,8 +281,8 @@ if (hasCursor) {
   }
 
   // 5c. Skill (always sync, not skip-if-exists)
-  const skillSrc = join(SC_ROOT, 'changetracks-plugin', 'skills', 'changetracks');
-  const skillDest = join(home, '.cursor', 'skills', 'changetracks');
+  const skillSrc = join(SC_ROOT, 'changedown-plugin', 'skills', 'changedown');
+  const skillDest = join(home, '.cursor', 'skills', 'changedown');
   process.stdout.write(`    Cursor skill... `);
   if (existsSync(skillSrc)) {
     if (!dryRun) {
@@ -290,7 +290,7 @@ if (hasCursor) {
       cpSync(skillSrc, skillDest, { recursive: true, force: true });
     }
     console.log(`${green('ok')}`);
-    console.log(`    ${dim('Skill synced to ~/.cursor/skills/changetracks/')}`);
+    console.log(`    ${dim('Skill synced to ~/.cursor/skills/changedown/')}`);
   } else {
     console.log(`${dim('skipped (skills dir not found)')}`);
   }
@@ -306,7 +306,7 @@ if (claudePath) {
   let pluginCache = null;
   try {
     const installed = JSON.parse(readFileSync(installedPluginsPath, 'utf8'));
-    const entry = installed.plugins?.['changetracks@hackerbara']?.[0];
+    const entry = installed.plugins?.['changedown@hackerbara']?.[0];
     if (entry?.installPath && existsSync(entry.installPath)) {
       pluginCache = entry.installPath;
     }
@@ -318,11 +318,11 @@ if (claudePath) {
 
     // Plugin manifest + MCP config
     process.stdout.write('    .claude-plugin/... ');
-    syncDir(join(SC_ROOT, 'changetracks-plugin', '.claude-plugin'), join(pluginCache, '.claude-plugin'));
+    syncDir(join(SC_ROOT, 'changedown-plugin', '.claude-plugin'), join(pluginCache, '.claude-plugin'));
     console.log(`${green('ok')}`);
 
     process.stdout.write('    .mcp.json... ');
-    const mcpJsonSrc = join(SC_ROOT, 'changetracks-plugin', '.mcp.json');
+    const mcpJsonSrc = join(SC_ROOT, 'changedown-plugin', '.mcp.json');
     if (existsSync(mcpJsonSrc) && !dryRun) {
       copyFileSync(mcpJsonSrc, join(pluginCache, '.mcp.json'));
     }
@@ -332,7 +332,7 @@ if (claudePath) {
     for (const sub of ['mcp-server', 'hooks-impl']) {
       process.stdout.write(`    ${sub}/dist... `);
       syncDir(
-        join(SC_ROOT, 'changetracks-plugin', sub, 'dist'),
+        join(SC_ROOT, 'changedown-plugin', sub, 'dist'),
         join(pluginCache, sub, 'dist')
       );
       console.log(`${green('ok')}`);
@@ -340,14 +340,14 @@ if (claudePath) {
 
     // Hook matcher config + skills
     process.stdout.write('    hooks/... ');
-    syncDir(join(SC_ROOT, 'changetracks-plugin', 'hooks'), join(pluginCache, 'hooks'));
+    syncDir(join(SC_ROOT, 'changedown-plugin', 'hooks'), join(pluginCache, 'hooks'));
     console.log(`${green('ok')}`);
 
     process.stdout.write('    skills/... ');
-    syncDir(join(SC_ROOT, 'changetracks-plugin', 'skills'), join(pluginCache, 'skills'));
+    syncDir(join(SC_ROOT, 'changedown-plugin', 'skills'), join(pluginCache, 'skills'));
     console.log(`${green('ok')}`);
 
-    // Sync workspace-linked @changetracks/* dependencies (resolving symlinks)
+    // Sync workspace-linked @changedown/* dependencies (resolving symlinks)
     // so cached node_modules stays in sync when new packages are added.
     for (const pkg of ['core', 'cli']) {
       const pkgSrc = join(SC_ROOT, 'packages', pkg);
@@ -355,8 +355,8 @@ if (claudePath) {
 
       for (const subDir of ['mcp-server', 'hooks-impl']) {
         const dest = pkg === 'cli'
-          ? join(pluginCache, subDir, 'node_modules', 'changetracks')
-          : join(pluginCache, subDir, 'node_modules', '@changetracks', pkg);
+          ? join(pluginCache, subDir, 'node_modules', 'changedown')
+          : join(pluginCache, subDir, 'node_modules', '@changedown', pkg);
 
         if (existsSync(dest) && lstatSync(dest).isSymbolicLink()) {
           if (!dryRun) rmSync(dest);
@@ -374,7 +374,7 @@ if (claudePath) {
           }
         }
       }
-      const displayName = pkg === 'cli' ? 'changetracks' : `@changetracks/${pkg}`;
+      const displayName = pkg === 'cli' ? 'changedown' : `@changedown/${pkg}`;
       process.stdout.write(`    ${displayName}... `);
       console.log(`${green('ok')}`);
     }
@@ -389,7 +389,7 @@ if (claudePath) {
 if (opencodePath) {
   console.log('\n  OpenCode detected.');
   console.log(`    Add to your project's opencode.json:`);
-  console.log(`    ${dim('{ "plugin": ["@changetracks/opencode-plugin"] }')}`);
+  console.log(`    ${dim('{ "plugin": ["@changedown/opencode-plugin"] }')}`);
   console.log(`    Or load from: ${dim(join(SC_ROOT, 'packages', 'opencode-plugin'))}`);
 }
 
@@ -399,5 +399,5 @@ console.log(`
 
   Next step — set up a project:
     ${bold('cd /path/to/your/project')}
-    ${bold('npx changetracks init')}
+    ${bold('npx changedown init')}
 `);

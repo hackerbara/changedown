@@ -13,7 +13,7 @@
 
 import { When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import {
     getCodeLensItems,
     getReviewPanelCards,
@@ -26,7 +26,7 @@ import { findLineNumber, extractFootnoteBlock } from './sl-shared.steps';
 // ── Extend World with cross-surface state ────────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         xsInitialReplyCount?: number;
         xsInitialDiscussionLabel?: string;
     }
@@ -38,7 +38,7 @@ declare module './world' {
  * Poll getCodeLensItems until the predicate is satisfied or timeout elapses.
  */
 async function pollCodeLens(
-    world: ChangeTracksWorld,
+    world: ChangeDownWorld,
     predicate: (items: Array<{ line: number; title: string; command: string }>) => boolean,
     timeoutMs = 8000
 ): Promise<Array<{ line: number; title: string; command: string }>> {
@@ -58,7 +58,7 @@ async function pollCodeLens(
  * Poll getReviewPanelCards until the predicate is satisfied or timeout elapses.
  */
 async function pollPanelCards(
-    world: ChangeTracksWorld,
+    world: ChangeDownWorld,
     predicate: (cards: Array<{ changeId: string; type: string; status: string; author: string; textPreview: string; replyCount: number }>) => boolean,
     timeoutMs = 8000
 ): Promise<Array<{ changeId: string; type: string; status: string; author: string; textPreview: string; replyCount: number }>> {
@@ -79,13 +79,13 @@ async function pollPanelCards(
 /**
  * Click the Accept action on the CodeLens for the given change ID.
  * Positions the cursor on the change's line first, then triggers accept
- * via the bridge command — CodeLens accept is the same as changetracks.acceptChange
+ * via the bridge command — CodeLens accept is the same as changedown.acceptChange
  * when the cursor is inside the change.
  */
 When(
     'I click Accept on the CodeLens for {word}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
 
         // Find the change's line by its footnote reference
@@ -101,7 +101,7 @@ When(
         await this.page.waitForTimeout(500);
 
         // Trigger accept — pass decision to bypass the QuickPick UI
-        await executeCommandViaBridge(this.page, 'changetracks.acceptChange', [undefined, 'approve']);
+        await executeCommandViaBridge(this.page, 'changedown.acceptChange', [undefined, 'approve']);
         await this.page.waitForTimeout(500);
     }
 );
@@ -115,7 +115,7 @@ When(
 Then(
     'the panel card for {word} shows status {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string, expectedStatus: string) {
+    async function (this: ChangeDownWorld, changeId: string, expectedStatus: string) {
         assert.ok(this.page, 'Page not available');
 
         const cards = await pollPanelCards(
@@ -145,7 +145,7 @@ Then(
 Then(
     'the thread for {word} footnote contains {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string, expected: string) {
+    async function (this: ChangeDownWorld, changeId: string, expected: string) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let footnote = '';
@@ -172,7 +172,7 @@ Then(
 Then(
     'the CodeLens for {word} no longer shows Accept | Reject',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
 
         // Poll until no CodeLens items for this change contain accept/reject titles
@@ -213,7 +213,7 @@ Then(
 Then(
     'the CodeLens for {word} shows updated discussion count',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
 
         // Poll until CodeLens contains a discussion indicator (e.g. "💬 N" or "N replies")
@@ -254,7 +254,7 @@ Then(
 Then(
     'the panel card for {word} shows updated reply count',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         const initialCount = this.xsInitialReplyCount ?? 0;
 
@@ -286,7 +286,7 @@ Then(
 Then(
     'the CodeLens for {word} does not show discussion indicator',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
 
         // Brief propagation wait, then check
@@ -319,7 +319,7 @@ Then(
 Then(
     'the panel card for {word} shows resolved state',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
 
         const cards = await pollPanelCards(
@@ -350,13 +350,13 @@ Then(
  * Position cursor inside the insertion for the given change ID.
  * Variant without text hint — finds the change by footnote reference.
  * Note: the shared sl-shared.steps.ts defines "I position cursor inside the {word} insertion"
- * (with "the"). This variant matches the feature step "I position cursor inside ct-1 insertion"
+ * (with "the"). This variant matches the feature step "I position cursor inside cn-1 insertion"
  * (without "the") used in SL-XS-02.
  */
 When(
     'I position cursor inside {word} insertion',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         const text = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
         const refPattern = `[^${changeId}]`;

@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
-// @deprecated — Use `npx changetracks init` or the shared changetracks/init module.
+// @deprecated — Use `npx changedown init` or the shared changedown/init module.
 // This file will be removed in a future release.
 
-// ChangeTracks — Per-project setup (DEPRECATED)
+// ChangeDown — Per-project setup (DEPRECATED)
 // Usage: node scripts/setup-project.mjs [target-dir] [--author=@name] [--no-examples]
 //
-// Prefer: npx changetracks init
+// Prefer: npx changedown init
 
 console.warn('');
 console.warn('  \x1b[33m⚠  DEPRECATED: setup-project.mjs is deprecated.\x1b[0m');
-console.warn('  \x1b[33m⚠  Use instead: npx changetracks init\x1b[0m');
+console.warn('  \x1b[33m⚠  Use instead: npx changedown init\x1b[0m');
 console.warn('  \x1b[2m   This script will be removed in a future release.\x1b[0m');
 console.warn('');
 
@@ -41,7 +41,7 @@ const { values, positionals } = parseArgs({
 
 if (values.help) {
   console.log(`
-  ${bold('ChangeTracks — Project Setup')}
+  ${bold('ChangeDown — Project Setup')}
 
   Usage: node scripts/setup-project.mjs [target-dir] [options]
 
@@ -58,14 +58,14 @@ if (values.help) {
 const targetRepo = resolve(positionals[0] || process.cwd());
 
 console.log(`
-  ${bold('ChangeTracks — Project Setup')}
+  ${bold('ChangeDown — Project Setup')}
   ${'─'.repeat(30)}
 
   Project: ${targetRepo}
 `);
 
-// --- 1. .changetracks/config.toml ---
-const scDir = join(targetRepo, '.changetracks');
+// --- 1. .changedown/config.toml ---
+const scDir = join(targetRepo, '.changedown');
 const configPath = join(scDir, 'config.toml');
 mkdirSync(scDir, { recursive: true });
 
@@ -89,16 +89,16 @@ enabled = true
 auto_on_approve = true
 `;
   writeFileSync(configPath, config, 'utf8');
-  console.log(`  ${green('✓')} Wrote .changetracks/config.toml`);
+  console.log(`  ${green('✓')} Wrote .changedown/config.toml`);
   console.log(`    Track: ${dim('**/*.md')}  Exclude: ${dim('node_modules, dist, .git')}`);
   console.log(`    Hashlines: ${dim('enabled')}  Auto-settle: ${dim('yes')}`);
   if (values.author) {
     console.log(`    Author: ${dim(values.author)}`);
   } else {
-    console.log(`    Author: ${yellow('not set')} ${dim('— edit .changetracks/config.toml to set')}`);
+    console.log(`    Author: ${yellow('not set')} ${dim('— edit .changedown/config.toml to set')}`);
   }
 } else {
-  console.log(`  ${dim('⊘')} .changetracks/config.toml already exists (unchanged)`);
+  console.log(`  ${dim('⊘')} .changedown/config.toml already exists (unchanged)`);
 }
 
 // --- 2. Demo files ---
@@ -120,7 +120,7 @@ if (!values['no-examples']) {
         copyFileSync(srcPath, dest);
         console.log(`  ${green('✓')} Created examples/${demo.src} (${demo.desc})`);
       } else {
-        console.log(`  ${yellow('!')} examples/${demo.src} not found in ChangeTracks repo (skipped)`);
+        console.log(`  ${yellow('!')} examples/${demo.src} not found in ChangeDown repo (skipped)`);
       }
     } else {
       console.log(`  ${dim('⊘')} examples/${demo.src} already exists (unchanged)`);

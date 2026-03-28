@@ -6,7 +6,7 @@ Feature: Decoration transitions — view mode switching
 
   Background:
     Given I open "decoration-baseline-matrix.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   Scenario: All Markup → Simple hides delimiters

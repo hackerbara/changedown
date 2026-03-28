@@ -2,7 +2,7 @@
 Feature: PNL2 — Settings panel HTML generation and form parsing
   As the Settings Panel provider
   I want to generate correct HTML and parse form submissions
-  So that users can configure ChangeTracks via the GUI
+  So that users can configure ChangeDown via the GUI
 
   # ── HTML generation: form fields ───────────────────────────────────
 

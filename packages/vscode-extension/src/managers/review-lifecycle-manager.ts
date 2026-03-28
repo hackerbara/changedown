@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { ChangeNode, ChangeStatus, scanMaxCtId, generateFootnoteDefinition, appendFootnote } from '@changetracks/core';
+import { ChangeNode, ChangeStatus, scanMaxCnId, generateFootnoteDefinition, appendFootnote } from '@changedown/core';
 import { positionToOffset, coreEditToVscode } from '../converters';
 import { formatReply } from '../footnote-writer';
 import { resolveAuthorIdentity } from '../author-identity';
@@ -97,7 +97,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
 
     /**
      * Read author name with fallback chain.
-     * Resolution order: changetracks.author -> git config user.name -> system username -> 'unknown'.
+     * Resolution order: changedown.author -> git config user.name -> system username -> 'unknown'.
      * When resource is provided, uses resource-scoped config so workspace/folder author is used for that document.
      */
     public getAuthor(resource?: vscode.Uri): string {
@@ -107,10 +107,10 @@ export class ReviewLifecycleManager implements vscode.Disposable {
     /**
      * Show a modal confirmation dialog before a bulk accept/reject operation.
      * Returns true if the user confirmed (or if the threshold is not exceeded).
-     * Controlled by changetracks.confirmBulkThreshold (default 5, 0 = disabled).
+     * Controlled by changedown.confirmBulkThreshold (default 5, 0 = disabled).
      */
     public async confirmBulkAction(action: string, count: number): Promise<boolean> {
-        const threshold = vscode.workspace.getConfiguration('changetracks').get<number>('confirmBulkThreshold', 5);
+        const threshold = vscode.workspace.getConfiguration('changedown').get<number>('confirmBulkThreshold', 5);
         if (threshold <= 0 || count <= threshold) return true;
         const label = `${action} All`;
         try {
@@ -181,7 +181,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
             }
         }
 
-        const { success } = await this.lspBridge.sendLifecycleRequest('changetracks/reviewChange', {
+        const { success } = await this.lspBridge.sendLifecycleRequest('changedown/reviewChange', {
             changeId: change.id ?? '',
             decision,
             reason,
@@ -231,7 +231,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
             }
         }
 
-        const { success } = await this.lspBridge.sendLifecycleRequest('changetracks/reviewChange', {
+        const { success } = await this.lspBridge.sendLifecycleRequest('changedown/reviewChange', {
             changeId: change.id ?? '',
             decision: 'reject',
             reason,
@@ -257,7 +257,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
         });
         if (reason === undefined) return;
 
-        const { success } = await this.lspBridge.sendLifecycleRequest('changetracks/reviewChange', {
+        const { success } = await this.lspBridge.sendLifecycleRequest('changedown/reviewChange', {
             changeId: change.id ?? '',
             decision: 'request_changes',
             reason,
@@ -275,7 +275,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
         if (!found) return;
         const { change } = found;
 
-        const { success } = await this.lspBridge.sendLifecycleRequest('changetracks/reviewChange', {
+        const { success } = await this.lspBridge.sendLifecycleRequest('changedown/reviewChange', {
             changeId: change.id ?? '',
             decision: 'withdraw',
         });
@@ -307,7 +307,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
         });
         if (reason === undefined) return;
 
-        const { success } = await this.lspBridge.sendLifecycleRequest('changetracks/amendChange', {
+        const { success } = await this.lspBridge.sendLifecycleRequest('changedown/amendChange', {
             changeId: change.id ?? '',
             newText,
             reason,
@@ -338,7 +338,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
         });
         if (reason === undefined) return;
 
-        const { success } = await this.lspBridge.sendLifecycleRequest('changetracks/supersedeChange', {
+        const { success } = await this.lspBridge.sendLifecycleRequest('changedown/supersedeChange', {
             changeId: change.id ?? '',
             newText,
             reason,
@@ -370,7 +370,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
 
         if (!await this.confirmBulkAction('Accept', changes.length)) return;
 
-        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changedown/reviewAll', {
             decision: 'approve',
         });
         if (success && result?.reviewedCount) {
@@ -398,7 +398,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
 
         if (!await this.confirmBulkAction('Reject', changes.length)) return;
 
-        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changedown/reviewAll', {
             decision: 'reject',
         });
         if (success && result?.reviewedCount) {
@@ -437,7 +437,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
 
         const targetChangeIds = onLine.map((c: ChangeNode) => c.id).filter((id): id is string => Boolean(id));
 
-        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changedown/reviewAll', {
             decision: 'approve',
             changeIds: targetChangeIds,
         });
@@ -475,7 +475,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
 
         const targetChangeIds = onLine.map((c: ChangeNode) => c.id).filter((id): id is string => Boolean(id));
 
-        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changedown/reviewAll', {
             decision: 'reject',
             changeIds: targetChangeIds,
         });
@@ -508,7 +508,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
         // If SCM context menu targets a non-active document, this silently operates on the wrong doc.
         await vscode.window.showTextDocument(doc, { preview: false });
 
-        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changedown/reviewAll', {
             decision: 'approve',
         });
         if (success && result?.reviewedCount) {
@@ -538,7 +538,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
         // If SCM context menu targets a non-active document, this silently operates on the wrong doc.
         await vscode.window.showTextDocument(doc, { preview: false });
 
-        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changetracks/reviewAll', {
+        const { success, result } = await this.lspBridge.sendLifecycleRequest<{ edit?: unknown; reviewedCount?: number; error?: string }>('changedown/reviewAll', {
             decision: 'reject',
         });
         if (success && result?.reviewedCount) {
@@ -557,7 +557,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
         if (!found) return;
         const { change } = found;
 
-        const { success } = await this.lspBridge.sendLifecycleRequest('changetracks/compactChange', {
+        const { success } = await this.lspBridge.sendLifecycleRequest('changedown/compactChange', {
             changeId: change.id ?? '',
             fully: false,
         });
@@ -575,7 +575,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
         if (!found) return;
         const { change } = found;
 
-        const { success } = await this.lspBridge.sendLifecycleRequest('changetracks/compactChange', {
+        const { success } = await this.lspBridge.sendLifecycleRequest('changedown/compactChange', {
             changeId: change.id ?? '',
             fully: true,
         });
@@ -645,7 +645,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
             if (candidate.id === lastCandidateId) break;
             lastCandidateId = candidate.id;
 
-            const { success } = await this.lspBridge.sendLifecycleRequest('changetracks/compactChange', {
+            const { success } = await this.lspBridge.sendLifecycleRequest('changedown/compactChange', {
                 changeId: candidate.id,
                 fully: true,
             });
@@ -662,8 +662,8 @@ export class ReviewLifecycleManager implements vscode.Disposable {
 
     /**
      * Insert a comment at cursor or wrap selection in comment.
-     * Respects changetracks.commentInsertFormat (inline | footnote) and
-     * changetracks.commentInsertAuthor. Default: footnote with author.
+     * Respects changedown.commentInsertFormat (inline | footnote) and
+     * changedown.commentInsertAuthor. Default: footnote with author.
      * @param predefinedText Optional text to use instead of prompting (for testing)
      */
     public async addComment(predefinedText?: string): Promise<void> {
@@ -672,7 +672,7 @@ export class ReviewLifecycleManager implements vscode.Disposable {
             return;
         }
 
-        const config = vscode.workspace.getConfiguration('changetracks');
+        const config = vscode.workspace.getConfiguration('changedown');
         const format = config.get<'inline' | 'footnote'>('commentInsertFormat', 'footnote');
         const includeAuthor = config.get<boolean>('commentInsertAuthor', true);
 
@@ -698,8 +698,8 @@ export class ReviewLifecycleManager implements vscode.Disposable {
         if (format === 'footnote') {
             const author = includeAuthor ? (this.getAuthor() ?? 'unknown') : undefined;
             const date = new Date().toISOString().slice(0, 10);
-            const maxId = scanMaxCtId(text);
-            const newId = `ct-${maxId + 1}`;
+            const maxId = scanMaxCnId(text);
+            const newId = `cn-${maxId + 1}`;
 
             const inlineEdit = selection.isEmpty
                 ? this.docStateManager.workspace.insertComment(commentText, cursorOffset)

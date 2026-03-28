@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { initHashline } from '@changetracks/core';
-import { runCommand } from 'changetracks/cli-runner';
+import { initHashline } from '@changedown/core';
+import { runCommand } from 'changedown/cli-runner';
 
 describe('sc batch', () => {
   let tmpDir: string;
@@ -13,8 +13,8 @@ describe('sc batch', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-batch-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-batch-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -28,7 +28,7 @@ describe('sc batch', () => {
 
   it('applies batch of changes from --changes JSON', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\nThe quick brown fox jumps over the lazy dog.\n');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\nThe quick brown fox jumps over the lazy dog.\n');
 
     const changes = JSON.stringify([
       { old_text: 'quick', new_text: 'slow', reason: 'speed change' },
@@ -46,7 +46,7 @@ describe('sc batch', () => {
 
     expect(result.success).toBe(true);
     expect(result.data).toHaveProperty('group_id');
-    expect(result.data.group_id).toMatch(/^ct-\d+$/);
+    expect(result.data.group_id).toMatch(/^cn-\d+$/);
     expect(result.data).toHaveProperty('applied');
     const changesResult = result.data.applied as Array<Record<string, unknown>>;
     expect(changesResult.length).toBe(2);
@@ -59,7 +59,7 @@ describe('sc batch', () => {
 
   it('returns error when --changes is invalid JSON', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\nHello world.\n');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\nHello world.\n');
 
     const result = await runCommand('batch', [
       filePath,
@@ -97,8 +97,8 @@ describe('sc amend', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-amend-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-amend-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -112,19 +112,19 @@ describe('sc amend', () => {
 
   it('amends an existing proposed change', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\nThe quick brown fox.\n');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\nThe quick brown fox.\n');
 
     // First, propose a change using the propose command (via the handler directly)
     // We use runCommand for propose if it exists, otherwise set up the file manually.
     // Since propose is not a CLI command yet, set up the file with CriticMarkup manually.
     await fs.writeFile(
       filePath,
-      '<!-- ctrcks.com/v1: tracked -->\nThe {~~quick~>slow~~}[^ct-1] brown fox.\n\n[^ct-1]: @ai:test | 2026-02-15 | sub | proposed\n    reason: initial proposal\n',
+      '<!-- changedown.com/v1: tracked -->\nThe {~~quick~>slow~~}[^cn-1] brown fox.\n\n[^cn-1]: @ai:test | 2026-02-15 | sub | proposed\n    reason: initial proposal\n',
     );
 
     const result = await runCommand('amend', [
       filePath,
-      'ct-1',
+      'cn-1',
       '--new-text', 'fast',
       '--reason', 'better word choice',
     ], {
@@ -133,7 +133,7 @@ describe('sc amend', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.data).toHaveProperty('change_id', 'ct-1');
+    expect(result.data).toHaveProperty('change_id', 'cn-1');
     expect(result.data).toHaveProperty('amended', true);
     expect(result.data).toHaveProperty('new_text', 'fast');
     expect(result.data).toHaveProperty('new_change_id');
@@ -143,7 +143,7 @@ describe('sc amend', () => {
     const content = await fs.readFile(filePath, 'utf-8');
     expect(content).toContain('{~~quick~>fast~~}');
     expect(content).not.toContain('{~~quick~>slow~~}');
-    expect(content).toContain('supersedes: ct-1');
+    expect(content).toContain('supersedes: cn-1');
     expect(content).toContain('better word choice');
   });
 

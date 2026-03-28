@@ -13,7 +13,7 @@ import {
   VirtualDocument,
   Workspace,
   CriticMarkupParser,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 /**
  * Apply a TextEdit to a source string, producing the resulting text.
@@ -705,43 +705,43 @@ describe('VirtualDocument.getGroupMembers', () => {
   it('returns all changes with matching groupId', () => {
     const changes: ChangeNode[] = [
       {
-        id: 'ct-5.1', type: ChangeType.Deletion, status: ChangeStatus.Proposed,
+        id: 'cn-5.1', type: ChangeType.Deletion, status: ChangeStatus.Proposed,
         range: { start: 0, end: 20 }, contentRange: { start: 3, end: 15 },
-        originalText: 'moved', groupId: 'ct-5', moveRole: 'from', level: 0, anchored: false,
+        originalText: 'moved', groupId: 'cn-5', moveRole: 'from', level: 0, anchored: false,
       },
       {
-        id: 'ct-5.2', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
+        id: 'cn-5.2', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
         range: { start: 30, end: 50 }, contentRange: { start: 33, end: 45 },
-        modifiedText: 'moved', groupId: 'ct-5', moveRole: 'to', level: 0, anchored: false,
+        modifiedText: 'moved', groupId: 'cn-5', moveRole: 'to', level: 0, anchored: false,
       },
       {
-        id: 'ct-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
+        id: 'cn-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
         range: { start: 60, end: 70 }, contentRange: { start: 63, end: 67 },
         modifiedText: 'other', level: 0, anchored: false,
       },
     ];
     const doc = new VirtualDocument(changes);
-    const members = doc.getGroupMembers('ct-5');
+    const members = doc.getGroupMembers('cn-5');
     expect(members).toHaveLength(2);
-    expect(members[0].id).toBe('ct-5.1');
-    expect(members[1].id).toBe('ct-5.2');
+    expect(members[0].id).toBe('cn-5.1');
+    expect(members[1].id).toBe('cn-5.2');
   });
 
   it('returns empty array for unknown groupId', () => {
     const doc = new VirtualDocument([]);
-    expect(doc.getGroupMembers('ct-99')).toStrictEqual([]);
+    expect(doc.getGroupMembers('cn-99')).toStrictEqual([]);
   });
 
   it('does not return changes without groupId', () => {
     const changes: ChangeNode[] = [
       {
-        id: 'ct-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
+        id: 'cn-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
         range: { start: 0, end: 10 }, contentRange: { start: 3, end: 7 },
         modifiedText: 'text', level: 0, anchored: false,
       },
     ];
     const doc = new VirtualDocument(changes);
-    expect(doc.getGroupMembers('ct-1')).toStrictEqual([]);
+    expect(doc.getGroupMembers('cn-1')).toStrictEqual([]);
   });
 });
 
@@ -764,11 +764,11 @@ describe('Workspace grouped accept/reject', () => {
     it('accepts all members of a move group in reverse document order', () => {
       // Build a document with footnotes so the parser resolves the move group
       const text = [
-        'Hello {--moved text--}[^ct-5.1] and then {++moved text++}[^ct-5.2] end',
+        'Hello {--moved text--}[^cn-5.1] and then {++moved text++}[^cn-5.2] end',
         '',
-        '[^ct-5]: @alice | 2026-02-10 | move | proposed',
-        '[^ct-5.1]: @alice | 2026-02-10 | del | proposed',
-        '[^ct-5.2]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-5]: @alice | 2026-02-10 | move | proposed',
+        '[^cn-5.1]: @alice | 2026-02-10 | del | proposed',
+        '[^cn-5.2]: @alice | 2026-02-10 | ins | proposed',
       ].join('\n');
 
       const workspace = new Workspace();
@@ -776,10 +776,10 @@ describe('Workspace grouped accept/reject', () => {
 
       // Verify parser resolved the group
       const changes = doc.getChanges();
-      const groupMembers = changes.filter(c => c.groupId === 'ct-5');
+      const groupMembers = changes.filter(c => c.groupId === 'cn-5');
       expect(groupMembers).toHaveLength(2);
 
-      const edits = workspace.acceptGroup(doc, 'ct-5');
+      const edits = workspace.acceptGroup(doc, 'cn-5');
       expect(edits).toHaveLength(2);
 
       // Edits should be in reverse document order (higher offset first)
@@ -788,30 +788,30 @@ describe('Workspace grouped accept/reject', () => {
 
     it('accept move group: deletion removed, insertion kept', () => {
       const text = [
-        'Hello {--moved--}[^ct-5.1] and {++moved++}[^ct-5.2] end',
+        'Hello {--moved--}[^cn-5.1] and {++moved++}[^cn-5.2] end',
         '',
-        '[^ct-5]: @alice | 2026-02-10 | move | proposed',
-        '[^ct-5.1]: @alice | 2026-02-10 | del | proposed',
-        '[^ct-5.2]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-5]: @alice | 2026-02-10 | move | proposed',
+        '[^cn-5.1]: @alice | 2026-02-10 | del | proposed',
+        '[^cn-5.2]: @alice | 2026-02-10 | ins | proposed',
       ].join('\n');
 
       const workspace = new Workspace();
       const doc = workspace.parse(text);
-      const edits = workspace.acceptGroup(doc, 'ct-5');
+      const edits = workspace.acceptGroup(doc, 'cn-5');
 
       // Apply edits to the inline content portion
-      const inlinePart = 'Hello {--moved--}[^ct-5.1] and {++moved++}[^ct-5.2] end';
+      const inlinePart = 'Hello {--moved--}[^cn-5.1] and {++moved++}[^cn-5.2] end';
       const result = applyEdits(inlinePart, edits);
 
       // Accept deletion = remove text, keep footnote ref (anchors footnote in document)
       // Accept insertion = keep the content ("moved") + footnote ref
-      expect(result).toBe('Hello [^ct-5.1] and moved[^ct-5.2] end');
+      expect(result).toBe('Hello [^cn-5.1] and moved[^cn-5.2] end');
     });
 
     it('returns empty array when group has no members', () => {
       const workspace = new Workspace();
       const doc = workspace.parse('Hello {++world++}');
-      const edits = workspace.acceptGroup(doc, 'ct-nonexistent');
+      const edits = workspace.acceptGroup(doc, 'cn-nonexistent');
       expect(edits).toStrictEqual([]);
     });
   });
@@ -819,16 +819,16 @@ describe('Workspace grouped accept/reject', () => {
   describe('rejectGroup', () => {
     it('rejects all members of a move group in reverse document order', () => {
       const text = [
-        'Hello {--moved--}[^ct-5.1] and {++moved++}[^ct-5.2] end',
+        'Hello {--moved--}[^cn-5.1] and {++moved++}[^cn-5.2] end',
         '',
-        '[^ct-5]: @alice | 2026-02-10 | move | proposed',
-        '[^ct-5.1]: @alice | 2026-02-10 | del | proposed',
-        '[^ct-5.2]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-5]: @alice | 2026-02-10 | move | proposed',
+        '[^cn-5.1]: @alice | 2026-02-10 | del | proposed',
+        '[^cn-5.2]: @alice | 2026-02-10 | ins | proposed',
       ].join('\n');
 
       const workspace = new Workspace();
       const doc = workspace.parse(text);
-      const edits = workspace.rejectGroup(doc, 'ct-5');
+      const edits = workspace.rejectGroup(doc, 'cn-5');
 
       expect(edits).toHaveLength(2);
       expect(edits[0].offset > edits[1].offset).toBeTruthy();
@@ -836,29 +836,29 @@ describe('Workspace grouped accept/reject', () => {
 
     it('reject move group: deletion restored, insertion removed', () => {
       const text = [
-        'Hello {--moved--}[^ct-5.1] and {++moved++}[^ct-5.2] end',
+        'Hello {--moved--}[^cn-5.1] and {++moved++}[^cn-5.2] end',
         '',
-        '[^ct-5]: @alice | 2026-02-10 | move | proposed',
-        '[^ct-5.1]: @alice | 2026-02-10 | del | proposed',
-        '[^ct-5.2]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-5]: @alice | 2026-02-10 | move | proposed',
+        '[^cn-5.1]: @alice | 2026-02-10 | del | proposed',
+        '[^cn-5.2]: @alice | 2026-02-10 | ins | proposed',
       ].join('\n');
 
       const workspace = new Workspace();
       const doc = workspace.parse(text);
-      const edits = workspace.rejectGroup(doc, 'ct-5');
+      const edits = workspace.rejectGroup(doc, 'cn-5');
 
-      const inlinePart = 'Hello {--moved--}[^ct-5.1] and {++moved++}[^ct-5.2] end';
+      const inlinePart = 'Hello {--moved--}[^cn-5.1] and {++moved++}[^cn-5.2] end';
       const result = applyEdits(inlinePart, edits);
 
       // Reject deletion = restore original text ("moved") + footnote ref
       // Reject insertion = remove text, keep footnote ref (anchors footnote in document)
-      expect(result).toBe('Hello moved[^ct-5.1] and [^ct-5.2] end');
+      expect(result).toBe('Hello moved[^cn-5.1] and [^cn-5.2] end');
     });
 
     it('returns empty array when group has no members', () => {
       const workspace = new Workspace();
       const doc = workspace.parse('Hello {++world++}');
-      const edits = workspace.rejectGroup(doc, 'ct-nonexistent');
+      const edits = workspace.rejectGroup(doc, 'cn-nonexistent');
       expect(edits).toStrictEqual([]);
     });
   });
@@ -871,12 +871,12 @@ describe('Workspace grouped accept/reject', () => {
 describe('computeFootnoteStatusEdits', () => {
   it('updates status from proposed to accepted for a single change', () => {
     const text = [
-      'Hello {++world++}[^ct-1] end',
+      'Hello {++world++}[^cn-1] end',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
-    const edits = computeFootnoteStatusEdits(text, ['ct-1'], 'accepted');
+    const edits = computeFootnoteStatusEdits(text, ['cn-1'], 'accepted');
     expect(edits).toHaveLength(1);
 
     const result = applyEdit(text, edits[0]);
@@ -886,12 +886,12 @@ describe('computeFootnoteStatusEdits', () => {
 
   it('updates status from proposed to rejected', () => {
     const text = [
-      'Hello {--gone--}[^ct-2] end',
+      'Hello {--gone--}[^cn-2] end',
       '',
-      '[^ct-2]: @alice | 2026-02-10 | del | proposed',
+      '[^cn-2]: @alice | 2026-02-10 | del | proposed',
     ].join('\n');
 
-    const edits = computeFootnoteStatusEdits(text, ['ct-2'], 'rejected');
+    const edits = computeFootnoteStatusEdits(text, ['cn-2'], 'rejected');
     expect(edits).toHaveLength(1);
 
     const result = applyEdit(text, edits[0]);
@@ -906,25 +906,25 @@ describe('computeFootnoteStatusEdits', () => {
 
   it('returns empty array when footnote definition not found', () => {
     const text = [
-      'Hello {++world++}[^ct-99] end',
+      'Hello {++world++}[^cn-99] end',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
-    const edits = computeFootnoteStatusEdits(text, ['ct-99'], 'accepted');
+    const edits = computeFootnoteStatusEdits(text, ['cn-99'], 'accepted');
     expect(edits).toStrictEqual([]);
   });
 
   it('handles multiple change IDs (move group)', () => {
     const text = [
-      'Hello {--moved--}[^ct-5.1] and {++moved++}[^ct-5.2] end',
+      'Hello {--moved--}[^cn-5.1] and {++moved++}[^cn-5.2] end',
       '',
-      '[^ct-5]: @alice | 2026-02-10 | move | proposed',
-      '[^ct-5.1]: @alice | 2026-02-10 | del | proposed',
-      '[^ct-5.2]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-5]: @alice | 2026-02-10 | move | proposed',
+      '[^cn-5.1]: @alice | 2026-02-10 | del | proposed',
+      '[^cn-5.2]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
-    const edits = computeFootnoteStatusEdits(text, ['ct-5', 'ct-5.1', 'ct-5.2'], 'accepted');
+    const edits = computeFootnoteStatusEdits(text, ['cn-5', 'cn-5.1', 'cn-5.2'], 'accepted');
     expect(edits).toHaveLength(3);
 
     // Apply all edits — since all are same-length replacements, apply in reverse offset order
@@ -941,18 +941,18 @@ describe('computeFootnoteStatusEdits', () => {
     const text = [
       'Hello world',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | accepted',
+      '[^cn-1]: @alice | 2026-02-10 | ins | accepted',
     ].join('\n');
 
-    const edits = computeFootnoteStatusEdits(text, ['ct-1'], 'accepted');
+    const edits = computeFootnoteStatusEdits(text, ['cn-1'], 'accepted');
     expect(edits).toStrictEqual([]);
   });
 
   it('preserves footnote body content (discussion, approvals)', () => {
     const text = [
-      'Hello {~~old~>new~~}[^ct-1] end',
+      'Hello {~~old~>new~~}[^cn-1] end',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | sub | proposed',
       '    approved: @eve 2026-02-11',
       '    @alice 2026-02-10: Better wording',
       '    @dave 2026-02-10: Looks good to me.',
@@ -960,7 +960,7 @@ describe('computeFootnoteStatusEdits', () => {
       '    resolved @dave 2026-02-10',
     ].join('\n');
 
-    const edits = computeFootnoteStatusEdits(text, ['ct-1'], 'accepted');
+    const edits = computeFootnoteStatusEdits(text, ['cn-1'], 'accepted');
     expect(edits).toHaveLength(1);
 
     const result = applyEdit(text, edits[0]);
@@ -973,12 +973,12 @@ describe('computeFootnoteStatusEdits', () => {
 
   it('handles footnotes with AI authors', () => {
     const text = [
-      'Text {++added++}[^ct-1]',
+      'Text {++added++}[^cn-1]',
       '',
-      '[^ct-1]: @ai:claude-opus-4.6 | 2026-02-10 | ins | proposed',
+      '[^cn-1]: @ai:claude-opus-4.6 | 2026-02-10 | ins | proposed',
     ].join('\n');
 
-    const edits = computeFootnoteStatusEdits(text, ['ct-1'], 'accepted');
+    const edits = computeFootnoteStatusEdits(text, ['cn-1'], 'accepted');
     expect(edits).toHaveLength(1);
 
     const result = applyEdit(text, edits[0]);
@@ -994,23 +994,23 @@ describe('computeFootnoteStatusEdits', () => {
 describe('computeApprovalLineEdit', () => {
   it('returns null when footnote for changeId is not found', () => {
     const text = [
-      'Hello [^ct-1]',
+      'Hello [^cn-1]',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
-    const edit = computeApprovalLineEdit(text, 'ct-99', 'accepted', { author: 'alice', date: '2026-02-12' });
+    const edit = computeApprovalLineEdit(text, 'cn-99', 'accepted', { author: 'alice', date: '2026-02-12' });
     expect(edit).toBeNull();
   });
 
   it('returns an edit that inserts approved: line after header when footnote has no body', () => {
     const text = [
-      'Hello {++world++}[^ct-1] end',
+      'Hello {++world++}[^cn-1] end',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
-    const edit = computeApprovalLineEdit(text, 'ct-1', 'accepted', { author: 'carol', date: '2026-02-12' });
+    const edit = computeApprovalLineEdit(text, 'cn-1', 'accepted', { author: 'carol', date: '2026-02-12' });
     expect(edit !== null).toBeTruthy();
     const result = applyEdit(text, edit!);
     expect(result.includes('| proposed')).toBeTruthy();
@@ -1019,12 +1019,12 @@ describe('computeApprovalLineEdit', () => {
 
   it('inserts rejected: line for reject decision', () => {
     const text = [
-      'Hello {--gone--}[^ct-2] end',
+      'Hello {--gone--}[^cn-2] end',
       '',
-      '[^ct-2]: @alice | 2026-02-10 | del | proposed',
+      '[^cn-2]: @alice | 2026-02-10 | del | proposed',
     ].join('\n');
 
-    const edit = computeApprovalLineEdit(text, 'ct-2', 'rejected', { author: 'bob', date: '2026-02-12' });
+    const edit = computeApprovalLineEdit(text, 'cn-2', 'rejected', { author: 'bob', date: '2026-02-12' });
     expect(edit !== null).toBeTruthy();
     const result = applyEdit(text, edit!);
     expect(result.includes('    rejected: @bob 2026-02-12')).toBeTruthy();
@@ -1032,12 +1032,12 @@ describe('computeApprovalLineEdit', () => {
 
   it('includes optional reason in quoted form', () => {
     const text = [
-      'Hello {++world++}[^ct-1] end',
+      'Hello {++world++}[^cn-1] end',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
-    const edit = computeApprovalLineEdit(text, 'ct-1', 'accepted', {
+    const edit = computeApprovalLineEdit(text, 'cn-1', 'accepted', {
       author: 'carol',
       date: '2026-02-12',
       reason: 'Looks good',
@@ -1049,12 +1049,12 @@ describe('computeApprovalLineEdit', () => {
 
   it('inserts after existing approved/rejected lines and before resolution', () => {
     const text = [
-      '[^ct-1]: @alice | 2026-02-10 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | sub | proposed',
       '    approved: @eve 2026-02-11',
       '    resolved @eve 2026-02-11',
     ].join('\n');
 
-    const edit = computeApprovalLineEdit(text, 'ct-1', 'accepted', { author: 'carol', date: '2026-02-12' });
+    const edit = computeApprovalLineEdit(text, 'cn-1', 'accepted', { author: 'carol', date: '2026-02-12' });
     expect(edit !== null).toBeTruthy();
     const result = applyEdit(text, edit!);
     const approvedLines = result.split('\n').filter((l) => l.includes('approved:'));
@@ -1068,12 +1068,12 @@ describe('computeApprovalLineEdit', () => {
 
   it('inserts approval before bare "open" resolution (no reason)', () => {
     const text = [
-      '[^ct-1]: @alice | 2026-02-10 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | sub | proposed',
       '    @alice 2026-02-10: Initial change',
       '    open',
     ].join('\n');
 
-    const edit = computeApprovalLineEdit(text, 'ct-1', 'accepted', { author: 'carol', date: '2026-02-12' });
+    const edit = computeApprovalLineEdit(text, 'cn-1', 'accepted', { author: 'carol', date: '2026-02-12' });
     expect(edit !== null).toBeTruthy();
     const result = applyEdit(text, edit!);
     const lines = result.split('\n');
@@ -1100,9 +1100,9 @@ describe('Workspace accept/reject updates footnote status', () => {
 
   it('acceptChange includes footnote status edit when text is provided', () => {
     const text = [
-      'Hello {++world++}[^ct-1] end',
+      'Hello {++world++}[^cn-1] end',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
     const workspace = new Workspace();
@@ -1113,15 +1113,15 @@ describe('Workspace accept/reject updates footnote status', () => {
     expect(edits).toHaveLength(2);
 
     const result = applyEdits(text, edits);
-    expect(result.includes('Hello world[^ct-1] end')).toBeTruthy();
+    expect(result.includes('Hello world[^cn-1] end')).toBeTruthy();
     expect(result.includes('| accepted')).toBeTruthy();
   });
 
   it('rejectChange includes footnote status edit when text is provided', () => {
     const text = [
-      'Hello {++world++}[^ct-1] end',
+      'Hello {++world++}[^cn-1] end',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
     const workspace = new Workspace();
@@ -1132,12 +1132,12 @@ describe('Workspace accept/reject updates footnote status', () => {
     expect(edits).toHaveLength(2);
 
     const result = applyEdits(text, edits);
-    expect(result.includes('Hello [^ct-1] end')).toBeTruthy();
+    expect(result.includes('Hello [^cn-1] end')).toBeTruthy();
     expect(result.includes('| rejected')).toBeTruthy();
   });
 
   it('acceptChange without text returns only inline edit (backward compat)', () => {
-    const text = 'Hello {++world++}[^ct-1] end';
+    const text = 'Hello {++world++}[^cn-1] end';
     const workspace = new Workspace();
     const doc = workspace.parse(text);
     const change = doc.getChanges()[0];
@@ -1148,10 +1148,10 @@ describe('Workspace accept/reject updates footnote status', () => {
 
   it('acceptAll updates all footnote statuses', () => {
     const text = [
-      'Hello {++world++}[^ct-1] and {~~old~>new~~}[^ct-2] end',
+      'Hello {++world++}[^cn-1] and {~~old~>new~~}[^cn-2] end',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
-      '[^ct-2]: @bob | 2026-02-10 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-2]: @bob | 2026-02-10 | sub | proposed',
     ].join('\n');
 
     const workspace = new Workspace();
@@ -1166,9 +1166,9 @@ describe('Workspace accept/reject updates footnote status', () => {
 
   it('rejectAll updates all footnote statuses to rejected', () => {
     const text = [
-      'Hello {++world++}[^ct-1] end',
+      'Hello {++world++}[^cn-1] end',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
     const workspace = new Workspace();
@@ -1182,17 +1182,17 @@ describe('Workspace accept/reject updates footnote status', () => {
 
   it('acceptGroup updates parent + children footnote statuses', () => {
     const text = [
-      'Hello {--moved--}[^ct-5.1] and {++moved++}[^ct-5.2] end',
+      'Hello {--moved--}[^cn-5.1] and {++moved++}[^cn-5.2] end',
       '',
-      '[^ct-5]: @alice | 2026-02-10 | move | proposed',
-      '[^ct-5.1]: @alice | 2026-02-10 | del | proposed',
-      '[^ct-5.2]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-5]: @alice | 2026-02-10 | move | proposed',
+      '[^cn-5.1]: @alice | 2026-02-10 | del | proposed',
+      '[^cn-5.2]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
     const workspace = new Workspace();
     const doc = workspace.parse(text);
 
-    const edits = workspace.acceptGroup(doc, 'ct-5', text);
+    const edits = workspace.acceptGroup(doc, 'cn-5', text);
     const result = applyEdits(text, edits);
 
     expect(result.includes('| proposed')).toBeFalsy();
@@ -1201,17 +1201,17 @@ describe('Workspace accept/reject updates footnote status', () => {
 
   it('rejectGroup updates parent + children footnote statuses', () => {
     const text = [
-      'Hello {--moved--}[^ct-5.1] and {++moved++}[^ct-5.2] end',
+      'Hello {--moved--}[^cn-5.1] and {++moved++}[^cn-5.2] end',
       '',
-      '[^ct-5]: @alice | 2026-02-10 | move | proposed',
-      '[^ct-5.1]: @alice | 2026-02-10 | del | proposed',
-      '[^ct-5.2]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-5]: @alice | 2026-02-10 | move | proposed',
+      '[^cn-5.1]: @alice | 2026-02-10 | del | proposed',
+      '[^cn-5.2]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
     const workspace = new Workspace();
     const doc = workspace.parse(text);
 
-    const edits = workspace.rejectGroup(doc, 'ct-5', text);
+    const edits = workspace.rejectGroup(doc, 'cn-5', text);
     const result = applyEdits(text, edits);
 
     expect(result.includes('| proposed')).toBeFalsy();
@@ -1249,9 +1249,9 @@ describe('Full document round-trip', () => {
     const input = [
       '# Document',
       '',
-      'The API uses {~~REST~>GraphQL~~}[^ct-1] for queries.',
+      'The API uses {~~REST~>GraphQL~~}[^cn-1] for queries.',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | sub | proposed',
       '    @alice 2026-02-10: Better client ergonomics',
     ].join('\n');
 
@@ -1265,9 +1265,9 @@ describe('Full document round-trip', () => {
     const expected = [
       '# Document',
       '',
-      'The API uses GraphQL[^ct-1] for queries.',
+      'The API uses GraphQL[^cn-1] for queries.',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | sub | accepted',
+      '[^cn-1]: @alice | 2026-02-10 | sub | accepted',
       '    @alice 2026-02-10: Better client ergonomics',
     ].join('\n');
 
@@ -1276,9 +1276,9 @@ describe('Full document round-trip', () => {
 
   it('reject deletion: text restored, footnote kept with rejected status', () => {
     const input = [
-      'Keep this. {--Remove this.--}[^ct-3] And this.',
+      'Keep this. {--Remove this.--}[^cn-3] And this.',
       '',
-      '[^ct-3]: @bob | 2026-02-10 | del | proposed',
+      '[^cn-3]: @bob | 2026-02-10 | del | proposed',
     ].join('\n');
 
     const workspace = new Workspace();
@@ -1289,9 +1289,9 @@ describe('Full document round-trip', () => {
     const result = applyAllEdits(input, edits);
 
     const expected = [
-      'Keep this. Remove this.[^ct-3] And this.',
+      'Keep this. Remove this.[^cn-3] And this.',
       '',
-      '[^ct-3]: @bob | 2026-02-10 | del | rejected',
+      '[^cn-3]: @bob | 2026-02-10 | del | rejected',
     ].join('\n');
 
     expect(result).toBe(expected);
@@ -1299,10 +1299,10 @@ describe('Full document round-trip', () => {
 
   it('acceptAll: multiple changes resolved, all footnotes accepted', () => {
     const input = [
-      '{++New intro. ++}[^ct-1]Old {~~text~>content~~}[^ct-2].',
+      '{++New intro. ++}[^cn-1]Old {~~text~>content~~}[^cn-2].',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
-      '[^ct-2]: @alice | 2026-02-10 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-2]: @alice | 2026-02-10 | sub | proposed',
     ].join('\n');
 
     const workspace = new Workspace();
@@ -1312,10 +1312,10 @@ describe('Full document round-trip', () => {
     const result = applyAllEdits(input, edits);
 
     const expected = [
-      'New intro. [^ct-1]Old content[^ct-2].',
+      'New intro. [^cn-1]Old content[^cn-2].',
       '',
-      '[^ct-1]: @alice | 2026-02-10 | ins | accepted',
-      '[^ct-2]: @alice | 2026-02-10 | sub | accepted',
+      '[^cn-1]: @alice | 2026-02-10 | ins | accepted',
+      '[^cn-2]: @alice | 2026-02-10 | sub | accepted',
     ].join('\n');
 
     expect(result).toBe(expected);
@@ -1323,20 +1323,20 @@ describe('Full document round-trip', () => {
 
   it('accept move group: deletion removed, insertion kept, all footnotes accepted', () => {
     const input = [
-      'A {--moved--}[^ct-5.1] B {++moved++}[^ct-5.2] C',
+      'A {--moved--}[^cn-5.1] B {++moved++}[^cn-5.2] C',
       '',
-      '[^ct-5]: @alice | 2026-02-10 | move | proposed',
-      '[^ct-5.1]: @alice | 2026-02-10 | del | proposed',
-      '[^ct-5.2]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-5]: @alice | 2026-02-10 | move | proposed',
+      '[^cn-5.1]: @alice | 2026-02-10 | del | proposed',
+      '[^cn-5.2]: @alice | 2026-02-10 | ins | proposed',
     ].join('\n');
 
     const workspace = new Workspace();
     const doc = workspace.parse(input);
-    const edits = workspace.acceptGroup(doc, 'ct-5', input);
+    const edits = workspace.acceptGroup(doc, 'cn-5', input);
 
     const result = applyAllEdits(input, edits);
 
-    expect(result.startsWith('A [^ct-5.1] B moved[^ct-5.2] C')).toBeTruthy();
+    expect(result.startsWith('A [^cn-5.1] B moved[^cn-5.2] C')).toBeTruthy();
     expect(result.includes('| proposed')).toBeFalsy();
     expect((result.match(/\| accepted/g) || [])).toHaveLength(3);
   });
@@ -1348,10 +1348,10 @@ describe('Full document round-trip', () => {
 describe('footnote reference preservation', () => {
   describe('computeAccept unit tests', () => {
     it('Insertion: preserves footnote ref when accepting', () => {
-      // {++text++}[^ct-1]  — positions 0..18
+      // {++text++}[^cn-1]  — positions 0..18
       const change = makeChange({
         type: ChangeType.Insertion,
-        id: 'ct-1',
+        id: 'cn-1',
         level: 2,
         range: { start: 0, end: 18 },
         contentRange: { start: 3, end: 7 },
@@ -1359,14 +1359,14 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: 'text[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: 'text[^cn-1]' });
     });
 
     it('Deletion: preserves footnote ref when accepting (anchors footnote in document)', () => {
-      // {--text--}[^ct-1]  — positions 0..18
+      // {--text--}[^cn-1]  — positions 0..18
       const change = makeChange({
         type: ChangeType.Deletion,
-        id: 'ct-1',
+        id: 'cn-1',
         level: 2,
         range: { start: 0, end: 18 },
         contentRange: { start: 3, end: 7 },
@@ -1374,14 +1374,14 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: '[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: '[^cn-1]' });
     });
 
     it('Substitution: preserves footnote ref when accepting', () => {
-      // {~~old~>new~~}[^ct-1]  — positions 0..24
+      // {~~old~>new~~}[^cn-1]  — positions 0..24
       const change = makeChange({
         type: ChangeType.Substitution,
-        id: 'ct-1',
+        id: 'cn-1',
         level: 2,
         range: { start: 0, end: 24 },
         contentRange: { start: 3, end: 12 },
@@ -1392,14 +1392,14 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      expect(edit).toStrictEqual({ offset: 0, length: 24, newText: 'new[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 24, newText: 'new[^cn-1]' });
     });
 
     it('Highlight: preserves footnote ref when accepting', () => {
-      // {==text==}[^ct-1]  — positions 0..19
+      // {==text==}[^cn-1]  — positions 0..19
       const change = makeChange({
         type: ChangeType.Highlight,
-        id: 'ct-1',
+        id: 'cn-1',
         level: 2,
         range: { start: 0, end: 19 },
         contentRange: { start: 3, end: 7 },
@@ -1407,14 +1407,14 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      expect(edit).toStrictEqual({ offset: 0, length: 19, newText: 'text[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 19, newText: 'text[^cn-1]' });
     });
 
     it('Comment: does not preserve footnote ref when accepting (comment removed)', () => {
-      // {>>note<<}[^ct-1]  — positions 0..19
+      // {>>note<<}[^cn-1]  — positions 0..19
       const change = makeChange({
         type: ChangeType.Comment,
-        id: 'ct-1',
+        id: 'cn-1',
         range: { start: 0, end: 19 },
         contentRange: { start: 3, end: 7 },
         metadata: { comment: 'note' },
@@ -1424,11 +1424,11 @@ describe('footnote reference preservation', () => {
       expect(edit).toStrictEqual({ offset: 0, length: 19, newText: '' });
     });
 
-    it('Dotted ID: preserves footnote ref for child change (ct-5.2)', () => {
-      // {++text++}[^ct-5.2]
+    it('Dotted ID: preserves footnote ref for child change (cn-5.2)', () => {
+      // {++text++}[^cn-5.2]
       const change = makeChange({
         type: ChangeType.Insertion,
-        id: 'ct-5.2',
+        id: 'cn-5.2',
         level: 2,
         range: { start: 0, end: 20 },
         contentRange: { start: 3, end: 7 },
@@ -1436,14 +1436,14 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeAccept(change);
-      expect(edit).toStrictEqual({ offset: 0, length: 20, newText: 'text[^ct-5.2]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 20, newText: 'text[^cn-5.2]' });
     });
 
-    it('Unanchored ct-N ID: does NOT preserve footnote ref (Level 0)', () => {
-      // {++text++} (no footnote ref, parser assigns ct-1 but level stays 0)
+    it('Unanchored cn-N ID: does NOT preserve footnote ref (Level 0)', () => {
+      // {++text++} (no footnote ref, parser assigns cn-1 but level stays 0)
       const change = makeChange({
         type: ChangeType.Insertion,
-        id: 'ct-1',
+        id: 'cn-1',
         range: { start: 0, end: 10 },
         contentRange: { start: 3, end: 7 },
         modifiedText: 'text',
@@ -1456,10 +1456,10 @@ describe('footnote reference preservation', () => {
 
   describe('computeReject unit tests', () => {
     it('Insertion: preserves footnote ref when rejecting (anchors footnote in document)', () => {
-      // {++text++}[^ct-1]  — rejected insertion = text removed, ref kept for anchoring
+      // {++text++}[^cn-1]  — rejected insertion = text removed, ref kept for anchoring
       const change = makeChange({
         type: ChangeType.Insertion,
-        id: 'ct-1',
+        id: 'cn-1',
         level: 2,
         range: { start: 0, end: 18 },
         contentRange: { start: 3, end: 7 },
@@ -1467,14 +1467,14 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeReject(change);
-      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: '[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: '[^cn-1]' });
     });
 
     it('Deletion: preserves footnote ref when rejecting', () => {
-      // {--text--}[^ct-1]  — rejected deletion = keep text
+      // {--text--}[^cn-1]  — rejected deletion = keep text
       const change = makeChange({
         type: ChangeType.Deletion,
-        id: 'ct-1',
+        id: 'cn-1',
         level: 2,
         range: { start: 0, end: 18 },
         contentRange: { start: 3, end: 7 },
@@ -1482,14 +1482,14 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeReject(change);
-      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: 'text[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 18, newText: 'text[^cn-1]' });
     });
 
     it('Substitution: preserves footnote ref when rejecting', () => {
-      // {~~old~>new~~}[^ct-1]  — rejected = keep old text
+      // {~~old~>new~~}[^cn-1]  — rejected = keep old text
       const change = makeChange({
         type: ChangeType.Substitution,
-        id: 'ct-1',
+        id: 'cn-1',
         level: 2,
         range: { start: 0, end: 24 },
         contentRange: { start: 3, end: 12 },
@@ -1500,14 +1500,14 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeReject(change);
-      expect(edit).toStrictEqual({ offset: 0, length: 24, newText: 'old[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 24, newText: 'old[^cn-1]' });
     });
 
     it('Highlight: preserves footnote ref when rejecting', () => {
-      // {==text==}[^ct-1]  — rejected = keep text
+      // {==text==}[^cn-1]  — rejected = keep text
       const change = makeChange({
         type: ChangeType.Highlight,
-        id: 'ct-1',
+        id: 'cn-1',
         level: 2,
         range: { start: 0, end: 19 },
         contentRange: { start: 3, end: 7 },
@@ -1515,14 +1515,14 @@ describe('footnote reference preservation', () => {
       });
 
       const edit = computeReject(change);
-      expect(edit).toStrictEqual({ offset: 0, length: 19, newText: 'text[^ct-1]' });
+      expect(edit).toStrictEqual({ offset: 0, length: 19, newText: 'text[^cn-1]' });
     });
 
     it('Comment: does not preserve footnote ref when rejecting (comment removed)', () => {
-      // {>>note<<}[^ct-1]  — rejected comment = remove
+      // {>>note<<}[^cn-1]  — rejected comment = remove
       const change = makeChange({
         type: ChangeType.Comment,
-        id: 'ct-1',
+        id: 'cn-1',
         range: { start: 0, end: 19 },
         contentRange: { start: 3, end: 7 },
         metadata: { comment: 'note' },
@@ -1532,11 +1532,11 @@ describe('footnote reference preservation', () => {
       expect(edit).toStrictEqual({ offset: 0, length: 19, newText: '' });
     });
 
-    it('Unanchored ct-N ID: does NOT preserve footnote ref (Level 0)', () => {
-      // {--text--} (no footnote ref, parser assigns ct-1 but level stays 0)
+    it('Unanchored cn-N ID: does NOT preserve footnote ref (Level 0)', () => {
+      // {--text--} (no footnote ref, parser assigns cn-1 but level stays 0)
       const change = makeChange({
         type: ChangeType.Deletion,
-        id: 'ct-1',
+        id: 'cn-1',
         range: { start: 0, end: 10 },
         contentRange: { start: 3, end: 7 },
         originalText: 'text',
@@ -1549,7 +1549,7 @@ describe('footnote reference preservation', () => {
 
   describe('workspace integration tests', () => {
     it('acceptChange: preserves footnote ref in document', () => {
-      const input = 'Before {++text++}[^ct-1] after.\n\n[^ct-1]: @alice | 2026-02-11 | ins | proposed';
+      const input = 'Before {++text++}[^cn-1] after.\n\n[^cn-1]: @alice | 2026-02-11 | ins | proposed';
 
       const workspace = new Workspace();
       const doc = workspace.parse(input);
@@ -1558,12 +1558,12 @@ describe('footnote reference preservation', () => {
 
       const result = applyAllEdits(input, edits);
 
-      expect(result.includes('Before text[^ct-1] after.')).toBeTruthy();
+      expect(result.includes('Before text[^cn-1] after.')).toBeTruthy();
       expect(result.includes('| accepted')).toBeTruthy();
     });
 
     it('rejectChange: preserves footnote ref when rejecting deletion', () => {
-      const input = 'Before {--text--}[^ct-1] after.\n\n[^ct-1]: @alice | 2026-02-11 | del | proposed';
+      const input = 'Before {--text--}[^cn-1] after.\n\n[^cn-1]: @alice | 2026-02-11 | del | proposed';
 
       const workspace = new Workspace();
       const doc = workspace.parse(input);
@@ -1572,12 +1572,12 @@ describe('footnote reference preservation', () => {
 
       const result = applyAllEdits(input, edits);
 
-      expect(result.includes('Before text[^ct-1] after.')).toBeTruthy();
+      expect(result.includes('Before text[^cn-1] after.')).toBeTruthy();
       expect(result.includes('| rejected')).toBeTruthy();
     });
 
     it('acceptChange: substitution preserves footnote ref', () => {
-      const input = 'Use {~~old~>new~~}[^ct-1] method.\n\n[^ct-1]: @alice | 2026-02-11 | sub | proposed';
+      const input = 'Use {~~old~>new~~}[^cn-1] method.\n\n[^cn-1]: @alice | 2026-02-11 | sub | proposed';
 
       const workspace = new Workspace();
       const doc = workspace.parse(input);
@@ -1586,16 +1586,16 @@ describe('footnote reference preservation', () => {
 
       const result = applyAllEdits(input, edits);
 
-      expect(result.includes('Use new[^ct-1] method.')).toBeTruthy();
+      expect(result.includes('Use new[^cn-1] method.')).toBeTruthy();
       expect(result.includes('| accepted')).toBeTruthy();
     });
 
     it('acceptAll: preserves footnote refs for multiple changes', () => {
       const input = [
-        '{++New intro.++}[^ct-1] {~~Old~>Updated~~}[^ct-2] content.',
+        '{++New intro.++}[^cn-1] {~~Old~>Updated~~}[^cn-2] content.',
         '',
-        '[^ct-1]: @alice | 2026-02-11 | ins | proposed',
-        '[^ct-2]: @alice | 2026-02-11 | sub | proposed',
+        '[^cn-1]: @alice | 2026-02-11 | ins | proposed',
+        '[^cn-2]: @alice | 2026-02-11 | sub | proposed',
       ].join('\n');
 
       const workspace = new Workspace();
@@ -1604,7 +1604,7 @@ describe('footnote reference preservation', () => {
 
       const result = applyAllEdits(input, edits);
 
-      expect(result.includes('New intro.[^ct-1] Updated[^ct-2] content.')).toBeTruthy();
+      expect(result.includes('New intro.[^cn-1] Updated[^cn-2] content.')).toBeTruthy();
       expect((result.match(/\| accepted/g) || [])).toHaveLength(2);
     });
 
@@ -1627,10 +1627,10 @@ describe('footnote reference preservation', () => {
 // computeAcceptParts / computeRejectParts — separated text + refId
 // ---------------------------------------------------------------------------
 describe('computeAcceptParts', () => {
-  it('returns text and refId separately for insertion with ct- id', () => {
+  it('returns text and refId separately for insertion with cn- id', () => {
     const change = makeChange({
       type: ChangeType.Insertion,
-      id: 'ct-1',
+      id: 'cn-1',
       level: 2,
       range: { start: 0, end: 12 },
       contentRange: { start: 3, end: 8 },
@@ -1638,7 +1638,7 @@ describe('computeAcceptParts', () => {
     });
     const parts = computeAcceptParts(change);
     expect(parts.text).toBe('hello');
-    expect(parts.refId).toBe('ct-1');
+    expect(parts.refId).toBe('cn-1');
     expect(parts.offset).toBe(0);
     expect(parts).toHaveLength(12);
   });
@@ -1659,7 +1659,7 @@ describe('computeAcceptParts', () => {
   it('returns empty text for deletion with refId', () => {
     const change = makeChange({
       type: ChangeType.Deletion,
-      id: 'ct-2',
+      id: 'cn-2',
       level: 2,
       range: { start: 0, end: 15 },
       contentRange: { start: 3, end: 12 },
@@ -1667,13 +1667,13 @@ describe('computeAcceptParts', () => {
     });
     const parts = computeAcceptParts(change);
     expect(parts.text).toBe('');
-    expect(parts.refId).toBe('ct-2');
+    expect(parts.refId).toBe('cn-2');
   });
 
   it('returns modifiedText for substitution with refId', () => {
     const change = makeChange({
       type: ChangeType.Substitution,
-      id: 'ct-3',
+      id: 'cn-3',
       level: 2,
       range: { start: 0, end: 20 },
       contentRange: { start: 3, end: 17 },
@@ -1682,13 +1682,13 @@ describe('computeAcceptParts', () => {
     });
     const parts = computeAcceptParts(change);
     expect(parts.text).toBe('new');
-    expect(parts.refId).toBe('ct-3');
+    expect(parts.refId).toBe('cn-3');
   });
 
   it('is consistent with computeAccept (text + ref = newText)', () => {
     const change = makeChange({
       type: ChangeType.Insertion,
-      id: 'ct-5',
+      id: 'cn-5',
       level: 2,
       range: { start: 0, end: 12 },
       contentRange: { start: 3, end: 8 },
@@ -1705,7 +1705,7 @@ describe('computeRejectParts', () => {
   it('returns empty text for rejected insertion with refId', () => {
     const change = makeChange({
       type: ChangeType.Insertion,
-      id: 'ct-1',
+      id: 'cn-1',
       level: 2,
       range: { start: 0, end: 12 },
       contentRange: { start: 3, end: 8 },
@@ -1713,13 +1713,13 @@ describe('computeRejectParts', () => {
     });
     const parts = computeRejectParts(change);
     expect(parts.text).toBe('');
-    expect(parts.refId).toBe('ct-1');
+    expect(parts.refId).toBe('cn-1');
   });
 
   it('returns originalText for rejected deletion with refId', () => {
     const change = makeChange({
       type: ChangeType.Deletion,
-      id: 'ct-2',
+      id: 'cn-2',
       level: 2,
       range: { start: 0, end: 15 },
       contentRange: { start: 3, end: 12 },
@@ -1727,13 +1727,13 @@ describe('computeRejectParts', () => {
     });
     const parts = computeRejectParts(change);
     expect(parts.text).toBe('deleted');
-    expect(parts.refId).toBe('ct-2');
+    expect(parts.refId).toBe('cn-2');
   });
 
   it('returns originalText for rejected substitution with refId', () => {
     const change = makeChange({
       type: ChangeType.Substitution,
-      id: 'ct-3',
+      id: 'cn-3',
       level: 2,
       range: { start: 0, end: 20 },
       contentRange: { start: 3, end: 17 },
@@ -1742,13 +1742,13 @@ describe('computeRejectParts', () => {
     });
     const parts = computeRejectParts(change);
     expect(parts.text).toBe('old');
-    expect(parts.refId).toBe('ct-3');
+    expect(parts.refId).toBe('cn-3');
   });
 
   it('is consistent with computeReject (text + ref = newText)', () => {
     const change = makeChange({
       type: ChangeType.Substitution,
-      id: 'ct-3',
+      id: 'cn-3',
       level: 2,
       range: { start: 0, end: 20 },
       contentRange: { start: 3, end: 17 },

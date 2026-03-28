@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handleAfterFileEdit } from 'changetracks-hooks/internals';
-import type { HookInput } from 'changetracks-hooks/internals';
+import { handleAfterFileEdit } from 'changedown-hooks/internals';
+import type { HookInput } from 'changedown-hooks/internals';
 
 describe('Cursor afterFileEdit handler', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cursor-edit-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cursor-edit-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     // Default config: safety-net mode
     await fs.writeFile(
@@ -62,7 +62,7 @@ describe('Cursor afterFileEdit handler', () => {
     expect(result).toEqual({});
 
     // Verify pending.json was written
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     const raw = await fs.readFile(pendingPath, 'utf-8');
     const pending = JSON.parse(raw);
     expect(pending).toHaveLength(1);
@@ -74,7 +74,7 @@ describe('Cursor afterFileEdit handler', () => {
 
   it('skips logging in strict mode', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\n',
       'utf-8',
     );
@@ -93,7 +93,7 @@ describe('Cursor afterFileEdit handler', () => {
     expect(result).toEqual({});
 
     // Verify no pending.json was written
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     await expect(fs.readFile(pendingPath, 'utf-8')).rejects.toThrow();
   });
 
@@ -111,7 +111,7 @@ describe('Cursor afterFileEdit handler', () => {
     const result = await handleAfterFileEdit(input);
     expect(result).toEqual({});
 
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     await expect(fs.readFile(pendingPath, 'utf-8')).rejects.toThrow();
   });
 
@@ -132,7 +132,7 @@ describe('Cursor afterFileEdit handler', () => {
     const result = await handleAfterFileEdit(input);
     expect(result).toEqual({});
 
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     const raw = await fs.readFile(pendingPath, 'utf-8');
     const pending = JSON.parse(raw);
     expect(pending).toHaveLength(2);
@@ -151,7 +151,7 @@ describe('Cursor afterFileEdit handler', () => {
     };
     await handleAfterFileEdit(input);
 
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     const raw = await fs.readFile(pendingPath, 'utf-8');
     const pending = JSON.parse(raw);
     expect(pending[0].session_id).toBe('my-cursor-conversation');
@@ -159,7 +159,7 @@ describe('Cursor afterFileEdit handler', () => {
 
   it('skips files excluded from hooks', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[hooks]\nexclude = ["llm-garden/**"]\n\n[policy]\nmode = "safety-net"\n',
       'utf-8',
     );
@@ -179,7 +179,7 @@ describe('Cursor afterFileEdit handler', () => {
     const result = await handleAfterFileEdit(input);
     expect(result).toEqual({});
 
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     await expect(fs.readFile(pendingPath, 'utf-8')).rejects.toThrow();
   });
 });

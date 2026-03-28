@@ -9,22 +9,22 @@ Feature: LSP-LF — Lifecycle LSP custom requests
     Given an LSP server instance with a test document
 
   Scenario: LSP-LF-01 reviewChange returns edit with approval line
-    Given the test document contains a proposed ct-1 insertion
-    When I send changetracks/reviewChange with changeId "ct-1", decision "approve", author "@bob"
+    Given the test document contains a proposed cn-1 insertion
+    When I send changedown/reviewChange with changeId "cn-1", decision "approve", author "@bob"
     Then the response contains an edit
     And the edit text contains "approved:"
     And the edit text contains "| accepted"
 
   Scenario: LSP-LF-02 reviewChange with request-changes keeps status proposed
-    Given the test document contains a proposed ct-1 insertion
-    When I send changetracks/reviewChange with changeId "ct-1", decision "request_changes", reason "Needs work", author "@bob"
+    Given the test document contains a proposed cn-1 insertion
+    When I send changedown/reviewChange with changeId "cn-1", decision "request_changes", reason "Needs work", author "@bob"
     Then the response contains an edit
     And the edit adds "request-changes:" with reason "Needs work"
-    And the edit does NOT change ct-1 footnote status from "proposed"
+    And the edit does NOT change cn-1 footnote status from "proposed"
 
   Scenario: LSP-LF-03 replyToThread appends to footnote block
-    Given the test document contains a proposed ct-1 insertion with existing discussion
-    When I send changetracks/replyToThread with changeId "ct-1", text "Good point", author "@carol"
+    Given the test document contains a proposed cn-1 insertion with existing discussion
+    When I send changedown/replyToThread with changeId "cn-1", text "Good point", author "@carol"
     Then the response contains an edit
     And the edit text contains "@carol"
     And the edit text contains "Good point"
@@ -39,54 +39,54 @@ Feature: LSP-LF — Lifecycle LSP custom requests
     And the edit text contains "Question"
 
   Scenario: LSP-LF-05 amendChange returns edits for inline + footnote revision
-    Given the test document contains a proposed ct-1 insertion by "@alice"
-    When I send changetracks/amendChange with changeId "ct-1", newText "improved text", reason "Better wording", author "@alice"
+    Given the test document contains a proposed cn-1 insertion by "@alice"
+    When I send changedown/amendChange with changeId "cn-1", newText "improved text", reason "Better wording", author "@alice"
     Then the response contains an edit
     And the edit text contains "{++improved text++}"
     And the edit text contains "supersedes:"
     And the edit text contains "Better wording"
 
   Scenario: LSP-LF-06 amendChange rejects wrong-author
-    Given the test document contains a proposed ct-1 insertion by "@alice"
-    When I send changetracks/amendChange with changeId "ct-1", newText "hijack", author "@bob"
+    Given the test document contains a proposed cn-1 insertion by "@alice"
+    When I send changedown/amendChange with changeId "cn-1", newText "hijack", author "@bob"
     Then the response contains an error
     And the error message contains "are not the original author"
 
   Scenario: LSP-LF-07 supersedeChange returns reject + new proposal edits
-    Given the test document contains a proposed ct-1 substitution by "@alice"
-    When I send changetracks/supersedeChange with changeId "ct-1", newText "better approach", oldText "old text", reason "Cleaner design", author "@bob"
+    Given the test document contains a proposed cn-1 substitution by "@alice"
+    When I send changedown/supersedeChange with changeId "cn-1", newText "better approach", oldText "old text", reason "Cleaner design", author "@bob"
     Then the response contains an edit and a new change ID
     And the edit text contains "| rejected"
     And the edit text contains "supersedes:"
     And the edit text contains "superseded-by:"
 
   Scenario: LSP-LF-08 resolveThread adds resolution line
-    Given the test document contains a proposed ct-1 insertion with existing discussion
-    When I send changetracks/resolveThread with changeId "ct-1", author "@bob"
+    Given the test document contains a proposed cn-1 insertion with existing discussion
+    When I send changedown/resolveThread with changeId "cn-1", author "@bob"
     Then the response contains an edit
     And the edit text contains "resolved:"
     And the edit text contains "@bob"
 
   Scenario: LSP-LF-09 unresolveThread removes resolution line
-    Given the test document contains a resolved ct-1
-    When I send changetracks/unresolveThread with changeId "ct-1"
+    Given the test document contains a resolved cn-1
+    When I send changedown/unresolveThread with changeId "cn-1"
     Then the response contains an edit
     And the edit text does not contain "resolved:"
 
   Scenario: LSP-LF-10 compactChange on accepted returns level-descent edit
-    Given the test document contains an accepted ct-1 insertion
-    When I send changetracks/compactChange with changeId "ct-1", fully true
+    Given the test document contains an accepted cn-1 insertion
+    When I send changedown/compactChange with changeId "cn-1", fully true
     Then the response contains an edit
-    And the edit text does not contain "[^ct-1]:"
-    And the edit text does not contain "[^ct-1]"
+    And the edit text does not contain "[^cn-1]:"
+    And the edit text does not contain "[^cn-1]"
 
   Scenario: LSP-LF-11 compactChange on proposed returns error
-    Given the test document contains a proposed ct-1 insertion
-    When I send changetracks/compactChange with changeId "ct-1"
+    Given the test document contains a proposed cn-1 insertion
+    When I send changedown/compactChange with changeId "cn-1"
     Then the response contains an error
     And the error message contains "proposed"
 
   Scenario: LSP-LF-12 getProjectConfig returns reasonRequired settings
-    When I send changetracks/getProjectConfig
+    When I send changedown/getProjectConfig
     Then the config response contains reasonRequired.agent = true
     And the config response contains reasonRequired.human = false

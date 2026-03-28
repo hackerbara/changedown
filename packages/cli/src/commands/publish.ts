@@ -1,4 +1,4 @@
-import { computeSettledText } from '@changetracks/core';
+import { computeSettledText } from '@changedown/core';
 
 /**
  * Produces clean text with all changes applied (accept-all semantics).

@@ -6,15 +6,15 @@ import {
   type ViewName,
   type DecorationIntent,
   buildDecorationIntents,
-} from '@changetracks/core';
-import type { EditPendingOverlay } from '@changetracks/core/edit-boundary';
+} from '@changedown/core';
+import type { EditPendingOverlay } from '@changedown/core/edit-boundary';
 
 // ── Test Helpers ──────────────────────────────────────────────────────
 
 /** Create a minimal ChangeNode for testing. */
 function makeNode(overrides: Partial<ChangeNode> & Pick<ChangeNode, 'type' | 'range' | 'contentRange'>): ChangeNode {
   return {
-    id: 'ct-1',
+    id: 'cn-1',
     status: ChangeStatus.Proposed,
     level: 0 as const,
     anchored: false,
@@ -161,11 +161,11 @@ describe('buildDecorationIntents', () => {
       it('includes metadata', () => {
         const n = insertionNode(0, 'x');
         n.metadata = { author: 'alice', status: 'proposed' };
-        n.id = 'ct-42';
+        n.id = 'cn-42';
         const intents = buildDecorationIntents([n], 'review');
         const content = byKind(intents, 'insertion')[0];
         expect(content.metadata?.author).toBe('alice');
-        expect(content.metadata?.scId).toBe('ct-42');
+        expect(content.metadata?.scId).toBe('cn-42');
       });
     });
 
@@ -422,7 +422,7 @@ describe('buildDecorationIntents', () => {
   describe('move source (deletion side)', () => {
     const node = deletionNode(0, 'moved');
     node.moveRole = 'from';
-    node.groupId = 'ct-1.1';
+    node.groupId = 'cn-1.1';
 
     describe('review mode', () => {
       it('produces move-source kind with visible delimiters', () => {
@@ -461,7 +461,7 @@ describe('buildDecorationIntents', () => {
   describe('move target (insertion side)', () => {
     const node = insertionNode(0, 'moved');
     node.moveRole = 'to';
-    node.groupId = 'ct-1.2';
+    node.groupId = 'cn-1.2';
 
     describe('review mode', () => {
       it('produces move-target kind with visible delimiters', () => {
@@ -605,30 +605,30 @@ describe('buildDecorationIntents', () => {
     it('uses node.metadata fields when available', () => {
       const node = insertionNode(0, 'text');
       node.metadata = { author: 'alice', status: 'proposed' };
-      node.id = 'ct-7';
+      node.id = 'cn-7';
 
       const intents = buildDecorationIntents([node], 'review');
       const content = byKind(intents, 'insertion')[0];
       expect(content.metadata?.author).toBe('alice');
       expect(content.metadata?.status).toBe('proposed');
-      expect(content.metadata?.scId).toBe('ct-7');
+      expect(content.metadata?.scId).toBe('cn-7');
     });
 
     it('falls back to inlineMetadata when metadata is absent', () => {
       const node = insertionNode(0, 'text');
       node.inlineMetadata = { raw: '@bob proposed', author: 'bob', status: 'proposed' };
-      node.id = 'ct-3';
+      node.id = 'cn-3';
 
       const intents = buildDecorationIntents([node], 'review');
       const content = byKind(intents, 'insertion')[0];
       expect(content.metadata?.author).toBe('bob');
-      expect(content.metadata?.scId).toBe('ct-3');
+      expect(content.metadata?.scId).toBe('cn-3');
     });
 
     it('uses node.status as fallback for metadata.status', () => {
       const node = insertionNode(0, 'x');
       node.status = ChangeStatus.Accepted;
-      node.id = 'ct-5';
+      node.id = 'cn-5';
 
       const intents = buildDecorationIntents([node], 'review');
       const content = byKind(intents, 'insertion')[0];
@@ -637,13 +637,13 @@ describe('buildDecorationIntents', () => {
 
     it('delimiter intents also carry metadata', () => {
       const node = insertionNode(0, 'text');
-      node.id = 'ct-9';
+      node.id = 'cn-9';
       node.metadata = { author: 'charlie' };
 
       const intents = buildDecorationIntents([node], 'review');
       const delimiters = byKind(intents, 'delimiter');
       expect(delimiters.length > 0).toBeTruthy();
-      expect(delimiters[0].metadata?.scId).toBe('ct-9');
+      expect(delimiters[0].metadata?.scId).toBe('cn-9');
       expect(delimiters[0].metadata?.author).toBe('charlie');
     });
   });

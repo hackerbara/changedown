@@ -2,14 +2,14 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { initHashline } from '@changetracks/core';
-import { runCommand } from 'changetracks/cli-runner';
-import { formatResult } from 'changetracks/cli-output';
+import { initHashline } from '@changedown/core';
+import { runCommand } from 'changedown/cli-runner';
+import { formatResult } from 'changedown/cli-output';
 
 let tmpDir: string;
 
 function makeTrackedFile(body: string, footnotes: string = ''): string {
-  return `<!-- ctrcks.com/v1: tracked -->\n${body}${footnotes ? '\n\n' + footnotes : ''}`;
+  return `<!-- changedown.com/v1: tracked -->\n${body}${footnotes ? '\n\n' + footnotes : ''}`;
 }
 
 beforeAll(async () => {
@@ -17,8 +17,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-hardening-'));
-  const configDir = path.join(tmpDir, '.changetracks');
+  tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-hardening-'));
+  const configDir = path.join(tmpDir, '.changedown');
   await fs.mkdir(configDir, { recursive: true });
   await fs.writeFile(
     path.join(configDir, 'config.toml'),
@@ -84,12 +84,12 @@ describe('Bug 2: list --pretty formatting', () => {
 
     expect(result.success).toBe(true);
     // result.message is the summarizeItems() table (always built this way)
-    expect(result.message).toContain('ct-1');
+    expect(result.message).toContain('cn-1');
     expect(result.message).not.toMatch(/^\[/);  // not a raw JSON array
 
     // Also verify formatResult('pretty') produces the formatted output
     const prettyOutput = formatResult(result, 'pretty');
-    expect(prettyOutput).toContain('ct-1');
+    expect(prettyOutput).toContain('cn-1');
     expect(prettyOutput).not.toMatch(/^\[/);
   });
 });
@@ -108,7 +108,7 @@ describe('Bug 4: review --settle flag', () => {
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     const result = await runCommand('review', [
-      filePath, 'ct-1', '--decision', 'approve', '--reason', 'Good', '--settle', '--author', 'ai:test',
+      filePath, 'cn-1', '--decision', 'approve', '--reason', 'Good', '--settle', '--author', 'ai:test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     expect(result.success).toBe(true);
@@ -128,16 +128,16 @@ describe('Bug 5: idempotent review', () => {
   it('re-approving accepted change produces no duplicate approved: line', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, makeTrackedFile(
-      'Hello {++world++}[^ct-1]',
-      '[^ct-1]: @ai:test | 2026-02-18 | ins | proposed',
+      'Hello {++world++}[^cn-1]',
+      '[^cn-1]: @ai:test | 2026-02-18 | ins | proposed',
     ));
 
     await runCommand('review', [
-      filePath, 'ct-1', '--decision', 'approve', '--reason', 'OK', '--author', 'ai:test',
+      filePath, 'cn-1', '--decision', 'approve', '--reason', 'OK', '--author', 'ai:test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     const result = await runCommand('review', [
-      filePath, 'ct-1', '--decision', 'approve', '--reason', 'Again', '--author', 'ai:test',
+      filePath, 'cn-1', '--decision', 'approve', '--reason', 'Again', '--author', 'ai:test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     expect(result.success).toBe(true);
@@ -155,12 +155,12 @@ describe('Ergonomics: review convenience flags', () => {
   it('sc review <file> <id> --decision approve works without --reviews JSON', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, makeTrackedFile(
-      'Hello {++world++}[^ct-1]',
-      '[^ct-1]: @ai:test | 2026-02-18 | ins | proposed',
+      'Hello {++world++}[^cn-1]',
+      '[^cn-1]: @ai:test | 2026-02-18 | ins | proposed',
     ));
 
     const result = await runCommand('review', [
-      filePath, 'ct-1', '--decision', 'approve', '--reason', 'LGTM', '--author', 'ai:test',
+      filePath, 'cn-1', '--decision', 'approve', '--reason', 'LGTM', '--author', 'ai:test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     expect(result.success).toBe(true);
@@ -173,7 +173,7 @@ describe('Ergonomics: review convenience flags', () => {
     await fs.writeFile(filePath, makeTrackedFile('Hello world.'));
 
     const result = await runCommand('review', [
-      filePath, 'ct-1', '--reviews', '[{"change_id":"ct-1","decision":"approve","reason":"OK"}]', '--author', 'ai:test',
+      filePath, 'cn-1', '--reviews', '[{"change_id":"cn-1","decision":"approve","reason":"OK"}]', '--author', 'ai:test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     // Should fail with USAGE_ERROR (both modes provided)
@@ -196,7 +196,7 @@ describe('Ergonomics: amend --new alias', () => {
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     const result = await runCommand('amend', [
-      filePath, 'ct-1', '--new', 'fast', '--reason', 'Changed mind', '--author', 'ai:test',
+      filePath, 'cn-1', '--new', 'fast', '--reason', 'Changed mind', '--author', 'ai:test',
     ], { outputFormat: 'json', projectDir: tmpDir });
 
     expect(result.success).toBe(true);

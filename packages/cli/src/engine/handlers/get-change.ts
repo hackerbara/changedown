@@ -1,9 +1,9 @@
 import * as fs from 'node:fs/promises';
-import { CriticMarkupParser, ChangeType } from '@changetracks/core';
+import { CriticMarkupParser, ChangeType } from '@changedown/core';
 import { optionalStrArg } from '../args.js';
 import { isFileInScope } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
-import { findFootnoteBlock, parseFootnoteHeader } from '@changetracks/core';
+import { findFootnoteBlock, parseFootnoteHeader } from '@changedown/core';
 import { toRelativePath } from '../path-utils.js';
 
 /**
@@ -32,7 +32,7 @@ export const getChangeTool = {
       },
       change_id: {
         type: 'string',
-        description: "The change ID to look up (e.g., 'ct-7' or 'ct-7.2')",
+        description: "The change ID to look up (e.g., 'cn-7' or 'cn-7.2')",
       },
       context_lines: {
         type: 'number',
@@ -154,7 +154,7 @@ export async function handleGetChange(
 
     if (!isFileInScope(filePath, config, projectDir)) {
       return errorResult(
-        `File is not in scope for tracking: "${filePath}". Check .changetracks/config.toml include/exclude patterns.`
+        `File is not in scope for tracking: "${filePath}". Check .changedown/config.toml include/exclude patterns.`
       );
     }
 

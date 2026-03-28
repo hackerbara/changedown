@@ -1,7 +1,7 @@
 @fast @navigation @NAV1
 Feature: NAV1 -- Navigation between changes
   Port of Navigation.test.ts (6 mocha tests).
-  Tests the core nextChange / previousChange functions from @changetracks/core.
+  Tests the core nextChange / previousChange functions from @changedown/core.
   These operate on a VirtualDocument and a cursor offset, returning the
   ChangeNode to navigate to.
 

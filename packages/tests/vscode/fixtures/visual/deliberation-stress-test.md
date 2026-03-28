@@ -1,17 +1,17 @@
-<!-- ctrcks.com/v1: tracked -->
+<!-- changedown.com/v1: tracked -->
 # PaymentFlow API Design Document
 
-**Version:** {~~1.0~>2.1~~}[^ct-1]
-**Last Updated:** {~~2026-02-01~>2026-02-15~~}[^ct-2]
+**Version:** {~~1.0~>2.1~~}[^cn-1]
+**Last Updated:** {~~2026-02-01~>2026-02-15~~}[^cn-2]
 **Authors:** Alice Chen (Lead Engineer), Bob Martinez (Security), Carol Park (Product)
-**Status:** {~~Draft~>Active Review~~}[^ct-3]
+**Status:** {~~Draft~>Active Review~~}[^cn-3]
 **Reviewers:** @bob, @carol, @ai:claude-opus-4.6, @ai:kimi-k2
 
 ---
 
 ## 1. Overview
 
-PaymentFlow is a {~~payment processing service~>payment orchestration platform~~}[^ct-4] for mid-size SaaS companies{++ processing $1M–$100M in annual payment volume++}[^ct-5]. The platform abstracts multiple payment service providers (Stripe, Adyen, Braintree) behind a unified API, enabling intelligent routing, automatic failover, and consolidated reporting.
+PaymentFlow is a {~~payment processing service~>payment orchestration platform~~}[^cn-4] for mid-size SaaS companies{++ processing $1M–$100M in annual payment volume++}[^cn-5]. The platform abstracts multiple payment service providers (Stripe, Adyen, Braintree) behind a unified API, enabling intelligent routing, automatic failover, and consolidated reporting.
 
 The platform serves three primary functions:
 
@@ -28,7 +28,7 @@ The platform serves three primary functions:
 3. Provide developer experience {~~comparable to~>on par with~~}{>>@carol<<} Stripe's API (our benchmark)
 4. Support subscription billing, one-time payments, invoicing, and marketplace payouts
 5. Enable real-time payment routing based on cost, success rate, and latency
-6. {++Maintain sub-100ms P95 latency for all synchronous API operations++}[^ct-34]
+6. {++Maintain sub-100ms P95 latency for all synchronous API operations++}[^cn-34]
 
 ### 1.2 Non-Goals
 
@@ -36,12 +36,12 @@ The platform serves three primary functions:
 - {~~Cryptocurrency~>Cryptocurrency or BNPL~~}{>>@carol | 2026-02-07<<} payment methods (v1 scope)
 - {++Physical point-of-sale integration++}
 - Tax calculation (integrate with Avalara/TaxJar)
-- {++Fraud scoring (integrate with Sift/Sardine — see Section 9.4)++}[^ct-35]
+- {++Fraud scoring (integrate with Sift/Sardine — see Section 9.4)++}[^cn-35]
 
 ### 1.3 Team & Timeline
 
 - **Core team:** {~~3~>4~~} backend engineers, 2 frontend, 1 SRE, 1 security
-- **Phase 1 launch:** {~~2026-Q2~>2026-Q3~~}[^ct-33] (core payments + subscriptions)
+- **Phase 1 launch:** {~~2026-Q2~>2026-Q3~~}[^cn-33] (core payments + subscriptions)
 - **Phase 2:** 2026-Q4 (marketplace payouts + advanced routing)
 - **Phase 3:** 2027-Q1 (analytics dashboard + self-service onboarding)
 
@@ -59,19 +59,19 @@ The platform is built on four architectural principles that inform every design 
 
 ---
 
-## 2. Authentication{++ & Authorization++}[^ct-7]
+## 2. Authentication{++ & Authorization++}[^cn-7]
 
-All API access requires authentication. PaymentFlow supports {~~a single authentication mechanism~>multiple authentication mechanisms with different security profiles~~}[^ct-6] appropriate for different integration patterns.
+All API access requires authentication. PaymentFlow supports {~~a single authentication mechanism~>multiple authentication mechanisms with different security profiles~~}[^cn-6] appropriate for different integration patterns.
 
 ### 2.1 OAuth 2.0 with PKCE (Primary)
 
 All client-facing API access uses OAuth 2.0 with Authorization Code flow and PKCE (Proof Key for Code Exchange). This applies to dashboard access, merchant portals, and any application where end-user authentication is involved.
 
-{++All flows MUST use PKCE regardless of client type — including confidential server-side clients. This eliminates the distinction between "public" and "confidential" client security models and simplifies the implementation matrix.++}[^ct-6]
+{++All flows MUST use PKCE regardless of client type — including confidential server-side clients. This eliminates the distinction between "public" and "confidential" client security models and simplifies the implementation matrix.++}[^cn-6]
 
 **Token lifecycle:**
 
-- Access tokens: {~~60-minute~>15-minute~~}[^ct-9] expiry, JWT format, signed with RS256
+- Access tokens: {~~60-minute~>15-minute~~}[^cn-9] expiry, JWT format, signed with RS256
 - Refresh tokens: 30-day expiry, opaque (not JWT), rotated on every use
 - Token rotation: Refresh tokens are single-use; each refresh issues a new refresh token and invalidates the previous one. Concurrent refresh attempts using the same token trigger automatic revocation of the entire token family (replay detection).
 
@@ -85,8 +85,8 @@ All client-facing API access uses OAuth 2.0 with Authorization Code flow and PKC
 | `refunds:create` | Issue refunds | No |
 | `webhooks:manage` | Configure webhook endpoints | No |
 | `accounts:admin` | Account settings and team management | No |
-| {++`reports:read`++}[^ct-11] | {++Access analytics and financial reports++}[^ct-11] | {++No++}[^ct-11] |
-| {++`disputes:manage`++}[^ct-11] | {++Respond to chargebacks and disputes++}[^ct-11] | {++No++}[^ct-11] |
+| {++`reports:read`++}[^cn-11] | {++Access analytics and financial reports++}[^cn-11] | {++No++}[^cn-11] |
+| {++`disputes:manage`++}[^cn-11] | {++Respond to chargebacks and disputes++}[^cn-11] | {++No++}[^cn-11] |
 
 ### 2.2 API Keys (Server-to-Server)
 
@@ -101,7 +101,7 @@ API keys are provided for server-to-server integration where OAuth flows are imp
 - Key rotation: Create new key → update integration → revoke old key. No automatic rotation; rotation is an explicit merchant action.
 - All key operations require 2FA confirmation in the dashboard
 
-{++**Deprecation notice:** API key authentication will be deprecated in favor of OAuth 2.0 client credentials flow by 2027-Q2. Existing integrations will continue to work during a 24-month sunset period. New integrations should use OAuth 2.0 client credentials for server-to-server communication.++}[^ct-8]
+{++**Deprecation notice:** API key authentication will be deprecated in favor of OAuth 2.0 client credentials flow by 2027-Q2. Existing integrations will continue to work during a 24-month sunset period. New integrations should use OAuth 2.0 client credentials for server-to-server communication.++}[^cn-8]
 
 ### 2.3 Token Management
 
@@ -116,22 +116,22 @@ Token management endpoints enable clients to introspect, revoke, and audit their
 
 **Token rotation policy:**
 
-- Access tokens: Non-rotatable (short-lived, {~~60~>15~~}[^ct-9] min)
+- Access tokens: Non-rotatable (short-lived, {~~60~>15~~}[^cn-9] min)
 - Refresh tokens: Rotated on every use (single-use model)
-- API keys: Manual rotation via dashboard or API, with {~~24~>48~~}[^ct-9]-hour grace period for the old key
+- API keys: Manual rotation via dashboard or API, with {~~24~>48~~}[^cn-9]-hour grace period for the old key
 - Rotation events are logged and trigger webhook notifications
 
-### 2.4 {++Mutual TLS (Service-to-Service)++}[^ct-10]
+### 2.4 {++Mutual TLS (Service-to-Service)++}[^cn-10]
 
-{++Internal service-to-service communication within the PaymentFlow platform uses mutual TLS with certificate pinning. Client certificates are issued by our internal CA with 90-day rotation and automated renewal via cert-manager.++}[^ct-10]
+{++Internal service-to-service communication within the PaymentFlow platform uses mutual TLS with certificate pinning. Client certificates are issued by our internal CA with 90-day rotation and automated renewal via cert-manager.++}[^cn-10]
 
-{++**Certificate requirements:**++}[^ct-10]
+{++**Certificate requirements:**++}[^cn-10]
 
-{++- RSA 2048-bit minimum (4096-bit recommended for new certificates)++}[^ct-10]
-{++- SAN-based identification (no CN matching — CN is deprecated per RFC 6125)++}[^ct-10]
-{++- OCSP stapling required for all certificates++}[^ct-10]
-{++- Certificate transparency logging for all issued certificates++}[^ct-10]
-{++- Maximum certificate lifetime: 90 days (enforced by CA policy)++}[^ct-10]
+{++- RSA 2048-bit minimum (4096-bit recommended for new certificates)++}[^cn-10]
+{++- SAN-based identification (no CN matching — CN is deprecated per RFC 6125)++}[^cn-10]
+{++- OCSP stapling required for all certificates++}[^cn-10]
+{++- Certificate transparency logging for all issued certificates++}[^cn-10]
+{++- Maximum certificate lifetime: 90 days (enforced by CA policy)++}[^cn-10]
 
 ### 2.5 OpenID Connect
 
@@ -146,9 +146,9 @@ Custom claims include `org_id`, `role`, and `permissions` array for fine-grained
 
 ## 3. Data Model
 
-### 3.1 {~~User~>Account~~}[^ct-12.1]
+### 3.1 {~~User~>Account~~}[^cn-12.1]
 
-The {~~User~>Account~~}[^ct-12.2] entity represents a merchant organization. All resources (payments, subscriptions, webhooks) are scoped to an {~~user~>account~~}[^ct-12.3].
+The {~~User~>Account~~}[^cn-12.2] entity represents a merchant organization. All resources (payments, subscriptions, webhooks) are scoped to an {~~user~>account~~}[^cn-12.3].
 
 ```
 Account {
@@ -189,10 +189,10 @@ Transaction {
   idempotency_key: string
   created_at: timestamp
   updated_at: timestamp
-  {++encrypted_at: timestamp++}[^ct-13]
+  {++encrypted_at: timestamp++}[^cn-13]
   metadata: map<string, string>
   failure_reason: string (nullable)
-  {--failure_code: integer--}[^ct-14]
+  {--failure_code: integer--}[^cn-14]
   risk_score: float (0.0-1.0)
 }
 ```
@@ -209,7 +209,7 @@ PaymentMethod {
   type: enum (card, bank_account, wallet)
   card: CardDetails (nullable)
   bank_account: BankDetails (nullable)
-  {++fingerprint: string++}[^ct-15]
+  {++fingerprint: string++}[^cn-15]
   created_at: timestamp
   expires_at: timestamp (nullable)
 }
@@ -321,7 +321,7 @@ Production: https://api.paymentflow.io/v1
 Sandbox:    https://sandbox.paymentflow.io/v1
 ```
 
-All endpoints are versioned via {~~URL path~>URL path (see Section 8 for versioning strategy and alternatives under discussion)~~}[^ct-29]. The sandbox environment mirrors production behavior with test PSP backends that simulate success, failure, and edge cases.
+All endpoints are versioned via {~~URL path~>URL path (see Section 8 for versioning strategy and alternatives under discussion)~~}[^cn-29]. The sandbox environment mirrors production behavior with test PSP backends that simulate success, failure, and edge cases.
 
 ### 4.2 Request Format
 
@@ -473,7 +473,7 @@ GET /v1/payments?q=order+1234
 
 Search uses Elasticsearch under the hood. Results are ranked by relevance with a configurable minimum score threshold. Search index updates are eventually consistent (typically <2 seconds).
 
-{++ proposed 2026-02-08 [^ct-20]
+{++ proposed 2026-02-08 [^cn-20]
 
 ### 4.6 Idempotency
 
@@ -505,11 +505,11 @@ All API endpoints enforce rate limits to ensure platform stability and fair usag
 
 | Tier | Limit | Burst | Use Case |
 |------|-------|-------|----------|
-| Standard | {~~100~>1000~~}[^ct-21] req/min | {~~10~>50~~}[^ct-21] req/sec | Most integrations |
+| Standard | {~~100~>1000~~}[^cn-21] req/min | {~~10~>50~~}[^cn-21] req/sec | Most integrations |
 | Enterprise | 5000 req/min | 200 req/sec | High-volume merchants |
 | Internal | 10000 req/min | 500 req/sec | Platform services |
 
-{++Tier assignment is automatic based on account volume. Accounts processing >$100K/month are automatically upgraded to Enterprise tier. Manual tier overrides are available via account settings.++}[^ct-22]
+{++Tier assignment is automatic based on account volume. Accounts processing >$100K/month are automatically upgraded to Enterprise tier. Manual tier overrides are available via account settings.++}[^cn-22]
 
 ### 5.2 Burst Handling
 
@@ -525,7 +525,7 @@ X-RateLimit-Remaining: 0
 X-RateLimit-Reset: 1708012800
 ```
 
-{++The `Retry-After` value is in seconds and represents the minimum wait time before the next request will be accepted. Clients SHOULD add jitter (0-1 second random delay) to avoid thundering herd effects when multiple clients hit the limit simultaneously.++}[^ct-26]
+{++The `Retry-After` value is in seconds and represents the minimum wait time before the next request will be accepted. Clients SHOULD add jitter (0-1 second random delay) to avoid thundering herd effects when multiple clients hit the limit simultaneously.++}[^cn-26]
 
 ### 5.3 Per-Endpoint Limits
 
@@ -533,10 +533,10 @@ Some endpoints have additional per-endpoint limits independent of the global rat
 
 | Endpoint | Limit | Reason |
 |----------|-------|--------|
-| `POST /v1/payments` | {~~50~>100~~}[^ct-23]/min | PSP aggregate rate limits |
+| `POST /v1/payments` | {~~50~>100~~}[^cn-23]/min | PSP aggregate rate limits |
 | `POST /oauth/token` | 20/min | Brute-force protection |
 | `GET /v1/reports/*` | 10/min | Heavy computation (aggregation queries) |
-| {++`POST /v1/webhooks/test`++}[^ct-23] | {++5/min++}[^ct-23] | {++Prevents accidental DDoS of merchant endpoints++}[^ct-23] |
+| {++`POST /v1/webhooks/test`++}[^cn-23] | {++5/min++}[^cn-23] | {++Prevents accidental DDoS of merchant endpoints++}[^cn-23] |
 
 ### 5.4 Quota Management
 
@@ -569,7 +569,7 @@ All errors follow a consistent JSON structure:
 }
 ```
 
-Every error includes a `doc_url` linking to a page with {~~detailed explanation and common solutions~>explanation, common causes, and resolution steps~~}[^ct-24]. The `request_id` is always present and can be referenced in support tickets.
+Every error includes a `doc_url` linking to a page with {~~detailed explanation and common solutions~>explanation, common causes, and resolution steps~~}[^cn-24]. The `request_id` is always present and can be referenced in support tickets.
 
 ### 6.2 Error Types
 
@@ -651,15 +651,15 @@ PaymentFlow emits events for all significant state changes. Events follow a `res
 
 ### 7.2 Delivery Guarantees
 
-PaymentFlow provides {~~exactly-once~>at-least-once~~}[^ct-27] delivery with best-effort ordering. Events include a monotonically increasing sequence number per account for client-side deduplication and ordering verification.
+PaymentFlow provides {~~exactly-once~>at-least-once~~}[^cn-27] delivery with best-effort ordering. Events include a monotonically increasing sequence number per account for client-side deduplication and ordering verification.
 
 **Retry policy:**
 
 - Failed deliveries (non-2xx response or timeout) are retried with exponential backoff
-- Retry schedule: {~~1min, 5min, 30min, 2hr, 12hr, 24hr~>30sec, 2min, 15min, 1hr, 4hr, 12hr, 24hr~~}[^ct-25]
-- Maximum retry period: {~~72~>48~~}[^ct-25] hours
+- Retry schedule: {~~1min, 5min, 30min, 2hr, 12hr, 24hr~>30sec, 2min, 15min, 1hr, 4hr, 12hr, 24hr~~}[^cn-25]
+- Maximum retry period: {~~72~>48~~}[^cn-25] hours
 - After 72 hours, the event is marked as `failed` and an email notification is sent to the account owner
-- {++Failed events are available via `GET /v1/events?delivery_status=failed` for manual replay++}[^ct-28]
+- {++Failed events are available via `GET /v1/events?delivery_status=failed` for manual replay++}[^cn-28]
 
 ### 7.3 Webhook Signatures
 
@@ -676,7 +676,7 @@ verify(signature == expected)
 verify(abs(now() - timestamp) < 300)  # 5-minute tolerance
 ```
 
-The {~~5-minute~>5-minute (300-second)~~}[^ct-30] tolerance window prevents replay attacks while accommodating clock skew. The timestamp and signature together ensure both authenticity and freshness.
+The {~~5-minute~>5-minute (300-second)~~}[^cn-30] tolerance window prevents replay attacks while accommodating clock skew. The timestamp and signature together ensure both authenticity and freshness.
 
 ### 7.4 Event Schema
 
@@ -765,7 +765,7 @@ PaymentFlow is PCI DSS Level 1 certified. Card data handling follows the tokeniz
 - The tokenization service is a separate, hardened environment with its own network boundary, audit trail, and key management
 - PAN data in transit is encrypted with TLS 1.3 (no fallback)
 - Tokenized card data at rest is encrypted with AES-256-GCM
-- Encryption keys are managed via AWS KMS with annual automatic rotation and separate key hierarchies per account++}[^ct-31]
+- Encryption keys are managed via AWS KMS with annual automatic rotation and separate key hierarchies per account++}[^cn-31]
 
 ### 9.2 Data Encryption
 
@@ -783,7 +783,7 @@ Root Key (AWS KMS, region-locked)
        └─ Audit Log Key (rotated annually)
 ```
 
-### 9.3 {~~Audit Logging~>Audit Logging & Compliance Trail~~}[^ct-32]
+### 9.3 {~~Audit Logging~>Audit Logging & Compliance Trail~~}[^cn-32]
 
 All API operations generate audit log entries with the following structure:
 
@@ -891,27 +891,27 @@ During migration between API versions:
 
 ---
 
-[^ct-1]: @alice | 2026-02-15 | sub | accepted
+[^cn-1]: @alice | 2026-02-15 | sub | accepted
     approved: @carol 2026-02-15
     @alice 2026-02-15: Bumping version to reflect scope of changes
 
-[^ct-2]: @alice | 2026-02-15 | sub | accepted
+[^cn-2]: @alice | 2026-02-15 | sub | accepted
 
-[^ct-3]: @carol | 2026-02-07 | sub | accepted
+[^cn-3]: @carol | 2026-02-07 | sub | accepted
     approved: @alice 2026-02-07
     @carol 2026-02-07: Moving to Active Review now that all reviewers have started
 
-[^ct-4]: @carol | 2026-02-06 | sub | accepted
+[^cn-4]: @carol | 2026-02-06 | sub | accepted
     approved: @alice 2026-02-06
     context: "PaymentFlow is a {payment processing service} for mid-size"
     @carol 2026-02-06: "Orchestration" better captures the multi-PSP routing value prop
       @alice 2026-02-06: Agreed, and it differentiates us from single-PSP wrappers
 
-[^ct-5]: @alice | 2026-02-03 | ins | accepted
+[^cn-5]: @alice | 2026-02-03 | ins | accepted
     approved: @carol 2026-02-07
     @alice 2026-02-03: Scoping the target market explicitly. Under $1M doesn't need us, over $100M builds in-house.
 
-[^ct-6]: @alice | 2026-02-03 | sub | accepted
+[^cn-6]: @alice | 2026-02-03 | sub | accepted
     amend: team
     context: "PaymentFlow supports {API key authentication} appropriate for"
     @alice 2026-02-03: Moving from API keys to OAuth 2.0 as primary auth. API keys remain for server-to-server but OAuth gives us proper scoping, token rotation, and SSO support.
@@ -931,12 +931,12 @@ During migration between API versions:
     approved: @alice 2026-02-06
     resolved @carol 2026-02-06: Accepted with Bob's PKCE amendment and Carol's RFC citation
 
-[^ct-7]: @bob | 2026-02-04 | ins | accepted
+[^cn-7]: @bob | 2026-02-04 | ins | accepted
     approved: @alice 2026-02-05
     @bob 2026-02-04: "Authentication" alone undersells the section. We're defining authorization scopes, role-based access, and permission models — that's authorization, not just auth.
     resolved @alice 2026-02-05
 
-[^ct-8]: @alice | 2026-02-06 | ins | proposed
+[^cn-8]: @alice | 2026-02-06 | ins | proposed
     context: "Key rotation: Create new key ... merchant action."
     @alice 2026-02-06: We need to set a deprecation timeline. OAuth client credentials gives us everything API keys do, with better security properties.
       @bob 2026-02-07 [issue/blocking]: Enterprise clients have 2-year contracts that explicitly guarantee API key support. Legal reviewed this last quarter — we can't deprecate without a contractual amendment process.
@@ -947,7 +947,7 @@ During migration between API versions:
                 @bob 2026-02-09: Migration tooling helps but doesn't address the contractual issue. We need legal signoff on the deprecation timeline before this can proceed.
     open -- awaiting legal review of enterprise contract implications
 
-[^ct-9]: @ai:claude-opus-4.6 | 2026-02-08 | sub | accepted
+[^cn-9]: @ai:claude-opus-4.6 | 2026-02-08 | sub | accepted
     context: "Access tokens: {60-minute} expiry ... {24}-hour grace period"
     @ai:claude-opus-4.6 2026-02-08: Three related changes bundled: (1) Reduce access token lifetime from 60 to 15 minutes — shorter tokens reduce the window for stolen token abuse. (2) Extend API key rotation grace period from 24 to 48 hours — 24 hours is too tight for enterprises with complex deployment pipelines.
       @bob 2026-02-08 [question]: 15 minutes is aggressive. What's the expected refresh rate impact on our token endpoint?
@@ -957,36 +957,36 @@ During migration between API versions:
     approved: @alice 2026-02-10
     resolved @bob 2026-02-09
 
-[^ct-10]: @bob | 2026-02-06 | ins | proposed
+[^cn-10]: @bob | 2026-02-06 | ins | proposed
     @bob 2026-02-06: mTLS is the gold standard for service-to-service auth in payment systems. We can't rely on network perimeter alone — zero-trust requires mutual authentication at every hop.
       @ai:kimi-k2 2026-02-10 [question]: Are you proposing mTLS for all internal services or just the payment-critical path? Full mesh mTLS has significant operational overhead — certificate distribution, rotation monitoring, debugging TLS handshake failures in production.
         @bob 2026-02-11: Payment-critical path only for v1. That's: API gateway → payment service → PSP adapter. Three hops. The rest can use service mesh mTLS (Istio/Linkerd) which handles cert management automatically.
           @ai:kimi-k2 2026-02-11: That's reasonable. Istio sidecar mTLS for the mesh, explicit mTLS with pinning for the critical path. Two different trust models but they compose cleanly.
     open
 
-[^ct-11]: @ai:claude-opus-4.6 | 2026-02-08 | ins | proposed
+[^cn-11]: @ai:claude-opus-4.6 | 2026-02-08 | ins | proposed
     @ai:claude-opus-4.6 2026-02-08: The scope table is missing two important scopes that other sections reference. `reports:read` is needed for the analytics dashboard (Phase 3) and `disputes:manage` is needed for the chargeback workflow (Section 9.4). Adding them now prevents a breaking change later — adding a required scope is a breaking change per Section 8.2.
       @carol 2026-02-09: Good catch on forward compatibility. Should we also add `invoices:manage`?
         @ai:claude-opus-4.6 2026-02-09: Invoices are covered under `payments:write` for now. If we need finer granularity, we can add it as a non-breaking addition.
     open
 
-[^ct-12.1]: @carol | 2026-02-07 | sub | accepted
+[^cn-12.1]: @carol | 2026-02-07 | sub | accepted
     @carol 2026-02-07: Section header rename as part of User→Account migration
 
-[^ct-12.2]: @carol | 2026-02-07 | sub | accepted
+[^cn-12.2]: @carol | 2026-02-07 | sub | accepted
     @carol 2026-02-07: Entity reference in description
 
-[^ct-12.3]: @carol | 2026-02-07 | sub | accepted
+[^cn-12.3]: @carol | 2026-02-07 | sub | accepted
     @carol 2026-02-07: Scope reference in description
 
-[^ct-12]: @carol | 2026-02-07 | group | accepted
+[^cn-12]: @carol | 2026-02-07 | group | accepted
     approved: @alice 2026-02-07
     approved: @bob 2026-02-08
     @carol 2026-02-07: Renaming "User" to "Account" throughout. "User" implies a person; "Account" correctly implies an organization. This aligns with Stripe's naming (they also use Account for the merchant entity) and avoids confusion with end-customers.
       @alice 2026-02-07: Agreed. Our customers are organizations not individuals. Good catch.
     resolved @alice 2026-02-07
 
-[^ct-13]: @alice | 2026-02-05 | ins | proposed
+[^cn-13]: @alice | 2026-02-05 | ins | proposed
     context: "updated_at: timestamp ... metadata: map<string, string>"
     @alice 2026-02-05: Adding encrypted_at timestamp for compliance audit trail. We need to prove when card data was encrypted — PCI DSS Requirement 3.5.
       @bob 2026-02-06: Makes sense for PCI.
@@ -997,18 +997,18 @@ During migration between API versions:
         @alice 2026-02-12: Date-only works for compliance. I'll update the type to `date` instead of `timestamp`.
     open -- pending field type update to date precision
 
-[^ct-14]: @bob | 2026-02-06 | del | accepted
+[^cn-14]: @bob | 2026-02-06 | del | accepted
     approved: @alice 2026-02-06
     @bob 2026-02-06: failure_code is redundant with failure_reason. Numeric error codes are a legacy pattern — our error system uses string codes (Section 6). Keeping both creates a mapping maintenance burden.
     resolved @alice 2026-02-06
 
-[^ct-15]: @ai:claude-opus-4.6 | 2026-02-08 | ins | proposed
+[^cn-15]: @ai:claude-opus-4.6 | 2026-02-08 | ins | proposed
     @ai:claude-opus-4.6 2026-02-08: Payment method fingerprinting enables duplicate detection across customers. Two customers adding the same card get the same fingerprint — useful for fraud detection (same card used across many accounts) and for deduplication (prevent accidental double-add). Stripe and Adyen both provide fingerprints; we normalize to a consistent internal format.
       @bob 2026-02-09 [question]: How is the fingerprint derived? If it's a hash of the card number, we need to ensure the hashing algorithm is consistent across PSPs and resistant to rainbow table attacks.
         @ai:claude-opus-4.6 2026-02-09: HMAC-SHA256 of the card number using a per-account secret. This gives us: (1) consistent fingerprints within an account regardless of PSP, (2) different fingerprints across accounts (prevents cross-account correlation), (3) rainbow table resistance via the HMAC key.
     open
 
-[^ct-16]: @bob | 2026-02-09 | sub | proposed
+[^cn-16]: @bob | 2026-02-09 | sub | proposed
     superseded-by: ct-17
     context: "All endpoints are versioned via {URL path}"
     @bob 2026-02-09: I know we drafted this as REST, but I've been benchmarking our internal prototypes and gRPC gives us 3x throughput improvement for the payment creation hot path. Protobuf serialization is 10x smaller than JSON for our typical payloads.
@@ -1018,7 +1018,7 @@ During migration between API versions:
             @bob 2026-02-10: Acceptable if we design the internal service layer on gRPC now so the external gRPC surface is just a passthrough later.
     open -- REST vs gRPC debate continues
 
-[^ct-17]: @ai:kimi-k2 | 2026-02-10 | sub | proposed
+[^cn-17]: @ai:kimi-k2 | 2026-02-10 | sub | proposed
     supersedes: ct-16
     proposed-text: "URL path with header-based minor versioning (see Section 8 for details)"
     @ai:kimi-k2 2026-02-10: I've reviewed both ct-16 proposals. Neither REST nor gRPC is the right framing — this is actually a versioning question masquerading as a protocol question. The real issue: how do you evolve the API without breaking clients?
@@ -1028,14 +1028,14 @@ During migration between API versions:
           @alice 2026-02-12: I actually like this hybrid approach. It gives Bob his gRPC path without forking the URL space.
     open -- hybrid versioning proposal under discussion
 
-[^ct-20]: @ai:claude-opus-4.6 | 2026-02-08 | ins | proposed
+[^cn-20]: @ai:claude-opus-4.6 | 2026-02-08 | ins | proposed
     @ai:claude-opus-4.6 2026-02-08: Idempotency is mentioned in Section 1.4 (Architectural Principles) and referenced by the Idempotency-Key header in Section 4.2, but there's no dedicated section explaining the semantics. This is critical documentation — idempotency misunderstandings are the #1 cause of payment duplication bugs in production. Adding a complete section with implementation notes and edge cases.
       @alice 2026-02-09: Agreed this is a gap. The semantics are subtle — especially the "failed responses are not cached" behavior, which is intentional but surprising.
         @bob 2026-02-10 [question]: The 24-hour key expiry seems arbitrary. Stripe uses 48 hours. What's our rationale?
           @ai:claude-opus-4.6 2026-02-10: 24 hours is sufficient for retry scenarios (exponential backoff with 3 retries completes in <1 hour). Shorter expiry reduces storage costs. But 48 hours is safer for merchants with nightly batch processing — a payment initiated at 11pm and retried at 1am the next day would still be within the 24hr window, but a batch job that processes at 11pm two nights in a row could accidentally reuse a key. Changing to 48 hours is defensible.
     open
 
-[^ct-21]: @alice | 2026-02-03 | sub | proposed
+[^cn-21]: @alice | 2026-02-03 | sub | proposed
     context: "Standard | {100} req/min | {10} req/sec"
     @alice 2026-02-03: Increasing default from 100 to 1000 req/min. 100 is way too low for any real integration — a merchant with 50 concurrent users would hit the limit during normal operation.
       @bob 2026-02-04 [issue/blocking]: 1000 req/min per account is fine for legitimate use. My concern is abuse detection — at 1000/min, a compromised API key could make 1.44M requests/day before we notice. Our current monitoring alerts at 10x sustained rate but that's 10K/min which is meaningful load on our infrastructure.
@@ -1052,24 +1052,24 @@ During migration between API versions:
     approved: @bob 2026-02-11 "Numbers work with the per-endpoint safety valve"
     open -- pending formal phase 2 tracking item for dynamic PSP budget
 
-[^ct-22]: @alice | 2026-02-05 | ins | accepted
+[^cn-22]: @alice | 2026-02-05 | ins | accepted
     approved: @bob 2026-02-06
     @alice 2026-02-05: Automatic tier upgrades reduce support burden — merchants shouldn't have to ask for higher limits.
 
-[^ct-23]: @bob | 2026-02-08 | sub | proposed
+[^cn-23]: @bob | 2026-02-08 | sub | proposed
     @bob 2026-02-08: Two changes: (1) Increase payment creation limit from 50 to 100/min — 50 was too conservative even for standard tier. (2) Add webhook test endpoint limit — without it, a misconfigured test script could DDoS a merchant's own webhook receiver.
     open
 
-[^ct-24]: @alice | 2026-02-05 | sub | accepted
+[^cn-24]: @alice | 2026-02-05 | sub | accepted
     approved: @bob 2026-02-06
     context: "linking to a page with {detailed explanation and common solutions}"
     @alice 2026-02-05: "Resolution steps" is more actionable than "common solutions". We want docs that tell you what to do, not just what went wrong.
 
-[^ct-26]: @bob | 2026-02-07 | ins | accepted
+[^cn-26]: @bob | 2026-02-07 | ins | accepted
     approved: @alice 2026-02-08
     @bob 2026-02-07: Jitter is critical for distributed systems. Without it, all rate-limited clients retry simultaneously and create a thundering herd. This is a one-line code change for clients but prevents cascading failures.
 
-[^ct-27]: @bob | 2026-02-08 | sub | proposed
+[^cn-27]: @bob | 2026-02-08 | sub | proposed
     context: "PaymentFlow provides {exactly-once} delivery"
     @bob 2026-02-08: Exactly-once delivery is impossible in distributed systems without two-phase commit between our server and the merchant's endpoint. At-least-once with idempotency keys is the honest guarantee. Every payment webhook system that claims exactly-once is lying or has a footnote that says "in practice, at-least-once."
       @alice 2026-02-08: I wrote "exactly-once" because that's what we WANT to provide. The implementation is at-least-once with dedup, which from the merchant's perspective IS exactly-once if they implement the sequence number check.
@@ -1080,30 +1080,30 @@ During migration between API versions:
             edited @bob 2026-02-11: "two-phase commit" → "two-phase commit or distributed transaction" — other protocols achieve exactly-once but all require receiver coordination
     open -- wording agreed, pending final review
 
-[^ct-28]: @alice | 2026-02-10 | ins | proposed
+[^cn-28]: @alice | 2026-02-10 | ins | proposed
     @alice 2026-02-10: Failed event replay is table stakes. Without it, a webhook endpoint outage means lost events — merchants would need to poll our API to find what they missed.
       @bob 2026-02-10: Agreed. We should also add `GET /v1/events` as a general-purpose event listing endpoint, not just for failures. Some merchants prefer polling over webhooks for reliability.
     open
 
-[^ct-29]: @ai:kimi-k2 | 2026-02-10 | sub | proposed
+[^cn-29]: @ai:kimi-k2 | 2026-02-10 | sub | proposed
     context: "PaymentFlow uses {URL path} versioning"
     @ai:kimi-k2 2026-02-10: See ct-17 for the full versioning discussion. This inline change reflects the hybrid proposal — URL path for major versions, header for minor. Keeping this linked to the broader debate in ct-17.
     open
 
-[^ct-31]: @bob | 2026-02-06 | ins | accepted
+[^cn-31]: @bob | 2026-02-06 | ins | accepted
     approved: @alice 2026-02-07
     @bob 2026-02-06: The PCI section was too vague. Spelling out the tokenization architecture explicitly because this is the #1 thing auditors ask about. The vault separation is critical — it means a breach of the main API servers doesn't expose card data.
       @carol 2026-02-07: This is also important for the sales deck — "card numbers never touch our API servers" is a one-sentence differentiator.
     resolved @bob 2026-02-07
 
-[^ct-32]: @alice | 2026-02-10 | sub | proposed
+[^cn-32]: @alice | 2026-02-10 | sub | proposed
     context: "### 9.3 {Audit Logging}"
     @alice 2026-02-10: Adding "Compliance Trail" to the title because the audit log serves two audiences — operatonal debugging (who did what) and compliance auditors (prove you track everything). The current title only signals the first.
       @bob 2026-02-11: the actor object structure is good — having separate type/id fields means we can track API key actions vs user actions vs system actions distinctly
         @ai:claude-opus-4.6 2026-02-11 [suggestion]: Consider adding a `context` field to the audit entry that captures the business context (e.g., "subscription renewal" for a payment created by the billing system). This helps compliance auditors distinguish automated actions from manual ones without cross-referencing multiple log sources.
     open
 
-[^ct-33]: @alice | 2026-02-05 | sub | proposed
+[^cn-33]: @alice | 2026-02-05 | sub | proposed
     context: "Phase 1 launch: {2026-Q2}"
     @alice 2026-02-05: Pushing Phase 1 from Q2 to Q3. The OAuth implementation and PCI audit are taking longer than estimated. Q2 was aggressive — Q3 gives us a realistic buffer.
       @carol 2026-02-07 [issue]: Q3 pushes our go-to-market plan back a full quarter. Can we do a limited launch in Q2 with API keys only and add OAuth in Q3?
@@ -1112,15 +1112,15 @@ During migration between API versions:
             @carol 2026-02-09: Understood. Q3 it is. I'll adjust the GTM timeline.
     open -- timeline acknowledged but not formally approved
 
-[^ct-34]: @bob | 2026-02-07 | ins | accepted
+[^cn-34]: @bob | 2026-02-07 | ins | accepted
     approved: @alice 2026-02-08
     @bob 2026-02-07: Performance goals should be explicit and measurable. Sub-100ms P95 is achievable for synchronous operations. Async operations (webhooks, payouts) have different SLAs.
 
-[^ct-35]: @carol | 2026-02-09 | ins | accepted
+[^cn-35]: @carol | 2026-02-09 | ins | accepted
     approved: @alice 2026-02-09
     @carol 2026-02-09: Forward reference to the fraud section. Without the non-goal being explicit, we'll get feature requests for built-in fraud scoring.
 
-[^ct-25]: @alice | 2026-02-06 | sub | proposed
+[^cn-25]: @alice | 2026-02-06 | sub | proposed
     amend: team
     context: "Retry schedule: {1min, 5min, 30min, 2hr, 12hr, 24hr} ... Maximum retry period: {72} hours"
     @alice 2026-02-06: The current retry schedule is too aggressive at the start (1min first retry) and too lenient at the end (72 hours total). First retry at 30 seconds catches transient failures faster. Cutting to 48 hours total because if a webhook endpoint is down for 3 days, the merchant has bigger problems than missed events — they should be using the event replay API.
@@ -1146,7 +1146,7 @@ During migration between API versions:
     approved: @ai:claude-opus-4.6 2026-02-11
     open -- needs implementation spec for Retry-After cap and abuse prevention
 
-[^ct-30]: @bob | 2026-02-09 | sub | proposed
+[^cn-30]: @bob | 2026-02-09 | sub | proposed
     amend: solo
     context: "The {5-minute} tolerance window prevents replay attacks"
     @bob 2026-02-09: Adding "(300-second)" for implementors who need the exact number. API docs that say "5 minutes" without the exact seconds value lead to off-by-one bugs — is it 300 seconds? 299? 301? Stripe had this exact problem with their webhook tolerance docs.

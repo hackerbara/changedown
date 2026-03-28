@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { PendingEditManager, CrystallizedEdit, sendPendingEditFlushed } from '@changetracks/lsp-server/internals';
-import { Workspace } from '@changetracks/core';
+import { PendingEditManager, CrystallizedEdit, sendPendingEditFlushed } from '@changedown/lsp-server/internals';
+import { Workspace } from '@changedown/core';
 
 /**
  * Helper: collects crystallized edits emitted by the PendingEditManager.
@@ -333,7 +333,7 @@ describe('PendingEditManager', () => {
   });
 
   describe('Notification sender', () => {
-    it('should send changetracks/pendingEditFlushed notification', () => {
+    it('should send changedown/pendingEditFlushed notification', () => {
       const notifications: Array<{ method: string; params: any }> = [];
       const mockConnection = {
         sendNotification: (method: string, params: any) => {
@@ -349,7 +349,7 @@ describe('PendingEditManager', () => {
       );
 
       expect(notifications).toHaveLength(1);
-      expect(notifications[0].method).toBe('changetracks/pendingEditFlushed');
+      expect(notifications[0].method).toBe('changedown/pendingEditFlushed');
       expect(notifications[0].params.uri).toBe('file:///test.md');
       expect(notifications[0].params.newText).toBe('{++hello++}');
       expect(notifications[0].params.range).toStrictEqual({

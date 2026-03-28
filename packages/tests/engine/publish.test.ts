@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { publishSettled } from 'changetracks/internals';
+import { publishSettled } from 'changedown/internals';
 
 describe('publishSettled', () => {
   it('produces clean output with all changes applied', () => {
     const content = [
       'Hello {++beautiful ++}world{-- of pain--}.',
       '',
-      '[^ct-1]: @alice | 2026-02-01 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-01 | ins | proposed',
     ].join('\n');
     const result = publishSettled(content);
     // Accept-all semantics: insertions kept, deletions removed, footnotes stripped

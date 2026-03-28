@@ -1,5 +1,5 @@
-import { parseTrackingHeader } from '@changetracks/core';
-import { isFileInScope, type ChangeTracksConfig } from './config.js';
+import { parseTrackingHeader } from '@changedown/core';
+import { isFileInScope, type ChangeDownConfig } from './config.js';
 import * as fs from 'node:fs/promises';
 
 export interface TrackingStatus {
@@ -13,7 +13,7 @@ export interface TrackingStatus {
 /**
  * Resolves the tracking status of a file using three-layer precedence:
  *
- * 1. **File header** — `<!-- ctrcks.com/v1: tracked|untracked -->` in the
+ * 1. **File header** — `<!-- changedown.com/v1: tracked|untracked -->` in the
  *    first 5 lines takes highest priority.
  * 2. **Project config** — if the file matches include/exclude globs, the
  *    `tracking.default` config value is used.
@@ -24,7 +24,7 @@ export interface TrackingStatus {
  */
 export async function resolveTrackingStatus(
   filePath: string,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
   projectDir: string,
 ): Promise<TrackingStatus> {
   const projectDefault = config.tracking.default;

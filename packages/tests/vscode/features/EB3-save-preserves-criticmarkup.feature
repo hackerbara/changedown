@@ -1,6 +1,6 @@
 @integration @EB3 @destructive
 Feature: Save preserves CriticMarkup — panel state interaction bug
-  As a document author using ChangeTracks
+  As a document author using ChangeDown
   I want CriticMarkup to survive document save operations across all state transitions
   So my tracked changes and review feedback are never silently lost
 
@@ -39,9 +39,9 @@ Feature: Save preserves CriticMarkup — panel state interaction bug
     And the panel shows tracking is disabled
     When I add a footnoted comment "feedback here" highlighting "content" in the document
     And I wait 500ms
-    Then the live document contains "[^ct-"
+    Then the live document contains "[^cn-"
     When I press Cmd+S to save
-    Then the on-disk file contains "[^ct-"
+    Then the on-disk file contains "[^cn-"
     And the on-disk file contains "feedback here"
 
   # --- 1B: Blank file, tracking OFF, insert comment, save, THEN turn tracking ON ---
@@ -118,17 +118,17 @@ Feature: Save preserves CriticMarkup — panel state interaction bug
   Scenario: Existing CriticMarkup — save preserves all footnotes
     Given a tracked file-backed document with CriticMarkup
     When I press Cmd+S to save
-    Then the on-disk file contains "[^ct-1]"
-    And the on-disk file contains "[^ct-2]"
-    And the on-disk file contains "[^ct-3]"
-    And the on-disk file contains "[^ct-4]"
+    Then the on-disk file contains "[^cn-1]"
+    And the on-disk file contains "[^cn-2]"
+    And the on-disk file contains "[^cn-3]"
+    And the on-disk file contains "[^cn-4]"
     And the on-disk file contains "Added rate limiting to prevent abuse"
     And the on-disk file contains "Review feedback on highlighted section"
 
   Scenario: Existing CriticMarkup — save preserves tracking header
     Given a tracked file-backed document with CriticMarkup
     When I press Cmd+S to save
-    Then the on-disk file contains "<!-- ctrcks.com/v1: tracked -->"
+    Then the on-disk file contains "<!-- changedown.com/v1: tracked -->"
 
   # ===================================================================
   # PART 3: PANEL STATE TRANSITIONS — toggle tracking, then save
@@ -146,7 +146,7 @@ Feature: Save preserves CriticMarkup — panel state interaction bug
     When I press Cmd+S to save
     Then the on-disk file contains "{++Rate limiting is enabled for all public endpoints.++}"
     And the on-disk file contains "{>> This is review feedback <<}"
-    And the on-disk file contains "[^ct-4]"
+    And the on-disk file contains "[^cn-4]"
 
   Scenario: Panel tracking state matches controller after toggle cycle
     Given a tracked file-backed document with CriticMarkup
@@ -165,7 +165,7 @@ Feature: Save preserves CriticMarkup — panel state interaction bug
     And I press Cmd+S to save
     Then the on-disk file contains "{++Rate limiting is enabled for all public endpoints.++}"
     And the on-disk file contains "{>> This is review feedback <<}"
-    And the on-disk file contains "[^ct-4]"
+    And the on-disk file contains "[^cn-4]"
 
   # ===================================================================
   # PART 4: EXTERNAL EDIT (MCP TOOL) — write CriticMarkup to file on disk
@@ -187,15 +187,15 @@ Feature: Save preserves CriticMarkup — panel state interaction bug
     And the panel shows tracking is enabled
     When an external tool writes a full change with footnote to the file:
       """
-      {==review target==}{>>external review feedback<<}[^ct-1]
+      {==review target==}{>>external review feedback<<}[^cn-1]
 
-      [^ct-1]: @ai:claude | 2026-03-01 | comment | proposed
+      [^cn-1]: @ai:claude | 2026-03-01 | comment | proposed
           External review feedback on target section
       """
     And I wait for external file change to propagate
     And I press Cmd+S to save
     Then the on-disk file contains "{>>external review feedback<<}"
-    And the on-disk file contains "[^ct-1]"
+    And the on-disk file contains "[^cn-1]"
     And the on-disk file contains "External review feedback on target section"
 
   # ===================================================================
@@ -214,11 +214,11 @@ Feature: Save preserves CriticMarkup — panel state interaction bug
     And the panel shows tracking is enabled
     When an external tool appends a new change before footnotes:
       """
-      {==typography==}{>>The NNBSP finding connects to the weighted pass<<}[^ct-5]
+      {==typography==}{>>The NNBSP finding connects to the weighted pass<<}[^cn-5]
       """
     And an external tool appends to the footnote section:
       """
-      [^ct-5]: @ai:claude-opus-4.6 | 2026-03-01 | comment | proposed
+      [^cn-5]: @ai:claude-opus-4.6 | 2026-03-01 | comment | proposed
           Typography specificity observation from variance study
       """
     And I wait for external file change to propagate
@@ -226,11 +226,11 @@ Feature: Save preserves CriticMarkup — panel state interaction bug
     And the live document contains "{>>The NNBSP finding connects to the weighted pass<<}"
     When I press Cmd+S to save
     Then the on-disk file contains "{>>The NNBSP finding connects to the weighted pass<<}"
-    And the on-disk file contains "[^ct-5]"
+    And the on-disk file contains "[^cn-5]"
     And the on-disk file contains "Typography specificity observation from variance study"
     # Pre-existing markup must also survive
     And the on-disk file contains "{++Rate limiting is enabled for all public endpoints.++}"
-    And the on-disk file contains "[^ct-1]"
+    And the on-disk file contains "[^cn-1]"
 
   Scenario: BUG REPRO — tracking ON, dirty buffer, external edit, save
     # Variant: user has typed something (buffer dirty), then external tool writes.
@@ -248,8 +248,8 @@ Feature: Save preserves CriticMarkup — panel state interaction bug
     # At minimum, the pre-existing CriticMarkup must survive
     Then the on-disk file contains "{++Rate limiting is enabled for all public endpoints.++}"
     And the on-disk file contains "{~~session cookies~>OAuth2 with JWT~~}"
-    And the on-disk file contains "[^ct-1]"
-    And the on-disk file contains "[^ct-2]"
+    And the on-disk file contains "[^cn-1]"
+    And the on-disk file contains "[^cn-2]"
 
   # ===================================================================
   # PART 6: STATE SNAPSHOT ASSERTIONS — verify intermediate states

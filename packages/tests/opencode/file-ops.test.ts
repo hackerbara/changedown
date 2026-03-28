@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { extractLineRange, findUniqueMatch, appendFootnote } from '@changetracks/opencode-plugin/internals';
-import { defaultNormalizer } from '@changetracks/core';
+import { extractLineRange, findUniqueMatch, appendFootnote } from '@changedown/opencode-plugin/internals';
+import { defaultNormalizer } from '@changedown/core';
 
 describe('extractLineRange', () => {
   it('returns correct content and offsets for a valid line range', () => {
@@ -97,36 +97,36 @@ describe('findUniqueMatch', () => {
 describe('appendFootnote', () => {
   it('appends footnote to document without existing footnotes', () => {
     const text = 'Some content here.';
-    const footnote = '\n[^ct-1]: @author | 2026-02-12 | ins | proposed';
+    const footnote = '\n[^cn-1]: @author | 2026-02-12 | ins | proposed';
     const result = appendFootnote(text, footnote);
 
     expect(result).toBe(text + footnote);
   });
 
   it('appends after existing footnote block', () => {
-    const text = `Some text with markup[^ct-1] here.
+    const text = `Some text with markup[^cn-1] here.
 
-[^ct-1]: @alice | 2026-02-10 | ins | proposed`;
-    const footnote = '\n[^ct-2]: @bob | 2026-02-12 | sub | proposed';
+[^cn-1]: @alice | 2026-02-10 | ins | proposed`;
+    const footnote = '\n[^cn-2]: @bob | 2026-02-12 | sub | proposed';
     const result = appendFootnote(text, footnote);
 
-    expect(result.indexOf('[^ct-2]:')).toBeGreaterThan(result.indexOf('[^ct-1]:'));
-    expect(result).toContain('[^ct-1]: @alice');
-    expect(result).toContain('[^ct-2]: @bob');
+    expect(result.indexOf('[^cn-2]:')).toBeGreaterThan(result.indexOf('[^cn-1]:'));
+    expect(result).toContain('[^cn-1]: @alice');
+    expect(result).toContain('[^cn-2]: @bob');
   });
 
   it('handles footnote with continuation lines', () => {
-    const text = `Content[^ct-1].
+    const text = `Content[^cn-1].
 
-[^ct-1]: @alice | 2026-02-10 | ins | proposed
+[^cn-1]: @alice | 2026-02-10 | ins | proposed
     reason: Some reason`;
-    const footnote = '\n[^ct-2]: @bob | 2026-02-12 | del | proposed';
+    const footnote = '\n[^cn-2]: @bob | 2026-02-12 | del | proposed';
     const result = appendFootnote(text, footnote);
 
     // New footnote should come after the continuation lines
-    const sc1Pos = result.indexOf('[^ct-1]:');
+    const sc1Pos = result.indexOf('[^cn-1]:');
     const reasonPos = result.indexOf('    reason:');
-    const sc2Pos = result.indexOf('[^ct-2]:');
+    const sc2Pos = result.indexOf('[^cn-2]:');
     expect(sc2Pos).toBeGreaterThan(reasonPos);
     expect(sc2Pos).toBeGreaterThan(sc1Pos);
   });
@@ -135,18 +135,18 @@ describe('appendFootnote', () => {
     const text = `## Example
 
 \`\`\`markdown
-Content[^ct-99] here.
+Content[^cn-99] here.
 
-[^ct-99]: @alice | 2026-02-10 | ins | proposed
+[^cn-99]: @alice | 2026-02-10 | ins | proposed
 \`\`\`
 
 More content`;
-    const footnote = '\n[^ct-1]: @bob | 2026-02-12 | sub | proposed';
+    const footnote = '\n[^cn-1]: @bob | 2026-02-12 | sub | proposed';
     const result = appendFootnote(text, footnote);
 
     // New footnote should be at the end, not after the code block footnote
     const lastFence = result.lastIndexOf('```');
-    const footnotePos = result.indexOf('[^ct-1]:');
+    const footnotePos = result.indexOf('[^cn-1]:');
     expect(footnotePos).toBeGreaterThan(lastFence);
   });
 });

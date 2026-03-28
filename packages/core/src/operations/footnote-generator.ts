@@ -3,7 +3,7 @@ import { nowTimestamp } from '../timestamp.js';
 import { ChangeType } from '../model/types.js';
 
 /**
- * Generates a footnote definition line for a ChangeTracks change.
+ * Generates a footnote definition line for a ChangeDown change.
  *
  * Format: `[^id]: @author | date | type | proposed`
  * When author is omitted: `[^id]: date | type | proposed`
@@ -147,10 +147,10 @@ export function buildContextualL3EditOp(params: ContextualEditOpParams): string 
 }
 
 /**
- * Scans text for all `[^ct-N]` and `[^ct-N.M]` patterns and returns
- * the maximum parent ID number found. Returns 0 if no ct-IDs exist.
+ * Scans text for all `[^cn-N]` and `[^cn-N.M]` patterns and returns
+ * the maximum parent ID number found. Returns 0 if no cn-IDs exist.
  */
-export function scanMaxCtId(text: string): number {
+export function scanMaxCnId(text: string): number {
   const pattern = footnoteRefNumericGlobal();
   let max = 0;
   let match: RegExpExecArray | null;

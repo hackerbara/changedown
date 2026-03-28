@@ -27,9 +27,9 @@ Feature: L3 Compaction
     And the footnote is removed
 
   Scenario: Supersede chain compaction
-    Given an L3 document with a supersede chain ct-1 to ct-2
-    When I compact ct-2
-    Then both ct-1 and ct-2 are compacted
+    Given an L3 document with a supersede chain cn-1 to cn-2
+    When I compact cn-2
+    Then both cn-1 and cn-2 are compacted
     And the compacted file is self-sufficient
 
   Scenario: Multiple compaction events produce multiple boundaries

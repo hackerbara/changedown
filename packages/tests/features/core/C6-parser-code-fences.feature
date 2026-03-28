@@ -176,10 +176,10 @@ Feature: Parser — Code Fence Awareness
     Then there are 0 changes
 
   Scenario: Footnote defs outside code blocks still parse correctly
-    Given the text "{++added text++}[^ct-1]\n\n```\n{++not a change++}\n```\n\n[^ct-1]: @alice | 2026-02-10 | ins | pending"
+    Given the text "{++added text++}[^cn-1]\n\n```\n{++not a change++}\n```\n\n[^cn-1]: @alice | 2026-02-10 | ins | pending"
     When I parse the text
     Then there is 1 change
-    And change 1 has id "ct-1"
+    And change 1 has id "cn-1"
 
   Scenario: Real change immediately adjacent to fence boundary
     Given the text "```\ncode\n```\n{++real++}"

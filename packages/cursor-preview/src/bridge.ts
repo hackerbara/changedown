@@ -61,7 +61,7 @@ export function init(): void {
   if (!isEnabled()) return;
 
   activeStrategy = selectStrategy();
-  console.log(`[changetracks] Lexical bridge initialized (strategy: ${activeStrategy.name})`);
+  console.log(`[changedown] Lexical bridge initialized (strategy: ${activeStrategy.name})`);
 
   // Only observe the document, not with overly broad scope
   observer = new MutationObserver((mutations) => {

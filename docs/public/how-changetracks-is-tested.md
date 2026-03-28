@@ -1,6 +1,6 @@
-# How ChangeTracks Is Tested
+# How ChangeDown Is Tested
 
-ChangeTracks is a change-tracking protocol where changes carry not just *what* changed but *why*. The testing strategy follows the same principle: tests carry not just *what passed* but *why it matters* -- through BDD scenarios written in the language of the domain, backed by technical assertions across every layer. See [Glossary](glossary.md) for term definitions.
+ChangeDown is a change-tracking protocol where changes carry not just *what* changed but *why*. The testing strategy follows the same principle: tests carry not just *what passed* but *why it matters* -- through BDD scenarios written in the language of the domain, backed by technical assertions across every layer. See [Glossary](glossary.md) for term definitions.
 
 > **Quick numbers:** 51 BDD features (714 scenarios, 3,051 steps) | 213 test files across 9 packages | 87% aggregate line coverage | 54 visual-regression baselines | No CI pipeline -- all tests run locally.
 
@@ -88,10 +88,10 @@ The test pyramid has 213 test files across 9 packages, using four frameworks cho
 | Package | Test Files | Framework | What is covered |
 |---------|-----------|-----------|-----------------|
 | `packages/core` | 35 | Mocha | Parser (two-pass delimiter scan + footnote merge), accept/reject/settle operations, three-zone renderer, hashline coordinates, view projections |
-| `changetracks-plugin/mcp-server` | 76 | Vitest | All 7 MCP tools, both protocol modes (classic + compact), author enforcement, batch operations, session state, error handling |
+| `changedown-plugin/mcp-server` | 76 | Vitest | All 7 MCP tools, both protocol modes (classic + compact), author enforcement, batch operations, session state, error handling |
 | `packages/vscode-extension` | 30 | @vscode/test-cli | Decorator (12 types), smart view, code actions, code lens, comment API, TreeView panel, SCM provider, walkthrough |
 | `packages/cli` | 22 | Vitest | CLI commands (status, diff, settle, publish) + engine layer shared with MCP server |
-| `changetracks-plugin/hooks-impl` | 22 | Vitest | PreToolUse/PostToolUse/Stop hooks, policy modes (strict/safety-net/permissive), batch wrapping |
+| `changedown-plugin/hooks-impl` | 22 | Vitest | PreToolUse/PostToolUse/Stop hooks, policy modes (strict/safety-net/permissive), batch wrapping |
 | `packages/lsp-server` | 13 | Mocha | Semantic tokens, diagnostics, code actions, code lens, hover, document links |
 | `packages/cursor-preview` | 7 | Vitest | Cursor Lexical editor bridge |
 | `packages/opencode-plugin` | 6 | Vitest | OpenCode AI platform integration |
@@ -139,7 +139,7 @@ Two example documents serve as both user-facing demos and implicit integration t
 
 ## Multi-Surface Benchmarks
 
-ChangeTracks exposes the same protocol through multiple surfaces -- different ways agents interact with tracked files. The benchmark harness (`packages/benchmarks/`) measures agent behavior across all of them.
+ChangeDown exposes the same protocol through multiple surfaces -- different ways agents interact with tracked files. The benchmark harness (`packages/benchmarks/`) measures agent behavior across all of them.
 
 ### Surfaces
 
@@ -171,7 +171,7 @@ The benchmark harness defines 10 task types representing real editing workflows.
 | task9-disambiguate | Ambiguity resolution | Clarifying vague language |
 | task10-multifile | Multi-file changes | Cross-file consistency |
 
-The benchmark matrix (8 surfaces x 10+ tasks) produces structured results in `results/` with per-run `summary.json`, `tool-calls.md`, and before/after file snapshots. This data drives the analysis in [How ChangeTracks Is Benchmarked](how-changetracks-is-benchmarked.md).
+The benchmark matrix (8 surfaces x 10+ tasks) produces structured results in `results/` with per-run `summary.json`, `tool-calls.md`, and before/after file snapshots. This data drives the analysis in [How ChangeDown Is Benchmarked](how-changedown-is-benchmarked.md).
 
 ### Friction Logging
 
@@ -181,7 +181,7 @@ Benchmark runs include real-time friction logging (`docs/research/2026-02-27-liv
 
 ```mermaid
 graph TD
-    subgraph "ChangeTracks Test Pyramid"
+    subgraph "ChangeDown Test Pyramid"
         E2E["End-to-End<br/>6 agent journey features (AJ1-AJ6)<br/>Visual regression (54 baselines)<br/>Walkthrough journeys"]
                 INT["Integration<br/>51 BDD feature files (714 scenarios)<br/>MCP stdio protocol tests (P1)<br/>Benchmark matrix (8 surfaces, tasks 1-6)"]
         UNIT["Unit<br/>213 test files across 9 packages<br/>Parser, operations, renderers, tools<br/>Hooks, config, LSP capabilities"]

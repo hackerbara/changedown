@@ -89,7 +89,7 @@ export function computeCommittedLine(
     // rejected: neither flag
   }
 
-  // 1. Substitutions: {~~old~>new~~}[^ct-N]?
+  // 1. Substitutions: {~~old~>new~~}[^cn-N]?
   result = result.replace(multiLineSubstitution(), (_match, old: string, newText: string, _refFull: string | undefined, refId: string | undefined) => {
     const status = resolveStatus(refId, footnotes);
     trackStatus(status, refId);
@@ -97,7 +97,7 @@ export function computeCommittedLine(
     return status === 'accepted' ? newText : old;
   });
 
-  // 2. Insertions: {++text++}[^ct-N]?
+  // 2. Insertions: {++text++}[^cn-N]?
   result = result.replace(multiLineInsertion(), (_match, content: string, _refFull: string | undefined, refId: string | undefined) => {
     const status = resolveStatus(refId, footnotes);
     trackStatus(status, refId);
@@ -105,7 +105,7 @@ export function computeCommittedLine(
     return status === 'accepted' ? content : '';
   });
 
-  // 3. Deletions: {--text--}[^ct-N]?
+  // 3. Deletions: {--text--}[^cn-N]?
   result = result.replace(multiLineDeletion(), (_match, content: string, _refFull: string | undefined, refId: string | undefined) => {
     const status = resolveStatus(refId, footnotes);
     trackStatus(status, refId);
@@ -113,7 +113,7 @@ export function computeCommittedLine(
     return status === 'accepted' ? '' : content;
   });
 
-  // 4. Highlights: {==text==}[^ct-N]? — always show content, no flag, no changeId
+  // 4. Highlights: {==text==}[^cn-N]? — always show content, no flag, no changeId
   result = result.replace(multiLineHighlight(), (_match, content: string) => {
     return content;
   });
@@ -121,7 +121,7 @@ export function computeCommittedLine(
   // 5. Comments: {>>text<<} — always removed
   result = result.replace(multiLineComment(), '');
 
-  // 6. Standalone footnote refs: [^ct-N] — always removed
+  // 6. Standalone footnote refs: [^cn-N] — always removed
   result = result.replace(footnoteRefGlobal(), '');
 
   // Compute flag: P takes priority over A
@@ -140,7 +140,7 @@ export interface CommittedLine {
   text: string;              // committed text (no CriticMarkup)
   hash: string;              // committed hash (2 hex chars)
   flag: '' | 'P' | 'A';     // status flag
-  changeIds: string[];       // ct-N IDs on this line
+  changeIds: string[];       // cn-N IDs on this line
 }
 
 export interface CommittedViewResult {

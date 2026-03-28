@@ -9,7 +9,7 @@ dist-esm/
 *.tsbuildinfo
 
 # Exception: Claude Code plugin needs pre-built esbuild bundles
-!changetracks-plugin/*/dist/
+!changedown-plugin/*/dist/
 
 # VS Code test artifacts
 .vscode-test/

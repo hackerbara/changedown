@@ -5,19 +5,19 @@ import { loadCliInit } from '../cli-init';
 
 export function registerSetupCommands(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('changetracks.setupProject', async () => {
+        vscode.commands.registerCommand('changedown.setupProject', async () => {
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             if (!workspaceFolder) {
-                vscode.window.showWarningMessage('Open a folder first to set up ChangeTracks.');
+                vscode.window.showWarningMessage('Open a folder first to set up ChangeDown.');
                 return;
             }
 
             const workspaceRoot = workspaceFolder.uri.fsPath;
-            const configDir = path.join(workspaceRoot, '.changetracks');
+            const configDir = path.join(workspaceRoot, '.changedown');
             const configPath = path.join(configDir, 'config.toml');
 
             if (fs.existsSync(configPath)) {
-                vscode.window.showInformationMessage('ChangeTracks is already configured in this project.');
+                vscode.window.showInformationMessage('ChangeDown is already configured in this project.');
                 return;
             }
 
@@ -49,9 +49,9 @@ export function registerSetupCommands(context: vscode.ExtensionContext): void {
             }
 
             await vscode.commands.executeCommand('workbench.files.action.refreshFilesExplorer');
-            vscode.window.showInformationMessage('ChangeTracks initialized! Continue the walkthrough to explore.');
+            vscode.window.showInformationMessage('ChangeDown initialized! Continue the walkthrough to explore.');
         }),
-        vscode.commands.registerCommand('changetracks.openDemo', async () => {
+        vscode.commands.registerCommand('changedown.openDemo', async () => {
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             if (!workspaceFolder) {
                 vscode.window.showWarningMessage('Open a folder first.');
@@ -71,12 +71,12 @@ export function registerSetupCommands(context: vscode.ExtensionContext): void {
                     return;
                 }
             }
-            await vscode.commands.executeCommand('changetracksReview.focus');
+            await vscode.commands.executeCommand('changedownReview.focus');
         }),
-        vscode.commands.registerCommand('changetracks.revealSettingsPanel', async () => {
-            await vscode.commands.executeCommand('changetracksSettings.focus');
+        vscode.commands.registerCommand('changedown.revealSettingsPanel', async () => {
+            await vscode.commands.executeCommand('changedownSettings.focus');
         }),
-        vscode.commands.registerCommand('changetracks.openExample', async () => {
+        vscode.commands.registerCommand('changedown.openExample', async () => {
             const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
             if (!workspaceFolder) {
                 vscode.window.showWarningMessage('Open a folder first.');
@@ -100,7 +100,7 @@ export function registerSetupCommands(context: vscode.ExtensionContext): void {
                 vscode.window.showWarningMessage('Example file not found. Run "Set Up This Project" first.');
             }
         }),
-        vscode.commands.registerCommand('changetracks.setupAgents', async () => {
+        vscode.commands.registerCommand('changedown.setupAgents', async () => {
             const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
             if (!workspaceRoot) return;
 

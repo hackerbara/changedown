@@ -6,13 +6,13 @@ import {
   parseForFormat,
   ChangeType,
   ChangeStatus,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 describe('view-builder-utils', () => {
   describe('buildDeliberationHeader', () => {
     it('produces correct counts from footnotes', () => {
       const ct1Node = {
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Insertion,
         status: ChangeStatus.Proposed,
         range: { start: 0, end: 10 },
@@ -24,7 +24,7 @@ describe('view-builder-utils', () => {
         footnoteLineRange: { startLine: 10, endLine: 10 },
       };
       const ct2Node = {
-        id: 'ct-2',
+        id: 'cn-2',
         type: ChangeType.Deletion,
         status: ChangeStatus.Accepted,
         range: { start: 0, end: 10 },
@@ -66,7 +66,7 @@ describe('view-builder-utils', () => {
 
   describe('computeContinuationLines', () => {
     it('produces identical output with preParsed changes', () => {
-      const content = 'Hello {++world\nfoo++}[^ct-1]\n\n[^ct-1]: @alice | 2026-03-23 | ins | proposed';
+      const content = 'Hello {++world\nfoo++}[^cn-1]\n\n[^cn-1]: @alice | 2026-03-23 | ins | proposed';
       const withoutPreParsed = computeContinuationLines(content);
       const changes = parseForFormat(content).getChanges();
       const withPreParsed = computeContinuationLines(content, changes);
@@ -76,11 +76,11 @@ describe('view-builder-utils', () => {
 
   describe('buildLineRefMap', () => {
     it('maps line indices to footnote IDs from refs', () => {
-      const content = 'Hello[^ct-1] world.\nSecond line[^ct-2].\n\n[^ct-1]: a\n[^ct-2]: b';
+      const content = 'Hello[^cn-1] world.\nSecond line[^cn-2].\n\n[^cn-1]: a\n[^cn-2]: b';
       const lines = content.split('\n');
       const map = buildLineRefMap(lines);
-      expect([...map.get(0)!]).toStrictEqual(['ct-1']);
-      expect([...map.get(1)!]).toStrictEqual(['ct-2']);
+      expect([...map.get(0)!]).toStrictEqual(['cn-1']);
+      expect([...map.get(1)!]).toStrictEqual(['cn-2']);
       expect(map.has(2)).toBe(false);
     });
   });

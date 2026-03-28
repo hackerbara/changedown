@@ -8,7 +8,7 @@ import {
   ChangeType,
   ChangeStatus,
   type TextEdit,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 /**
  * Apply an array of TextEdits to a string. Edits are applied in reverse offset
@@ -58,16 +58,16 @@ describe('AJ5: Agent-human collaboration across surfaces', () => {
     });
     expect(proposeResult.isError).toBeUndefined();
     const proposeData = ctx.parseResult(proposeResult);
-    expect(proposeData.change_id).toBe('ct-1');
+    expect(proposeData.change_id).toBe('cn-1');
     expect(proposeData.type).toBe('sub');
 
     // Verify disk: substitution markup + footnote present
     const disk1 = await ctx.readDisk(filePath);
     expect(disk1).toContain('{~~manual processes~>CI/CD pipeline~~}');
-    expect(disk1).toContain('[^ct-1]');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
+    expect(disk1).toContain('[^cn-1]');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'proposed');
 
-    // ── Human side: parse with @changetracks/core CriticMarkupParser ─
+    // ── Human side: parse with @changedown/core CriticMarkupParser ─
     const parser = new CriticMarkupParser();
     const doc = parser.parse(disk1);
     const changes = doc.getChanges();
@@ -77,13 +77,13 @@ describe('AJ5: Agent-human collaboration across surfaces', () => {
     expect(substitutions).toHaveLength(1);
 
     const change = substitutions[0];
-    expect(change.id).toBe('ct-1');
+    expect(change.id).toBe('cn-1');
     expect(change.originalText).toBe('manual processes');
     expect(change.modifiedText).toBe('CI/CD pipeline');
 
     // ── Human accepts via core computeAccept ─────────────────────────
     const acceptEdit = computeAccept(change);
-    const statusEdits = computeFootnoteStatusEdits(disk1, ['ct-1'], 'accepted');
+    const statusEdits = computeFootnoteStatusEdits(disk1, ['cn-1'], 'accepted');
     const allEdits = [acceptEdit, ...statusEdits];
     const acceptedContent = applyEdits(disk1, allEdits);
 
@@ -98,7 +98,7 @@ describe('AJ5: Agent-human collaboration across surfaces', () => {
     expect(disk2).not.toContain('~~}');
 
     // Footnote status is "accepted"
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
 
     // ── Agent verifies the result via MCP read ───────────────────────
     const readResult = await ctx.read(filePath, { view: 'meta' });
@@ -118,13 +118,13 @@ describe('AJ5: Agent-human collaboration across surfaces', () => {
     // Create file with human-authored CriticMarkup (as if VS Code tracking mode)
     const humanMarkup = `# Shared Document
 
-The deployment uses {~~manual processes~>automated deployment~~}[^ct-1].
-{++Alerts are sent via PagerDuty.++}[^ct-2]
+The deployment uses {~~manual processes~>automated deployment~~}[^cn-1].
+{++Alerts are sent via PagerDuty.++}[^cn-2]
 Monitoring is done via server logs.
 
-[^ct-1]: @human-editor | 2026-02-20 | sub | proposed
+[^cn-1]: @human-editor | 2026-02-20 | sub | proposed
     reason: Manual deploys are error-prone
-[^ct-2]: @human-editor | 2026-02-20 | ins | proposed
+[^cn-2]: @human-editor | 2026-02-20 | ins | proposed
     reason: Need alerting beyond logs`;
 
     const filePath = await ctx.createFile('shared.md', humanMarkup);
@@ -136,11 +136,11 @@ Monitoring is done via server logs.
 
     // Meta view shows proposed changes by @human-editor
     expect(metaText).toMatch(/proposed/);
-    expect(metaText).toContain('ct-1');
-    expect(metaText).toContain('ct-2');
+    expect(metaText).toContain('cn-1');
+    expect(metaText).toContain('cn-2');
 
-    // ── Agent calls get_change for ct-1 ──────────────────────────────
-    const getResult = await ctx.getChange(filePath, 'ct-1');
+    // ── Agent calls get_change for cn-1 ──────────────────────────────
+    const getResult = await ctx.getChange(filePath, 'cn-1');
     expect(getResult.isError).toBeUndefined();
     const changeData = ctx.parseResult(getResult);
     expect(changeData.type).toBe('sub');
@@ -150,22 +150,22 @@ Monitoring is done via server logs.
     const footnote = changeData.footnote as Record<string, unknown>;
     expect(footnote.reasoning).toContain('Manual deploys are error-prone');
 
-    // ── Agent approves ct-1 ──────────────────────────────────────────
+    // ── Agent approves cn-1 ──────────────────────────────────────────
     const approveResult = await ctx.review(filePath, {
       reviews: [{
-        change_id: 'ct-1',
+        change_id: 'cn-1',
         decision: 'approve',
         reason: 'Good practice',
       }],
       author: 'ai:reviewer',
     });
     expect(approveResult.isError).toBeUndefined();
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
 
-    // ── Agent responds to ct-2 with suggestion ───────────────────────
+    // ── Agent responds to cn-2 with suggestion ───────────────────────
     const respondResult = await ctx.review(filePath, {
       responses: [{
-        change_id: 'ct-2',
+        change_id: 'cn-2',
         response: 'Consider also adding Datadog APM',
         label: 'suggestion',
       }],
@@ -173,8 +173,8 @@ Monitoring is done via server logs.
     });
     expect(respondResult.isError).toBeUndefined();
 
-    // ct-2 remains proposed (no decision made, only a comment)
-    await ctx.assertFootnoteStatus(filePath, 'ct-2', 'proposed');
+    // cn-2 remains proposed (no decision made, only a comment)
+    await ctx.assertFootnoteStatus(filePath, 'cn-2', 'proposed');
 
     // Verify agent's suggestion exists in the footnote
     const disk2 = await ctx.readDisk(filePath);
@@ -187,13 +187,13 @@ Monitoring is done via server logs.
     const doc = parser.parse(disk2);
     const changes = doc.getChanges();
 
-    // ct-1 shows as accepted via the parser's status field (set from footnote header)
-    const sc1 = changes.find(c => c.id === 'ct-1');
+    // cn-1 shows as accepted via the parser's status field (set from footnote header)
+    const sc1 = changes.find(c => c.id === 'cn-1');
     expect(sc1).toBeDefined();
     expect(sc1!.status).toBe(ChangeStatus.Accepted);
 
-    // ct-2 remains proposed; the full parser picks up the agent's discussion entry
-    const sc2 = changes.find(c => c.id === 'ct-2');
+    // cn-2 remains proposed; the full parser picks up the agent's discussion entry
+    const sc2 = changes.find(c => c.id === 'cn-2');
     expect(sc2).toBeDefined();
     expect(sc2!.status).toBe(ChangeStatus.Proposed);
     // The full parser populates metadata.discussion for labeled replies
@@ -221,18 +221,18 @@ Monitoring is done via server logs.
     });
     expect(proposeResult.isError).toBeUndefined();
     const proposeData = ctx.parseResult(proposeResult);
-    expect(proposeData.change_id).toBe('ct-1');
+    expect(proposeData.change_id).toBe('cn-1');
 
     // ── Step 2: Human edits file directly to add a comment in the footnote ─
     // This simulates a human adding a comment via VS Code's comment UI or
     // directly editing the footnote block.
     let disk1 = await ctx.readDisk(filePath);
-    expect(disk1).toContain('[^ct-1]:');
+    expect(disk1).toContain('[^cn-1]:');
 
-    // Human adds a reply line to the ct-1 footnote
+    // Human adds a reply line to the cn-1 footnote
     const humanComment = '    @human-editor 2026-02-20: We also need rollback support — CI/CD alone is not enough';
     disk1 = disk1.replace(
-      /(\[\^ct-1\]:.*(?:\n    .*)*)(\n|$)/,
+      /(\[\^cn-1\]:.*(?:\n    .*)*)(\n|$)/,
       (match, footnoteBlock, trailing) => `${footnoteBlock}\n${humanComment}${trailing}`
     );
     await fs.writeFile(filePath, disk1, 'utf-8');
@@ -243,7 +243,7 @@ Monitoring is done via server logs.
     expect(disk1b).toContain('@human-editor');
 
     // ── Step 3: Agent reads file and sees the human comment via get_change ─
-    const getResult = await ctx.getChange(filePath, 'ct-1', { include_raw_footnote: true });
+    const getResult = await ctx.getChange(filePath, 'cn-1', { include_raw_footnote: true });
     expect(getResult.isError).toBeUndefined();
     const changeData = ctx.parseResult(getResult);
 
@@ -252,8 +252,8 @@ Monitoring is done via server logs.
     expect(footnoteData.raw_text).toBeDefined();
     expect(footnoteData.raw_text as string).toContain('rollback support');
 
-    // ── Step 4: Agent amends ct-1 incorporating feedback (supersede) ──
-    const amendResult = await ctx.amend(filePath, 'ct-1', {
+    // ── Step 4: Agent amends cn-1 incorporating feedback (supersede) ──
+    const amendResult = await ctx.amend(filePath, 'cn-1', {
       new_text: 'CI/CD pipeline with automated rollback',
       reason: 'Incorporated human feedback about rollback support',
       author: 'ai:assistant',
@@ -261,7 +261,7 @@ Monitoring is done via server logs.
     expect(amendResult.isError).toBeUndefined();
 
     const amendData = ctx.parseResult(amendResult);
-    expect(amendData.change_id).toBe('ct-1');
+    expect(amendData.change_id).toBe('cn-1');
     expect(amendData.new_change_id).toBeDefined();
     expect(amendData.amended).toBe(true);
     const newChangeId = amendData.new_change_id as string;
@@ -271,7 +271,7 @@ Monitoring is done via server logs.
     expect(disk3).toContain('{~~manual processes~>CI/CD pipeline with automated rollback~~}');
     expect(disk3).toContain('Incorporated human feedback about rollback support');
     expect(disk3).toContain(`superseded-by: ${newChangeId}`);
-    expect(disk3).toContain('supersedes: ct-1');
+    expect(disk3).toContain('supersedes: cn-1');
 
     // ── Step 5: Human accepts the NEW change via core accept ─────────
     const parser = new CriticMarkupParser();
@@ -299,8 +299,8 @@ Monitoring is done via server logs.
     await ctx.assertFootnoteStatus(filePath, newChangeId, 'accepted');
 
     // Full deliberation trail preserved across footnotes
-    expect(finalDisk).toContain('Automate deployments');                              // original reasoning (ct-1)
-    expect(finalDisk).toContain('rollback support');                                  // human comment (ct-1)
+    expect(finalDisk).toContain('Automate deployments');                              // original reasoning (cn-1)
+    expect(finalDisk).toContain('rollback support');                                  // human comment (cn-1)
     expect(finalDisk).toContain('Incorporated human feedback about rollback support'); // amendment reasoning (new change)
 
     // Agent can verify clean state via MCP read

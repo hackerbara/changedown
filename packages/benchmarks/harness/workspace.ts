@@ -13,17 +13,17 @@ export interface CreateTempWorkspaceOptions {
    *  This prevents the parent repo's .gitignore from blocking `git add` and provides isolation. */
   gitInit?: boolean;
   /** If true, inject .opencode/opencode.json with absolute path to the SC MCP server
-   *  and .changetracks/config.toml so the agent has propose_change, read_tracked_file, etc. */
-  injectChangeTracks?: boolean;
-  /** Protocol mode for ChangeTracks config: "classic" (Surface B) or "compact" (Surface C).
-   *  Only used when injectChangeTracks is true. Default: "classic". */
+   *  and .changedown/config.toml so the agent has propose_change, read_tracked_file, etc. */
+  injectChangeDown?: boolean;
+  /** Protocol mode for ChangeDown config: "classic" (Surface B) or "compact" (Surface C).
+   *  Only used when injectChangeDown is true. Default: "classic". */
   protocolMode?: "classic" | "compact";
-  /** If true, inject .changetracks/config.toml but skip .opencode/opencode.json.
+  /** If true, inject .changedown/config.toml but skip .opencode/opencode.json.
    *  Used for Surface D (CLI-only) to avoid MCP schema overhead.
-   *  Only takes effect when injectChangeTracks is true. */
-  disableChangeTracksPlugin?: boolean;
+   *  Only takes effect when injectChangeDown is true. */
+  disableChangeDownPlugin?: boolean;
   /** If true, inject full V1 config (author enforcement, settlement, view policy).
-   *  Used for Surfaces F and G. Only used when injectChangeTracks is true. */
+   *  Used for Surfaces F and G. Only used when injectChangeDown is true. */
   v1Config?: boolean;
   /** If true, enable experimental patch wrapping in [hooks]. */
   patchWrapExperimental?: boolean;
@@ -50,15 +50,15 @@ export async function createTempWorkspace(
   const tempDir = await fs.mkdtemp(path.join(baseDir, "bench-adr-"));
   await cpRecursive(resolvedFixture, tempDir);
 
-  // Inject ChangeTracks MCP config so OpenCode discovers propose_change, read_tracked_file, etc.
+  // Inject ChangeDown MCP config so OpenCode discovers propose_change, read_tracked_file, etc.
   // Uses absolute path to MCP server binary so it works from any workspace location.
-  if (options.injectChangeTracks) {
+  if (options.injectChangeDown) {
     const repoRoot = path.resolve(process.cwd());
-    const mcpServerPath = path.join(repoRoot, "changetracks-plugin", "mcp-server", "dist", "index.js");
+    const mcpServerPath = path.join(repoRoot, "changedown-plugin", "mcp-server", "dist", "index.js");
 
     // .opencode/opencode.json — MCP server config + plugin registration
-    // Skip for Surface D (disableChangeTracksPlugin = true) to avoid MCP schema overhead
-    if (!options.disableChangeTracksPlugin) {
+    // Skip for Surface D (disableChangeDownPlugin = true) to avoid MCP schema overhead
+    if (!options.disableChangeDownPlugin) {
       const opencodeDir = path.join(tempDir, ".opencode");
       await fs.mkdir(opencodeDir, { recursive: true });
       const opencodePluginPath = path.join(repoRoot, "packages", "opencode-plugin");
@@ -67,7 +67,7 @@ export async function createTempWorkspace(
         JSON.stringify({
           "$schema": "https://opencode.ai/config.json",
           mcp: {
-            "changetracks": {
+            "changedown": {
               type: "local",
               command: ["node", mcpServerPath],
             },
@@ -77,9 +77,9 @@ export async function createTempWorkspace(
       );
     }
 
-    // .changetracks/config.toml — minimal tracking config for benchmark
-    // (Created for ALL surfaces when injectChangeTracks is true)
-    const scDir = path.join(tempDir, ".changetracks");
+    // .changedown/config.toml — minimal tracking config for benchmark
+    // (Created for ALL surfaces when injectChangeDown is true)
+    const scDir = path.join(tempDir, ".changedown");
     await fs.mkdir(scDir, { recursive: true });
     const configLines = [
       '[tracking]',

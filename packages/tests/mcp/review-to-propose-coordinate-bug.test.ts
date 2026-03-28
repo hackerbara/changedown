@@ -38,13 +38,13 @@
  *   - packages/cli/src/engine/handlers/propose-change.ts:1085 (classic)
  */
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -61,7 +61,7 @@ function extractCoordinate(outputLine: string): { lineNum: number; hash: string 
 
 // ─── Configs ────────────────────────────────────────────────────────────────
 
-const compactConfig: ChangeTracksConfig = {
+const compactConfig: ChangeDownConfig = {
   tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
   author: { default: 'ai:test-agent', enforcement: 'optional' },
   hooks: { enforcement: 'warn', exclude: [] },
@@ -72,7 +72,7 @@ const compactConfig: ChangeTracksConfig = {
   protocol: { mode: 'compact', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
 };
 
-const classicConfig: ChangeTracksConfig = {
+const classicConfig: ChangeDownConfig = {
   tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
   author: { default: 'ai:test-agent', enforcement: 'optional' },
   hooks: { enforcement: 'warn', exclude: [] },
@@ -96,7 +96,7 @@ describe('baseline: single review read → propose_change works correctly', () =
   beforeAll(async () => { await initHashline(); });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-review-baseline-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-review-baseline-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -110,12 +110,12 @@ describe('baseline: single review read → propose_change works correctly', () =
       '# Title',
       '{++This is a multi-line',
       'pending insertion that spans',
-      'three lines++}[^ct-1]',
+      'three lines++}[^cn-1]',
       '## Important Heading',
       '',
       'Some body text here.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
       '    @alice 2026-02-17: adding context paragraph',
     ].join('\n');
 
@@ -153,19 +153,19 @@ describe('baseline: single review read → propose_change works correctly', () =
       '# Document Title',
       '',
       '{++A multi-line insertion',
-      'spanning two lines++}[^ct-1]',
+      'spanning two lines++}[^cn-1]',
       '',
       '{~~Original text',
       'spanning two lines~>Replacement text',
-      'also spanning two lines~~}[^ct-2]',
+      'also spanning two lines~~}[^cn-2]',
       '',
       '## Target Heading',
       '',
       'The body text that we want to edit.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
       '    @alice 2026-02-17: added context',
-      '[^ct-2]: @bob | 2026-02-18 | sub | accepted',
+      '[^cn-2]: @bob | 2026-02-18 | sub | accepted',
       '    @bob 2026-02-18: improved wording',
     ].join('\n');
 
@@ -209,7 +209,7 @@ describe('baseline: changes view → propose_change with collapsed pending inser
   beforeAll(async () => { await initHashline(); });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-changes-baseline-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-changes-baseline-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -221,15 +221,15 @@ describe('baseline: changes view → propose_change with collapsed pending inser
   it('highlight maps committed line 2 → raw line 5 when 3 insertions collapsed', async () => {
     const fileContent = [
       '# Title',
-      '{++First pending insertion line++}[^ct-1]',
-      '{++Second pending insertion line++}[^ct-2]',
-      '{++Third pending insertion line++}[^ct-3]',
+      '{++First pending insertion line++}[^cn-1]',
+      '{++Second pending insertion line++}[^cn-2]',
+      '{++Third pending insertion line++}[^cn-3]',
       '## Target Heading',
       'Body text here.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
-      '[^ct-2]: @alice | 2026-02-17 | ins | proposed',
-      '[^ct-3]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-2]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-3]: @alice | 2026-02-17 | ins | proposed',
     ].join('\n');
 
     const filePath = path.join(tmpDir, 'collapsed.md');
@@ -268,7 +268,7 @@ describe('BUG: review view re-recording uses committed line numbers (compact mod
   beforeAll(async () => { await initHashline(); });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-review-bug-compact-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-review-bug-compact-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -285,11 +285,11 @@ describe('BUG: review view re-recording uses committed line numbers (compact mod
     // Re-recorded hashes have line=3 for SecondSection, but agent has line=4 (raw).
     const fileContent = [
       '# Title',
-      '{++single pending insertion++}[^ct-1]',
+      '{++single pending insertion++}[^cn-1]',
       '## First Section',
       '## Second Section',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
     ].join('\n');
 
     const filePath = path.join(tmpDir, 'chained.md');
@@ -342,7 +342,7 @@ describe('BUG: review view re-recording uses committed line numbers (classic mod
   beforeAll(async () => { await initHashline(); });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-review-bug-classic-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-review-bug-classic-'));
     state = new SessionState();
     classicResolver = await createTestResolver(tmpDir, classicConfig);
   });
@@ -357,13 +357,13 @@ describe('BUG: review view re-recording uses committed line numbers (classic mod
     // `viewResolved === 'review' || viewResolved === 'changes'` condition.
     const fileContent = [
       '# Title',
-      '{++Pending insertion line A++}[^ct-1]',
-      '{++Pending insertion line B++}[^ct-2]',
+      '{++Pending insertion line A++}[^cn-1]',
+      '{++Pending insertion line B++}[^cn-2]',
       '## First Heading',
       '## Second Heading',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
-      '[^ct-2]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-2]: @alice | 2026-02-17 | ins | proposed',
     ].join('\n');
 
     const filePath = path.join(tmpDir, 'rerecord.md');
@@ -422,11 +422,11 @@ describe('BUG: review view re-recording uses committed line numbers (classic mod
     // with committed numbers is consistent.
     const fileContent = [
       '# Title',
-      '{++pending insertion++}[^ct-1]',
+      '{++pending insertion++}[^cn-1]',
       '## First Target',
       '## Second Target',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
     ].join('\n');
 
     const compactResolver = await createTestResolver(tmpDir, compactConfig);

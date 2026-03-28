@@ -1,6 +1,6 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { generateFootnoteDefinition, nowTimestamp } from '@changetracks/core';
+import { generateFootnoteDefinition, nowTimestamp } from '@changedown/core';
 import { errorResult } from '../shared/error-result.js';
 import { optionalStrArg } from '../args.js';
 import { resolveAuthor } from '../author.js';

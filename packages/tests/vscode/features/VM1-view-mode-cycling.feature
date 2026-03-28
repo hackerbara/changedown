@@ -6,9 +6,9 @@ Feature: VM1 — View mode cycling
 
   Background:
     Given I open "all-markup-types.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
-    And I open the ChangeTracks sidebar
+    And I open the ChangeDown sidebar
 
   # ── Full cycle ───────────────────────────────────────────────
 

@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_CONFIG, reviewerType, canAccept, canWithdraw } from '@changetracks/core';
-import type { ChangeTracksConfig } from '@changetracks/core';
+import { DEFAULT_CONFIG, reviewerType, canAccept, canWithdraw } from '@changedown/core';
+import type { ChangeDownConfig } from '@changedown/core';
 
-describe('ChangeTracksConfig (core)', () => {
+describe('ChangeDownConfig (core)', () => {
   it('DEFAULT_CONFIG has all required sections', () => {
-    const config: ChangeTracksConfig = DEFAULT_CONFIG;
+    const config: ChangeDownConfig = DEFAULT_CONFIG;
     expect(config.tracking).toBeDefined();
     expect(config.author).toBeDefined();
     expect(config.matching).toBeDefined();
@@ -49,7 +49,7 @@ describe('reviewerType', () => {
     expect(reviewerType('ai:claude-opus-4.6')).toBe('agent');
   });
   it('classifies ci: prefix as agent', () => {
-    expect(reviewerType('ci:changetracks-lint')).toBe('agent');
+    expect(reviewerType('ci:changedown-lint')).toBe('agent');
   });
   it('classifies everything else as human', () => {
     expect(reviewerType('alice')).toBe('human');

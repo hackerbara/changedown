@@ -1,11 +1,11 @@
-# Core Package — @changetracks/core
+# Core Package — @changedown/core
 
 CriticMarkup parser, operations engine, data structures, and matching cascade.
 Zero internal dependencies. Foundation consumed by all other packages.
 
 ## Build & Test
 
-    npm run build -w @changetracks/core       # Build CJS + ESM
+    npm run build -w @changedown/core       # Build CJS + ESM
     npm run test:core                          # Vitest (from root)
     cd packages/tests && npx vitest run core/  # Direct vitest
 
@@ -77,7 +77,7 @@ Critical for L3→L2 conversion: re-locates changes even after body edits.
 ## Edit Boundary State Machine
 
 `edit-boundary/` — groups keystrokes into tracked changes. Exported separately
-as `@changetracks/core/edit-boundary`. Key function: `processEvent(state, event)`
+as `@changedown/core/edit-boundary`. Key function: `processEvent(state, event)`
 returns effects (crystallize, mergeAdjacent, updatePendingOverlay). Used by both
 the extension's PendingEditManager and the LSP server's PendingEditManager.
 

@@ -1,4 +1,4 @@
-import type { ClackAdapter } from 'changetracks/init/runner';
+import type { ClackAdapter } from 'changedown/init/runner';
 
 const CANCEL = Symbol('cancel');
 

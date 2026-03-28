@@ -8,21 +8,21 @@ Feature: Settlement (Layer 1 compaction)
 
   Scenario: Auto-settle on approve removes inline markup
     Given the config has settlement.auto_on_approve = true
-    When I approve ct-1
-    Then the inline CriticMarkup for ct-1 is removed
+    When I approve cn-1
+    Then the inline CriticMarkup for cn-1 is removed
     And the accepted text remains in place
     And the footnote status is "accepted"
     And the footnote definition persists (Layer 1)
 
   Scenario: Auto-settle on reject removes change entirely
     Given the config has settlement.auto_on_reject = true
-    When I reject an insertion ct-1
+    When I reject an insertion cn-1
     Then the inserted text AND delimiters are removed
     And the footnote status is "rejected"
 
   Scenario: Manual settle via review_changes settle flag
     Given the config has settlement.auto_on_approve = false
-    When I approve ct-1 (markup persists)
+    When I approve cn-1 (markup persists)
     And I call review_changes with settle = true
     Then the accepted markup is compacted
     And the footnote persists

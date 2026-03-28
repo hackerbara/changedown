@@ -6,11 +6,11 @@ Feature: Collaborative discussion on changes
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
 
   Scenario: Insert a comment on a change
     When I navigate to the next change
-    And I execute "ChangeTracks: Add Comment"
+    And I execute "ChangeDown: Add Comment"
     And I wait 500 milliseconds
     And I type "This needs review"
     And I press "Enter"

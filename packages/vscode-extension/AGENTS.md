@@ -1,4 +1,4 @@
-# VS Code Extension — changetracks-vscode
+# VS Code Extension — changedown-vscode
 
 Editor integration: decorations, commands, panels (Review + Settings),
 git integration, DOCX editor, tracking mode, view mode cycling.
@@ -6,14 +6,14 @@ git integration, DOCX editor, tracking mode, view mode cycling.
 ## Build & Test
 
     npm run build                    # Full build from root (required first)
-    npm run compile -w changetracks-vscode  # TS compile only (~2s)
+    npm run compile -w changedown-vscode  # TS compile only (~2s)
     npm run test:fast                # Parser tests, no VS Code (<1s)
     npm run test:slow                # Playwright + VS Code Electron (~30s)
 
 Package for install:
     cd packages/vscode-extension
     npx @vscode/vsce package --no-dependencies
-    cursor --install-extension changetracks-0.0.1.vsix
+    cursor --install-extension changedown-0.0.1.vsix
 
 Debug: press F5 in VS Code (launches Extension Development Host).
 
@@ -58,7 +58,7 @@ for cross-cutting flows (L2↔L3 lifecycle, accept/reject, edit boundary).
 - `unconfirmedTrackedEdit` — deferred insertion/substitution awaiting selection confirmation (50ms)
 
 **Projected View:**
-- `projectedView: ProjectedView` — buffer swap for settled/raw modes (with `.changetracks-swap` crash recovery)
+- `projectedView: ProjectedView` — buffer swap for settled/raw modes (with `.changedown-swap` crash recovery)
 - `convertingUris: Set<uri>` — suppresses tracking during L3→L2 conversion and projected view transitions
 
 **Cursor:**
@@ -108,7 +108,7 @@ Typical keystroke flow:
 | `raw` | Yes | `computeOriginalText()` — original text only | Yes |
 
 Transitions between projected ↔ non-projected require buffer swap via `ProjectedView`.
-Crash recovery: `.changetracks-swap` backup on enter, cleaned up on exit.
+Crash recovery: `.changedown-swap` backup on enter, cleaned up on exit.
 
 ### Debounce Timers
 
@@ -130,7 +130,7 @@ highlightObj (yellow bg), commentObj (blue border + bubble emoji)
 
 **Structural:** hiddenObj (CSS `display:none`), unfoldedObj (gray italic for cursor reveal),
 activeHighlightObj (blue bg for cursor's change), settledDimObj (50% opacity),
-settledRefObj (gray for `[^ct-N]` refs), ghostDeletionObj (red italic `before` pseudo-element)
+settledRefObj (gray for `[^cn-N]` refs), ghostDeletionObj (red italic `before` pseudo-element)
 
 **Moves:** moveFromObj (purple strikethrough + up-arrow), moveToObj (purple underline + down-arrow)
 
@@ -167,12 +167,12 @@ appends, comment handlers. Prevents tracking from wrapping system-generated edit
 
 ## VS Code Extension Points
 
-Commands: `changetracks.toggleTracking`, `.acceptChange`, `.rejectChange`,
+Commands: `changedown.toggleTracking`, `.acceptChange`, `.rejectChange`,
 `.acceptAll`, `.rejectAll`, `.nextChange`, `.previousChange`, `.addComment`, `.toggleView`
 
-Configuration: `changetracks.trackingMode` (boolean), `changetracks.showDelimiters` (boolean),
-`changetracks.clickToShowComments` (boolean), `changetracks.decorationStyle` ('foreground'|'background'),
-`changetracks.authorColors` ('auto'|'always'|'never'), `changetracks.gutterStrategy` ('auto'|'assume-unchanged'|'proposed-api'|'off')
+Configuration: `changedown.trackingMode` (boolean), `changedown.showDelimiters` (boolean),
+`changedown.clickToShowComments` (boolean), `changedown.decorationStyle` ('foreground'|'background'),
+`changedown.authorColors` ('auto'|'always'|'never'), `changedown.gutterStrategy` ('auto'|'assume-unchanged'|'proposed-api'|'off')
 
 ## Git Gutter Integration
 

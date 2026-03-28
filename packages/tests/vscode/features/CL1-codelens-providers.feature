@@ -6,7 +6,7 @@ Feature: CL1 — CodeLens providers (Accept/Reject + Move)
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   # ── CodeLens presence ────────────────────────────────────────
@@ -32,7 +32,7 @@ Feature: CL1 — CodeLens providers (Accept/Reject + Move)
   @fixture(journey-accept-reject) @destructive
   Scenario: CL1-05 Accept via command removes insertion markup
     Given I open "journey-accept-reject.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
     When I navigate to the next change
     And I accept the change at cursor
@@ -41,7 +41,7 @@ Feature: CL1 — CodeLens providers (Accept/Reject + Move)
   @fixture(journey-accept-reject) @destructive
   Scenario: CL1-06 Reject via command restores deletion content
     Given I open "journey-accept-reject.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
     When I navigate to the next change
     And I navigate to the next change
@@ -53,7 +53,7 @@ Feature: CL1 — CodeLens providers (Accept/Reject + Move)
 
   Scenario: CL1-07 CodeLens count matches change count
     Then CodeLens elements are present
-    And I open the ChangeTracks sidebar
+    And I open the ChangeDown sidebar
     And the Review Panel shows change cards
     # Both surfaces should show same number of changes
 
@@ -62,7 +62,7 @@ Feature: CL1 — CodeLens providers (Accept/Reject + Move)
   @fixture(journey-accept-reject) @destructive
   Scenario: CL1-08 CodeLens updates after accept
     Given I open "journey-accept-reject.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
     When I accept all changes
     And I wait 500 milliseconds
@@ -73,7 +73,7 @@ Feature: CL1 — CodeLens providers (Accept/Reject + Move)
   @fixture(no-header)
   Scenario: CL1-09 No CodeLens on document with no changes
     Given I open "no-header.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait 500 milliseconds
     Then no decorations are visible
 
@@ -82,6 +82,6 @@ Feature: CL1 — CodeLens providers (Accept/Reject + Move)
   @fixture(journey-move-ops)
   Scenario: CL1-10 Move CodeLens shows directional navigation
     Given I open "journey-move-ops.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
     Then CodeLens elements are present

@@ -6,13 +6,17 @@
  */
 
 import {
-  createConnection,
-  Connection,
   TextDocuments,
+  TextDocumentSyncKind,
+  DidChangeWatchedFilesNotification,
+  CodeLensRefreshRequest,
+  FoldingRangeRefreshRequest,
+  TextEdit,
+} from 'vscode-languageserver';
+import type {
+  Connection,
   InitializeParams,
   InitializeResult,
-  TextDocumentSyncKind,
-  ProposedFeatures,
   HoverParams,
   Hover,
   SemanticTokensParams,
@@ -24,13 +28,8 @@ import {
   DocumentLinkParams,
   DocumentLink,
   WorkspaceEdit,
-  TextEdit,
-  DidChangeWatchedFilesNotification,
-  CodeLensRefreshRequest
-} from 'vscode-languageserver/node';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+  FoldingRange,
+} from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   Workspace, VirtualDocument, ChangeNode, ChangeType, ChangeStatus, isGhostNode,
@@ -43,11 +42,12 @@ import {
   convertL2ToL3,
   compact, isL3Format, compactL2,
   splitBodyAndFootnotes,
-} from '@changetracks/core';
-import type { ViewName, Decision, VerificationResult } from '@changetracks/core';
-import { getWorkspaceRoot, getPreviousVersion, PreviousVersionResult } from './git';
-import { parseConfigToml, DEFAULT_CONFIG } from 'changetracks/config';
-import type { ChangeTracksConfig } from 'changetracks/config';
+  scanMaxCnId,
+} from '@changedown/core';
+import type { ViewName, Decision, VerificationResult } from '@changedown/core';
+import type { PreviousVersionResult } from './git';
+import { DEFAULT_CONFIG } from '@changedown/core';
+import type { ChangeDownConfig } from '@changedown/core';
 import { createHover } from './capabilities/hover';
 import { createCodeLenses, CodeLensMode, CursorState } from './capabilities/code-lens';
 import { sendDecorationData, sendChangeCount, sendCoherenceStatus } from './notifications/decoration-data';
@@ -58,30 +58,31 @@ import { getSemanticTokensLegend, buildSemanticTokens } from './capabilities/sem
 import { createDiagnostics } from './capabilities/diagnostics';
 import { createCodeActions } from './capabilities/code-actions';
 import { createDocumentLinks } from './capabilities/document-links';
-import { PendingEditManager, CrystallizedEdit } from './pending-edit-manager';
-import { offsetRangeToLspRange } from './converters';
+import { createFoldingRanges, computeAutoFoldLines } from './capabilities/folding-ranges';
+import { PendingEditManager, type CrystallizedEdit } from './pending-edit-manager';
+import { offsetRangeToLspRange, positionToOffset } from './converters';
 import { createLspDocumentState } from './document-state';
 import type { PendingOverlay, LspDocumentState } from './document-state';
 
 /**
- * Parameters for the changetracks/annotate custom request.
+ * Parameters for the changedown/annotate custom request.
  */
 export interface AnnotateParams {
   textDocument: { uri: string };
 }
 
 /**
- * Shape of `initializationOptions.changetracks` sent by the client.
+ * Shape of `initializationOptions.changedown` sent by the client.
  */
-interface ChangetracksInitOptions {
+interface ChangedownInitOptions {
   reviewerIdentity?: string;
   author?: string;
 }
 
 /**
- * Type guard for the changetracks initialization options block.
+ * Type guard for the changedown initialization options block.
  */
-function isChangetracksInitOptions(value: unknown): value is ChangetracksInitOptions {
+function isChangedownInitOptions(value: unknown): value is ChangedownInitOptions {
   if (typeof value !== 'object' || value === null) return false;
   const obj = value as Record<string, unknown>;
   if ('reviewerIdentity' in obj && typeof obj.reviewerIdentity !== 'string') return false;
@@ -90,18 +91,30 @@ function isChangetracksInitOptions(value: unknown): value is ChangetracksInitOpt
 }
 
 /**
- * ChangeTracks Language Server
+ * Platform-specific callbacks injected by the entry point.
+ * Browser entry omits all callbacks (uses defaults).
+ * Node entry provides real filesystem and config loading.
+ */
+export interface ServerOptions {
+  /** Load project config from workspace. Return undefined if not found. */
+  loadConfig?: (workspaceRoot: string) => ChangeDownConfig | undefined;
+  /** Read a file by URI. Used for disk-equality checks during repromotion suppression. */
+  readFileByUri?: (uri: string) => Promise<string | undefined>;
+}
+
+/**
+ * ChangeDown Language Server
  *
  * Responsibilities:
  * - LSP connection lifecycle (initialize, shutdown, exit)
  * - Document synchronization (open, change, close)
  * - Parse documents using core Workspace and cache results
  * - Provide server capabilities (will be extended in later tasks)
- * - Git-based annotation via changetracks/annotate request
+ * - Git-based annotation via changedown/annotate request
  */
 const DECORATION_NOTIFY_DEBOUNCE_MS = 60;
 
-export class ChangetracksServer {
+export class ChangedownServer {
   public readonly connection: Connection;
   public readonly documents: TextDocuments<TextDocument>;
   public readonly workspace: Workspace;
@@ -113,38 +126,40 @@ export class ChangetracksServer {
   /**
    * Reviewer identity for accept/reject attribution (ADR-031).
    * Set from initializationOptions on startup (Sublime, Neovim, etc.) or via
-   * changetracks/updateSettings notification (VS Code extension).
+   * changedown/updateSettings notification (VS Code extension).
    */
   public reviewerIdentity: string | undefined;
-  /** Project config tracking default (from .changetracks/config.toml). Set by Task 11. */
+  /** Project config tracking default (from .changedown/config.toml). Set by Task 11. */
   private projectTrackingDefault: string | undefined;
-  /** Full parsed project config (from .changetracks/config.toml). */
-  private projectConfig: ChangeTracksConfig | undefined;
+  /** Full parsed project config (from .changedown/config.toml). */
+  private projectConfig: ChangeDownConfig | undefined;
   /** Coherence threshold (0–100) from project config coherence.threshold. */
   private coherenceThreshold: number = DEFAULT_CONFIG.coherence.threshold;
   /** Last-sent coherence status per URI — avoids re-sending identical notifications. */
   private lastCoherenceStatus: Map<string, { rate: number; count: number }> = new Map();
   /** Re-entrance guard: URIs with a pending write-back in flight. */
   private pendingWriteBack = new Set<string>();
+  /** URIs expecting a crystallize echo — skip re-promotion on that didChange */
+  private pendingCrystallizeEcho = new Set<string>();
   /** Workspace root path for config file resolution. */
   private workspaceRoot: string | undefined;
   private codeLensMode: CodeLensMode = 'cursor';
+  private readonly options: ServerOptions;
 
   /**
    * Git integration functions. These are public properties so tests can
    * replace them with stubs without requiring real git repositories.
    */
-  public _gitGetWorkspaceRoot: (filePath: string) => Promise<string | undefined> = getWorkspaceRoot;
-  public _gitGetPreviousVersion: (filePath: string, rootDir: string) => Promise<PreviousVersionResult | undefined> = getPreviousVersion;
+  public _gitGetWorkspaceRoot: (filePath: string) => Promise<string | undefined> = async () => undefined;
+  public _gitGetPreviousVersion: (filePath: string, rootDir: string) => Promise<PreviousVersionResult | undefined> = async () => undefined;
 
-  constructor(connection: Connection) {
+  constructor(connection: Connection, options?: ServerOptions) {
+    this.options = options ?? {};
     this.connection = connection;
     this.documents = new TextDocuments(TextDocument);
     this.workspace = new Workspace();
     this.pendingEditManager = new PendingEditManager(
-      this.workspace,
       (edit: CrystallizedEdit) => this.handleCrystallizedEdit(edit),
-      (uri: string) => this.docStates.get(uri)?.text
     );
 
     this.setupHandlers();
@@ -203,99 +218,62 @@ export class ChangetracksServer {
     // Document links capability (footnote ref ↔ definition navigation)
     this.connection.onDocumentLinks(this.handleDocumentLinks.bind(this));
 
+    // Folding ranges capability
+    this.connection.onFoldingRanges(this.handleFoldingRanges.bind(this));
+
     // Custom request: annotate file from git changes
-    this.connection.onRequest('changetracks/annotate', this.handleAnnotate.bind(this));
+    this.connection.onRequest('changedown/annotate', this.handleAnnotate.bind(this));
 
     // Section 11: getChanges request — on-demand bootstrap when extension cache is empty
-    this.connection.onRequest('changetracks/getChanges', this.handleGetChanges.bind(this));
+    this.connection.onRequest('changedown/getChanges', this.handleGetChanges.bind(this));
 
     // Phase 2: Lifecycle operation custom requests (2A-2G)
-    this.connection.onRequest('changetracks/getProjectConfig', this.handleGetProjectConfig.bind(this));
-    this.connection.onRequest('changetracks/reviewChange', this.handleReviewChange.bind(this));
-    this.connection.onRequest('changetracks/replyToThread', this.handleReplyToThread.bind(this));
-    this.connection.onRequest('changetracks/amendChange', this.handleAmendChange.bind(this));
-    this.connection.onRequest('changetracks/supersedeChange', this.handleSupersedeChange.bind(this));
-    this.connection.onRequest('changetracks/resolveThread', this.handleResolveThread.bind(this));
-    this.connection.onRequest('changetracks/unresolveThread', this.handleUnresolveThread.bind(this));
-    this.connection.onRequest('changetracks/compactChange', this.handleCompactChange.bind(this));
-    this.connection.onRequest('changetracks/compactChanges', this.handleCompactChanges.bind(this));
-    this.connection.onRequest('changetracks/reviewAll', this.handleReviewAll.bind(this));
-
-    // Tracking event handler - receives individual edit events from client
-    this.connection.onNotification('changetracks/trackingEvent', (params: {
-      textDocument: { uri: string };
-      type: 'insertion' | 'deletion' | 'replacement';
-      position: { offset: number };
-      byteLength: number;
-      oldByteLength?: number;
-      newByteLength?: number;
-    }) => {
-      try {
-        const uri = params.textDocument.uri;
-        const text = this.docStates.get(uri)?.text || '';
-
-        switch (params.type) {
-          case 'insertion': {
-            // Get the inserted text from the current document
-            const insertedText = text.substring(params.position.offset, params.position.offset + params.byteLength);
-            this.pendingEditManager.handleChange(uri, '', insertedText, params.position.offset);
-            break;
-          }
-          case 'deletion': {
-            // For deletions, we need the deleted text from before the change
-            // The client sends the byte length but not the text
-            // We get the text from textCache (which has the pre-change text until didChange arrives)
-            const deletedText = text.substring(params.position.offset, params.position.offset + params.byteLength);
-            this.pendingEditManager.handleChange(uri, deletedText, '', params.position.offset);
-            break;
-          }
-          case 'replacement': {
-            const oldText = text.substring(params.position.offset, params.position.offset + (params.oldByteLength || 0));
-            const newText = text.substring(params.position.offset, params.position.offset + (params.newByteLength || 0));
-            this.pendingEditManager.handleChange(uri, oldText, newText, params.position.offset);
-            break;
-          }
-        }
-      } catch (err) {
-        this.connection.console.error(`changetracks/trackingEvent handler error: ${err}`);
-      }
-    });
+    this.connection.onRequest('changedown/getProjectConfig', this.handleGetProjectConfig.bind(this));
+    this.connection.onRequest('changedown/reviewChange', this.handleReviewChange.bind(this));
+    this.connection.onRequest('changedown/replyToThread', this.handleReplyToThread.bind(this));
+    this.connection.onRequest('changedown/amendChange', this.handleAmendChange.bind(this));
+    this.connection.onRequest('changedown/supersedeChange', this.handleSupersedeChange.bind(this));
+    this.connection.onRequest('changedown/resolveThread', this.handleResolveThread.bind(this));
+    this.connection.onRequest('changedown/unresolveThread', this.handleUnresolveThread.bind(this));
+    this.connection.onRequest('changedown/compactChange', this.handleCompactChange.bind(this));
+    this.connection.onRequest('changedown/compactChanges', this.handleCompactChanges.bind(this));
+    this.connection.onRequest('changedown/reviewAll', this.handleReviewAll.bind(this));
 
     // Batch edit coordination: extension tells LSP to skip re-promotion during programmatic edits
-    this.connection.onNotification('changetracks/batchEditStart', (params: { uri: string }) => {
+    this.connection.onNotification('changedown/batchEditStart', (params: { uri: string }) => {
       this.handleBatchEditStart(params.uri);
     });
 
-    this.connection.onNotification('changetracks/batchEditEnd', (params: { uri: string }) => {
+    this.connection.onNotification('changedown/batchEditEnd', (params: { uri: string }) => {
       this.handleBatchEditEnd(params.uri);
     });
 
     // Flush pending handler - hard break signal from client
-    this.connection.onNotification('changetracks/flushPending', (params: {
+    this.connection.onNotification('changedown/flushPending', (params: {
       textDocument: { uri: string };
     }) => {
       try {
         this.pendingEditManager.flush(params.textDocument.uri);
       } catch (err) {
-        this.connection.console.error(`changetracks/flushPending handler error: ${err}`);
+        this.connection.console.error(`changedown/flushPending handler error: ${err}`);
       }
     });
 
     // Settings update handler - VS Code extension pushes config changes here
     // (Sublime/Neovim send these via initializationOptions instead)
-    this.connection.onNotification('changetracks/updateSettings', (params: {
+    this.connection.onNotification('changedown/updateSettings', (params: {
       reviewerIdentity?: string;
     }) => {
       try {
         const identity = (params.reviewerIdentity ?? '').trim();
         this.reviewerIdentity = identity || undefined;
       } catch (err) {
-        this.connection.console.error(`changetracks/updateSettings handler error: ${err}`);
+        this.connection.console.error(`changedown/updateSettings handler error: ${err}`);
       }
     });
 
     // Phase 1: Pending overlay from VS Code extension (in-flight insertion before flush)
-    this.connection.onNotification('changetracks/pendingOverlay', (params: {
+    this.connection.onNotification('changedown/pendingOverlay', (params: {
       uri: string;
       overlay: PendingOverlay | null;
     }) => {
@@ -305,25 +283,31 @@ export class ChangetracksServer {
         if (state) state.overlay = overlay;
         this.scheduleDecorationResend(uri);
       } catch (err) {
-        this.connection.console.error(`changetracks/pendingOverlay handler error: ${err}`);
+        this.connection.console.error(`changedown/pendingOverlay handler error: ${err}`);
       }
     });
 
     // View mode notification: client tells server which view mode is active for a document.
     // Server stores the mode, broadcasts confirmation, and uses it for semantic tokens filtering.
-    this.connection.onNotification('changetracks/setViewMode', (params: SetViewModeParams) => {
+    this.connection.onNotification('changedown/setViewMode', (params: SetViewModeParams) => {
       try {
         const uri = params.textDocument.uri;
         const viewMode = params.viewMode;
         // Validate incoming viewMode against the canonical set of view names
         if (!VIEW_NAMES.includes(viewMode as ViewName)) {
           this.connection.console.warn(
-            `changetracks/setViewMode: ignoring unknown viewMode "${viewMode}" for ${uri}`
+            `changedown/setViewMode: ignoring unknown viewMode "${viewMode}" for ${uri}`
           );
           return;
         }
         const state = this.docStates.get(uri);
-        if (state) state.viewMode = viewMode;
+        if (state) {
+          state.viewMode = viewMode;
+          // Reset autoFoldSent when leaving review/changes so re-entering triggers auto-fold
+          if (params.viewMode !== 'review' && params.viewMode !== 'changes') {
+            state.autoFoldSent = false;
+          }
+        }
         // Broadcast confirmation back to client
         sendViewModeChanged(this.connection, uri, viewMode);
         // Broadcast composite documentState (carries both tracking + view mode)
@@ -340,14 +324,15 @@ export class ChangetracksServer {
           this.connection.sendRequest(CodeLensRefreshRequest.type).catch(() => {
             // Client does not support workspace/codeLens/refresh — safe to ignore
           });
+          this.connection.sendRequest(FoldingRangeRefreshRequest.type).catch(() => {});
         }, 50);
       } catch (err) {
-        this.connection.console.error(`changetracks/setViewMode handler error: ${err}`);
+        this.connection.console.error(`changedown/setViewMode handler error: ${err}`);
       }
     });
 
     // Cursor position notification: client tells server where cursor is
-    this.connection.onNotification('changetracks/cursorPosition', (params: {
+    this.connection.onNotification('changedown/cursorPosition', (params: {
         textDocument: { uri: string };
         line: number;
         changeId?: string;
@@ -365,13 +350,16 @@ export class ChangetracksServer {
         this.connection.sendRequest(CodeLensRefreshRequest.type).catch(() => {
           // Client does not support workspace/codeLens/refresh — safe to ignore
         });
+        this.connection.sendRequest(FoldingRangeRefreshRequest.type).catch(() => {
+          // Client does not support workspace/foldingRange/refresh — safe to ignore
+        });
       } catch (err) {
-        this.connection.console.error(`changetracks/cursorPosition handler error: ${err}`);
+        this.connection.console.error(`changedown/cursorPosition handler error: ${err}`);
       }
     });
 
     // CodeLens mode notification: client tells server which mode is active
-    this.connection.onNotification('changetracks/setCodeLensMode', (params: {
+    this.connection.onNotification('changedown/setCodeLensMode', (params: {
         mode: string;
     }) => {
       try {
@@ -380,15 +368,110 @@ export class ChangetracksServer {
           this.codeLensMode = mode;
           this.connection.sendRequest(CodeLensRefreshRequest.type).catch(() => {});
         } else {
-          this.connection.console.warn(`changetracks/setCodeLensMode: ignoring unknown mode "${mode}"`);
+          this.connection.console.warn(`changedown/setCodeLensMode: ignoring unknown mode "${mode}"`);
         }
       } catch (err) {
-        this.connection.console.error(`changetracks/setCodeLensMode handler error: ${err}`);
+        this.connection.console.error(`changedown/setCodeLensMode handler error: ${err}`);
       }
     });
 
-    // Connect documents to connection
+    // Cursor move handler — PEM uses cursor position for flush-on-move logic.
+    this.connection.onNotification('changedown/cursorMove', (params: {
+      textDocument: { uri: string };
+      offset: number;
+    }) => {
+      try {
+        const uri = params.textDocument.uri;
+        const text = this.docStates.get(uri)?.text ?? '';
+        this.pendingEditManager.handleCursorMove(uri, params.offset, text);
+      } catch (err) {
+        this.connection.console.error(`changedown/cursorMove handler error: ${err}`);
+      }
+    });
+
+    // Connect documents to connection (registers open/change/close handlers)
     this.documents.listen(this.connection);
+
+    // ── Raw didChange handler (registered AFTER documents.listen) ──
+    // Replaces TextDocuments' didChange handler so we can intercept incremental
+    // content changes for edit tracking. After tracking, we replicate what
+    // TextDocuments.listen() does internally (update synced document, fire events).
+    //
+    // This lets us derive edit tracking from raw LSP incremental changes
+    // instead of relying on the client to classify and send trackingEvent.
+    this.connection.onNotification('textDocument/didChange', (params: {
+      textDocument: { uri: string; version: number };
+      contentChanges: Array<{
+        range?: { start: { line: number; character: number }; end: { line: number; character: number } };
+        rangeLength?: number;
+        text: string;
+      }>;
+    }) => {
+      try {
+        const uri = params.textDocument.uri;
+        let currentText = this.docStates.get(uri)?.text ?? '';
+
+        for (const change of params.contentChanges) {
+          if (!change.range) {
+            // Full sync fallback — no range means entire document replaced.
+            // Skip tracking for full replacement.
+            // Consume any pending echo: website-v2 sends full-doc sync when
+            // applying crystallized edits, so the echo arrives without a range.
+            this.pendingEditManager.consumeEcho(uri);
+            currentText = change.text;
+            continue;
+          }
+
+          const offset = positionToOffset(currentText, change.range.start);
+          const endOffset = positionToOffset(currentText, change.range.end);
+          const rangeLength = endOffset - offset;
+          const deletedText = currentText.substring(offset, endOffset);
+          const insertedText = change.text;
+
+          let type: 'insertion' | 'deletion' | 'substitution';
+          if (rangeLength === 0 && insertedText.length > 0) {
+            type = 'insertion';
+          } else if (rangeLength > 0 && insertedText.length === 0) {
+            type = 'deletion';
+          } else {
+            type = 'substitution';
+          }
+
+          this.pendingEditManager.handleChange(
+            uri, type, offset, insertedText, deletedText, currentText,
+          );
+
+          // Apply this change to currentText so the next change in the batch
+          // operates on correct text (LSP sends changes against updated state).
+          currentText = currentText.substring(0, offset) + insertedText + currentText.substring(endOffset);
+        }
+      } catch (err) {
+        this.connection.console.error(`textDocument/didChange (edit tracking) error: ${err}`);
+      }
+
+      // Replicate TextDocuments' didChange handling: update the synced document
+      // and fire onDidChangeContent so the rest of the server sees the update.
+      // We access TextDocuments internals via type assertion — this is intentional
+      // and necessary because the LSP library only supports one handler per method.
+      try {
+        const td = params.textDocument;
+        const changes = params.contentChanges;
+        if (changes.length === 0) return;
+        const docs = this.documents as unknown as {
+          _syncedDocuments: Map<string, TextDocument>;
+          _configuration: { update(doc: TextDocument, changes: unknown[], version: number): TextDocument };
+          _onDidChangeContent: { fire(event: { document: TextDocument }): void };
+        };
+        let syncedDocument = docs._syncedDocuments.get(td.uri);
+        if (syncedDocument !== undefined) {
+          syncedDocument = docs._configuration.update(syncedDocument, changes, td.version);
+          docs._syncedDocuments.set(td.uri, syncedDocument);
+          docs._onDidChangeContent.fire(Object.freeze({ document: syncedDocument }));
+        }
+      } catch (err) {
+        this.connection.console.error(`textDocument/didChange (document sync) error: ${err}`);
+      }
+    });
   }
 
   /**
@@ -408,9 +491,9 @@ export class ChangetracksServer {
     await initHashline();
 
     // Read reviewer identity from initializationOptions (Sublime, Neovim, and other non-VS Code clients).
-    // VS Code sends this via changetracks/updateSettings notification after the client starts.
-    const raw = (params.initializationOptions as Record<string, unknown> | undefined)?.changetracks;
-    if (isChangetracksInitOptions(raw)) {
+    // VS Code sends this via changedown/updateSettings notification after the client starts.
+    const raw = (params.initializationOptions as Record<string, unknown> | undefined)?.changedown;
+    if (isChangedownInitOptions(raw)) {
       const identity = (raw.reviewerIdentity || raw.author || '').trim();
       this.reviewerIdentity = identity || undefined;
     }
@@ -423,8 +506,10 @@ export class ChangetracksServer {
 
     return {
       capabilities: {
-        // Full document sync - server gets complete document text on every change
-        textDocumentSync: TextDocumentSyncKind.Full,
+        // Incremental document sync - server receives incremental content changes
+        // which the raw didChange handler uses for edit tracking before TextDocuments
+        // processes them into full document text.
+        textDocumentSync: TextDocumentSyncKind.Incremental,
         // Hover capability - show comment text on hover
         hoverProvider: true,
         // Semantic tokens capability - syntax highlighting for CriticMarkup
@@ -441,7 +526,9 @@ export class ChangetracksServer {
         // Document links - footnote ref ↔ definition navigation
         documentLinkProvider: {
           resolveProvider: false
-        }
+        },
+        // Folding ranges - L3 footnote sections + deletion hiding
+        foldingRangeProvider: true
       }
     };
   }
@@ -455,7 +542,7 @@ export class ChangetracksServer {
     this.loadProjectConfig();
     // Register for file change notifications
     this.connection.client.register(DidChangeWatchedFilesNotification.type, {
-      watchers: [{ globPattern: '**/.changetracks/config.toml' }]
+      watchers: [{ globPattern: '**/.changedown/config.toml' }]
     });
     this.connection.onDidChangeWatchedFiles((change) => {
       for (const event of change.changes) {
@@ -511,7 +598,7 @@ export class ChangetracksServer {
     const overlay = state?.overlay;
     if (!overlay) return parseChanges;
     const synthetic: ChangeNode = {
-      id: overlay.scId ?? 'ct-overlay-0',
+      id: overlay.scId ?? 'cn-overlay-0',
       type: ChangeType.Insertion,
       status: ChangeStatus.Proposed,
       range: { start: overlay.range.start, end: overlay.range.end },
@@ -538,18 +625,23 @@ export class ChangetracksServer {
   }
 
   /**
-   * Load project config from .changetracks/config.toml via canonical parser.
+   * Load project config from .changedown/config.toml via canonical parser.
    * Stores full parsed config and extracts tracking default.
    * Sets both to undefined when the config file is absent.
    */
   private loadProjectConfig(): void {
     if (!this.workspaceRoot) return;
     try {
-      const configPath = path.join(this.workspaceRoot, '.changetracks', 'config.toml');
-      const content = fs.readFileSync(configPath, 'utf-8');
-      this.projectConfig = parseConfigToml(content);
-      this.projectTrackingDefault = this.projectConfig.tracking.default;
-      this.coherenceThreshold = this.projectConfig.coherence?.threshold ?? DEFAULT_CONFIG.coherence.threshold;
+      const config = this.options.loadConfig?.(this.workspaceRoot);
+      if (config) {
+        this.projectConfig = config;
+        this.projectTrackingDefault = config.tracking.default;
+        this.coherenceThreshold = config.coherence?.threshold ?? DEFAULT_CONFIG.coherence.threshold;
+      } else {
+        this.projectConfig = undefined;
+        this.projectTrackingDefault = undefined;
+        this.coherenceThreshold = DEFAULT_CONFIG.coherence.threshold;
+      }
     } catch {
       this.projectConfig = undefined;
       this.projectTrackingDefault = undefined;
@@ -690,6 +782,11 @@ export class ChangetracksServer {
     this.ensureDocState(uri, text, languageId);
     const state = this.docStates.get(uri)!;
 
+    // Initialize the PEM's scId counter from existing cn-N IDs in the document
+    // so new crystallized edits get IDs that don't collide with existing ones.
+    const maxId = scanMaxCnId(text);
+    this.pendingEditManager.initScIdCounter(uri, maxId);
+
     const isL3 = this.workspace.isFootnoteNative(text);
 
     if (!isL3) {
@@ -707,11 +804,13 @@ export class ChangetracksServer {
           const l3Changes = this.getMergedChanges(uri);
 
           // Send L3 decoration data FIRST (pre-populates extension cache)
-          sendDecorationData(this.connection, uri, l3Changes, state.version);
+          const autoFoldLines = !state.autoFoldSent ? computeAutoFoldLines(l3Text) : undefined;
+          sendDecorationData(this.connection, uri, l3Changes, state.version, autoFoldLines ?? undefined);
+          if (autoFoldLines) state.autoFoldSent = true;
           sendChangeCount(this.connection, uri, l3Changes);
 
           // Notify extension to set convertingUris guard
-          this.connection.sendNotification('changetracks/promotionStarting', { uri });
+          this.connection.sendNotification('changedown/promotionStarting', { uri });
 
           // CRITICAL: set isPromoting BEFORE sending applyEdit
           // because didChange can arrive before the applyEdit response returns
@@ -749,7 +848,7 @@ export class ChangetracksServer {
           }
 
           // Notify extension that promotion is complete (success or failure)
-          this.connection.sendNotification('changetracks/promotionComplete', { uri });
+          this.connection.sendNotification('changedown/promotionComplete', { uri });
           this.broadcastDocumentState(uri);
           return;
         } catch (err) {
@@ -764,17 +863,20 @@ export class ChangetracksServer {
     // Normal path: L3 document, L2 without changes, or promotion failed
     this.parseAndCacheDocument(uri, text, languageId);
     const changes = this.getMergedChanges(uri);
-    sendDecorationData(this.connection, uri, changes, state.version);
+    const isL3ForFold = this.workspace.isFootnoteNative(text);
+    const viewModeForFold = state.viewMode;
+    const autoFoldLines = (isL3ForFold && !state.autoFoldSent && (viewModeForFold === 'review' || viewModeForFold === 'changes'))
+      ? computeAutoFoldLines(text) : undefined;
+    sendDecorationData(this.connection, uri, changes, state.version, autoFoldLines ?? undefined);
+    if (autoFoldLines) state.autoFoldSent = true;
     sendChangeCount(this.connection, uri, changes);
     this.broadcastDocumentState(uri);
   }
 
   private async isDiskTextEqualForUri(uri: string, text: string): Promise<boolean> {
+    if (!this.options.readFileByUri) return false;
     try {
-      const url = new URL(uri);
-      if (url.protocol !== 'file:') return false;
-      const filePath = fileURLToPath(url);
-      const diskText = await fs.promises.readFile(filePath, 'utf-8');
+      const diskText = await this.options.readFileByUri(uri);
       return diskText === text;
     } catch {
       return false;
@@ -814,7 +916,7 @@ export class ChangetracksServer {
       this.parseAndCacheDocument(uri, text, languageId);
 
       // Check if tracking header changed — load-bearing for state sync
-      const headerRegex = /^<!--\s*ctrcks\.com\/v1:\s*(tracked|untracked)\s*-->/m;
+      const headerRegex = /^<!--\s*changedown\.com\/v1:\s*(tracked|untracked)\s*-->/m;
       const oldHeader = previousText?.match(headerRegex)?.[1];
       const newHeader = text.match(headerRegex)?.[1];
       if (oldHeader !== newHeader) {
@@ -826,8 +928,10 @@ export class ChangetracksServer {
     }
 
     // Check if this is an L2 document that needs re-promotion (e.g., after save)
+    // Skip if this didChange is the echo from a crystallize edit we just sent
+    const isCrystallizeEcho = this.pendingCrystallizeEcho.delete(uri);
     const isL3 = this.workspace.isFootnoteNative(text);
-    if (!isL3) {
+    if (!isL3 && !isCrystallizeEcho) {
       const doc = this.workspace.parse(text, languageId);
       const changes = doc.getChanges();
       if (changes.length > 0) {
@@ -852,7 +956,7 @@ export class ChangetracksServer {
     this.parseAndCacheDocument(uri, text, languageId);
 
     // Check if tracking header changed
-    const headerRegex = /^<!--\s*ctrcks\.com\/v1:\s*(tracked|untracked)\s*-->/m;
+    const headerRegex = /^<!--\s*changedown\.com\/v1:\s*(tracked|untracked)\s*-->/m;
     const oldHeader = previousText?.match(headerRegex)?.[1];
     const newHeader = text.match(headerRegex)?.[1];
     if (oldHeader !== newHeader) {
@@ -872,11 +976,15 @@ export class ChangetracksServer {
   /**
    * Handle a crystallized edit from the PendingEditManager.
    *
-   * Converts the offset-based CrystallizedEdit into an LSP Range and sends
-   * a changetracks/pendingEditFlushed notification to the client. The client
-   * is responsible for applying the workspace edit to the document.
+   * Converts the offset-based CrystallizedEdit into LSP Ranges and sends
+   * a changedown/pendingEditFlushed notification to the client. The client
+   * is responsible for applying the workspace edits to the document.
    *
-   * @param edit The crystallized edit with offset coordinates
+   * The new CrystallizedEdit contains `edits` with `markupEdit` (inline
+   * CriticMarkup replacement) and `footnoteEdit` (footnote definition append).
+   * For L3 format, markupEdit is null (body text stays as-is).
+   *
+   * @param edit The crystallized edit with offset-based edits
    */
   private handleCrystallizedEdit(edit: CrystallizedEdit): void {
     const text = this.getDocumentText(edit.uri);
@@ -884,8 +992,36 @@ export class ChangetracksServer {
       return;
     }
 
-    const range = offsetRangeToLspRange(text, edit.offset, edit.offset + edit.length);
-    sendPendingEditFlushed(this.connection, edit.uri, range, edit.newText);
+    const { edits } = edit;
+    const { markupEdit, footnoteEdit } = edits;
+
+    // Mark this URI as expecting an echo from the applied edit
+    this.pendingEditManager.expectEcho(edit.uri);
+    // Suppress re-promotion on the echo didChange — the crystallized markup
+    // is intentionally L2 and should not trigger L2→L3 conversion
+    this.pendingCrystallizeEcho.add(edit.uri);
+
+    if (markupEdit) {
+      // L2: both markup and footnote edits
+      const markupRange = offsetRangeToLspRange(text, markupEdit.offset, markupEdit.offset + markupEdit.length);
+      // After markup edit is applied, text changes. Compute footnote range against
+      // the text-after-markup-edit for correct offsets.
+      const textAfterMarkup = text.substring(0, markupEdit.offset) + markupEdit.newText + text.substring(markupEdit.offset + markupEdit.length);
+      const footnoteRange = offsetRangeToLspRange(textAfterMarkup, footnoteEdit.offset, footnoteEdit.offset + footnoteEdit.length);
+      sendPendingEditFlushed(
+        this.connection, edit.uri,
+        markupRange, markupEdit.newText,
+        footnoteRange, footnoteEdit.newText,
+      );
+    } else {
+      // L3: footnote-only edit (no markup change — user's typed text stays)
+      const footnoteRange = offsetRangeToLspRange(text, footnoteEdit.offset, footnoteEdit.offset + footnoteEdit.length);
+      sendPendingEditFlushed(
+        this.connection, edit.uri,
+        { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }, '',
+        footnoteRange, footnoteEdit.newText,
+      );
+    }
   }
 
   /**
@@ -960,6 +1096,26 @@ export class ChangetracksServer {
   }
 
   /**
+   * Handle folding range request.
+   * Returns fold ranges for L3 footnote sections and multi-line deletions.
+   */
+  public handleFoldingRanges(params: { textDocument: { uri: string } }): FoldingRange[] {
+    try {
+      const uri = params.textDocument.uri;
+      const text = this.getDocumentText(uri);
+      if (!text) return [];
+      const changes = this.getMergedChanges(uri);
+      const viewMode = this.getViewMode(uri);
+      const state = this.docStates.get(uri);
+      const cursorState = state?.cursorState ?? null;
+      return createFoldingRanges(changes, text, viewMode, cursorState);
+    } catch (err) {
+      this.connection.console.error(`handleFoldingRanges error: ${err}`);
+      return [];
+    }
+  }
+
+  /**
    * Handle code action request
    * Provide accept/reject actions for CriticMarkup changes
    *
@@ -984,7 +1140,7 @@ export class ChangetracksServer {
       // For each diagnostic, create code actions
       const actions: CodeAction[] = [];
       for (const diagnostic of diagnostics) {
-        if (diagnostic.source === 'changetracks') {
+        if (diagnostic.source === 'changedown') {
           actions.push(...createCodeActions(diagnostic, changes, text, uri, this.reviewerIdentity));
         }
       }
@@ -998,7 +1154,7 @@ export class ChangetracksServer {
 
   /**
    * Handle document links request
-   * Provides clickable navigation between inline [^ct-N] refs and footnote definitions
+   * Provides clickable navigation between inline [^cn-N] refs and footnote definitions
    */
   public handleDocumentLinks(params: DocumentLinkParams): DocumentLink[] {
     try {
@@ -1015,7 +1171,7 @@ export class ChangetracksServer {
   }
 
   /**
-   * Handle the changetracks/annotate custom request.
+   * Handle the changedown/annotate custom request.
    *
    * Takes a textDocument URI, retrieves the previous version from git,
    * runs the appropriate annotator (CriticMarkup for markdown, sidecar for
@@ -1141,7 +1297,7 @@ export class ChangetracksServer {
   }
 
   /**
-   * Handle changetracks/getChanges request (Section 11).
+   * Handle changedown/getChanges request (Section 11).
    * Params: { textDocument: { uri: string } }
    * Response: { changes: ChangeNode[] }
    * Reuses getMergedChanges logic. Parses document if not yet cached.
@@ -1195,7 +1351,7 @@ export class ChangetracksServer {
   // ─── Phase 2: Lifecycle operation handlers (2A–2G) ─────────────────────────
 
   /**
-   * 2A: changetracks/getProjectConfig
+   * 2A: changedown/getProjectConfig
    * Returns project configuration for reason requirements and reviewer identity.
    */
   public handleGetProjectConfig(): {
@@ -1212,7 +1368,7 @@ export class ChangetracksServer {
   }
 
   /**
-   * 2B: changetracks/reviewChange
+   * 2B: changedown/reviewChange
    * Apply a review decision (approve/reject/request_changes) to a tracked change.
    */
   public handleReviewChange(params: {
@@ -1258,7 +1414,7 @@ export class ChangetracksServer {
   }
 
   /**
-   * 2C: changetracks/replyToThread
+   * 2C: changedown/replyToThread
    * Add a discussion reply to a change's footnote thread.
    */
   public handleReplyToThread(params: {
@@ -1286,7 +1442,7 @@ export class ChangetracksServer {
   }
 
   /**
-   * 2D: changetracks/amendChange
+   * 2D: changedown/amendChange
    * Amend a proposed change's inline text or reasoning.
    */
   public async handleAmendChange(params: {
@@ -1341,7 +1497,7 @@ export class ChangetracksServer {
   }
 
   /**
-   * 2E: changetracks/supersedeChange
+   * 2E: changedown/supersedeChange
    * Reject a proposed change and propose a replacement, with cross-references.
    */
   public async handleSupersedeChange(params: {
@@ -1376,7 +1532,7 @@ export class ChangetracksServer {
   }
 
   /**
-   * 2F: changetracks/resolveThread
+   * 2F: changedown/resolveThread
    * Mark a change's discussion thread as resolved.
    */
   public handleResolveThread(params: {
@@ -1399,7 +1555,7 @@ export class ChangetracksServer {
   }
 
   /**
-   * 2F (unresolve): changetracks/unresolveThread
+   * 2F (unresolve): changedown/unresolveThread
    * Remove the resolved status from a change's discussion thread.
    */
   public handleUnresolveThread(params: {
@@ -1420,7 +1576,7 @@ export class ChangetracksServer {
   }
 
   /**
-   * 2G: changetracks/compactChange
+   * 2G: changedown/compactChange
    * Compact a settled change by descending its metadata level.
    * Default: L2 → L1. With `fully: true`: L2 → L0.
    */
@@ -1499,7 +1655,7 @@ export class ChangetracksServer {
   }
 
   /**
-   * 2G+: changetracks/compactChanges (plural)
+   * 2G+: changedown/compactChanges (plural)
    * Compact multiple decided footnotes from an L3 (or L2) document in a single
    * operation. Removes targeted footnote blocks, applies body mutations for
    * rejected proposed changes, and inserts a compaction-boundary footnote.
@@ -1546,10 +1702,10 @@ export class ChangetracksServer {
   }
 
   /**
-   * 2H: changetracks/reviewAll
+   * 2H: changedown/reviewAll
    * Apply a review decision to all proposed changes in a document in a single
    * request, eliminating the stale-text race that occurs when looping over
-   * changetracks/reviewChange one change at a time.
+   * changedown/reviewChange one change at a time.
    *
    * When changeIds is provided, only the specified changes are reviewed
    * (used by acceptAllOnLine / rejectAllOnLine).
@@ -1625,20 +1781,4 @@ export class ChangetracksServer {
       return { error: `Review all failed: ${err}` };
     }
   }
-}
-
-/**
- * Create and configure a ChangeTracks language server
- *
- * @param connection Optional connection instance (for testing)
- * @returns Configured server instance
- */
-export function createServer(connection?: Connection): ChangetracksServer {
-  // Create connection using all proposed LSP features if not provided
-  const conn = connection || createConnection(ProposedFeatures.all);
-
-  // Create and return server instance
-  const server = new ChangetracksServer(conn);
-
-  return server;
 }

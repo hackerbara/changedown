@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { handleProposeBatch } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { handleProposeBatch } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -15,7 +15,7 @@ describe('review view cross-batch coordinate stability', () => {
   let state: SessionState;
   let resolver: ConfigResolver;
 
-  const compactConfig: ChangeTracksConfig = {
+  const compactConfig: ChangeDownConfig = {
     tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
     author: { default: 'ai:test', enforcement: 'optional' },
     hooks: { enforcement: 'warn', exclude: [] },
@@ -31,7 +31,7 @@ describe('review view cross-batch coordinate stability', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-chained-view-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-chained-view-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -43,7 +43,7 @@ describe('review view cross-batch coordinate stability', () => {
   it('second batch resolves stale review-view coordinates via committed hash', async () => {
     // 1. Create a file with simple content
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Heading',
       '',
       'Paragraph one.',

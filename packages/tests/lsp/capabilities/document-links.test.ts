@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { createDocumentLinks } from '@changetracks/lsp-server/internals';
+import { createDocumentLinks } from '@changedown/lsp-server/internals';
 
 /**
  * Helper: decode the command target URI back into [uri, line, character].
  * The target format is:
- *   command:changetracks.goToPosition?<encoded JSON array>
+ *   command:changedown.goToPosition?<encoded JSON array>
  */
 function decodeTarget(target: string): { uri: string; line: number; character: number } {
-  const prefix = 'command:changetracks.goToPosition?';
+  const prefix = 'command:changedown.goToPosition?';
   expect(target.startsWith(prefix)).toBeTruthy();
   const json = decodeURIComponent(target.slice(prefix.length));
   const [uri, line, character] = JSON.parse(json);
@@ -21,9 +21,9 @@ describe('Document Links', () => {
 
     it('inline ref links to footnote definition', () => {
       const text = [
-        'Some text with a change[^ct-1] here.',
+        'Some text with a change[^cn-1] here.',
         '',
-        '[^ct-1]: status: proposed',
+        '[^cn-1]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
@@ -31,14 +31,14 @@ describe('Document Links', () => {
       // One link from inline ref → definition, one from definition → inline ref
       expect(links).toHaveLength(2);
 
-      // Find the inline ref → definition link (range covers [^ct-1] on line 0)
+      // Find the inline ref → definition link (range covers [^cn-1] on line 0)
       const refLink = links.find(l => l.range.start.line === 0);
       expect(refLink).toBeTruthy();
 
-      // The inline ref [^ct-1] starts at column 23
+      // The inline ref [^cn-1] starts at column 23
       expect(refLink.range.start.character).toBe(23);
-      expect(refLink.range.end.character).toBe(23 + '[^ct-1]'.length);
-      expect(refLink.tooltip?.includes('[^ct-1]')).toBeTruthy();
+      expect(refLink.range.end.character).toBe(23 + '[^cn-1]'.length);
+      expect(refLink.tooltip?.includes('[^cn-1]')).toBeTruthy();
 
       // Target should point to the definition on line 2, column 0
       const refTarget = decodeTarget(refLink.target!);
@@ -49,20 +49,20 @@ describe('Document Links', () => {
 
     it('footnote definition links back to inline ref', () => {
       const text = [
-        'Some text with a change[^ct-1] here.',
+        'Some text with a change[^cn-1] here.',
         '',
-        '[^ct-1]: status: proposed',
+        '[^cn-1]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
 
-      // Find the definition → inline ref link (range covers [^ct-1]: on line 2)
+      // Find the definition → inline ref link (range covers [^cn-1]: on line 2)
       const defLink = links.find(l => l.range.start.line === 2);
       expect(defLink).toBeTruthy();
 
       expect(defLink.range.start.character).toBe(0);
-      expect(defLink.range.end.character).toBe('[^ct-1]:'.length);
-      expect(defLink.tooltip?.includes('[^ct-1]')).toBeTruthy();
+      expect(defLink.range.end.character).toBe('[^cn-1]:'.length);
+      expect(defLink.tooltip?.includes('[^cn-1]')).toBeTruthy();
 
       // Target should point back to the inline ref on line 0
       const defTarget = decodeTarget(defLink.target!);
@@ -73,9 +73,9 @@ describe('Document Links', () => {
 
     it('multiple inline refs to same footnote all get links', () => {
       const text = [
-        'First ref[^ct-1] and second ref[^ct-1] here.',
+        'First ref[^cn-1] and second ref[^cn-1] here.',
         '',
-        '[^ct-1]: status: proposed',
+        '[^cn-1]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
@@ -86,7 +86,7 @@ describe('Document Links', () => {
 
       // First ref at offset 9 ("First ref" = 9 chars)
       expect(refLinks[0].range.start.character).toBe(9);
-      // Second ref at offset 31 ("First ref[^ct-1] and second ref" = 31 chars)
+      // Second ref at offset 31 ("First ref[^cn-1] and second ref" = 31 chars)
       expect(refLinks[1].range.start.character).toBe(31);
 
       // Both should target the definition on line 2
@@ -103,11 +103,11 @@ describe('Document Links', () => {
       expect(defTarget.character).toBe(9);
     });
 
-    it('dotted IDs like [^ct-1.1] link correctly', () => {
+    it('dotted IDs like [^cn-1.1] link correctly', () => {
       const text = [
-        'A move operation[^ct-1.1] was tracked.',
+        'A move operation[^cn-1.1] was tracked.',
         '',
-        '[^ct-1.1]: status: proposed',
+        '[^cn-1.1]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
@@ -117,7 +117,7 @@ describe('Document Links', () => {
       const refLink = links.find(l => l.range.start.line === 0);
       expect(refLink).toBeTruthy();
       expect(refLink.range.start.character).toBe(16);
-      expect(refLink.range.end.character).toBe(16 + '[^ct-1.1]'.length);
+      expect(refLink.range.end.character).toBe(16 + '[^cn-1.1]'.length);
 
       const refTarget = decodeTarget(refLink.target!);
       expect(refTarget.line).toBe(2);
@@ -125,7 +125,7 @@ describe('Document Links', () => {
       // Definition → inline ref
       const defLink = links.find(l => l.range.start.line === 2);
       expect(defLink).toBeTruthy();
-      expect(defLink.range.end.character).toBe('[^ct-1.1]:'.length);
+      expect(defLink.range.end.character).toBe('[^cn-1.1]:'.length);
 
       const defTarget = decodeTarget(defLink.target!);
       expect(defTarget.line).toBe(0);
@@ -134,15 +134,15 @@ describe('Document Links', () => {
 
     it('non-existent ref with no definition produces no link', () => {
       const text = [
-        'A ref to nothing[^ct-99] here.',
+        'A ref to nothing[^cn-99] here.',
         '',
-        '[^ct-1]: status: proposed',
+        '[^cn-1]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
 
-      // [^ct-99] has no definition, so no link for it
-      // [^ct-1] definition has no inline ref, so no back-link
+      // [^cn-99] has no definition, so no link for it
+      // [^cn-1] definition has no inline ref, so no back-link
       expect(links).toHaveLength(0);
     });
 
@@ -150,7 +150,7 @@ describe('Document Links', () => {
       const text = [
         'Plain text with no inline refs.',
         '',
-        '[^ct-5]: status: proposed',
+        '[^cn-5]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
@@ -159,10 +159,10 @@ describe('Document Links', () => {
 
     it('multiple independent footnotes produce correct links', () => {
       const text = [
-        'Change one[^ct-1] and change two[^ct-2] here.',
+        'Change one[^cn-1] and change two[^cn-2] here.',
         '',
-        '[^ct-1]: status: proposed',
-        '[^ct-2]: status: accepted',
+        '[^cn-1]: status: proposed',
+        '[^cn-2]: status: accepted',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
@@ -174,12 +174,12 @@ describe('Document Links', () => {
       const refLinks = links.filter(l => l.range.start.line === 0);
       expect(refLinks).toHaveLength(2);
 
-      // First ref [^ct-1] at column 10
+      // First ref [^cn-1] at column 10
       expect(refLinks[0].range.start.character).toBe(10);
       const target1 = decodeTarget(refLinks[0].target!);
       expect(target1.line).toBe(2); // definition line
 
-      // Second ref [^ct-2] at column 32
+      // Second ref [^cn-2] at column 32
       expect(refLinks[1].range.start.character).toBe(32);
       const target2 = decodeTarget(refLinks[1].target!);
       expect(target2.line).toBe(3); // definition line
@@ -197,9 +197,9 @@ describe('Document Links', () => {
     });
 
     it('definition header is not treated as inline ref', () => {
-      // The definition [^ct-1]: should not be counted as an inline ref
+      // The definition [^cn-1]: should not be counted as an inline ref
       const text = [
-        '[^ct-1]: status: proposed',
+        '[^cn-1]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
@@ -221,13 +221,13 @@ describe('Document Links', () => {
 
     it('multi-line document with refs and defs on different lines', () => {
       const text = [
-        'First paragraph with[^ct-1] a ref.',
-        'Second paragraph with[^ct-2] another.',
+        'First paragraph with[^cn-1] a ref.',
+        'Second paragraph with[^cn-2] another.',
         '',
         'More text.',
         '',
-        '[^ct-1]: status: proposed',
-        '[^ct-2]: status: proposed',
+        '[^cn-1]: status: proposed',
+        '[^cn-2]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
@@ -261,9 +261,9 @@ describe('Document Links', () => {
     it('inline ref mid-line with CriticMarkup around it', () => {
       // Realistic scenario: a change node followed by its footnote ref
       const text = [
-        'Hello {++world++}[^ct-1] today.',
+        'Hello {++world++}[^cn-1] today.',
         '',
-        '[^ct-1]: status: proposed',
+        '[^cn-1]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
@@ -271,16 +271,16 @@ describe('Document Links', () => {
 
       const refLink = links.find(l => l.range.start.line === 0);
       expect(refLink).toBeTruthy();
-      // {++world++} is 12 chars, then [^ct-1] starts at col 17
+      // {++world++} is 12 chars, then [^cn-1] starts at col 17
       expect(refLink.range.start.character).toBe(17);
     });
 
     it('dotted ID with parent ID both present', () => {
       const text = [
-        'Deleted here[^ct-1] and inserted there[^ct-1.1].',
+        'Deleted here[^cn-1] and inserted there[^cn-1.1].',
         '',
-        '[^ct-1]: status: proposed',
-        '[^ct-1.1]: status: proposed',
+        '[^cn-1]: status: proposed',
+        '[^cn-1.1]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
@@ -288,13 +288,13 @@ describe('Document Links', () => {
       // 2 inline refs + 2 defs = 4 links
       expect(links).toHaveLength(4);
 
-      // [^ct-1] ref at column 12
+      // [^cn-1] ref at column 12
       const ref1 = links.find(l => l.range.start.line === 0 && l.range.start.character === 12);
       expect(ref1).toBeTruthy();
       const ref1Target = decodeTarget(ref1.target!);
       expect(ref1Target.line).toBe(2);
 
-      // [^ct-1.1] ref at column 38
+      // [^cn-1.1] ref at column 38
       const ref2 = links.find(l => l.range.start.line === 0 && l.range.start.character === 38);
       expect(ref2).toBeTruthy();
       const ref2Target = decodeTarget(ref2.target!);
@@ -304,9 +304,9 @@ describe('Document Links', () => {
     it('URI is correctly embedded in link targets', () => {
       const customUri = 'file:///Users/test/project/notes.md';
       const text = [
-        'Text[^ct-1] here.',
+        'Text[^cn-1] here.',
         '',
-        '[^ct-1]: status: proposed',
+        '[^cn-1]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, customUri);
@@ -321,17 +321,17 @@ describe('Document Links', () => {
     it('ref inside footnote body does not create link to itself', () => {
       // A footnote body that mentions another footnote ref
       const text = [
-        'Change here[^ct-1] relates to[^ct-2].',
+        'Change here[^cn-1] relates to[^cn-2].',
         '',
-        '[^ct-1]: Relates to [^ct-2]',
-        '[^ct-2]: status: proposed',
+        '[^cn-1]: Relates to [^cn-2]',
+        '[^cn-2]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
 
-      // Inline refs on line 0: [^ct-1] and [^ct-2] → 2 ref links
-      // Inline ref on line 2: [^ct-2] inside footnote body → 1 ref link
-      // Definition back-links: [^ct-1]: → line 0 ref, [^ct-2]: → first ref on line 0
+      // Inline refs on line 0: [^cn-1] and [^cn-2] → 2 ref links
+      // Inline ref on line 2: [^cn-2] inside footnote body → 1 ref link
+      // Definition back-links: [^cn-1]: → line 0 ref, [^cn-2]: → first ref on line 0
       // Total: 3 inline refs + 2 def back-links = 5
       const refLinks = links.filter(l => l.tooltip?.startsWith('Go to footnote definition'));
       const defLinks = links.filter(l => l.tooltip?.startsWith('Go to inline change'));
@@ -342,9 +342,9 @@ describe('Document Links', () => {
 
     it('handles high footnote numbers', () => {
       const text = [
-        'Reference[^ct-999] here.',
+        'Reference[^cn-999] here.',
         '',
-        '[^ct-999]: status: proposed',
+        '[^cn-999]: status: proposed',
       ].join('\n');
 
       const links = createDocumentLinks(text, TEST_URI);
@@ -352,7 +352,7 @@ describe('Document Links', () => {
 
       const refLink = links.find(l => l.range.start.line === 0);
       expect(refLink).toBeTruthy();
-      expect(refLink.range.end.character - refLink.range.start.character).toBe('[^ct-999]'.length);
+      expect(refLink.range.end.character - refLink.range.start.character).toBe('[^cn-999]'.length);
     });
   });
 });

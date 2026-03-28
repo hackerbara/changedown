@@ -1,15 +1,15 @@
 {
-    "name": "changetracks-vscode",
-    "displayName": "ChangeTracks",
+    "name": "changedown-vscode",
+    "displayName": "ChangeDown",
     "description": "The Human UI for the Agentic Markdown Era",
     "version": "0.1.0",
-    "publisher": "changetracks",
+    "publisher": "changedown",
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/hackerbara/changetracks.git"
+        "url": "https://github.com/hackerbara/changedown.git"
     },
-    "homepage": "https://ctrcks.com",
+    "homepage": "https://changedown.com",
     "engines": {
         "vscode": "^1.80.0"
     },
@@ -18,15 +18,15 @@
     ],
     "activationEvents": [
         "onLanguage:markdown",
-        "onCommand:changetracks.annotateFromGit",
-        "onCommand:changetracks.setupProject",
-        "onCommand:changetracks.revealSettingsPanel",
-        "onCommand:changetracks.openDemo",
-        "onCommand:changetracks.openExample",
-        "onCommand:changetracks.setupAgents",
-        "onView:changetracksSettings",
-        "onView:changetracksReview",
-        "onCustomEditor:changetracks.docxEditor"
+        "onCommand:changedown.annotateFromGit",
+        "onCommand:changedown.setupProject",
+        "onCommand:changedown.revealSettingsPanel",
+        "onCommand:changedown.openDemo",
+        "onCommand:changedown.openExample",
+        "onCommand:changedown.setupAgents",
+        "onView:changedownSettings",
+        "onView:changedownReview",
+        "onCustomEditor:changedown.docxEditor"
     ],
     "extensionDependencies": [
         "vscode.git"
@@ -42,270 +42,270 @@
     "contributes": {
         "commands": [
             {
-                "command": "changetracks.ping",
-                "title": "ChangeTracks: Ping (Diagnostic)"
+                "command": "changedown.ping",
+                "title": "ChangeDown: Ping (Diagnostic)"
             },
             {
-                "command": "changetracks.toggleTracking",
-                "title": "ChangeTracks: Toggle Tracking Mode",
+                "command": "changedown.toggleTracking",
+                "title": "ChangeDown: Toggle Tracking Mode",
                 "icon": "$(circle-filled)"
             },
             {
-                "command": "changetracks.acceptChange",
-                "title": "ChangeTracks: Accept Change at Cursor"
+                "command": "changedown.acceptChange",
+                "title": "ChangeDown: Accept Change at Cursor"
             },
             {
-                "command": "changetracks.rejectChange",
-                "title": "ChangeTracks: Reject Change at Cursor"
+                "command": "changedown.rejectChange",
+                "title": "ChangeDown: Reject Change at Cursor"
             },
             {
-                "command": "changetracks.acceptAll",
-                "title": "ChangeTracks: Accept All Changes"
+                "command": "changedown.acceptAll",
+                "title": "ChangeDown: Accept All Changes"
             },
             {
-                "command": "changetracks.rejectAll",
-                "title": "ChangeTracks: Reject All Changes"
+                "command": "changedown.rejectAll",
+                "title": "ChangeDown: Reject All Changes"
             },
             {
-                "command": "changetracks.acceptAllOnLine",
+                "command": "changedown.acceptAllOnLine",
                 "title": "Accept All Changes on Line",
-                "category": "ChangeTracks"
+                "category": "ChangeDown"
             },
             {
-                "command": "changetracks.rejectAllOnLine",
+                "command": "changedown.rejectAllOnLine",
                 "title": "Reject All Changes on Line",
-                "category": "ChangeTracks"
+                "category": "ChangeDown"
             },
             {
-                "command": "changetracks.nextChange",
-                "title": "ChangeTracks: Go to Next Change"
+                "command": "changedown.nextChange",
+                "title": "ChangeDown: Go to Next Change"
             },
             {
-                "command": "changetracks.previousChange",
-                "title": "ChangeTracks: Go to Previous Change"
+                "command": "changedown.previousChange",
+                "title": "ChangeDown: Go to Previous Change"
             },
             {
-                "command": "changetracks.addComment",
-                "title": "ChangeTracks: Insert Comment",
+                "command": "changedown.addComment",
+                "title": "ChangeDown: Insert Comment",
                 "icon": "$(comment)"
             },
             {
-                "command": "changetracks.toggleView",
-                "title": "ChangeTracks: Toggle Smart View",
+                "command": "changedown.toggleView",
+                "title": "ChangeDown: Toggle Smart View",
                 "icon": "$(eye)"
             },
             {
-                "command": "changetracks.setViewMode",
-                "title": "ChangeTracks: Set View Mode"
+                "command": "changedown.setViewMode",
+                "title": "ChangeDown: Set View Mode"
             },
             {
-                "command": "changetracks.toggleGitGutter",
-                "title": "ChangeTracks: Toggle Git Gutter"
+                "command": "changedown.toggleGitGutter",
+                "title": "ChangeDown: Toggle Git Gutter"
             },
             {
-                "command": "changetracks.annotateFromGit",
-                "title": "ChangeTracks: Annotate Recent Changes",
+                "command": "changedown.annotateFromGit",
+                "title": "ChangeDown: Annotate Recent Changes",
                 "icon": "$(git-compare)"
             },
             {
-                "command": "changetracks.goToLinkedChange",
-                "title": "ChangeTracks: Go to Linked Change"
+                "command": "changedown.goToLinkedChange",
+                "title": "ChangeDown: Go to Linked Change"
             },
             {
-                "command": "changetracks.revealChange",
-                "title": "ChangeTracks: Go to Change"
+                "command": "changedown.revealChange",
+                "title": "ChangeDown: Go to Change"
             },
             {
-                "command": "changetracks.showDiff",
-                "title": "ChangeTracks: Show Diff",
+                "command": "changedown.showDiff",
+                "title": "ChangeDown: Show Diff",
                 "icon": "$(diff)"
             },
             {
-                "command": "changetracks.openDiffForResource",
+                "command": "changedown.openDiffForResource",
                 "title": "Open diff (Settled ↔ Current)"
             },
             {
-                "command": "changetracks.acceptAllInFile",
+                "command": "changedown.acceptAllInFile",
                 "title": "Accept All Changes in File"
             },
             {
-                "command": "changetracks.rejectAllInFile",
+                "command": "changedown.rejectAllInFile",
                 "title": "Reject All Changes in File"
             },
             {
-                "command": "changetracks.showScmIndexStatus",
-                "title": "ChangeTracks: Show SCM Index Status"
+                "command": "changedown.showScmIndexStatus",
+                "title": "ChangeDown: Show SCM Index Status"
             },
             {
-                "command": "changetracks.acceptChangeFromThread",
+                "command": "changedown.acceptChangeFromThread",
                 "title": "Accept",
                 "icon": "$(check)"
             },
             {
-                "command": "changetracks.rejectChangeFromThread",
+                "command": "changedown.rejectChangeFromThread",
                 "title": "Reject",
                 "icon": "$(close)"
             },
             {
-                "command": "changetracks.resolveThread",
+                "command": "changedown.resolveThread",
                 "title": "Resolve Thread",
-                "category": "ChangeTracks",
+                "category": "ChangeDown",
                 "icon": "$(pass)"
             },
             {
-                "command": "changetracks.unresolveThread",
+                "command": "changedown.unresolveThread",
                 "title": "Unresolve Thread",
-                "category": "ChangeTracks",
+                "category": "ChangeDown",
                 "icon": "$(circle-slash)"
             },
             {
-                "command": "changetracks.replyToThread",
+                "command": "changedown.replyToThread",
                 "title": "Reply"
             },
             {
-                "command": "changetracks.createComment",
+                "command": "changedown.createComment",
                 "title": "Add Comment",
                 "enablement": "!commentIsEmpty"
             },
             {
-                "command": "changetracks.compactChange",
-                "title": "ChangeTracks: Compact Change",
+                "command": "changedown.compactChange",
+                "title": "ChangeDown: Compact Change",
                 "icon": "$(fold)"
             },
             {
-                "command": "changetracks.compactChangeFully",
-                "title": "ChangeTracks: Compact Change Fully",
+                "command": "changedown.compactChangeFully",
+                "title": "ChangeDown: Compact Change Fully",
                 "icon": "$(fold-down)"
             },
             {
-                "command": "changetracks.viewDeliberation",
+                "command": "changedown.viewDeliberation",
                 "title": "View Deliberation",
-                "category": "ChangeTracks"
+                "category": "ChangeDown"
             },
             {
-                "command": "changetracks.revealPanel",
-                "title": "ChangeTracks: Open Panel"
+                "command": "changedown.revealPanel",
+                "title": "ChangeDown: Open Panel"
             },
             {
-                "command": "changetracks.exportToDocx",
+                "command": "changedown.exportToDocx",
                 "title": "Export to DOCX",
-                "category": "ChangeTracks",
+                "category": "ChangeDown",
                 "icon": "$(export)"
             },
             {
-                "command": "changetracks.setupProject",
+                "command": "changedown.setupProject",
                 "title": "Set Up Project",
-                "category": "ChangeTracks"
+                "category": "ChangeDown"
             },
             {
-                "command": "changetracks.openDemo",
+                "command": "changedown.openDemo",
                 "title": "Open Demo File",
-                "category": "ChangeTracks"
+                "category": "ChangeDown"
             },
             {
-                "command": "changetracks.revealSettingsPanel",
+                "command": "changedown.revealSettingsPanel",
                 "title": "Open Settings Panel",
-                "category": "ChangeTracks"
+                "category": "ChangeDown"
             },
             {
-                "command": "changetracks.openExample",
+                "command": "changedown.openExample",
                 "title": "Open Example",
-                "category": "ChangeTracks"
+                "category": "ChangeDown"
             },
             {
-                "command": "changetracks.setupAgents",
+                "command": "changedown.setupAgents",
                 "title": "Configure Agent Plugins",
-                "category": "ChangeTracks"
+                "category": "ChangeDown"
             },
             {
-                "command": "changetracks.requestChanges",
-                "title": "ChangeTracks: Request Changes"
+                "command": "changedown.requestChanges",
+                "title": "ChangeDown: Request Changes"
             },
             {
-                "command": "changetracks.withdrawRequest",
-                "title": "ChangeTracks: Withdraw Request"
+                "command": "changedown.withdrawRequest",
+                "title": "ChangeDown: Withdraw Request"
             },
             {
-                "command": "changetracks.amendChange",
-                "title": "ChangeTracks: Amend Change"
+                "command": "changedown.amendChange",
+                "title": "ChangeDown: Amend Change"
             },
             {
-                "command": "changetracks.supersedeChange",
-                "title": "ChangeTracks: Supersede Change"
+                "command": "changedown.supersedeChange",
+                "title": "ChangeDown: Supersede Change"
             },
             {
-                "command": "changetracks.resolveByChangeId",
-                "title": "ChangeTracks: Resolve Thread"
+                "command": "changedown.resolveByChangeId",
+                "title": "ChangeDown: Resolve Thread"
             },
             {
-                "command": "changetracks.unresolveByChangeId",
-                "title": "ChangeTracks: Unresolve Thread"
+                "command": "changedown.unresolveByChangeId",
+                "title": "ChangeDown: Unresolve Thread"
             },
             {
-                "command": "changetracks._testQueryPanelState",
-                "title": "ChangeTracks: Test Query Panel State"
+                "command": "changedown._testQueryPanelState",
+                "title": "ChangeDown: Test Query Panel State"
             },
             {
-                "command": "changetracks._testReadConfig",
-                "title": "ChangeTracks: Test Read Config"
+                "command": "changedown._testReadConfig",
+                "title": "ChangeDown: Test Read Config"
             },
             {
-                "command": "changetracks._testExtensionState",
-                "title": "ChangeTracks: Test Extension State"
+                "command": "changedown._testExtensionState",
+                "title": "ChangeDown: Test Extension State"
             },
             {
-                "command": "changetracks._testLspClient",
-                "title": "ChangeTracks: Test LSP Client"
+                "command": "changedown._testLspClient",
+                "title": "ChangeDown: Test LSP Client"
             },
             {
-                "command": "changetracks._testGetDocumentText",
-                "title": "ChangeTracks: Test Get Document Text"
+                "command": "changedown._testGetDocumentText",
+                "title": "ChangeDown: Test Get Document Text"
             },
             {
-                "command": "changetracks._testWaitForChanges",
-                "title": "ChangeTracks: Test Wait For Changes"
+                "command": "changedown._testWaitForChanges",
+                "title": "ChangeDown: Test Wait For Changes"
             },
             {
-                "command": "changetracks._testGetCursorPosition",
-                "title": "ChangeTracks: Test Get Cursor Position"
+                "command": "changedown._testGetCursorPosition",
+                "title": "ChangeDown: Test Get Cursor Position"
             },
             {
-                "command": "changetracks._testUpdateSetting",
-                "title": "ChangeTracks: Test Update Setting"
+                "command": "changedown._testUpdateSetting",
+                "title": "ChangeDown: Test Update Setting"
             },
             {
-                "command": "changetracks._testPasteClipboard",
-                "title": "ChangeTracks: Test Paste Clipboard"
+                "command": "changedown._testPasteClipboard",
+                "title": "ChangeDown: Test Paste Clipboard"
             },
             {
-                "command": "changetracks._testResetDocument",
-                "title": "ChangeTracks: Test Reset Document"
+                "command": "changedown._testResetDocument",
+                "title": "ChangeDown: Test Reset Document"
             },
             {
-                "command": "changetracks._testExecuteCommand",
-                "title": "ChangeTracks: Test Execute Command"
+                "command": "changedown._testExecuteCommand",
+                "title": "ChangeDown: Test Execute Command"
             },
             {
-                "command": "changetracks.inspectUnresolved",
-                "title": "ChangeTracks: Inspect Unresolved Anchors"
+                "command": "changedown.inspectUnresolved",
+                "title": "ChangeDown: Inspect Unresolved Anchors"
             },
             {
-                "command": "changetracks.searchAnchorText",
-                "title": "ChangeTracks: Search for Anchor Text"
+                "command": "changedown.searchAnchorText",
+                "title": "ChangeDown: Search for Anchor Text"
             },
             {
-                "command": "changetracks.jumpToFootnote",
-                "title": "ChangeTracks: Jump to Footnote"
+                "command": "changedown.jumpToFootnote",
+                "title": "ChangeDown: Jump to Footnote"
             },
             {
-                "command": "changetracks.reanchorToSelection",
-                "title": "ChangeTracks: Re-anchor to Selection"
+                "command": "changedown.reanchorToSelection",
+                "title": "ChangeDown: Re-anchor to Selection"
             }
         ],
         "customEditors": [
             {
-                "viewType": "changetracks.docxEditor",
-                "displayName": "ChangeTracks DOCX Editor",
+                "viewType": "changedown.docxEditor",
+                "displayName": "ChangeDown DOCX Editor",
                 "selector": [
                     { "filenamePattern": "*.docx" }
                 ],
@@ -315,21 +315,21 @@
         "viewsContainers": {
             "activitybar": [
                 {
-                    "id": "changetracks",
-                    "title": "ChangeTracks",
+                    "id": "changedown",
+                    "title": "ChangeDown",
                     "icon": "media/activity-bar-icon.svg"
                 }
             ]
         },
         "views": {
-            "changetracks": [
+            "changedown": [
                 {
-                    "id": "changetracksReview",
+                    "id": "changedownReview",
                     "name": "Review",
                     "type": "webview"
                 },
                 {
-                    "id": "changetracksSettings",
+                    "id": "changedownSettings",
                     "name": "Project Settings",
                     "type": "webview",
                     "visibility": "collapsed"
@@ -339,122 +339,122 @@
         "menus": {
             "commandPalette": [
                 {
-                    "command": "changetracks.createComment",
+                    "command": "changedown.createComment",
                     "when": "false"
                 },
                 {
-                    "command": "changetracks._testQueryPanelState",
+                    "command": "changedown._testQueryPanelState",
                     "when": "isExtensionDevelopmentHost"
                 },
                 {
-                    "command": "changetracks._testReadConfig",
+                    "command": "changedown._testReadConfig",
                     "when": "isExtensionDevelopmentHost"
                 },
                 {
-                    "command": "changetracks._testExtensionState",
+                    "command": "changedown._testExtensionState",
                     "when": "isExtensionDevelopmentHost"
                 },
                 {
-                    "command": "changetracks._testLspClient",
+                    "command": "changedown._testLspClient",
                     "when": "isExtensionDevelopmentHost"
                 },
                 {
-                    "command": "changetracks._testGetDocumentText",
+                    "command": "changedown._testGetDocumentText",
                     "when": "isExtensionDevelopmentHost"
                 },
                 {
-                    "command": "changetracks._testWaitForChanges",
+                    "command": "changedown._testWaitForChanges",
                     "when": "isExtensionDevelopmentHost"
                 },
                 {
-                    "command": "changetracks._testGetCursorPosition",
+                    "command": "changedown._testGetCursorPosition",
                     "when": "isExtensionDevelopmentHost"
                 },
                 {
-                    "command": "changetracks._testUpdateSetting",
+                    "command": "changedown._testUpdateSetting",
                     "when": "isExtensionDevelopmentHost"
                 },
                 {
-                    "command": "changetracks._testPasteClipboard",
+                    "command": "changedown._testPasteClipboard",
                     "when": "isExtensionDevelopmentHost"
                 },
                 {
-                    "command": "changetracks._testResetDocument",
+                    "command": "changedown._testResetDocument",
                     "when": "isExtensionDevelopmentHost"
                 },
                 {
-                    "command": "changetracks._testExecuteCommand",
+                    "command": "changedown._testExecuteCommand",
                     "when": "isExtensionDevelopmentHost"
                 }
             ],
             "editor/context": [
                 {
-                    "command": "changetracks.addComment",
+                    "command": "changedown.addComment",
                     "when": "resourceLangId == markdown && editorTextFocus",
-                    "group": "1_changetracks@1"
+                    "group": "1_changedown@1"
                 },
                 {
-                    "command": "changetracks.acceptChange",
-                    "when": "resourceLangId == markdown && changetracks:changeAtCursor",
-                    "group": "1_changetracks@2"
+                    "command": "changedown.acceptChange",
+                    "when": "resourceLangId == markdown && changedown:changeAtCursor",
+                    "group": "1_changedown@2"
                 },
                 {
-                    "command": "changetracks.rejectChange",
-                    "when": "resourceLangId == markdown && changetracks:changeAtCursor",
-                    "group": "1_changetracks@3"
+                    "command": "changedown.rejectChange",
+                    "when": "resourceLangId == markdown && changedown:changeAtCursor",
+                    "group": "1_changedown@3"
                 },
                 {
-                    "command": "changetracks.requestChanges",
-                    "when": "resourceLangId == markdown && changetracks:changeAtCursor",
-                    "group": "1_changetracks@4"
+                    "command": "changedown.requestChanges",
+                    "when": "resourceLangId == markdown && changedown:changeAtCursor",
+                    "group": "1_changedown@4"
                 },
                 {
-                    "command": "changetracks.withdrawRequest",
-                    "when": "resourceLangId == markdown && changetracks:changeAtCursor",
-                    "group": "1_changetracks@5"
+                    "command": "changedown.withdrawRequest",
+                    "when": "resourceLangId == markdown && changedown:changeAtCursor",
+                    "group": "1_changedown@5"
                 },
                 {
-                    "command": "changetracks.viewDeliberation",
+                    "command": "changedown.viewDeliberation",
                     "when": "editorLangId == markdown",
-                    "group": "changetracks@1"
+                    "group": "changedown@1"
                 },
                 {
-                    "command": "changetracks.compactChange",
+                    "command": "changedown.compactChange",
                     "when": "editorLangId == markdown",
-                    "group": "changetracks@4"
+                    "group": "changedown@4"
                 },
                 {
-                    "command": "changetracks.compactChangeFully",
+                    "command": "changedown.compactChangeFully",
                     "when": "editorLangId == markdown",
-                    "group": "changetracks@5"
+                    "group": "changedown@5"
                 }
             ],
             "editor/title": [
                 {
-                    "command": "changetracks.toggleTracking",
-                    "when": "resourceLangId == markdown && changetracks:trackingEnabled",
+                    "command": "changedown.toggleTracking",
+                    "when": "resourceLangId == markdown && changedown:trackingEnabled",
                     "group": "navigation",
-                    "alt": "changetracks.toggleTracking"
+                    "alt": "changedown.toggleTracking"
                 },
                 {
-                    "command": "changetracks.toggleTracking",
-                    "when": "resourceLangId == markdown && !changetracks:trackingEnabled",
+                    "command": "changedown.toggleTracking",
+                    "when": "resourceLangId == markdown && !changedown:trackingEnabled",
                     "group": "navigation",
-                    "alt": "changetracks.toggleTracking"
+                    "alt": "changedown.toggleTracking"
                 },
                 {
-                    "command": "changetracks.toggleView",
+                    "command": "changedown.toggleView",
                     "when": "resourceLangId == markdown",
                     "group": "navigation",
-                    "alt": "changetracks.toggleView"
+                    "alt": "changedown.toggleView"
                 },
                 {
-                    "command": "changetracks.addComment",
+                    "command": "changedown.addComment",
                     "when": "resourceLangId == markdown",
                     "group": "navigation"
                 },
                 {
-                    "command": "changetracks.exportToDocx",
+                    "command": "changedown.exportToDocx",
                     "when": "resourceLangId == markdown",
                     "group": "navigation"
                 }
@@ -463,192 +463,192 @@
             "view/item/context": [],
             "comments/commentThread/title": [
                 {
-                    "command": "changetracks.acceptChangeFromThread",
-                    "when": "commentController == changetracks",
+                    "command": "changedown.acceptChangeFromThread",
+                    "when": "commentController == changedown",
                     "group": "inline"
                 },
                 {
-                    "command": "changetracks.rejectChangeFromThread",
-                    "when": "commentController == changetracks",
+                    "command": "changedown.rejectChangeFromThread",
+                    "when": "commentController == changedown",
                     "group": "inline"
                 }
             ],
             "comments/commentThread/context": [
                 {
-                    "command": "changetracks.createComment",
-                    "when": "commentController == changetracks && commentThreadIsEmpty",
+                    "command": "changedown.createComment",
+                    "when": "commentController == changedown && commentThreadIsEmpty",
                     "group": "inline"
                 },
                 {
-                    "command": "changetracks.replyToThread",
-                    "when": "commentController == changetracks && !commentThreadIsEmpty",
+                    "command": "changedown.replyToThread",
+                    "when": "commentController == changedown && !commentThreadIsEmpty",
                     "group": "inline"
                 },
                 {
-                    "command": "changetracks.resolveThread",
-                    "when": "commentController == changetracks && !commentThreadIsEmpty",
+                    "command": "changedown.resolveThread",
+                    "when": "commentController == changedown && !commentThreadIsEmpty",
                     "group": "inline"
                 },
                 {
-                    "command": "changetracks.unresolveThread",
-                    "when": "commentController == changetracks && !commentThreadIsEmpty",
+                    "command": "changedown.unresolveThread",
+                    "when": "commentController == changedown && !commentThreadIsEmpty",
                     "group": "inline"
                 },
                 {
-                    "command": "changetracks.amendChange",
-                    "when": "commentController == changetracks",
+                    "command": "changedown.amendChange",
+                    "when": "commentController == changedown",
                     "group": "inline"
                 },
                 {
-                    "command": "changetracks.supersedeChange",
-                    "when": "commentController == changetracks",
+                    "command": "changedown.supersedeChange",
+                    "when": "commentController == changedown",
                     "group": "inline"
                 }
             ],
             "scm/resourceState/context": [
                 {
-                    "command": "changetracks.openDiffForResource",
-                    "when": "scmProvider == changetracks",
+                    "command": "changedown.openDiffForResource",
+                    "when": "scmProvider == changedown",
                     "group": "inline"
                 },
                 {
-                    "command": "changetracks.acceptAllInFile",
-                    "when": "scmProvider == changetracks",
+                    "command": "changedown.acceptAllInFile",
+                    "when": "scmProvider == changedown",
                     "group": "inline"
                 },
                 {
-                    "command": "changetracks.rejectAllInFile",
-                    "when": "scmProvider == changetracks",
+                    "command": "changedown.rejectAllInFile",
+                    "when": "scmProvider == changedown",
                     "group": "inline"
                 }
             ]
         },
         "keybindings": [
             {
-                "command": "changetracks.toggleTracking",
+                "command": "changedown.toggleTracking",
                 "key": "alt+cmd+t",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.toggleTracking",
+                "command": "changedown.toggleTracking",
                 "key": "ctrl+alt+t",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.acceptChange",
+                "command": "changedown.acceptChange",
                 "key": "alt+cmd+y",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.acceptChange",
+                "command": "changedown.acceptChange",
                 "key": "ctrl+alt+y",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.rejectChange",
+                "command": "changedown.rejectChange",
                 "key": "alt+cmd+n",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.rejectChange",
+                "command": "changedown.rejectChange",
                 "key": "ctrl+alt+n",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.nextChange",
+                "command": "changedown.nextChange",
                 "key": "alt+cmd+]",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.nextChange",
+                "command": "changedown.nextChange",
                 "key": "ctrl+alt+]",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.previousChange",
+                "command": "changedown.previousChange",
                 "key": "alt+cmd+[",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.previousChange",
+                "command": "changedown.previousChange",
                 "key": "ctrl+alt+[",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.addComment",
+                "command": "changedown.addComment",
                 "key": "alt+cmd+/",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.addComment",
+                "command": "changedown.addComment",
                 "key": "ctrl+alt+/",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.annotateFromGit",
+                "command": "changedown.annotateFromGit",
                 "key": "alt+cmd+g",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.annotateFromGit",
+                "command": "changedown.annotateFromGit",
                 "key": "ctrl+alt+g",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.goToLinkedChange",
+                "command": "changedown.goToLinkedChange",
                 "key": "alt+cmd+m",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.goToLinkedChange",
+                "command": "changedown.goToLinkedChange",
                 "key": "ctrl+alt+m",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.showDiff",
+                "command": "changedown.showDiff",
                 "key": "alt+cmd+d",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.showDiff",
+                "command": "changedown.showDiff",
                 "key": "ctrl+alt+d",
                 "when": "editorTextFocus && resourceLangId == markdown"
             },
             {
-                "command": "changetracks.clipboardCutAction",
+                "command": "changedown.clipboardCutAction",
                 "key": "cmd+x",
-                "when": "editorTextFocus && resourceLangId == markdown && changetracks:trackingEnabled"
+                "when": "editorTextFocus && resourceLangId == markdown && changedown:trackingEnabled"
             },
             {
-                "command": "changetracks.clipboardCutAction",
+                "command": "changedown.clipboardCutAction",
                 "key": "ctrl+x",
-                "when": "editorTextFocus && resourceLangId == markdown && changetracks:trackingEnabled"
+                "when": "editorTextFocus && resourceLangId == markdown && changedown:trackingEnabled"
             },
             {
-                "command": "changetracks.clipboardPasteAction",
+                "command": "changedown.clipboardPasteAction",
                 "key": "cmd+v",
-                "when": "editorTextFocus && resourceLangId == markdown && changetracks:trackingEnabled"
+                "when": "editorTextFocus && resourceLangId == markdown && changedown:trackingEnabled"
             },
             {
-                "command": "changetracks.clipboardPasteAction",
+                "command": "changedown.clipboardPasteAction",
                 "key": "ctrl+v",
-                "when": "editorTextFocus && resourceLangId == markdown && changetracks:trackingEnabled"
+                "when": "editorTextFocus && resourceLangId == markdown && changedown:trackingEnabled"
             },
             {
-                "command": "changetracks._testExecuteCommand",
+                "command": "changedown._testExecuteCommand",
                 "key": "ctrl+shift+f12",
                 "when": "editorTextFocus"
             }
         ],
         "configuration": {
-            "title": "ChangeTracks",
+            "title": "ChangeDown",
             "properties": {
-                "changetracks.trackingMode": {
+                "changedown.trackingMode": {
                     "type": "boolean",
                     "default": false,
                     "description": "Enable tracking changes by default"
                 },
-                "changetracks.defaultViewMode": {
+                "changedown.defaultViewMode": {
                     "type": "string",
                     "default": "all-markup",
                     "enum": [
@@ -665,35 +665,35 @@
                     ],
                     "description": "Default view mode when opening markdown files."
                 },
-                "changetracks.showDelimiters": {
+                "changedown.showDelimiters": {
                     "type": "boolean",
                     "default": false,
                     "description": "Show CriticMarkup delimiter characters (, , , etc.). When off, delimiters are hidden but type decorations (colors, strikethrough) still apply. In Simple mode with this on, delimiters are revealed when cursor enters a change."
                 },
-                "changetracks.persistAnnotations": {
+                "changedown.persistAnnotations": {
                     "type": "boolean",
                     "default": true,
                     "description": "Save annotations to disk after generating them"
                 },
-                "changetracks.annotateOnOpen": {
+                "changedown.annotateOnOpen": {
                     "type": "boolean",
                     "default": false,
                     "description": "Automatically annotate files with git changes when opened"
                 },
-                "changetracks.editBoundary.pauseThresholdMs": {
+                "changedown.editBoundary.pauseThresholdMs": {
                     "type": "number",
                     "default": 30000,
                     "minimum": 0,
                     "description": "How long you pause before the edit commits. 0 = only commit on cursor move/save.",
                     "order": 1
                 },
-                "changetracks.editBoundary.breakOnNewline": {
+                "changedown.editBoundary.breakOnNewline": {
                     "type": "boolean",
                     "default": true,
                     "description": "Whether newlines in pasted text split into separate changes",
                     "order": 2
                 },
-                "changetracks.decorationStyle": {
+                "changedown.decorationStyle": {
                     "type": "string",
                     "enum": [
                         "foreground",
@@ -702,7 +702,7 @@
                     "default": "foreground",
                     "description": "Visual style for tracked changes. 'foreground' uses colored text (popular editor style). 'background' uses background tinting."
                 },
-                "changetracks.authorColors": {
+                "changedown.authorColors": {
                     "type": "string",
                     "enum": [
                         "auto",
@@ -712,43 +712,43 @@
                     "default": "auto",
                     "description": "When to use per-author coloring. 'auto' enables it only when 2+ authors are present, 'always' forces per-author colors, 'never' uses semantic colors only."
                 },
-                "changetracks.author": {
+                "changedown.author": {
                     "type": "string",
                     "default": "",
                     "description": "Author name for tracked changes (used in footnote metadata)"
                 },
-                "changetracks.reviewerIdentity": {
+                "changedown.reviewerIdentity": {
                     "type": "string",
                     "default": "",
-                    "description": "Reviewer identity for accept/reject attribution (who approved/rejected). Recorded in footnote approved:/rejected: lines. Falls back to changetracks.author if not set."
+                    "description": "Reviewer identity for accept/reject attribution (who approved/rejected). Recorded in footnote approved:/rejected: lines. Falls back to changedown.author if not set."
                 },
-                "changetracks.archiveOnAccept": {
+                "changedown.archiveOnAccept": {
                     "type": "boolean",
                     "default": true,
                     "description": "When enabled, accepting a change records the original/reference text in the footnote as an archive line (geological record) so you keep a history of what was there."
                 },
-                "changetracks.preferGutter": {
+                "changedown.preferGutter": {
                     "type": "boolean",
                     "default": false,
-                    "description": "When true, prompts to disable Git SCM for the workspace so ChangeTracks's gutter diff indicators are used instead."
+                    "description": "When true, prompts to disable Git SCM for the workspace so ChangeDown's gutter diff indicators are used instead."
                 },
-                "changetracks.clickToShowComments": {
+                "changedown.clickToShowComments": {
                     "type": "boolean",
                     "default": true,
                     "description": "When true, clicking inside a tracked change opens its comment thread peek widget. Other open peeks are automatically closed."
                 },
-                "changetracks.suppressGitGutter": {
+                "changedown.suppressGitGutter": {
                     "type": "boolean",
                     "default": true,
-                    "markdownDescription": "Suppress Git's QuickDiff gutter indicators when ChangeTracks is active. Git's gutter shows L2→L3 format noise for markdown files. When enabled, sets `scm.diffDecorations` to `none` workspace-wide. ChangeTracks' own change decorations are unaffected. Use the **ChangeTracks: Toggle Git Gutter** command to switch at runtime."
+                    "markdownDescription": "Suppress Git's QuickDiff gutter indicators when ChangeDown is active. Git's gutter shows L2→L3 format noise for markdown files. When enabled, sets `scm.diffDecorations` to `none` workspace-wide. ChangeDown' own change decorations are unaffected. Use the **ChangeDown: Toggle Git Gutter** command to switch at runtime."
                 },
-                "changetracks.gutterStrategy": {
+                "changedown.gutterStrategy": {
                     "type": "string",
                     "enum": ["auto", "assume-unchanged", "proposed-api", "off"],
                     "default": "auto",
-                    "markdownDescription": "Controls how ChangeTracks manages gutter diff indicators for markdown files.\n- `auto`: Use proposed API if available (Cursor), otherwise use assume-unchanged\n- `assume-unchanged`: Silence Git's gutter via git index flags. **Note:** flagged files are hidden from `git status`, `git add .`, and `git stash` until all changes are settled.\n- `proposed-api`: Only use proposed registerQuickDiffProvider (no fallback — gutter may be noisy in VS Code stable)\n- `off`: Don't manage gutter — both Git and ChangeTracks decorations show"
+                    "markdownDescription": "Controls how ChangeDown manages gutter diff indicators for markdown files.\n- `auto`: Use proposed API if available (Cursor), otherwise use assume-unchanged\n- `assume-unchanged`: Silence Git's gutter via git index flags. **Note:** flagged files are hidden from `git status`, `git add .`, and `git stash` until all changes are settled.\n- `proposed-api`: Only use proposed registerQuickDiffProvider (no fallback — gutter may be noisy in VS Code stable)\n- `off`: Don't manage gutter — both Git and ChangeDown decorations show"
                 },
-                "changetracks.commentInsertFormat": {
+                "changedown.commentInsertFormat": {
                     "type": "string",
                     "enum": [
                         "inline",
@@ -757,12 +757,12 @@
                     "default": "footnote",
                     "description": "How to insert new comments: 'inline' inserts only {>> comment <<} in the text; 'footnote' also adds a footnote reference and definition with author/date (recommended for review workflows)."
                 },
-                "changetracks.commentInsertAuthor": {
+                "changedown.commentInsertAuthor": {
                     "type": "boolean",
                     "default": true,
-                    "description": "When true, include author (and date in footnote mode) when inserting comments. Uses changetracks.author; inline mode prefixes the comment body with '@Author: '."
+                    "description": "When true, include author (and date in footnote mode) when inserting comments. Uses changedown.author; inline mode prefixes the comment body with '@Author: '."
                 },
-                "changetracks.changeExplorer.groupBy": {
+                "changedown.changeExplorer.groupBy": {
                     "type": "string",
                     "enum": [
                         "flat",
@@ -772,7 +772,7 @@
                     "default": "flat",
                     "description": "How to group changes in the Change Explorer"
                 },
-                "changetracks.scmIntegrationMode": {
+                "changedown.scmIntegrationMode": {
                     "type": "string",
                     "enum": [
                         "scm-first",
@@ -780,34 +780,34 @@
                         "legacy"
                     ],
                     "default": "scm-first",
-                    "description": "SCM integration mode. 'scm-first' uses the new Source Control flow as primary (ChangeTracks appears as a second Source Control provider for pending review changes; Git remains for version control). 'hybrid' enables both new and legacy surfaces. 'legacy' uses current behavior only."
+                    "description": "SCM integration mode. 'scm-first' uses the new Source Control flow as primary (ChangeDown appears as a second Source Control provider for pending review changes; Git remains for version control). 'hybrid' enables both new and legacy surfaces. 'legacy' uses current behavior only."
                 },
-                "changetracks.confirmBulkThreshold": {
+                "changedown.confirmBulkThreshold": {
                     "type": "number",
                     "default": 5,
                     "description": "Show confirmation dialog when accepting/rejecting more than this many changes at once. Set to 0 to disable."
                 },
-                "changetracks.preview.enabled": {
+                "changedown.preview.enabled": {
                     "type": "boolean",
                     "default": true,
                     "description": "Enable CriticMarkup rendering in the markdown preview"
                 },
-                "changetracks.preview.showFootnotes": {
+                "changedown.preview.showFootnotes": {
                     "type": "boolean",
                     "default": true,
                     "description": "Show footnote definition panel in the preview"
                 },
-                "changetracks.preview.showComments": {
+                "changedown.preview.showComments": {
                     "type": "boolean",
                     "default": true,
                     "description": "Show inline comment icons in the preview"
                 },
-                "changetracks.preview.renderInCodeFences": {
+                "changedown.preview.renderInCodeFences": {
                     "type": "boolean",
                     "default": true,
-                    "description": "Render CriticMarkup inside code fences (except changetracks/criticmarkup language)"
+                    "description": "Render CriticMarkup inside code fences (except changedown/criticmarkup language)"
                 },
-                "changetracks.preview.metadataDetail": {
+                "changedown.preview.metadataDetail": {
                     "type": "string",
                     "enum": [
                         "badge",
@@ -822,7 +822,7 @@
                     ],
                     "description": "How much metadata to show at the change anchor point in the preview"
                 },
-                "changetracks.showWalkthroughOnStartup": {
+                "changedown.showWalkthroughOnStartup": {
                     "type": "string",
                     "enum": [
                         "firstInstall",
@@ -830,9 +830,9 @@
                         "never"
                     ],
                     "default": "firstInstall",
-                    "markdownDescription": "When to show the ChangeTracks walkthrough. `firstInstall` = only on first install (default). `always` = every activation (useful for development). `never` = never auto-show."
+                    "markdownDescription": "When to show the ChangeDown walkthrough. `firstInstall` = only on first install (default). `always` = every activation (useful for development). `never` = never auto-show."
                 },
-                "changetracks.preview.authorColors": {
+                "changedown.preview.authorColors": {
                     "type": "string",
                     "enum": [
                         "auto",
@@ -847,13 +847,13 @@
                     ],
                     "description": "When to apply per-author color coding in the preview"
                 },
-                "changetracks.localParseHotPath": {
+                "changedown.localParseHotPath": {
                     "type": "boolean",
                     "default": false,
                     "description": "Enable local parse for instant decorations (experimental). When enabled, decorations update immediately from local parse instead of waiting for LSP. LSP remains authoritative for enrichment features.",
                     "scope": "window"
                 },
-                "changetracks.codeLensMode": {
+                "changedown.codeLensMode": {
                     "type": "string",
                     "default": "cursor",
                     "enum": ["cursor", "always", "off"],
@@ -875,20 +875,20 @@
             {
                 "language": "markdown",
                 "scopes": {
-                    "changetracks-insertion": ["markup.inserted.changetracks"],
-                    "changetracks-deletion": ["markup.deleted.changetracks"],
-                    "changetracks-highlight": ["markup.highlight.changetracks"],
-                    "changetracks-comment": ["comment.block.changetracks"],
-                    "changetracks-subOriginal": ["markup.deleted.substitution.changetracks"],
-                    "changetracks-subModified": ["markup.inserted.substitution.changetracks"],
-                    "changetracks-moveFrom": ["markup.deleted.move.changetracks"],
-                    "changetracks-moveTo": ["markup.inserted.move.changetracks"]
+                    "changedown-insertion": ["markup.inserted.changedown"],
+                    "changedown-deletion": ["markup.deleted.changedown"],
+                    "changedown-highlight": ["markup.highlight.changedown"],
+                    "changedown-comment": ["comment.block.changedown"],
+                    "changedown-subOriginal": ["markup.deleted.substitution.changedown"],
+                    "changedown-subModified": ["markup.inserted.substitution.changedown"],
+                    "changedown-moveFrom": ["markup.deleted.move.changedown"],
+                    "changedown-moveTo": ["markup.inserted.move.changedown"]
                 }
             }
         ],
         "colors": [
             {
-                "id": "changetracks.insertionRulerColor",
+                "id": "changedown.insertionRulerColor",
                 "description": "Overview ruler color for insertion changes",
                 "defaults": {
                     "dark": "#4caf50",
@@ -897,7 +897,7 @@
                 }
             },
             {
-                "id": "changetracks.deletionRulerColor",
+                "id": "changedown.deletionRulerColor",
                 "description": "Overview ruler color for deletion changes",
                 "defaults": {
                     "dark": "#f44336",
@@ -906,7 +906,7 @@
                 }
             },
             {
-                "id": "changetracks.substitutionRulerColor",
+                "id": "changedown.substitutionRulerColor",
                 "description": "Overview ruler color for substitution changes",
                 "defaults": {
                     "dark": "#ff9800",
@@ -915,7 +915,7 @@
                 }
             },
             {
-                "id": "changetracks.highlightRulerColor",
+                "id": "changedown.highlightRulerColor",
                 "description": "Overview ruler color for highlight changes",
                 "defaults": {
                     "dark": "#ffeb3b",
@@ -924,7 +924,7 @@
                 }
             },
             {
-                "id": "changetracks.commentRulerColor",
+                "id": "changedown.commentRulerColor",
                 "description": "Overview ruler color for comment changes",
                 "defaults": {
                     "dark": "#2196f3",
@@ -935,8 +935,8 @@
         ],
         "walkthroughs": [
             {
-                "id": "changetracks.getStarted",
-                "title": "Get Started with ChangeTracks",
+                "id": "changedown.getStarted",
+                "title": "Get Started with ChangeDown",
                 "description": "Track changes in Markdown — for humans and AI agents.",
                 "featuredFor": [
                     "*.md",
@@ -945,53 +945,53 @@
                 "steps": [
                     {
                         "id": "welcome",
-                        "title": "Welcome to ChangeTracks",
-                        "description": "Learn what ChangeTracks does and set up your project.\n\n[Set Up This Project](command:changetracks.setupProject)",
+                        "title": "Welcome to ChangeDown",
+                        "description": "Learn what ChangeDown does and set up your project.\n\n[Set Up This Project](command:changedown.setupProject)",
                         "media": {
                             "markdown": "media/walkthrough/welcome.md"
                         },
                         "completionEvents": [
-                            "onCommand:changetracks.setupProject"
+                            "onCommand:changedown.setupProject"
                         ]
                     },
                     {
                         "id": "openDemo",
                         "title": "Open the Demo",
-                        "description": "Open the demo file and the Review panel to see tracked changes in action.\n\n[Open Demo File](command:changetracks.openDemo)",
+                        "description": "Open the demo file and the Review panel to see tracked changes in action.\n\n[Open Demo File](command:changedown.openDemo)",
                         "media": {
                             "markdown": "media/walkthrough/welcome.md"
                         },
                         "completionEvents": [
-                            "onCommand:changetracks.openDemo"
+                            "onCommand:changedown.openDemo"
                         ]
                     },
                     {
                         "id": "configureProject",
                         "title": "Configure Your Project",
-                        "description": "Open the Project Settings panel to customize tracking rules, author identity, and more.\n\n[Open Project Settings](command:changetracks.revealSettingsPanel)",
+                        "description": "Open the Project Settings panel to customize tracking rules, author identity, and more.\n\n[Open Project Settings](command:changedown.revealSettingsPanel)",
                         "media": {
                             "markdown": "media/walkthrough/project-settings.md"
                         },
                         "completionEvents": [
-                            "onCommand:changetracks.revealSettingsPanel"
+                            "onCommand:changedown.revealSettingsPanel"
                         ]
                     },
                     {
                         "id": "tryIt",
                         "title": "Try It",
-                        "description": "Use the demo file to practice. Accept a change, reject a change, and try turning on tracking mode.\n\n[Re-open Demo File](command:changetracks.openDemo)",
+                        "description": "Use the demo file to practice. Accept a change, reject a change, and try turning on tracking mode.\n\n[Re-open Demo File](command:changedown.openDemo)",
                         "media": {
                             "markdown": "media/walkthrough/cheat-sheet.md"
                         },
                         "completionEvents": [
-                            "onCommand:changetracks.acceptChange",
-                            "onCommand:changetracks.rejectChange"
+                            "onCommand:changedown.acceptChange",
+                            "onCommand:changedown.rejectChange"
                         ]
                     },
                     {
                         "id": "goDeeper",
                         "title": "Go Deeper",
-                        "description": "Learn about AI agent integration, advanced features, and CLI commands.\n\n[Open Example](command:changetracks.openExample)\n\n[Configure Agents](command:changetracks.setupAgents)",
+                        "description": "Learn about AI agent integration, advanced features, and CLI commands.\n\n[Open Example](command:changedown.openExample)\n\n[Configure Agents](command:changedown.setupAgents)",
                         "media": {
                             "markdown": "media/walkthrough/go-deeper.md"
                         },
@@ -1012,19 +1012,20 @@
         "pretest": "npm run compile",
         "test": "npm run test:features",
         "test:fast": "npm run test:features:fast",
-        "test:slow": "npm run test -w @changetracks/tests-vscode -- --tags '@slow and not @visual and not @wip'",
-        "test:visual": "npm run test:visual -w @changetracks/tests-vscode",
-        "test:visual:update": "npm run test:visual:update -w @changetracks/tests-vscode",
-        "test:gaps": "npm run test:gaps -w @changetracks/tests-vscode",
-        "test:features": "npm run compile && npm run test -w @changetracks/tests-vscode",
-        "test:features:fast": "npm run compile && npm run test:fast -w @changetracks/tests-vscode",
-        "test:features:slow": "npm run compile && npm run test:slow -w @changetracks/tests-vscode"
+        "test:slow": "npm run test -w @changedown/tests-vscode -- --tags '@slow and not @visual and not @wip'",
+        "test:visual": "npm run test:visual -w @changedown/tests-vscode",
+        "test:visual:update": "npm run test:visual:update -w @changedown/tests-vscode",
+        "test:gaps": "npm run test:gaps -w @changedown/tests-vscode",
+        "test:features": "npm run compile && npm run test -w @changedown/tests-vscode",
+        "test:features:fast": "npm run compile && npm run test:fast -w @changedown/tests-vscode",
+        "test:features:slow": "npm run compile && npm run test:slow -w @changedown/tests-vscode"
     },
     "dependencies": {
-        "changetracks": "file:../cli",
-        "@changetracks/core": "file:../core",
-        "@changetracks/docx": "file:../docx",
-        "@changetracks/lsp-server": "file:../lsp-server",
+        "changedown": "file:../cli",
+        "@changedown/core": "file:../core",
+        "@changedown/docx": "file:../docx",
+        "@changedown/lsp-server": "file:../lsp-server",
+        "@changedown/preview": "file:../preview",
         "diff": "^8.0.3",
         "markdown-it": "^14.1.1",
         "smol-toml": "^1.3.0",

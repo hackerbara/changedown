@@ -10,10 +10,11 @@ import {
   TextRun,
   type ICommentOptions,
 } from 'docx';
-import { randomParaId, type CommentPatchInfo } from './word-online-patch.js';
+import { randomParaId } from './word-online-patch.js';
+import type { CommentPatchInfo } from '../shared/patch-types.js';
 import { toIsoString } from '../shared/date-utils.js';
 
-export type { CommentPatchInfo } from './word-online-patch.js';
+export type { CommentPatchInfo } from '../shared/patch-types.js';
 
 /**
  * Extracts initials from a display name.

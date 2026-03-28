@@ -1,4 +1,4 @@
-import * as path from 'path';
+import { basename } from '../shared/basename.js';
 import type { PandocAst, PandocBlock, PandocInline } from './pandoc-runner.js';
 import type {
   ExtractedMetadata,
@@ -398,7 +398,7 @@ function buildImageMap(
   for (const drawing of metadata.drawings) {
     const target = metadata.relationships.get(drawing.relationshipId);
     if (target) {
-      const filename = path.basename(target);
+      const filename = basename(target);
       resolvedFilenames.push(filename);
       map.set(filename, drawing);
     } else {
@@ -415,7 +415,7 @@ function buildImageMap(
     const drawingFilename = resolvedFilenames[i];
     if (!drawingFilename) continue;
 
-    const astBasename = path.basename(astImageSources[i]);
+    const astBasename = basename(astImageSources[i]);
     if (drawingFilename !== astBasename) {
       console.warn(
         `[correlation-engine] Image document-order mismatch at index ${i}: ` +
@@ -568,7 +568,7 @@ export function buildEnrichmentMap(
     },
 
     getImageEnrichment(imageSrc: string): DrawingElement | undefined {
-      const filename = path.basename(imageSrc);
+      const filename = basename(imageSrc);
       return imageMap.get(filename);
     },
   };

@@ -4,12 +4,12 @@ import {
   buildViewDocument,
   formatPlainText,
   formatAnsi,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 const FIXTURE_CONTENT = [
-  'Hello {++world++}[^ct-1].',
+  'Hello {++world++}[^cn-1].',
   '',
-  '[^ct-1]: @ai:test | 2026-01-01 | ins | proposed',
+  '[^cn-1]: @ai:test | 2026-01-01 | ins | proposed',
   '    reason: greeting',
 ].join('\n');
 
@@ -37,7 +37,7 @@ describe('unified renderer CLI integration', () => {
     expect(output).toMatch(/\d+:[0-9a-f]{2}\s+\w?\|/);
 
     // Zone 3 metadata inline
-    expect(output).toContain('{>>ct-1');
+    expect(output).toContain('{>>cn-1');
   });
 
   it('changes view output contains P/A flags and change IDs', () => {
@@ -48,7 +48,7 @@ describe('unified renderer CLI integration', () => {
     expect(output).toMatch(/P\|/);
 
     // Change ID in metadata
-    expect(output).toContain('{>>ct-1<<}');
+    expect(output).toContain('{>>cn-1<<}');
 
     // Committed text (insertion stripped since proposed)
     expect(output).toContain('Hello .');
@@ -63,7 +63,7 @@ describe('unified renderer CLI integration', () => {
 
     // No CriticMarkup in output
     expect(output).not.toContain('{++');
-    expect(output).not.toContain('[^ct-1]');
+    expect(output).not.toContain('[^cn-1]');
 
     // No metadata zone
     expect(output).not.toContain('{>>');
@@ -75,7 +75,7 @@ describe('unified renderer CLI integration', () => {
 
     // Literal CriticMarkup preserved
     expect(output).toContain('{++world++}');
-    expect(output).toContain('[^ct-1]');
+    expect(output).toContain('[^cn-1]');
   });
 
   it('ANSI formatter produces colored output without hashlines', () => {

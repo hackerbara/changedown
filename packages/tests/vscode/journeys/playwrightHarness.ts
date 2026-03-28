@@ -25,37 +25,37 @@ const EXTENSION_ROOT = path.resolve(PACKAGE_ROOT, '../../vscode-extension');
  * Used by executeCommandViaBridge() to bypass the command palette entirely.
  */
 const COMMAND_TITLE_TO_ID: Record<string, string> = {
-    'ChangeTracks: Next Change': 'changetracks.nextChange',
-    'ChangeTracks: Previous Change': 'changetracks.previousChange',
-    'ChangeTracks: Accept Change': 'changetracks.acceptChange',
-    'ChangeTracks: Reject Change': 'changetracks.rejectChange',
-    'ChangeTracks: Accept All Changes': 'changetracks.acceptAll',
-    'ChangeTracks: Reject All Changes': 'changetracks.rejectAll',
-    'ChangeTracks: Compact Change': 'changetracks.compactChange',
-    'ChangeTracks: Compact Change Fully': 'changetracks.compactChangeFully',
-    'ChangeTracks: Toggle Tracking': 'changetracks.toggleTracking',
-    'ChangeTracks: Toggle Smart View': 'changetracks.toggleView',
-    'ChangeTracks: Add Comment': 'changetracks.addComment',
-    'ChangeTracks: Show Diff': 'changetracks.showDiff',
-    'ChangeTracks: Go to Linked Change': 'changetracks.goToLinkedChange',
-    'ChangeTracks: Export to DOCX': 'changetracks.exportToDocx',
-    'ChangeTracks: Open Panel': 'changetracks.revealPanel',
-    'ChangeTracks: Open Settings Panel': 'changetracks.revealSettingsPanel',
-    'ChangeTracks: Annotate from Git': 'changetracks.annotateFromGit',
+    'ChangeDown: Next Change': 'changedown.nextChange',
+    'ChangeDown: Previous Change': 'changedown.previousChange',
+    'ChangeDown: Accept Change': 'changedown.acceptChange',
+    'ChangeDown: Reject Change': 'changedown.rejectChange',
+    'ChangeDown: Accept All Changes': 'changedown.acceptAll',
+    'ChangeDown: Reject All Changes': 'changedown.rejectAll',
+    'ChangeDown: Compact Change': 'changedown.compactChange',
+    'ChangeDown: Compact Change Fully': 'changedown.compactChangeFully',
+    'ChangeDown: Toggle Tracking': 'changedown.toggleTracking',
+    'ChangeDown: Toggle Smart View': 'changedown.toggleView',
+    'ChangeDown: Add Comment': 'changedown.addComment',
+    'ChangeDown: Show Diff': 'changedown.showDiff',
+    'ChangeDown: Go to Linked Change': 'changedown.goToLinkedChange',
+    'ChangeDown: Export to DOCX': 'changedown.exportToDocx',
+    'ChangeDown: Open Panel': 'changedown.revealPanel',
+    'ChangeDown: Open Settings Panel': 'changedown.revealSettingsPanel',
+    'ChangeDown: Annotate from Git': 'changedown.annotateFromGit',
     // Test bridge commands (still useful to map for consistency)
-    'ChangeTracks: Test Query Panel State': 'changetracks._testQueryPanelState',
-    'ChangeTracks: Test Get Document Text': 'changetracks._testGetDocumentText',
-    'ChangeTracks: Test Get Cursor Position': 'changetracks._testGetCursorPosition',
-    'ChangeTracks: Test Wait For Changes': 'changetracks._testWaitForChanges',
-    'ChangeTracks: Test Paste Clipboard': 'changetracks._testPasteClipboard',
-    'ChangeTracks: Test Reset Document': 'changetracks._testResetDocument',
-    'ChangeTracks: Test Update Setting': 'changetracks._testUpdateSetting',
-    'ChangeTracks: Test Select And Replace': 'changetracks._testSelectAndReplace',
-    'ChangeTracks: Test Position Cursor': 'changetracks._testPositionCursor',
-    'ChangeTracks: Test Select Text': 'changetracks._testSelectText',
-    'ChangeTracks: Test Get Comment Threads': 'changetracks._testGetCommentThreads',
-    'ChangeTracks: Test Get CodeLens Items': 'changetracks._testGetCodeLensItems',
-    'ChangeTracks: Test Get Review Panel Cards': 'changetracks._testGetReviewPanelCards',
+    'ChangeDown: Test Query Panel State': 'changedown._testQueryPanelState',
+    'ChangeDown: Test Get Document Text': 'changedown._testGetDocumentText',
+    'ChangeDown: Test Get Cursor Position': 'changedown._testGetCursorPosition',
+    'ChangeDown: Test Wait For Changes': 'changedown._testWaitForChanges',
+    'ChangeDown: Test Paste Clipboard': 'changedown._testPasteClipboard',
+    'ChangeDown: Test Reset Document': 'changedown._testResetDocument',
+    'ChangeDown: Test Update Setting': 'changedown._testUpdateSetting',
+    'ChangeDown: Test Select And Replace': 'changedown._testSelectAndReplace',
+    'ChangeDown: Test Position Cursor': 'changedown._testPositionCursor',
+    'ChangeDown: Test Select Text': 'changedown._testSelectText',
+    'ChangeDown: Test Get Comment Threads': 'changedown._testGetCommentThreads',
+    'ChangeDown: Test Get CodeLens Items': 'changedown._testGetCodeLensItems',
+    'ChangeDown: Test Get Review Panel Cards': 'changedown._testGetReviewPanelCards',
 };
 
 /**
@@ -64,7 +64,7 @@ const COMMAND_TITLE_TO_ID: Record<string, string> = {
  * "Compact Change" vs "Compact Change Fully") and cursor movement side effects.
  *
  * Writes the command ID (and optional args) to a temp file, then presses
- * Ctrl+Shift+F12 to trigger changetracks._testExecuteCommand, which reads the
+ * Ctrl+Shift+F12 to trigger changedown._testExecuteCommand, which reads the
  * file and calls vscode.commands.executeCommand(commandId, ...(args ?? [])).
  *
  * Falls back to command palette execution for unknown commands.
@@ -80,8 +80,8 @@ export async function executeCommandViaBridge(page: Page, command: string, args?
         return false;
     }
 
-    const inputPath = path.join(require('os').tmpdir(), 'changetracks-test-exec-input.json');
-    const resultPath = path.join(require('os').tmpdir(), 'changetracks-test-exec.json');
+    const inputPath = path.join(require('os').tmpdir(), 'changedown-test-exec-input.json');
+    const resultPath = path.join(require('os').tmpdir(), 'changedown-test-exec.json');
 
     // Clean stale result
     try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
@@ -197,17 +197,17 @@ async function launchVSCodeDirect(
         'update.mode': 'none',
         'extensions.autoCheckUpdates': false,
         'editor.codeLens': options.codeLens !== false,
-        'changetracks.authorColors': 'auto',
-        'changetracks.author': 'test-reviewer',
-        'changetracks.clickToShowComments': true,
+        'changedown.authorColors': 'auto',
+        'changedown.author': 'test-reviewer',
+        'changedown.clickToShowComments': true,
         // Use 2000ms pause threshold for test speed (production default is 30000ms).
-        'changetracks.editBoundary.pauseThresholdMs': 2000,
+        'changedown.editBoundary.pauseThresholdMs': 2000,
         // Prevent OUR walkthrough from opening too (firstInstall check)
-        'changetracks.showWalkthroughOnStartup': 'never',
+        'changedown.showWalkthroughOnStartup': 'never',
         // Disable bulk-action confirmation dialog (modal returns undefined in Playwright)
-        'changetracks.confirmBulkThreshold': 0,
+        'changedown.confirmBulkThreshold': 0,
         // Show CriticMarkup delimiters so D1/D2 decoration tests can distinguish view modes
-        'changetracks.showDelimiters': true,
+        'changedown.showDelimiters': true,
     };
     fs.writeFileSync(path.join(userSettingsDir, 'settings.json'), JSON.stringify(settings));
 
@@ -257,7 +257,7 @@ async function launchVSCodeDirect(
     const app: ElectronApplication = await electron.launch({
         executablePath: electronPath,
         args,
-        env: { ...process.env, VSCODE_SKIP_PRELAUNCH: '1', CHANGETRACKS_TEST_INSTANCE_ID: instanceId },
+        env: { ...process.env, VSCODE_SKIP_PRELAUNCH: '1', CHANGEDOWN_TEST_INSTANCE_ID: instanceId },
     });
 
     const page: Page = await app.firstWindow();
@@ -340,7 +340,7 @@ export async function getCodeLensLabels(page: Page): Promise<string[]> {
 }
 
 /**
- * Check for ChangeTracks decorations using computed-color detection + polling.
+ * Check for ChangeDown decorations using computed-color detection + polling.
  *
  * Detects decorations by checking computed `color` and `backgroundColor` on
  * spans against known decoration colors from decorator.ts. Falls back to
@@ -448,12 +448,12 @@ export async function hasHiddenDecorations(page: Page): Promise<boolean> {
  *
  * Strategy: delete the decoration-ready signal file, then poll until the
  * extension writes a fresh one. The extension writes this file in the
- * decorationDataHandler callback when LSP pushes changetracks/decorationData.
+ * decorationDataHandler callback when LSP pushes changedown/decorationData.
  * This confirms the decoration cache is populated and accept/reject commands
  * will find changes.
  */
 export async function waitForChanges(page: Page, timeoutMs = 10000): Promise<{ ready: boolean; changeCount?: number }> {
-    const signalPath = path.join(require('os').tmpdir(), 'changetracks-test-decoration-ready.json');
+    const signalPath = path.join(require('os').tmpdir(), 'changedown-test-decoration-ready.json');
 
     // Delete stale signal from previous test run
     try { fs.unlinkSync(signalPath); } catch { /* ignore */ }
@@ -484,7 +484,7 @@ export async function waitForChanges(page: Page, timeoutMs = 10000): Promise<{ r
  * overhead entirely.
  */
 export async function getCursorLineViaBridge(page: Page): Promise<number> {
-    const docPath = path.join(require('os').tmpdir(), 'changetracks-test-cursor.json');
+    const docPath = path.join(require('os').tmpdir(), 'changedown-test-cursor.json');
 
     // Give the selection change event time to fire and write the file
     await page.waitForTimeout(300);
@@ -507,7 +507,7 @@ export async function getCursorLineViaBridge(page: Page): Promise<number> {
  */
 export function docBridgePath(instanceId?: string): string {
     const suffix = instanceId ? `-${instanceId}` : '';
-    return path.join(require('os').tmpdir(), `changetracks-test-doc${suffix}.json`);
+    return path.join(require('os').tmpdir(), `changedown-test-doc${suffix}.json`);
 }
 
 /**
@@ -571,7 +571,7 @@ export async function getDocumentTextViaBridge(page: Page, options?: { expectedF
     // after full-document edits (compaction, accept all).
     for (let attempt = 0; attempt < 3; attempt++) {
         const beforeTs = Date.now();
-        await executeCommand(page, 'ChangeTracks: Test Get Document Text');
+        await executeCommand(page, 'ChangeDown: Test Get Document Text');
         await page.waitForTimeout(500);
 
         try {
@@ -811,12 +811,12 @@ export async function getCommentThreads(page: Page): Promise<{
     threads: Array<{ changeId: string; state: string; commentCount: number; label: string }>;
     count: number;
 }> {
-    const resultPath = path.join(require('os').tmpdir(), 'changetracks-test-comment-threads.json');
+    const resultPath = path.join(require('os').tmpdir(), 'changedown-test-comment-threads.json');
 
     // Clean stale result
     try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
 
-    await executeCommandViaBridge(page, 'changetracks._testGetCommentThreads');
+    await executeCommandViaBridge(page, 'changedown._testGetCommentThreads');
 
     // Poll for result
     const deadline = Date.now() + 5000;
@@ -848,12 +848,12 @@ export async function getCodeLensItems(page: Page): Promise<{
     items: Array<{ line: number; title: string; command: string }>;
     count: number;
 }> {
-    const resultPath = path.join(require('os').tmpdir(), 'changetracks-test-codelens.json');
+    const resultPath = path.join(require('os').tmpdir(), 'changedown-test-codelens.json');
 
     // Clean stale result
     try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
 
-    await executeCommandViaBridge(page, 'changetracks._testGetCodeLensItems');
+    await executeCommandViaBridge(page, 'changedown._testGetCodeLensItems');
 
     // Poll for result
     const deadline = Date.now() + 5000;
@@ -885,12 +885,12 @@ export async function getReviewPanelCards(page: Page): Promise<{
     cards: Array<{ changeId: string; type: string; status: string; author: string; textPreview: string; replyCount: number }>;
     count: number;
 }> {
-    const resultPath = path.join(require('os').tmpdir(), 'changetracks-test-review-panel-cards.json');
+    const resultPath = path.join(require('os').tmpdir(), 'changedown-test-review-panel-cards.json');
 
     // Clean stale result
     try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
 
-    await executeCommandViaBridge(page, 'changetracks._testGetReviewPanelCards');
+    await executeCommandViaBridge(page, 'changedown._testGetReviewPanelCards');
 
     // Poll for result
     const deadline = Date.now() + 5000;
@@ -1099,7 +1099,7 @@ export async function launchWithWorkspaceFolder(
         'workbench.enableExperiments': false,
         'telemetry.telemetryLevel': 'off',
         'update.mode': 'none',
-        'changetracks.showWalkthroughOnStartup': 'always',
+        'changedown.showWalkthroughOnStartup': 'always',
         ...options.settings,
     };
     fs.writeFileSync(path.join(userSettingsDir, 'settings.json'), JSON.stringify(settings));

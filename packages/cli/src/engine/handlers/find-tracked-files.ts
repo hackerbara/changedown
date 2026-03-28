@@ -2,7 +2,7 @@
  * Handler for the `sc files` / `sc ls` CLI command.
  *
  * Walks a directory tree and returns files that match the project's
- * tracking include/exclude patterns from .changetracks/config.toml.
+ * tracking include/exclude patterns from .changedown/config.toml.
  */
 
 import * as fs from 'node:fs/promises';

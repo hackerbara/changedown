@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { handleProposeBatch } from '@changetracks/mcp/internals';
-import { computeLineHash } from '@changetracks/mcp/internals';
-import { parseOp, type ParsedOp } from '@changetracks/mcp/internals';
-import { parseAt, resolveAt } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { handleProposeBatch } from '@changedown/mcp/internals';
+import { computeLineHash } from '@changedown/mcp/internals';
+import { parseOp, type ParsedOp } from '@changedown/mcp/internals';
+import { parseAt, resolveAt } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { ConfigResolver } from '@changetracks/mcp/internals';
-import { initHashline } from '@changetracks/core';
+import { ConfigResolver } from '@changedown/mcp/internals';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -24,7 +24,7 @@ function parseResult(result: { content: Array<{ type: string; text: string }>; i
   return JSON.parse(result.content[0].text);
 }
 
-const compactConfig: ChangeTracksConfig = {
+const compactConfig: ChangeDownConfig = {
   tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
   author: { default: 'ai:stress-test', enforcement: 'optional' },
   hooks: { enforcement: 'warn', exclude: [] },
@@ -294,7 +294,7 @@ describe('propose_change compact stress', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-compact-stress-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-compact-stress-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -350,7 +350,7 @@ describe('propose_change compact stress', () => {
     expect(result.isError).toBeUndefined();
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('{--only content here--}');
-    expect(modified).toContain('[^ct-1]');
+    expect(modified).toContain('[^cn-1]');
   });
 
   it('insertion at end of file (after last line)', async () => {
@@ -525,7 +525,7 @@ describe('propose_change compact stress', () => {
 
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('{>>this is a comment<<}');
-    expect(modified).toMatch(/\[\^ct-\d+\]:.*comment.*proposed/);
+    expect(modified).toMatch(/\[\^cn-\d+\]:.*comment.*proposed/);
   });
 });
 
@@ -544,7 +544,7 @@ describe('propose_batch compact stress', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-batch-stress-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-batch-stress-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -677,10 +677,10 @@ describe('propose_batch compact stress', () => {
 
     expect(result.isError).toBeUndefined();
     const data = parseResult(result);
-    // Batch creates a group (ct-1) with children (ct-1.1, ct-1.2)
-    expect(data.group_id).toBe('ct-1');
-    expect(data.applied[0].change_id).toBe('ct-1.1');
-    expect(data.applied[1].change_id).toBe('ct-1.2');
+    // Batch creates a group (cn-1) with children (cn-1.1, cn-1.2)
+    expect(data.group_id).toBe('cn-1');
+    expect(data.applied[0].change_id).toBe('cn-1.1');
+    expect(data.applied[1].change_id).toBe('cn-1.2');
   });
 
   it('batch with reasoning in individual ops via {>>', async () => {
@@ -755,7 +755,7 @@ describe('compact error handling', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-compact-err-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-compact-err-'));
     state = new SessionState();
     resolver = await createTestResolver(tmpDir, compactConfig);
   });
@@ -814,13 +814,17 @@ describe('compact error handling', () => {
     // Now change the file content
     await fs.writeFile(filePath, 'modified content');
 
+    // Use an insertion (empty oldText) so Stage 3.5a is skipped.
+    // The original hash won't be found in the modified file's committed/settled view,
+    // so Stage 3.5b also fails and the error is returned.
     const result = await handleProposeChange(
-      { file: filePath, at: `1:${originalHash}`, op: '{~~original~>new~~}' },
+      { file: filePath, at: `1:${originalHash}`, op: '{++new stuff++}' },
       resolver, state,
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/hash mismatch|changed/i);
+    // Stage 3.5 exhausted: error references the coordinate resolution failure
+    expect(result.content[0].text).toMatch(/mismatch|not found|unresolved/i);
   });
 
   it('missing at param when op is provided', async () => {
@@ -904,7 +908,9 @@ describe('compact error handling', () => {
         file: filePath,
         reason: 'partial success',
         changes: [
-          { at: '1:ff', op: '{~~one~>ONE~~}' },  // wrong hash — fails
+          // Use an insertion with a wrong valid hex hash ('ff') so Stage 3.5a is skipped
+          // (insertion ops have empty oldText) and Stage 3.5b can't find 'ff' in any view.
+          { at: '1:ff', op: '{++extra text++}' },  // wrong hash, insertion — fails
           { at: `2:${hashForLine(content, 2)}`, op: '{~~two~>TWO~~}' },  // succeeds
         ],
       },

@@ -101,11 +101,11 @@ export class ScmHybridIndex implements vscode.Disposable {
     const now = Date.now();
     if (now - this.lastScanTs < MIN_SCAN_INTERVAL_MS) return;
     this.lastScanTs = now;
-    console.debug('[changetracks] scm_integration: scan_start');
+    console.debug('[changedown] scm_integration: scan_start');
 
     const folders = vscode.workspace.workspaceFolders;
     if (!folders?.length) {
-      console.debug('[changetracks] scm_integration: scan_complete (no workspace)');
+      console.debug('[changedown] scm_integration: scan_complete (no workspace)');
       return;
     }
 
@@ -139,7 +139,7 @@ export class ScmHybridIndex implements vscode.Disposable {
     }
 
     if (changed) this._onDidChange.fire();
-    console.debug('[changetracks] scm_integration: scan_complete');
+    console.debug('[changedown] scm_integration: scan_complete');
   }
 
   getFileCount(): number {

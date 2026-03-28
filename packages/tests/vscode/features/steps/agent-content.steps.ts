@@ -8,13 +8,13 @@
 
 import { Given, When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { CriticMarkupParser, ChangeType, ChangeStatus } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+import { CriticMarkupParser, ChangeType, ChangeStatus } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 
 // ── Extend World with agent-content state ──────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         /** Reparse operationText into operationChanges (used after multi-step edits) */
         reparseOperation?: () => void;
     }
@@ -22,7 +22,7 @@ declare module './world' {
 
 // ── Parser-tier Then steps for agent content ───────────────────────
 
-Then('change {int} has id {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has id {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -30,7 +30,7 @@ Then('change {int} has id {string}', function (this: ChangeTracksWorld, index: n
     assert.strictEqual(change.id, expected, `Change ${index}: expected id "${expected}", got "${change.id}"`);
 });
 
-Then('change {int} has level {int}', function (this: ChangeTracksWorld, index: number, expected: number) {
+Then('change {int} has level {int}', function (this: ChangeDownWorld, index: number, expected: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -38,7 +38,7 @@ Then('change {int} has level {int}', function (this: ChangeTracksWorld, index: n
     assert.strictEqual(change.level, expected, `Change ${index}: expected level ${expected}, got ${change.level}`);
 });
 
-Then('change {int} id starts with {string}', function (this: ChangeTracksWorld, index: number, prefix: string) {
+Then('change {int} id starts with {string}', function (this: ChangeDownWorld, index: number, prefix: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -46,7 +46,7 @@ Then('change {int} id starts with {string}', function (this: ChangeTracksWorld, 
     assert.ok(change.id.startsWith(prefix), `Change ${index}: expected id to start with "${prefix}", got "${change.id}"`);
 });
 
-Then('change {int} has author {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has author {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -54,7 +54,7 @@ Then('change {int} has author {string}', function (this: ChangeTracksWorld, inde
     assert.strictEqual(change.metadata?.author, expected, `Change ${index}: expected author "${expected}", got "${change.metadata?.author}"`);
 });
 
-Then('change {int} has no author', function (this: ChangeTracksWorld, index: number) {
+Then('change {int} has no author', function (this: ChangeDownWorld, index: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -62,7 +62,7 @@ Then('change {int} has no author', function (this: ChangeTracksWorld, index: num
     assert.strictEqual(change.metadata?.author, undefined, `Change ${index}: expected no author, got "${change.metadata?.author}"`);
 });
 
-Then('change {int} has date {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has date {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -70,7 +70,7 @@ Then('change {int} has date {string}', function (this: ChangeTracksWorld, index:
     assert.strictEqual(change.metadata?.date, expected, `Change ${index}: expected date "${expected}", got "${change.metadata?.date}"`);
 });
 
-Then('change {int} has no date', function (this: ChangeTracksWorld, index: number) {
+Then('change {int} has no date', function (this: ChangeDownWorld, index: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -78,7 +78,7 @@ Then('change {int} has no date', function (this: ChangeTracksWorld, index: numbe
     assert.strictEqual(change.metadata?.date, undefined, `Change ${index}: expected no date, got "${change.metadata?.date}"`);
 });
 
-Then('change {int} has groupId {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has groupId {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -86,7 +86,7 @@ Then('change {int} has groupId {string}', function (this: ChangeTracksWorld, ind
     assert.strictEqual(change.groupId, expected, `Change ${index}: expected groupId "${expected}", got "${change.groupId}"`);
 });
 
-Then('change {int} has moveRole {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has moveRole {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -94,7 +94,7 @@ Then('change {int} has moveRole {string}', function (this: ChangeTracksWorld, in
     assert.strictEqual(change.moveRole, expected, `Change ${index}: expected moveRole "${expected}", got "${change.moveRole}"`);
 });
 
-Then('change {int} has {int} discussion entries', function (this: ChangeTracksWorld, index: number, count: number) {
+Then('change {int} has {int} discussion entries', function (this: ChangeDownWorld, index: number, count: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -108,7 +108,7 @@ Then('change {int} has {int} discussion entries', function (this: ChangeTracksWo
 });
 
 Then('change {int} discussion entry {int} has author {string}', function (
-    this: ChangeTracksWorld, changeIndex: number, entryIndex: number, expected: string
+    this: ChangeDownWorld, changeIndex: number, entryIndex: number, expected: string
 ) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
@@ -121,7 +121,7 @@ Then('change {int} discussion entry {int} has author {string}', function (
 });
 
 Then('change {int} discussion entry {int} has depth {int}', function (
-    this: ChangeTracksWorld, changeIndex: number, entryIndex: number, expected: number
+    this: ChangeDownWorld, changeIndex: number, entryIndex: number, expected: number
 ) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
@@ -134,7 +134,7 @@ Then('change {int} discussion entry {int} has depth {int}', function (
 });
 
 Then('change {int} discussion includes author {string}', function (
-    this: ChangeTracksWorld, changeIndex: number, expected: string
+    this: ChangeDownWorld, changeIndex: number, expected: string
 ) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
@@ -145,7 +145,7 @@ Then('change {int} discussion includes author {string}', function (
     assert.ok(authors.includes(expected), `Discussion authors [${authors.join(', ')}] do not include "${expected}"`);
 });
 
-Then('change {int} has {int} approvals', function (this: ChangeTracksWorld, index: number, count: number) {
+Then('change {int} has {int} approvals', function (this: ChangeDownWorld, index: number, count: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -159,7 +159,7 @@ Then('change {int} has {int} approvals', function (this: ChangeTracksWorld, inde
 });
 
 Then('change {int} approval {int} has author {string}', function (
-    this: ChangeTracksWorld, changeIndex: number, approvalIndex: number, expected: string
+    this: ChangeDownWorld, changeIndex: number, approvalIndex: number, expected: string
 ) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
@@ -172,7 +172,7 @@ Then('change {int} approval {int} has author {string}', function (
 });
 
 Then('change {int} approval {int} has date {string}', function (
-    this: ChangeTracksWorld, changeIndex: number, approvalIndex: number, expected: string
+    this: ChangeDownWorld, changeIndex: number, approvalIndex: number, expected: string
 ) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
@@ -184,7 +184,7 @@ Then('change {int} approval {int} has date {string}', function (
     assert.strictEqual(approval.date, expected, `Approval ${approvalIndex}: expected date "${expected}", got "${approval.date}"`);
 });
 
-Then('change {int} has context {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has context {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -192,7 +192,7 @@ Then('change {int} has context {string}', function (this: ChangeTracksWorld, ind
     assert.strictEqual(change.metadata?.context, expected, `Change ${index}: expected context "${expected}", got "${change.metadata?.context}"`);
 });
 
-Then('change {int} has resolution type {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has resolution type {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -205,7 +205,7 @@ Then('change {int} has resolution type {string}', function (this: ChangeTracksWo
     );
 });
 
-Then('change {int} has resolution author {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has resolution author {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -218,7 +218,7 @@ Then('change {int} has resolution author {string}', function (this: ChangeTracks
     );
 });
 
-Then('change {int} has resolution reason {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has resolution reason {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -231,7 +231,7 @@ Then('change {int} has resolution reason {string}', function (this: ChangeTracks
     );
 });
 
-Then('change {int} has {int} revisions', function (this: ChangeTracksWorld, index: number, count: number) {
+Then('change {int} has {int} revisions', function (this: ChangeDownWorld, index: number, count: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -245,7 +245,7 @@ Then('change {int} has {int} revisions', function (this: ChangeTracksWorld, inde
 });
 
 Then('change {int} revision {int} has text {string}', function (
-    this: ChangeTracksWorld, changeIndex: number, revIndex: number, expected: string
+    this: ChangeDownWorld, changeIndex: number, revIndex: number, expected: string
 ) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
@@ -260,7 +260,7 @@ Then('change {int} revision {int} has text {string}', function (
 // ── Operation-tier: count occurrences of a pattern ──────────────────
 
 Then('the document text matches {string} exactly {int} times', function (
-    this: ChangeTracksWorld, pattern: string, count: number
+    this: ChangeDownWorld, pattern: string, count: number
 ) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
     const matches = this.operationText!.match(new RegExp(pattern, 'g')) || [];
@@ -271,7 +271,7 @@ Then('the document text matches {string} exactly {int} times', function (
     );
 });
 
-Then('the document text starts with {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the document text starts with {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
     assert.ok(
         this.operationText!.startsWith(expected),
@@ -280,7 +280,7 @@ Then('the document text starts with {string}', function (this: ChangeTracksWorld
 });
 
 Then('the document line starting with {string} contains {string}', function (
-    this: ChangeTracksWorld, lineStart: string, expected: string
+    this: ChangeDownWorld, lineStart: string, expected: string
 ) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
     const line = this.operationText!.split('\n').find(l => l.startsWith(lineStart));
@@ -291,7 +291,7 @@ Then('the document line starting with {string} contains {string}', function (
     );
 });
 
-Then('no line in the document matches {string}', function (this: ChangeTracksWorld, pattern: string) {
+Then('no line in the document matches {string}', function (this: ChangeDownWorld, pattern: string) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
     const re = new RegExp(pattern);
     const lines = this.operationText!.split('\n');
@@ -303,7 +303,7 @@ Then('no line in the document matches {string}', function (this: ChangeTracksWor
 // ── Change-by-id lookup on parse result ─────────────────────────────
 
 Then('change with id {string} has status {string}', function (
-    this: ChangeTracksWorld, id: string, statusName: string
+    this: ChangeDownWorld, id: string, statusName: string
 ) {
     assert.ok(this.parseResult, 'No parse result');
     const STATUS_MAP: Record<string, ChangeStatus> = {
@@ -320,7 +320,7 @@ Then('change with id {string} has status {string}', function (
 });
 
 Then('change with id {string} has author {string}', function (
-    this: ChangeTracksWorld, id: string, expected: string
+    this: ChangeDownWorld, id: string, expected: string
 ) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
@@ -331,19 +331,19 @@ Then('change with id {string} has author {string}', function (
 
 // ── Filtering assertions on parsed changes ──────────────────────────
 
-Then('there are {int} substitutions', function (this: ChangeTracksWorld, count: number) {
+Then('there are {int} substitutions', function (this: ChangeDownWorld, count: number) {
     assert.ok(this.parseResult, 'No parse result');
     const subs = this.parseResult.getChanges().filter(c => c.type === ChangeType.Substitution);
     assert.strictEqual(subs.length, count, `Expected ${count} substitutions, got ${subs.length}`);
 });
 
-Then('there are {int} insertions', function (this: ChangeTracksWorld, count: number) {
+Then('there are {int} insertions', function (this: ChangeDownWorld, count: number) {
     assert.ok(this.parseResult, 'No parse result');
     const ins = this.parseResult.getChanges().filter(c => c.type === ChangeType.Insertion);
     assert.strictEqual(ins.length, count, `Expected ${count} insertions, got ${ins.length}`);
 });
 
-Then('all changes share group prefix {string}', function (this: ChangeTracksWorld, prefix: string) {
+Then('all changes share group prefix {string}', function (this: ChangeDownWorld, prefix: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     for (const change of changes) {
@@ -356,13 +356,13 @@ Then('all changes share group prefix {string}', function (this: ChangeTracksWorl
 
 // ── Cross-surface: re-parse operationText and assert ─────────────────
 
-When('I re-parse the document text', function (this: ChangeTracksWorld) {
+When('I re-parse the document text', function (this: ChangeDownWorld) {
     assert.ok(this.operationText !== undefined, 'Document text not set');
     const parser = new CriticMarkupParser();
     this.parseResult = parser.parse(this.operationText!);
 });
 
-Then('{int} inline changes remain', function (this: ChangeTracksWorld, expected: number) {
+Then('{int} inline changes remain', function (this: ChangeDownWorld, expected: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const inlineChanges = changes.filter(c => !c.settled);
@@ -373,7 +373,7 @@ Then('{int} inline changes remain', function (this: ChangeTracksWorld, expected:
     );
 });
 
-Then('{int} settled changes exist', function (this: ChangeTracksWorld, expected: number) {
+Then('{int} settled changes exist', function (this: ChangeDownWorld, expected: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const settled = changes.filter(c => c.settled);
@@ -384,7 +384,7 @@ Then('{int} settled changes exist', function (this: ChangeTracksWorld, expected:
     );
 });
 
-Then('the settled change has status {string}', function (this: ChangeTracksWorld, statusName: string) {
+Then('the settled change has status {string}', function (this: ChangeDownWorld, statusName: string) {
     assert.ok(this.parseResult, 'No parse result');
     const STATUS_MAP: Record<string, ChangeStatus> = {
         proposed: ChangeStatus.Proposed,

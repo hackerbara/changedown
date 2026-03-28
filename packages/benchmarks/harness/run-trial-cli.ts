@@ -26,23 +26,23 @@ async function main(): Promise<void> {
   const prompts = JSON.parse(promptsJson) as PromptsConfig;
 
   // All workspaces go to /tmp/ for full isolation (own git root).
-  // B & C get SC injected: .opencode/opencode.json + .changetracks/config.toml
-  const needsChangeTracks = workflow === "B" || workflow === "C";
+  // B & C get SC injected: .opencode/opencode.json + .changedown/config.toml
+  const needsChangeDown = workflow === "B" || workflow === "C";
   const tempDir = await createTempWorkspace(fixtureDir, {
     gitInit: true,
-    injectChangeTracks: needsChangeTracks,
+    injectChangeDown: needsChangeDown,
   });
 
   console.log(`Temp workspace: ${tempDir}`);
-  console.log(`SC plugin: ${needsChangeTracks ? "INJECTED" : "none"}`);
-  console.log(`Running workflow ${workflow} (SC ${needsChangeTracks ? "enabled" : "disabled"}) via CLI...\n`);
+  console.log(`SC plugin: ${needsChangeDown ? "INJECTED" : "none"}`);
+  console.log(`Running workflow ${workflow} (SC ${needsChangeDown ? "enabled" : "disabled"}) via CLI...\n`);
 
   const result = await runEpisode({
     cwd: tempDir,
     taskPrompt: prompts.taskDescription,
     workflow,
     prompts,
-    disableChangeTracksPlugin: !needsChangeTracks,
+    disableChangeDownPlugin: !needsChangeDown,
     model: process.env.MODEL || "opencode/kimi-k2.5-free",
     timeoutMs: 600_000,
     logProgress: true,

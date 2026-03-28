@@ -1,5 +1,5 @@
 Feature: I2 - Config Generation
-  Generate .changetracks/config.toml from options.
+  Generate .changedown/config.toml from options.
 
   @fast @I2
   Scenario: Generate default config with author only

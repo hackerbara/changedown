@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
-import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
+import { ChangeNode, ChangeType, ChangeStatus } from '@changedown/core';
 import type { ExtensionController } from './controller';
 import { typeLabelCapitalized, iconForType } from './visual-semantics';
 
 /**
- * Provides timeline entries for ChangeTracks changes in the Explorer.
+ * Provides timeline entries for ChangeDown changes in the Explorer.
  * Each footnoted change produces a "proposed" event, and discussion
  * entries produce additional events.
  *
@@ -13,8 +13,8 @@ import { typeLabelCapitalized, iconForType } from './visual-semantics';
  * Registration requires `enabledApiProposals: ["timeline"]` in package.json.
  */
 export class ChangeTimelineProvider implements vscode.TimelineProvider {
-  readonly id = 'changetracksTimeline';
-  readonly label = 'ChangeTracks Changes';
+  readonly id = 'changedownTimeline';
+  readonly label = 'ChangeDown Changes';
 
   private _onDidChange = new vscode.EventEmitter<vscode.TimelineChangeEvent | undefined>();
   readonly onDidChange = this._onDidChange.event;
@@ -54,7 +54,7 @@ export class ChangeTimelineProvider implements vscode.TimelineProvider {
       mainItem.description = author;
       mainItem.iconPath = iconForType(change.type);
       mainItem.command = {
-        command: 'changetracks.revealChange',
+        command: 'changedown.revealChange',
         title: 'Go to change',
         arguments: [change.id],
       };
@@ -68,7 +68,7 @@ export class ChangeTimelineProvider implements vscode.TimelineProvider {
           replyItem.description = entry.author;
           replyItem.iconPath = new vscode.ThemeIcon('comment-discussion');
           replyItem.command = {
-            command: 'changetracks.revealChange',
+            command: 'changedown.revealChange',
             title: 'Go to change',
             arguments: [change.id],
           };

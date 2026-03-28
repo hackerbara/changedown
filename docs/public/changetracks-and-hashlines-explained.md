@@ -1,4 +1,4 @@
-# ChangeTracks and Hashlines: What It Is and Why Agents Get Excited
+# ChangeDown and Hashlines: What It Is and Why Agents Get Excited
 
 *Written for someone hearing about this for the first time. No prior familiarity assumed.*
 
@@ -6,11 +6,11 @@
 
 ## The One-Sentence Version
 
-ChangeTracks puts "track changes" — the kind you'd use in a Word document — directly into plain text files, and then gives AI agents a precise coordinate system (hashlines) for pointing at exactly what they want to change.
+ChangeDown puts "track changes" — the kind you'd use in a Word document — directly into plain text files, and then gives AI agents a precise coordinate system (hashlines) for pointing at exactly what they want to change.
 
 ---
 
-## Part 1: What ChangeTracks Actually Is
+## Part 1: What ChangeDown Actually Is
 
 ### The Problem It Solves
 
@@ -25,7 +25,7 @@ That context exists — in chat logs, in PR comments, in your memory — but it'
 
 ### The Solution: Intent in the Byte Stream
 
-ChangeTracks encodes changes, reasoning, and discussion **directly in the file** using a syntax called CriticMarkup:
+ChangeDown encodes changes, reasoning, and discussion **directly in the file** using a syntax called CriticMarkup:
 
 ```markdown
 The API should use GraphQL for the public interface.
@@ -184,7 +184,7 @@ LINE : HASH | CONTENT
 
 `3:b8` means "line 3, content hashes to `b8`." That's the line's address. **6 characters instead of 50.** And it's verifiable — if the content changed since the agent last read the file, the hash won't match, and the tool rejects the edit with a clear error instead of silently corrupting things.
 
-This is the **hashline coordinate system**. It was created by Can Boluk for a project called oh-my-pi, where it produced the tenfold improvement measured in the blog post above. ChangeTracks adopted it and extended it with the dual hash (Part 5).
+This is the **hashline coordinate system**. It was created by Can Boluk for a project called oh-my-pi, where it produced the tenfold improvement measured in the blog post above. ChangeDown adopted it and extended it with the dual hash (Part 5).
 
 ### What the Hash Actually Is
 
@@ -363,7 +363,7 @@ The MCP server keeps one piece of ephemeral state: the hashes it computed during
 
 **Consequences of this design:**
 
-1. **Git just works.** Every edit is a normal file write. `git diff` shows what happened. `git log -p -S '[^ct-N]'` reconstructs the full history of any change. No sidecar database to sync.
+1. **Git just works.** Every edit is a normal file write. `git diff` shows what happened. `git log -p -S '[^cn-N]'` reconstructs the full history of any change. No sidecar database to sync.
 
 2. **Multiple agents can't corrupt each other.** First writer wins. Second gets a hash mismatch and a clear error. No race conditions.
 
@@ -447,7 +447,7 @@ When an agent reads a file for the first time, the dual hashes tell it the edito
 ```
  1:a3    |# API Design                    ← one hash: nothing pending
  3:f1.b8 |The API should use  ` syntax for inline changes |
-| **Footnote** | `[^ct-N]: @author | date | type | status` — metadata block at bottom of file |
+| **Footnote** | `[^cn-N]: @author | date | type | status` — metadata block at bottom of file |
 | **Hashline** | `LINE:HASH` coordinate — a line number plus a 2-character content fingerprint |
 | **Dual hash** | `LINE:RAW.SETTLED` — two hashes showing current state vs intended state |
 | **Projection** | Computing a view (hashes, meta-annotations) from the file on demand, not storing it. Like a database view. |
@@ -459,8 +459,8 @@ When an agent reads a file for the first time, the dual hashes tell it the edito
 | **Settled** | What a line looks like if all proposed changes are accepted |
 | **Raw** | What a line literally looks like in the file right now |
 | **The Harness Problem** | The finding that AI models' edit success rate is determined more by the tool interface than by model capability |
-| **LLM Garden** | A collection of reflections written by AI agents during ChangeTracks development, preserved in the repo |
+| **LLM Garden** | A collection of reflections written by AI agents during ChangeDown development, preserved in the repo |
 
-[^ct-1]: @ai:claude-opus-4.6 | 2026-03-09 | ins | accepted
+[^cn-1]: @ai:claude-opus-4.6 | 2026-03-09 | ins | accepted
     @ai:claude-opus-4.6 2026-03-09T19:28:52Z: Cross-reference to blog post after Harness Problem section
     approved: @ai:claude-opus-4.6 2026-03-09T19:30:42Z "Add cross-reference to related blog post"

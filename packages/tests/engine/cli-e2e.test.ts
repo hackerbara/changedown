@@ -2,9 +2,9 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { initHashline } from '@changetracks/core';
-import { runCommand } from 'changetracks/cli-runner';
-import { formatResult } from 'changetracks/cli-output';
+import { initHashline } from '@changedown/core';
+import { runCommand } from 'changedown/cli-runner';
+import { formatResult } from 'changedown/cli-output';
 
 describe('CLI end-to-end workflow', () => {
   let tmpDir: string;
@@ -14,8 +14,8 @@ describe('CLI end-to-end workflow', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-e2e-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-e2e-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -47,7 +47,7 @@ describe('CLI end-to-end workflow', () => {
       '--reason', 'increase for slow networks',
     ], { outputFormat: 'json', projectDir: tmpDir });
     expect(proposeResult.success).toBe(true);
-    expect(proposeResult.data.change_id).toBe('ct-1');
+    expect(proposeResult.data.change_id).toBe('cn-1');
 
     // 3. List open threads
     const listResult = await runCommand('list', [filePath], {
@@ -58,7 +58,7 @@ describe('CLI end-to-end workflow', () => {
 
     // 4. Respond to thread
     const respondResult = await runCommand('respond', [
-      filePath, 'ct-1', 'Verified: 60s handles 99th percentile latency',
+      filePath, 'cn-1', 'Verified: 60s handles 99th percentile latency',
     ], { outputFormat: 'json', projectDir: tmpDir });
     expect(respondResult.success).toBe(true);
 
@@ -66,7 +66,7 @@ describe('CLI end-to-end workflow', () => {
     const reviewResult = await runCommand('review', [
       filePath,
       '--reviews', JSON.stringify([
-        { change_id: 'ct-1', decision: 'approve', reason: 'verified by load test' },
+        { change_id: 'cn-1', decision: 'approve', reason: 'verified by load test' },
       ]),
     ], { outputFormat: 'json', projectDir: tmpDir });
     expect(reviewResult.success).toBe(true);
@@ -95,11 +95,11 @@ describe('CLI end-to-end workflow', () => {
 
     // Pretty format: human readable
     const prettyOut = formatResult(result, 'pretty');
-    expect(prettyOut).toContain('ct-1');
+    expect(prettyOut).toContain('cn-1');
 
     // Quiet format: minimal
     const quietOut = formatResult(result, 'quiet');
-    expect(quietOut.trim()).toBe('ct-1');
+    expect(quietOut.trim()).toBe('cn-1');
   });
 
   it('error propagation: missing file returns error', async () => {

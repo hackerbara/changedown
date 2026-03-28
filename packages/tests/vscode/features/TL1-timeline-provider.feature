@@ -6,7 +6,7 @@ Feature: TL1 — Change Timeline Provider
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   # ── Timeline visibility ──────────────────────────────────────
@@ -22,7 +22,7 @@ Feature: TL1 — Change Timeline Provider
   @fixture(all-markup-types)
   Scenario: TL1-02 Level 0 changes excluded from timeline
     Given I open "all-markup-types.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     When I execute "Timeline: Focus on Timeline View"
     And I wait 1000 milliseconds
     Then the status bar shows "changes"
@@ -41,7 +41,7 @@ Feature: TL1 — Change Timeline Provider
   @fixture(no-header)
   Scenario: TL1-04 Timeline empty for document with no footnoted changes
     Given I open "no-header.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     When I execute "Timeline: Focus on Timeline View"
     And I wait 1000 milliseconds
     Then the status bar shows "No changes"
@@ -66,7 +66,7 @@ Feature: TL1 — Change Timeline Provider
   @fixture(journey-accept-reject) @destructive
   Scenario: TL1-07 Timeline updates after accepting a change
     Given I open "journey-accept-reject.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
     When I accept all changes
     And I wait 500 milliseconds

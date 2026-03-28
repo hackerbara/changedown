@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -13,8 +13,8 @@ import * as os from 'node:os';
  *
  * Meta mode uses three-zone annotation format per line:
  *   Zone 1: Margin (LINE:HASH FLAG| when hashline enabled)
- *   Zone 2: Content with lightweight [^ct-N] anchors inline after CriticMarkup
- *   Zone 3: {>>ct-N @author: reason<<} metadata at end of line
+ *   Zone 2: Content with lightweight [^cn-N] anchors inline after CriticMarkup
+ *   Zone 3: {>>cn-N @author: reason<<} metadata at end of line
  *
  * Also prepends a deliberation summary header (policy, change counts, authors).
  * The footnote definition section is elided from output.
@@ -22,29 +22,29 @@ import * as os from 'node:os';
 describe('read_tracked_file meta mode', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let filePath: string;
 
   // Fixture with three tracked changes:
-  // ct-1: substitution by @alice (no thread replies)
-  // ct-2: insertion by @ai:claude-opus-4.6 (no thread replies)
-  // ct-3: highlight by @kimi (2 thread replies from @bob and @alice)
+  // cn-1: substitution by @alice (no thread replies)
+  // cn-2: insertion by @ai:claude-opus-4.6 (no thread replies)
+  // cn-3: highlight by @kimi (2 thread replies from @bob and @alice)
   const FIXTURE = [
     '# API Design Doc',
     '',
-    'This has a {~~tpyo~>typo~~}[^ct-1] in the intro.',
+    'This has a {~~tpyo~>typo~~}[^cn-1] in the intro.',
     '',
-    'A {++new section about auth++}[^ct-2] was added.',
+    'A {++new section about auth++}[^cn-2] was added.',
     '',
-    'Rate limit is {==1000/min==}[^ct-3].',
+    'Rate limit is {==1000/min==}[^cn-3].',
     '',
-    '[^ct-1]: @alice | 2026-02-17 | sub | proposed',
+    '[^cn-1]: @alice | 2026-02-17 | sub | proposed',
     '    reason: spelling fix',
     '',
-    '[^ct-2]: @ai:claude-opus-4.6 | 2026-02-17 | ins | proposed',
+    '[^cn-2]: @ai:claude-opus-4.6 | 2026-02-17 | ins | proposed',
     '    reason: missing auth coverage',
     '',
-    '[^ct-3]: @kimi | 2026-02-17 | highlight | proposed',
+    '[^cn-3]: @kimi | 2026-02-17 | highlight | proposed',
     '    reason: contradicts section 4',
     '    @bob 2026-02-17: I think 1000 is correct',
     '    @alice 2026-02-17: Let me check the spec',
@@ -55,7 +55,7 @@ describe('read_tracked_file meta mode', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-meta-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-meta-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -116,7 +116,7 @@ describe('read_tracked_file meta mode', () => {
 
   // ─── Test 2: Three-zone inline metadata annotations ──────────────────
 
-  it('meta mode uses three-zone format: [^ct-N] anchor inline, {>>metadata<<} at end of line', async () => {
+  it('meta mode uses three-zone format: [^cn-N] anchor inline, {>>metadata<<} at end of line', async () => {
     const resolver = await createTestResolver(tmpDir, config);
     const result = await handleReadTrackedFile(
       { file: filePath, view: 'meta' },
@@ -127,26 +127,26 @@ describe('read_tracked_file meta mode', () => {
     expect(result.isError).toBeUndefined();
     const text = result.content[0].text;
 
-    // Zone 2: lightweight [^ct-N] anchor stays inline after CriticMarkup
-    expect(text).toContain('{~~tpyo~>typo~~}[^ct-1]');
-    expect(text).toContain('{++new section about auth++}[^ct-2]');
-    expect(text).toContain('{==1000/min==}[^ct-3]');
+    // Zone 2: lightweight [^cn-N] anchor stays inline after CriticMarkup
+    expect(text).toContain('{~~tpyo~>typo~~}[^cn-1]');
+    expect(text).toContain('{++new section about auth++}[^cn-2]');
+    expect(text).toContain('{==1000/min==}[^cn-3]');
 
     // Zone 3: metadata at end of line using CriticMarkup comment syntax
-    expect(text).toContain('{>>ct-1 @alice: spelling fix<<}');
-    expect(text).toContain('{>>ct-2 @ai:claude-opus-4.6: missing auth coverage<<}');
-    // ct-3 has replies (tested separately in Test 3)
-    expect(text).toMatch(/\{>>ct-3 @kimi: contradicts section 4/);
+    expect(text).toContain('{>>cn-1 @alice: spelling fix<<}');
+    expect(text).toContain('{>>cn-2 @ai:claude-opus-4.6: missing auth coverage<<}');
+    // cn-3 has replies (tested separately in Test 3)
+    expect(text).toMatch(/\{>>cn-3 @kimi: contradicts section 4/);
 
     // Zone 3 is at end of line, not inline after CriticMarkup
-    const line1 = text.split('\n').find(l => l.includes('[^ct-1]'));
-    expect(line1).toMatch(/\[\^ct-1\].*\{>>ct-1/);  // anchor before metadata
+    const line1 = text.split('\n').find(l => l.includes('[^cn-1]'));
+    expect(line1).toMatch(/\[\^cn-1\].*\{>>cn-1/);  // anchor before metadata
     expect(line1).toMatch(/<<\}$/);  // line ends with metadata closer
 
     // No old bracket annotation format present
-    expect(text).not.toContain('[ct-1 proposed');
-    expect(text).not.toContain('[ct-2 proposed');
-    expect(text).not.toContain('[ct-3 proposed');
+    expect(text).not.toContain('[cn-1 proposed');
+    expect(text).not.toContain('[cn-2 proposed');
+    expect(text).not.toContain('[cn-3 proposed');
   });
 
   // ─── Test 3: Thread reply count in Zone 3 ────────────────────────────
@@ -162,10 +162,10 @@ describe('read_tracked_file meta mode', () => {
     expect(result.isError).toBeUndefined();
     const text = result.content[0].text;
 
-    // ct-3 has 2 thread replies — reply count appended with pipe separator
-    expect(text).toContain('{>>ct-3 @kimi: contradicts section 4 | 2 replies<<}');
-    // ct-1 has no replies — Zone 3 metadata should not mention "replies"
-    expect(text).not.toMatch(/\{>>ct-1.*replies/);
+    // cn-3 has 2 thread replies — reply count appended with pipe separator
+    expect(text).toContain('{>>cn-3 @kimi: contradicts section 4 | 2 replies<<}');
+    // cn-1 has no replies — Zone 3 metadata should not mention "replies"
+    expect(text).not.toMatch(/\{>>cn-1.*replies/);
   });
 
   // ─── Test 3b: Multiple annotations per line ──────────────────────────
@@ -174,12 +174,12 @@ describe('read_tracked_file meta mode', () => {
     const multiContent = [
       '# Doc',
       '',
-      'The {~~API~>service~~}[^ct-1] should use {~~REST~>GraphQL~~}[^ct-2] for the external interface.',
+      'The {~~API~>service~~}[^cn-1] should use {~~REST~>GraphQL~~}[^cn-2] for the external interface.',
       '',
-      '[^ct-1]: @alice | 2026-02-20 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-20 | sub | proposed',
       '    reason: naming',
       '',
-      '[^ct-2]: @claude | 2026-02-20 | sub | proposed',
+      '[^cn-2]: @claude | 2026-02-20 | sub | proposed',
       '    reason: paradigm shift',
     ].join('\n');
     await fs.writeFile(filePath, multiContent);
@@ -195,15 +195,15 @@ describe('read_tracked_file meta mode', () => {
     const text = result.content[0].text;
 
     // Zone 2: both anchors inline after their CriticMarkup
-    expect(text).toContain('{~~API~>service~~}[^ct-1]');
-    expect(text).toContain('{~~REST~>GraphQL~~}[^ct-2]');
+    expect(text).toContain('{~~API~>service~~}[^cn-1]');
+    expect(text).toContain('{~~REST~>GraphQL~~}[^cn-2]');
 
     // Zone 3: both metadata blocks at end of line (space-separated in unified renderer)
-    expect(text).toContain('{>>ct-1 @alice: naming<<}');
-    expect(text).toContain('{>>ct-2 @claude: paradigm shift<<}');
+    expect(text).toContain('{>>cn-1 @alice: naming<<}');
+    expect(text).toContain('{>>cn-2 @claude: paradigm shift<<}');
 
     // Both zones on same line
-    const multiLine = text.split('\n').find(l => l.includes('[^ct-1]') && l.includes('[^ct-2]'));
+    const multiLine = text.split('\n').find(l => l.includes('[^cn-1]') && l.includes('[^cn-2]'));
     expect(multiLine).toBeDefined();
     expect(multiLine).toMatch(/<<\}$/);  // line ends with metadata closer
   });
@@ -222,9 +222,9 @@ describe('read_tracked_file meta mode', () => {
     const text = result.content[0].text;
 
     // Footnote definitions should NOT appear in meta mode output
-    expect(text).not.toContain('[^ct-1]:');
-    expect(text).not.toContain('[^ct-2]:');
-    expect(text).not.toContain('[^ct-3]:');
+    expect(text).not.toContain('[^cn-1]:');
+    expect(text).not.toContain('[^cn-2]:');
+    expect(text).not.toContain('[^cn-3]:');
     // The reason text should only appear in inline annotations, not in footnote blocks
     expect(text).not.toContain('reason: spelling fix');
   });
@@ -246,13 +246,13 @@ describe('read_tracked_file meta mode', () => {
     expect(text).toContain('{~~tpyo~>typo~~}');
     expect(text).toContain('{++new section about auth++}');
     // Footnote references should be present (not replaced with annotations)
-    expect(text).toContain('[^ct-1]');
-    expect(text).toContain('[^ct-2]');
+    expect(text).toContain('[^cn-1]');
+    expect(text).toContain('[^cn-2]');
     // No inline metadata annotations (neither old bracket nor new Zone 3 format)
-    expect(text).not.toContain('[ct-1 proposed');
-    expect(text).not.toContain('{>>ct-1');
-    expect(text).not.toContain('[ct-2 proposed');
-    expect(text).not.toContain('{>>ct-2');
+    expect(text).not.toContain('[cn-1 proposed');
+    expect(text).not.toContain('{>>cn-1');
+    expect(text).not.toContain('[cn-2 proposed');
+    expect(text).not.toContain('{>>cn-2');
   });
 
   // ─── Test 6: view=full shows everything including footnotes ───────────
@@ -269,9 +269,9 @@ describe('read_tracked_file meta mode', () => {
     const text = result.content[0].text;
 
     // Footnote definitions should be present
-    expect(text).toContain('[^ct-1]:');
-    expect(text).toContain('[^ct-2]:');
-    expect(text).toContain('[^ct-3]:');
+    expect(text).toContain('[^cn-1]:');
+    expect(text).toContain('[^cn-2]:');
+    expect(text).toContain('[^cn-3]:');
     // Footnote content should be present
     expect(text).toContain('reason: spelling fix');
     expect(text).toContain('reason: missing auth coverage');
@@ -283,7 +283,7 @@ describe('read_tracked_file meta mode', () => {
   // ─── Test 7: Meta view with hashline enabled shows LINE:HASH ───────────
 
   it('meta mode with hashline enabled includes LINE:HASH per line', async () => {
-    const hashlineConfig: ChangeTracksConfig = {
+    const hashlineConfig: ChangeDownConfig = {
       ...config,
       hashline: { enabled: true, auto_remap: false },
     };
@@ -301,9 +301,9 @@ describe('read_tracked_file meta mode', () => {
     // Flag column: space + flag(P/A/space) + pipe = " P|", " A|", or "  |"
     expect(text).toMatch(/\d+:[0-9a-f]{2} [PA ]\|/);
     expect(text).toContain('| # API Design Doc');
-    // Three-zone format: [^ct-N] anchor inline + {>>metadata<<} at end of line
-    expect(text).toContain('[^ct-1]');
-    expect(text).toContain('{>>ct-1');
+    // Three-zone format: [^cn-N] anchor inline + {>>metadata<<} at end of line
+    expect(text).toContain('[^cn-1]');
+    expect(text).toContain('{>>cn-1');
   });
 
   // ─── Test 8: Default view is meta ─────────────────────────────────────
@@ -321,16 +321,16 @@ describe('read_tracked_file meta mode', () => {
     const text = result.content[0].text;
 
     // Should behave like meta mode: three-zone annotations present
-    expect(text).toContain('[^ct-1]');  // Zone 2: lightweight anchor
-    expect(text).toContain('{>>ct-1');  // Zone 3: metadata at end of line
+    expect(text).toContain('[^cn-1]');  // Zone 2: lightweight anchor
+    expect(text).toContain('{>>cn-1');  // Zone 3: metadata at end of line
     // Should behave like meta mode: footnote definitions absent
-    expect(text).not.toContain('[^ct-1]:');
+    expect(text).not.toContain('[^cn-1]:');
   });
 
   // ─── Test 9: P flag in review view hashline for proposed changes ──────
 
   it('review view includes P flag in hashline for proposed changes', async () => {
-    const hashlineConfig: ChangeTracksConfig = {
+    const hashlineConfig: ChangeDownConfig = {
       ...config,
       hashline: { enabled: true, auto_remap: false },
     };
@@ -353,14 +353,14 @@ describe('read_tracked_file meta mode', () => {
   it('review view includes A flag for accepted changes', async () => {
     const content = [
       '# Doc',
-      '{++accepted text++}[^ct-1]',
+      '{++accepted text++}[^cn-1]',
       '',
-      '[^ct-1]: @alice | 2026-02-24 | ins | accepted',
+      '[^cn-1]: @alice | 2026-02-24 | ins | accepted',
       '    reason: added context',
     ].join('\n');
     await fs.writeFile(filePath, content);
 
-    const hashlineConfig: ChangeTracksConfig = {
+    const hashlineConfig: ChangeDownConfig = {
       ...config,
       hashline: { enabled: true, auto_remap: false },
     };
@@ -381,7 +381,7 @@ describe('read_tracked_file meta mode', () => {
   // ─── Test 11: Blank flag for clean lines ──────────────────────────────
 
   it('review view has blank flag for clean lines', async () => {
-    const hashlineConfig: ChangeTracksConfig = {
+    const hashlineConfig: ChangeDownConfig = {
       ...config,
       hashline: { enabled: true, auto_remap: false },
     };
@@ -404,10 +404,10 @@ describe('read_tracked_file meta mode', () => {
   it('renders long substitution text without compaction in unified renderer', async () => {
     const longNewText = 'A'.repeat(100); // 100-char text
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
-      `{~~short~>${longNewText}~~}[^ct-1]`,
+      '<!-- changedown.com/v1: tracked -->',
+      `{~~short~>${longNewText}~~}[^cn-1]`,
       '',
-      '[^ct-1]: @alice | 2026-02-24 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-24 | sub | proposed',
       '    @alice 2026-02-24: expanded explanation',
     ].join('\n');
     await fs.writeFile(filePath, content);
@@ -427,10 +427,10 @@ describe('read_tracked_file meta mode', () => {
   it('does not compact when new text is under threshold', async () => {
     const shortNewText = 'B'.repeat(40); // Under 80-char default threshold
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
-      `{~~short~>${shortNewText}~~}[^ct-1]`,
+      '<!-- changedown.com/v1: tracked -->',
+      `{~~short~>${shortNewText}~~}[^cn-1]`,
       '',
-      '[^ct-1]: @alice | 2026-02-24 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-24 | sub | proposed',
       '    @alice 2026-02-24: minor edit',
     ].join('\n');
     await fs.writeFile(filePath, content);
@@ -451,10 +451,10 @@ describe('read_tracked_file meta mode', () => {
   it('compacts at exactly the threshold boundary', async () => {
     const exactText = 'C'.repeat(80); // Exactly 80 chars — NOT over, should not compact
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
-      `{~~old~>${exactText}~~}[^ct-1]`,
+      '<!-- changedown.com/v1: tracked -->',
+      `{~~old~>${exactText}~~}[^cn-1]`,
       '',
-      '[^ct-1]: @alice | 2026-02-24 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-24 | sub | proposed',
       '    @alice 2026-02-24: boundary test',
     ].join('\n');
     await fs.writeFile(filePath, content);
@@ -475,10 +475,10 @@ describe('read_tracked_file meta mode', () => {
   it('renders text just over old threshold without compaction in unified renderer', async () => {
     const overText = 'D'.repeat(81); // 81 chars
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
-      `{~~old~>${overText}~~}[^ct-1]`,
+      '<!-- changedown.com/v1: tracked -->',
+      `{~~old~>${overText}~~}[^cn-1]`,
       '',
-      '[^ct-1]: @alice | 2026-02-24 | sub | proposed',
+      '[^cn-1]: @alice | 2026-02-24 | sub | proposed',
       '    @alice 2026-02-24: just over boundary',
     ].join('\n');
     await fs.writeFile(filePath, content);

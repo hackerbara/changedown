@@ -1,20 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleGetTrackingStatus } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { handleGetTrackingStatus } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { createTestResolver } from './test-resolver.js';
-import { ConfigResolver } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
 
 describe('handleGetTrackingStatus', () => {
   let tmpDir: string;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-tracking-status-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-tracking-status-'));
     config = {
       tracking: {
         include: ['**/*.md'],
@@ -51,7 +51,7 @@ describe('handleGetTrackingStatus', () => {
 
   it('with file arg: returns tracked status for file with tracking header', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\n# Hello\n');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\n# Hello\n');
 
     const result = await handleGetTrackingStatus(
       { file: filePath },
@@ -70,7 +70,7 @@ describe('handleGetTrackingStatus', () => {
 
   it('with file arg: returns untracked status for file with untracked header', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: untracked -->\n# Hello\n');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: untracked -->\n# Hello\n');
 
     const result = await handleGetTrackingStatus(
       { file: filePath },
@@ -187,7 +187,7 @@ describe('handleGetTrackingStatus', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      '<!-- ctrcks.com/v1: tracked -->\n# Doc\n\nText {++added++}[^ct-1] end.\n\n[^ct-1]: @a | 2026-02-11 | ins | accepted'
+      '<!-- changedown.com/v1: tracked -->\n# Doc\n\nText {++added++}[^cn-1] end.\n\n[^cn-1]: @a | 2026-02-11 | ins | accepted'
     );
 
     const result = await handleGetTrackingStatus(
@@ -206,7 +206,7 @@ describe('handleGetTrackingStatus', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      '<!-- ctrcks.com/v1: tracked -->\n# Doc\n\nText {++added++}[^ct-1] end.\n\n[^ct-1]: @a | 2026-02-11 | ins | accepted'
+      '<!-- changedown.com/v1: tracked -->\n# Doc\n\nText {++added++}[^cn-1] end.\n\n[^cn-1]: @a | 2026-02-11 | ins | accepted'
     );
 
     const result = await handleGetTrackingStatus(
@@ -218,17 +218,17 @@ describe('handleGetTrackingStatus', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data.settled).toBe(true);
-    expect(data.settled_ids).toEqual(['ct-1']);
+    expect(data.settled_ids).toEqual(['cn-1']);
     const content = await fs.readFile(filePath, 'utf-8');
-    expect(content).toContain('<!-- ctrcks.com/v1: tracked -->');
+    expect(content).toContain('<!-- changedown.com/v1: tracked -->');
     // BUG-001 fix: Settlement preserves footnote refs and definitions
-    expect(content).toContain('Text added[^ct-1] end.');
-    expect(content).toContain('[^ct-1]:'); // Footnote definition preserved
+    expect(content).toContain('Text added[^cn-1] end.');
+    expect(content).toContain('[^cn-1]:'); // Footnote definition preserved
     expect(content).not.toContain('{++'); // Markup removed
   });
 
   it('without file arg: reflects custom config values', async () => {
-    const customConfig: ChangeTracksConfig = {
+    const customConfig: ChangeDownConfig = {
       ...config,
       tracking: {
         ...config.tracking,

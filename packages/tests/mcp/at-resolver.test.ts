@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { parseAt, resolveAt, type ResolvedTarget } from '@changetracks/mcp/internals';
-import { initHashline, computeLineHash } from '@changetracks/core';
+import { parseAt, resolveAt, type ResolvedTarget } from '@changedown/mcp/internals';
+import { initHashline, computeLineHash } from '@changedown/core';
 
 describe('parseAt', () => {
   it('parses single line coordinate', () => {

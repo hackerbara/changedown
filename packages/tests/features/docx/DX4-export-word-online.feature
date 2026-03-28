@@ -8,9 +8,9 @@ Feature: DX4 - Word Online Compatibility Patches
   Scenario: paraId attributes added to paragraphs
     Given CriticMarkup markdown:
       """
-      {++hello++}[^ct-1]
+      {++hello++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with Word Online compatibility
     Then the export succeeds
@@ -20,9 +20,9 @@ Feature: DX4 - Word Online Compatibility Patches
   Scenario: commentReference wrapped in run with style
     Given CriticMarkup markdown:
       """
-      {==highlighted==}{>>a comment<<}[^ct-1]
+      {==highlighted==}{>>a comment<<}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with Word Online compatibility and comments "all"
     Then the export succeeds
@@ -32,9 +32,9 @@ Feature: DX4 - Word Online Compatibility Patches
   Scenario: commentsExtended.xml created for threaded comments
     Given CriticMarkup markdown:
       """
-      {==text==}{>>a comment<<}[^ct-1]
+      {==text==}{>>a comment<<}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with Word Online compatibility and comments "all"
     Then the export succeeds
@@ -44,9 +44,9 @@ Feature: DX4 - Word Online Compatibility Patches
   Scenario: Content_Types.xml updated with commentsExtended
     Given CriticMarkup markdown:
       """
-      {==text==}{>>a comment<<}[^ct-1]
+      {==text==}{>>a comment<<}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with Word Online compatibility and comments "all"
     Then the export succeeds
@@ -56,9 +56,9 @@ Feature: DX4 - Word Online Compatibility Patches
   Scenario: CommentReference style added to styles.xml
     Given CriticMarkup markdown:
       """
-      {==text==}{>>a comment<<}[^ct-1]
+      {==text==}{>>a comment<<}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with Word Online compatibility and comments "all"
     Then the export succeeds
@@ -68,9 +68,9 @@ Feature: DX4 - Word Online Compatibility Patches
   Scenario: document.xml.rels contains commentsExtended relationship
     Given CriticMarkup markdown:
       """
-      {==text==}{>>a comment<<}[^ct-1]
+      {==text==}{>>a comment<<}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with Word Online compatibility and comments "all"
     Then the export succeeds
@@ -80,9 +80,9 @@ Feature: DX4 - Word Online Compatibility Patches
   Scenario: Word Online compat disabled produces no paraIds
     Given CriticMarkup markdown:
       """
-      {++hello++}[^ct-1]
+      {++hello++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX without Word Online compatibility
     Then the export succeeds
@@ -92,9 +92,9 @@ Feature: DX4 - Word Online Compatibility Patches
   Scenario: rPrChange gets child rPr element with Word Online compat
     Given CriticMarkup markdown:
       """
-      {++**bold tracked**++}[^ct-1]
+      {++**bold tracked**++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with Word Online compatibility
     Then the export succeeds

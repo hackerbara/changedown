@@ -6,14 +6,14 @@ import {
   ChangeNode,
   ChangeType,
   ChangeStatus,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 /**
  * Factory for building L3-shaped ChangeNodes (range === contentRange, no delimiters in body).
  */
 function makeL3Node(overrides: Partial<ChangeNode> & { type: ChangeType }): ChangeNode {
   return {
-    id: 'ct-1',
+    id: 'cn-1',
     status: ChangeStatus.Proposed,
     range: { start: 10, end: 15 },
     contentRange: { start: 10, end: 15 },
@@ -28,7 +28,7 @@ function makeL3Node(overrides: Partial<ChangeNode> & { type: ChangeType }): Chan
  */
 function makeL2Node(overrides: Partial<ChangeNode> & { type: ChangeType }): ChangeNode {
   return {
-    id: 'ct-1',
+    id: 'cn-1',
     status: ChangeStatus.Proposed,
     range: { start: 0, end: 12 },
     contentRange: { start: 3, end: 8 },
@@ -235,18 +235,18 @@ describe('computeAccept/computeReject with L2 ChangeNode shape (range !== conten
 // ---------------------------------------------------------------------------
 describe('computeSettledText with L3 format input', () => {
   const l3Doc = [
-    '<!-- ctrcks.com/v1: tracked -->',
+    '<!-- changedown.com/v1: tracked -->',
     '# Doc',
     '',
     'Some text with additions.',
     '',
-    '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+    '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
     '    3:a3 {++additions++}',
   ].join('\n');
 
   it('strips footnote block and returns body only', () => {
     const settled = computeSettledText(l3Doc);
-    expect(settled).not.toMatch(/\[\^ct-/);
+    expect(settled).not.toMatch(/\[\^cn-/);
     expect(settled).toContain('Some text with additions.');
   });
 
@@ -259,15 +259,15 @@ describe('computeSettledText with L3 format input', () => {
   it('preserves body content including frontmatter marker', () => {
     const settled = computeSettledText(l3Doc);
     expect(settled).toContain('# Doc');
-    expect(settled).toContain('<!-- ctrcks.com/v1: tracked -->');
+    expect(settled).toContain('<!-- changedown.com/v1: tracked -->');
   });
 
   it('L2 documents still use CriticMarkup parser path', () => {
-    const l2Doc = 'Hello {++world++} there\n\n[^ct-1]: @alice | 2026-03-16 | ins | proposed';
+    const l2Doc = 'Hello {++world++} there\n\n[^cn-1]: @alice | 2026-03-16 | ins | proposed';
     const settled = computeSettledText(l2Doc);
     // L2: CriticMarkup is expanded and footnote defs stripped
     expect(settled).toContain('world');
     expect(settled).not.toMatch(/\{\+\+/);
-    expect(settled).not.toMatch(/\[\^ct-/);
+    expect(settled).not.toMatch(/\[\^cn-/);
   });
 });

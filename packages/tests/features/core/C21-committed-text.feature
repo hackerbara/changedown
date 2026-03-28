@@ -20,56 +20,56 @@ Feature: C21 - Committed Text View
     And the committed changeIds are empty
 
   Scenario: Pending insertion is removed, line gets P flag
-    Given a committed-text input "Before {++added text++}[^ct-1] after"
-    And footnote status "ct-1" is "proposed" type "ins"
+    Given a committed-text input "Before {++added text++}[^cn-1] after"
+    And footnote status "cn-1" is "proposed" type "ins"
     When I compute the committed line
     Then the committed text is "Before  after"
     And the committed flag is "P"
-    And the committed changeIds include "ct-1"
+    And the committed changeIds include "cn-1"
 
   Scenario: Accepted insertion text is kept, delimiters removed, A flag
-    Given a committed-text input "Before {++added text++}[^ct-1] after"
-    And footnote status "ct-1" is "accepted" type "ins"
+    Given a committed-text input "Before {++added text++}[^cn-1] after"
+    And footnote status "cn-1" is "accepted" type "ins"
     When I compute the committed line
     Then the committed text is "Before added text after"
     And the committed flag is "A"
-    And the committed changeIds include "ct-1"
+    And the committed changeIds include "cn-1"
 
   Scenario: Pending deletion keeps text (revert), P flag
-    Given a committed-text input "Before {--removed--}[^ct-2] after"
-    And footnote status "ct-2" is "proposed" type "del"
+    Given a committed-text input "Before {--removed--}[^cn-2] after"
+    And footnote status "cn-2" is "proposed" type "del"
     When I compute the committed line
     Then the committed text is "Before removed after"
     And the committed flag is "P"
-    And the committed changeIds include "ct-2"
+    And the committed changeIds include "cn-2"
 
   Scenario: Accepted deletion removes text, A flag
-    Given a committed-text input "Before {--removed--}[^ct-2] after"
-    And footnote status "ct-2" is "accepted" type "del"
+    Given a committed-text input "Before {--removed--}[^cn-2] after"
+    And footnote status "cn-2" is "accepted" type "del"
     When I compute the committed line
     Then the committed text is "Before  after"
     And the committed flag is "A"
-    And the committed changeIds include "ct-2"
+    And the committed changeIds include "cn-2"
 
   Scenario: Pending substitution shows old text, P flag
-    Given a committed-text input "Before {~~old~>new~~}[^ct-3] after"
-    And footnote status "ct-3" is "proposed" type "sub"
+    Given a committed-text input "Before {~~old~>new~~}[^cn-3] after"
+    And footnote status "cn-3" is "proposed" type "sub"
     When I compute the committed line
     Then the committed text is "Before old after"
     And the committed flag is "P"
-    And the committed changeIds include "ct-3"
+    And the committed changeIds include "cn-3"
 
   Scenario: Accepted substitution shows new text, A flag
-    Given a committed-text input "Before {~~old~>new~~}[^ct-3] after"
-    And footnote status "ct-3" is "accepted" type "sub"
+    Given a committed-text input "Before {~~old~>new~~}[^cn-3] after"
+    And footnote status "cn-3" is "accepted" type "sub"
     When I compute the committed line
     Then the committed text is "Before new after"
     And the committed flag is "A"
-    And the committed changeIds include "ct-3"
+    And the committed changeIds include "cn-3"
 
   Scenario: Highlight shows content, no flag
-    Given a committed-text input "Before {==highlighted==}[^ct-4] after"
-    And footnote status "ct-4" is "proposed" type "highlight"
+    Given a committed-text input "Before {==highlighted==}[^cn-4] after"
+    And footnote status "cn-4" is "proposed" type "highlight"
     When I compute the committed line
     Then the committed text is "Before highlighted after"
     And the committed flag is ""
@@ -85,30 +85,30 @@ Feature: C21 - Committed Text View
   # ── computeCommittedLine: edge cases ───────────────────────────────
 
   Scenario: P flag takes priority when line has mixed proposed and accepted
-    Given a committed-text input "{++added++}[^ct-1] middle {--deleted--}[^ct-2]"
-    And footnote status "ct-1" is "accepted" type "ins"
-    And footnote status "ct-2" is "proposed" type "del"
+    Given a committed-text input "{++added++}[^cn-1] middle {--deleted--}[^cn-2]"
+    And footnote status "cn-1" is "accepted" type "ins"
+    And footnote status "cn-2" is "proposed" type "del"
     When I compute the committed line
     Then the committed text is "added middle deleted"
     And the committed flag is "P"
-    And the committed changeIds include "ct-1"
-    And the committed changeIds include "ct-2"
+    And the committed changeIds include "cn-1"
+    And the committed changeIds include "cn-2"
 
   Scenario: Rejected insertion is removed, no flag
-    Given a committed-text input "Before {++nope++}[^ct-5] after"
-    And footnote status "ct-5" is "rejected" type "ins"
+    Given a committed-text input "Before {++nope++}[^cn-5] after"
+    And footnote status "cn-5" is "rejected" type "ins"
     When I compute the committed line
     Then the committed text is "Before  after"
     And the committed flag is ""
-    And the committed changeIds include "ct-5"
+    And the committed changeIds include "cn-5"
 
   Scenario: Unknown change ID is treated as proposed (P flag)
-    Given a committed-text input "Before {++mystery++}[^ct-99] after"
+    Given a committed-text input "Before {++mystery++}[^cn-99] after"
     And no footnote statuses
     When I compute the committed line
     Then the committed text is "Before  after"
     And the committed flag is "P"
-    And the committed changeIds include "ct-99"
+    And the committed changeIds include "cn-99"
 
   Scenario: Bare CriticMarkup without footnote ref is treated as proposed
     Given a committed-text input "Before {++bare insertion++} after"
@@ -119,38 +119,38 @@ Feature: C21 - Committed Text View
     And the committed changeIds are empty
 
   Scenario: Rejected substitution shows old text (revert)
-    Given a committed-text input "{~~old~>new~~}[^ct-6]"
-    And footnote status "ct-6" is "rejected" type "sub"
+    Given a committed-text input "{~~old~>new~~}[^cn-6]"
+    And footnote status "cn-6" is "rejected" type "sub"
     When I compute the committed line
     Then the committed text is "old"
     And the committed flag is ""
-    And the committed changeIds include "ct-6"
+    And the committed changeIds include "cn-6"
 
   Scenario: Rejected deletion keeps text
-    Given a committed-text input "{--kept--}[^ct-7]"
-    And footnote status "ct-7" is "rejected" type "del"
+    Given a committed-text input "{--kept--}[^cn-7]"
+    And footnote status "cn-7" is "rejected" type "del"
     When I compute the committed line
     Then the committed text is "kept"
     And the committed flag is ""
-    And the committed changeIds include "ct-7"
+    And the committed changeIds include "cn-7"
 
   Scenario: Standalone footnote refs are removed
-    Given a committed-text input "text [^ct-1] more"
+    Given a committed-text input "text [^cn-1] more"
     And no footnote statuses
     When I compute the committed line
     Then the committed text is "text  more"
 
   Scenario: Dotted IDs (ct-N.M) are handled correctly
-    Given a committed-text input "Before {--cut--}[^ct-5.1] after"
-    And footnote status "ct-5.1" is "accepted" type "del"
+    Given a committed-text input "Before {--cut--}[^cn-5.1] after"
+    And footnote status "cn-5.1" is "accepted" type "del"
     When I compute the committed line
     Then the committed text is "Before  after"
     And the committed flag is "A"
-    And the committed changeIds include "ct-5.1"
+    And the committed changeIds include "cn-5.1"
 
   Scenario: Highlight with attached comment
-    Given a committed-text input "{==important==}{>>note<<}[^ct-8]"
-    And footnote status "ct-8" is "proposed" type "highlight"
+    Given a committed-text input "{==important==}{>>note<<}[^cn-8]"
+    And footnote status "cn-8" is "proposed" type "highlight"
     When I compute the committed line
     Then the committed text is "important"
     And the committed flag is ""
@@ -177,10 +177,10 @@ Feature: C21 - Committed Text View
     Given a committed-view raw text:
       """
       # Title
-      {++This line is pending++}[^ct-1]
+      {++This line is pending++}[^cn-1]
       Clean line.
 
-      [^ct-1]: @alice | 2026-02-17 | ins | proposed
+      [^cn-1]: @alice | 2026-02-17 | ins | proposed
       """
     When I compute the committed view
     Then the committed view has 3 lines
@@ -190,10 +190,10 @@ Feature: C21 - Committed Text View
     Given a committed-view raw text:
       """
       # Title
-      {++pending insertion++}[^ct-1]
+      {++pending insertion++}[^cn-1]
       Clean line.
 
-      [^ct-1]: @alice | 2026-02-17 | ins | proposed
+      [^cn-1]: @alice | 2026-02-17 | ins | proposed
       """
     When I compute the committed view
     Then committed-to-raw mapping 1 is raw 1
@@ -212,12 +212,12 @@ Feature: C21 - Committed Text View
     Given a committed-view raw text:
       """
       # Title
-      {++new text++}[^ct-1]
-      {--old text--}[^ct-2]
+      {++new text++}[^cn-1]
+      {--old text--}[^cn-2]
       Clean line.
 
-      [^ct-1]: @alice | 2026-02-17 | ins | proposed
-      [^ct-2]: @alice | 2026-02-17 | del | accepted
+      [^cn-1]: @alice | 2026-02-17 | ins | proposed
+      [^cn-2]: @alice | 2026-02-17 | del | accepted
       """
     When I compute the committed view
     Then the committed summary has 1 proposed
@@ -228,9 +228,9 @@ Feature: C21 - Committed Text View
     Given a committed-view raw text:
       """
       # Title
-      Some text {++added++}[^ct-1]
+      Some text {++added++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-02-17 | ins | proposed
+      [^cn-1]: @alice | 2026-02-17 | ins | proposed
           reason: clarity improvement
       """
     When I compute the committed view
@@ -255,20 +255,20 @@ Feature: C21 - Committed Text View
   Scenario: P flag set for lines with proposed changes
     Given a committed-view raw text:
       """
-      Before {++added++}[^ct-1] after
+      Before {++added++}[^cn-1] after
 
-      [^ct-1]: @alice | 2026-02-17 | ins | proposed
+      [^cn-1]: @alice | 2026-02-17 | ins | proposed
       """
     When I compute the committed view
     Then committed view line 1 has flag "P"
-    And committed view line 1 changeIds include "ct-1"
+    And committed view line 1 changeIds include "cn-1"
 
   Scenario: A flag set for lines with accepted changes
     Given a committed-view raw text:
       """
-      Before {++added++}[^ct-1] after
+      Before {++added++}[^cn-1] after
 
-      [^ct-1]: @alice | 2026-02-17 | ins | accepted
+      [^cn-1]: @alice | 2026-02-17 | ins | accepted
       """
     When I compute the committed view
     Then committed view line 1 has flag "A"
@@ -293,10 +293,10 @@ Feature: C21 - Committed Text View
   Scenario: Formatted output includes change summary
     Given a committed-view raw text:
       """
-      Before {++added++}[^ct-1] after
+      Before {++added++}[^cn-1] after
       Clean line.
 
-      [^ct-1]: @alice | 2026-02-17 | ins | proposed
+      [^cn-1]: @alice | 2026-02-17 | ins | proposed
       """
     When I compute the committed view
     And I format the committed output for "test.md" with tracking "tracked"
@@ -305,9 +305,9 @@ Feature: C21 - Committed Text View
   Scenario: Formatted output shows P flag on proposed change lines
     Given a committed-view raw text:
       """
-      Before {~~old~>new~~}[^ct-1] after
+      Before {~~old~>new~~}[^cn-1] after
 
-      [^ct-1]: @alice | 2026-02-17 | sub | proposed
+      [^cn-1]: @alice | 2026-02-17 | sub | proposed
       """
     When I compute the committed view
     And I format the committed output for "test.md" with tracking "tracked"
@@ -316,9 +316,9 @@ Feature: C21 - Committed Text View
   Scenario: Formatted output shows A flag on accepted change lines
     Given a committed-view raw text:
       """
-      Before {++added++}[^ct-1] after
+      Before {++added++}[^cn-1] after
 
-      [^ct-1]: @alice | 2026-02-17 | ins | accepted
+      [^cn-1]: @alice | 2026-02-17 | ins | accepted
       """
     When I compute the committed view
     And I format the committed output for "test.md" with tracking "tracked"

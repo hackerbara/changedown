@@ -3,15 +3,15 @@ import { resolvePosition } from './position-map.js';
 
 /**
  * Maps match type + region role to the CSS class applied to the wrapping span.
- * Delimiter regions get 'ct-delim' across all types (hidden via CSS).
+ * Delimiter regions get 'cn-delim' across all types (hidden via CSS).
  */
 const ROLE_TO_CLASS: Record<string, Record<string, string>> = {
-  insertion:      { content: 'ct-ins', 'open-delim': 'ct-delim', 'close-delim': 'ct-delim' },
-  deletion:       { content: 'ct-del', 'open-delim': 'ct-delim', 'close-delim': 'ct-delim' },
-  substitution:   { 'old-content': 'ct-sub-old', 'new-content': 'ct-sub-new', 'open-delim': 'ct-delim', 'close-delim': 'ct-delim', separator: 'ct-delim' },
-  highlight:      { content: 'ct-hl', 'open-delim': 'ct-delim', 'close-delim': 'ct-delim' },
-  comment:        { content: 'ct-cmt', 'open-delim': 'ct-delim', 'close-delim': 'ct-delim' },
-  'footnote-ref': { content: 'ct-fnref' },
+  insertion:      { content: 'cn-ins', 'open-delim': 'cn-delim', 'close-delim': 'cn-delim' },
+  deletion:       { content: 'cn-del', 'open-delim': 'cn-delim', 'close-delim': 'cn-delim' },
+  substitution:   { 'old-content': 'cn-sub-old', 'new-content': 'cn-sub-new', 'open-delim': 'cn-delim', 'close-delim': 'cn-delim', separator: 'cn-delim' },
+  highlight:      { content: 'cn-hl', 'open-delim': 'cn-delim', 'close-delim': 'cn-delim' },
+  comment:        { content: 'cn-cmt', 'open-delim': 'cn-delim', 'close-delim': 'cn-delim' },
+  'footnote-ref': { content: 'cn-fnref' },
 };
 
 /**

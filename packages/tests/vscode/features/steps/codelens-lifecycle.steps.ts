@@ -7,25 +7,25 @@
 
 import { When, Then, Before } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { CriticMarkupParser } from '@changetracks/core';
-import { buildLifecycleIndicator } from '@changetracks/lsp-server';
-import type { ChangeTracksWorld } from './world';
+import { CriticMarkupParser } from '@changedown/core';
+import { buildLifecycleIndicator } from '@changedown/lsp-server';
+import type { ChangeDownWorld } from './world';
 
 // ── Extend World with CodeLens indicator state ──────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         codeLensIndicators?: Map<string, string>;
     }
 }
 
-Before({ tags: '@fast and @CL3' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @CL3' }, function (this: ChangeDownWorld) {
     this.codeLensIndicators = undefined;
 });
 
 // ── Step definitions ────────────────────────────────────────────────
 
-When('I compute CodeLens indicators', async function (this: ChangeTracksWorld) {
+When('I compute CodeLens indicators', async function (this: ChangeDownWorld) {
     assert.ok(this.lifecycleDocText !== undefined, 'Document text not set');
     const parser = new CriticMarkupParser();
     const vdoc = parser.parse(this.lifecycleDocText);
@@ -39,7 +39,7 @@ When('I compute CodeLens indicators', async function (this: ChangeTracksWorld) {
     }
 });
 
-Then('the indicator for {word} contains {string}', function (this: ChangeTracksWorld, changeId: string, expected: string) {
+Then('the indicator for {word} contains {string}', function (this: ChangeDownWorld, changeId: string, expected: string) {
     assert.ok(this.codeLensIndicators, 'No indicators computed');
     const indicator = this.codeLensIndicators.get(changeId);
     assert.ok(indicator !== undefined, `No indicator found for ${changeId}. Available: ${[...this.codeLensIndicators.keys()].join(', ')}`);
@@ -49,7 +49,7 @@ Then('the indicator for {word} contains {string}', function (this: ChangeTracksW
     );
 });
 
-Then('the indicator for {word} does not contain {string}', function (this: ChangeTracksWorld, changeId: string, unexpected: string) {
+Then('the indicator for {word} does not contain {string}', function (this: ChangeDownWorld, changeId: string, unexpected: string) {
     assert.ok(this.codeLensIndicators, 'No indicators computed');
     const indicator = this.codeLensIndicators.get(changeId) ?? '';
     assert.ok(

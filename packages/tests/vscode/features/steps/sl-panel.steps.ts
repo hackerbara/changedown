@@ -6,13 +6,13 @@
  *
  * Fixture: packages/tests/vscode/fixtures/journeys/lifecycle-panel.md
  *
- * Card data is fetched via the bridge command changetracks._testGetReviewPanelCards,
+ * Card data is fetched via the bridge command changedown._testGetReviewPanelCards,
  * which returns: Array<{ changeId, type, status, author, textPreview, replyCount }>
  */
 
 import { When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import {
     getReviewPanelCards,
     executeCommandViaBridge,
@@ -25,7 +25,7 @@ import { findLineNumber } from './sl-shared.steps';
 // ── Extend World with SL-PN state ────────────────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         slPanelHoverPreview?: string;
     }
 }
@@ -35,7 +35,7 @@ declare module './world' {
 Then(
     'the panel shows {int} change cards',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, expected: number) {
+    async function (this: ChangeDownWorld, expected: number) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let actual = -1;
@@ -54,7 +54,7 @@ Then(
 Then(
     'the card for {word} shows type {string} and status {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string, expectedType: string, expectedStatus: string) {
+    async function (this: ChangeDownWorld, changeId: string, expectedType: string, expectedStatus: string) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let lastError = '';
@@ -80,10 +80,10 @@ Then(
 When(
     'I click the card for {word}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         // Use bridge command to navigate to the change (goToChange with changeId arg)
-        await executeCommandViaBridge(this.page, `changetracks.goToChange:${changeId}`);
+        await executeCommandViaBridge(this.page, `changedown.goToChange:${changeId}`);
         // Fall back: position cursor using acceptChange after locating the change via doc text
         // The bridge command accepts a change ID as argument — if not supported, use
         // the _testPositionCursor bridge approach via footnote reference lookup.
@@ -94,7 +94,7 @@ When(
 Then(
     'the cursor is on the line containing {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, textFragment: string) {
+    async function (this: ChangeDownWorld, textFragment: string) {
         assert.ok(this.page, 'Page not available');
         const cursorLine = await getCursorLineViaBridge(this.page);
         assert.ok(cursorLine > 0, `Could not read cursor line from bridge (got ${cursorLine})`);
@@ -119,7 +119,7 @@ Then(
 When(
     'I click Accept on the card for {word}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         // Navigate to the change first so acceptChange operates on the correct node
         const text = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
@@ -132,19 +132,19 @@ When(
         await this.page.waitForTimeout(100);
 
         // Use bridge to position cursor at the change
-        const inputPath = require('path').join(require('os').tmpdir(), 'changetracks-test-exec-input.json');
-        const resultPath = require('path').join(require('os').tmpdir(), 'changetracks-test-exec.json');
+        const inputPath = require('path').join(require('os').tmpdir(), 'changedown-test-exec-input.json');
+        const resultPath = require('path').join(require('os').tmpdir(), 'changedown-test-exec.json');
         const fs = require('fs');
         try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
         fs.writeFileSync(inputPath, JSON.stringify({
-            command: 'changetracks._testPositionCursor',
+            command: 'changedown._testPositionCursor',
             args: [lineNum, 15],
         }));
         await this.page.keyboard.press('Control+Shift+F12');
         await this.page.waitForTimeout(600);
 
         // Trigger accept — pass decision to bypass the QuickPick UI
-        await executeCommandViaBridge(this.page, 'changetracks.acceptChange', [undefined, 'approve']);
+        await executeCommandViaBridge(this.page, 'changedown.acceptChange', [undefined, 'approve']);
         await this.page.waitForTimeout(500);
     }
 );
@@ -154,7 +154,7 @@ When(
 Then(
     'the panel card for {word} shows status {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string, expectedStatus: string) {
+    async function (this: ChangeDownWorld, changeId: string, expectedStatus: string) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let lastStatus = '';
@@ -178,9 +178,9 @@ Then(
 When(
     'I set panel filter to {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, filter: string) {
+    async function (this: ChangeDownWorld, filter: string) {
         assert.ok(this.page, 'Page not available');
-        await updateSettingDirect(this.page, 'changetracks.panelFilter', filter);
+        await updateSettingDirect(this.page, 'changedown.panelFilter', filter);
         await this.page.waitForTimeout(600);
     }
 );
@@ -190,7 +190,7 @@ When(
 Then(
     'the visible cards are {word}, {word}, {word}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, id1: string, id2: string, id3: string) {
+    async function (this: ChangeDownWorld, id1: string, id2: string, id3: string) {
         assert.ok(this.page, 'Page not available');
         const expected = new Set([id1, id2, id3]);
         const deadline = Date.now() + 8000;
@@ -214,7 +214,7 @@ Then(
 Then(
     'the panel does not show {word}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         // Allow a short settle time before asserting absence
         await this.page.waitForTimeout(600);
@@ -233,7 +233,7 @@ Then(
 When(
     'I hover over the card for {word}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
 
         // Attempt to hover over the panel card DOM element identified by data-change-id attribute
@@ -245,7 +245,7 @@ When(
                 await this.page.waitForTimeout(600);
                 // Capture any tooltip or preview text rendered after hover
                 const previewText = await this.page.evaluate(`(() => {
-                    const tooltip = document.querySelector('.changetracks-preview-tooltip, .monaco-hover, [class*="preview"]');
+                    const tooltip = document.querySelector('.changedown-preview-tooltip, .monaco-hover, [class*="preview"]');
                     return tooltip ? tooltip.textContent ?? '' : '';
                 })()`) as string;
                 this.slPanelHoverPreview = previewText;
@@ -271,19 +271,19 @@ When(
 Then(
     'the preview shows reply count and author',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Get fresh card data as the authoritative source for reply count and author
         const { cards } = await getReviewPanelCards(this.page);
-        const ct2 = cards.find(c => c.changeId === 'ct-2');
-        assert.ok(ct2, 'ct-2 card not found in panel data');
+        const ct2 = cards.find(c => c.changeId === 'cn-2');
+        assert.ok(ct2, 'cn-2 card not found in panel data');
         assert.ok(
             ct2.replyCount > 0,
-            `Expected ct-2 to have at least 1 reply, got ${ct2.replyCount}`
+            `Expected cn-2 to have at least 1 reply, got ${ct2.replyCount}`
         );
         assert.ok(
             ct2.author && ct2.author.length > 0,
-            `Expected ct-2 to have a non-empty author, got "${ct2.author}"`
+            `Expected cn-2 to have a non-empty author, got "${ct2.author}"`
         );
     }
 );
@@ -291,7 +291,7 @@ Then(
 Then(
     'the preview shows discussion text {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, expectedText: string) {
+    async function (this: ChangeDownWorld, expectedText: string) {
         assert.ok(this.page, 'Page not available');
         // Check hover preview DOM first
         const preview = this.slPanelHoverPreview ?? '';
@@ -299,7 +299,7 @@ Then(
 
         // Fallback: search the panel webview DOM for the discussion text
         const panelText = await this.page.evaluate(`(() => {
-            const webview = document.querySelector('.webview, iframe[title*="ChangeTracks"], iframe[title*="Panel"]');
+            const webview = document.querySelector('.webview, iframe[title*="ChangeDown"], iframe[title*="Panel"]');
             if (webview) return webview.textContent ?? '';
             const panel = document.querySelector('.part.panel .content');
             return panel ? panel.textContent ?? '' : '';

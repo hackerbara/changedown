@@ -8,15 +8,15 @@
 
 import { Given, When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { CriticMarkupParser } from '@changetracks/core';
-import { buildReplacements, findFenceZones, containsCriticMarkup, renderFenceWithCriticMarkup } from 'changetracks-vscode/internals';
-import type { PreviewOptions } from 'changetracks-vscode/internals';
-import type { ChangeTracksWorld } from './world';
+import { CriticMarkupParser } from '@changedown/core';
+import { buildReplacements, findFenceZones, containsCriticMarkup, renderFenceWithCriticMarkup } from 'changedown-vscode/internals';
+import type { PreviewOptions } from 'changedown-vscode/internals';
+import type { ChangeDownWorld } from './world';
 
 // ── Extend World with preview test state ─────────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         previewSourceText?: string;
         previewOptions?: PreviewOptions;
         previewResult?: string;
@@ -37,42 +37,42 @@ const defaultOpts: PreviewOptions = {
 
 // ── Given steps ──────────────────────────────────────────────────────
 
-Given('preview source text {string}', function (this: ChangeTracksWorld, text: string) {
+Given('preview source text {string}', function (this: ChangeDownWorld, text: string) {
     this.previewSourceText = text;
     this.previewOptions = { ...defaultOpts };
 });
 
-Given('preview source text:', function (this: ChangeTracksWorld, docString: string) {
+Given('preview source text:', function (this: ChangeDownWorld, docString: string) {
     this.previewSourceText = docString;
     this.previewOptions = { ...defaultOpts };
 });
 
-Given('preview option showComments is false', function (this: ChangeTracksWorld) {
+Given('preview option showComments is false', function (this: ChangeDownWorld) {
     if (!this.previewOptions) this.previewOptions = { ...defaultOpts };
     this.previewOptions.showComments = false;
 });
 
-Given('preview option metadataDetail is {string}', function (this: ChangeTracksWorld, detail: string) {
+Given('preview option metadataDetail is {string}', function (this: ChangeDownWorld, detail: string) {
     if (!this.previewOptions) this.previewOptions = { ...defaultOpts };
     this.previewOptions.metadataDetail = detail as 'badge' | 'summary' | 'projected';
 });
 
-Given('preview option authorColors is {string}', function (this: ChangeTracksWorld, mode: string) {
+Given('preview option authorColors is {string}', function (this: ChangeDownWorld, mode: string) {
     if (!this.previewOptions) this.previewOptions = { ...defaultOpts };
     this.previewOptions.authorColors = mode as 'auto' | 'always' | 'never';
 });
 
-Given('code text {string}', function (this: ChangeTracksWorld, text: string) {
+Given('code text {string}', function (this: ChangeDownWorld, text: string) {
     this.codeText = text;
 });
 
-Given('fence language {string}', function (this: ChangeTracksWorld, lang: string) {
+Given('fence language {string}', function (this: ChangeDownWorld, lang: string) {
     this.fenceLanguage = lang;
 });
 
 // ── When steps ───────────────────────────────────────────────────────
 
-When('I build preview replacements', function (this: ChangeTracksWorld) {
+When('I build preview replacements', function (this: ChangeDownWorld) {
     assert.ok(this.previewSourceText !== undefined, 'No preview source text set');
     const parser = new CriticMarkupParser();
     const doc = parser.parse(this.previewSourceText!);
@@ -83,12 +83,12 @@ When('I build preview replacements', function (this: ChangeTracksWorld) {
     );
 });
 
-When('I find fence zones', function (this: ChangeTracksWorld) {
+When('I find fence zones', function (this: ChangeDownWorld) {
     assert.ok(this.previewSourceText !== undefined, 'No preview source text set');
     this.fenceZones = findFenceZones(this.previewSourceText!);
 });
 
-When('I render the fence with CriticMarkup', function (this: ChangeTracksWorld) {
+When('I render the fence with CriticMarkup', function (this: ChangeDownWorld) {
     assert.ok(this.codeText !== undefined, 'No code text set');
     this.fenceResult = renderFenceWithCriticMarkup(
         this.codeText!,
@@ -98,7 +98,7 @@ When('I render the fence with CriticMarkup', function (this: ChangeTracksWorld) 
 
 // ── Then steps: preview HTML assertions ──────────────────────────────
 
-Then('the preview HTML contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the preview HTML contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.previewResult !== undefined, 'No preview result — run "I build preview replacements" first');
     assert.ok(
         this.previewResult!.includes(expected),
@@ -106,7 +106,7 @@ Then('the preview HTML contains {string}', function (this: ChangeTracksWorld, ex
     );
 });
 
-Then('the preview HTML does not contain {string}', function (this: ChangeTracksWorld, unexpected: string) {
+Then('the preview HTML does not contain {string}', function (this: ChangeDownWorld, unexpected: string) {
     assert.ok(this.previewResult !== undefined, 'No preview result');
     assert.ok(
         !this.previewResult!.includes(unexpected),
@@ -114,7 +114,7 @@ Then('the preview HTML does not contain {string}', function (this: ChangeTracksW
     );
 });
 
-Then('the preview HTML starts with {string}', function (this: ChangeTracksWorld, prefix: string) {
+Then('the preview HTML starts with {string}', function (this: ChangeDownWorld, prefix: string) {
     assert.ok(this.previewResult !== undefined, 'No preview result');
     assert.ok(
         this.previewResult!.startsWith(prefix),
@@ -122,7 +122,7 @@ Then('the preview HTML starts with {string}', function (this: ChangeTracksWorld,
     );
 });
 
-Then('the preview HTML ends with {string}', function (this: ChangeTracksWorld, suffix: string) {
+Then('the preview HTML ends with {string}', function (this: ChangeDownWorld, suffix: string) {
     assert.ok(this.previewResult !== undefined, 'No preview result');
     assert.ok(
         this.previewResult!.endsWith(suffix),
@@ -130,7 +130,7 @@ Then('the preview HTML ends with {string}', function (this: ChangeTracksWorld, s
     );
 });
 
-Then('the preview HTML contains {string} or {string}', function (this: ChangeTracksWorld, option1: string, option2: string) {
+Then('the preview HTML contains {string} or {string}', function (this: ChangeDownWorld, option1: string, option2: string) {
     assert.ok(this.previewResult !== undefined, 'No preview result');
     assert.ok(
         this.previewResult!.includes(option1) || this.previewResult!.includes(option2),
@@ -140,7 +140,7 @@ Then('the preview HTML contains {string} or {string}', function (this: ChangeTra
 
 // ── Then steps: fence zone assertions ────────────────────────────────
 
-Then('{int} fence zone(s) is/are found', function (this: ChangeTracksWorld, count: number) {
+Then('{int} fence zone(s) is/are found', function (this: ChangeDownWorld, count: number) {
     assert.ok(this.fenceZones !== undefined, 'No fence zones — run "I find fence zones" first');
     assert.strictEqual(
         this.fenceZones!.length,
@@ -149,7 +149,7 @@ Then('{int} fence zone(s) is/are found', function (this: ChangeTracksWorld, coun
     );
 });
 
-Then('fence zone {int} starts at or before the first code fence', function (this: ChangeTracksWorld, index: number) {
+Then('fence zone {int} starts at or before the first code fence', function (this: ChangeDownWorld, index: number) {
     assert.ok(this.fenceZones !== undefined, 'No fence zones');
     assert.ok(this.previewSourceText !== undefined, 'No preview source text');
     const zone = this.fenceZones![index - 1];
@@ -161,7 +161,7 @@ Then('fence zone {int} starts at or before the first code fence', function (this
     );
 });
 
-Then('fence zone {int} ends at or after the last code fence', function (this: ChangeTracksWorld, index: number) {
+Then('fence zone {int} ends at or after the last code fence', function (this: ChangeDownWorld, index: number) {
     assert.ok(this.fenceZones !== undefined, 'No fence zones');
     assert.ok(this.previewSourceText !== undefined, 'No preview source text');
     const zone = this.fenceZones![index - 1];
@@ -175,7 +175,7 @@ Then('fence zone {int} ends at or after the last code fence', function (this: Ch
 
 // ── Then steps: per-author color assertions ──────────────────────────
 
-Then('the preview HTML has at least {int} distinct author color styles', function (this: ChangeTracksWorld, minCount: number) {
+Then('the preview HTML has at least {int} distinct author color styles', function (this: ChangeDownWorld, minCount: number) {
     assert.ok(this.previewResult !== undefined, 'No preview result');
     const styleMatches = this.previewResult!.match(/style="color:\s*[^"]+"/g) ?? [];
     const colors = new Set(styleMatches);
@@ -185,9 +185,9 @@ Then('the preview HTML has at least {int} distinct author color styles', functio
     );
 });
 
-Then('the preview HTML <del> tags do not have per-author color', function (this: ChangeTracksWorld) {
+Then('the preview HTML <del> tags do not have per-author color', function (this: ChangeDownWorld) {
     assert.ok(this.previewResult !== undefined, 'No preview result');
-    const delMatch = this.previewResult!.match(/<del class="ct-del[^"]*"[^>]*>/);
+    const delMatch = this.previewResult!.match(/<del class="cn-del[^"]*"[^>]*>/);
     assert.ok(delMatch, 'Expected a <del> tag in the output');
     assert.ok(
         !delMatch![0].includes('style="color:'),
@@ -197,19 +197,19 @@ Then('the preview HTML <del> tags do not have per-author color', function (this:
 
 // ── Then steps: containsCriticMarkup assertions ──────────────────────
 
-Then('containsCriticMarkup returns true', function (this: ChangeTracksWorld) {
+Then('containsCriticMarkup returns true', function (this: ChangeDownWorld) {
     assert.ok(this.codeText !== undefined, 'No code text set');
     assert.ok(containsCriticMarkup(this.codeText!), `Expected containsCriticMarkup("${this.codeText}") to return true`);
 });
 
-Then('containsCriticMarkup returns false', function (this: ChangeTracksWorld) {
+Then('containsCriticMarkup returns false', function (this: ChangeDownWorld) {
     assert.ok(this.codeText !== undefined, 'No code text set');
     assert.ok(!containsCriticMarkup(this.codeText!), `Expected containsCriticMarkup("${this.codeText}") to return false`);
 });
 
 // ── Then steps: fence rendering assertions ───────────────────────────
 
-Then('the fence HTML contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the fence HTML contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.fenceResult !== undefined, 'No fence result — run "I render the fence with CriticMarkup" first');
     assert.ok(
         this.fenceResult!.includes(expected),

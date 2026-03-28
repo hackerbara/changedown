@@ -18,7 +18,7 @@ Feature: Realistic typing session — drafting from blank document
   Background:
     Given I open "kb2-blank-draft.md" in VS Code
     And the editor is reset to the fixture
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And tracking mode is definitely enabled
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

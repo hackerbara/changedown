@@ -1,6 +1,6 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 import {
   CriticMarkupParser,
   computeAccept,
@@ -23,7 +23,7 @@ import {
   whitespaceCollapsedIsAmbiguous,
   type TextEdit,
   type ChangeNode,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 // =============================================================================
 // Shared state extensions on the World class
@@ -32,7 +32,7 @@ import {
 // using type augmentation via declaration merging.
 
 declare module './world.js' {
-  interface ChangeTracksWorld {
+  interface ChangeDownWorld {
     footnoteMap: Map<string, any> | null;
     lastHash: string;
     formattedOutput: string;
@@ -56,22 +56,22 @@ declare module './world.js' {
 // C8 - Footnote Parsing Steps
 // =============================================================================
 
-Given('the footnote parser is initialized', function (this: ChangeTracksWorld) {
+Given('the footnote parser is initialized', function (this: ChangeDownWorld) {
   this.footnoteMap = null;
 });
 
-When('I parse footnotes from:', function (this: ChangeTracksWorld, content: string) {
+When('I parse footnotes from:', function (this: ChangeDownWorld, content: string) {
   this.footnoteMap = parseFootnotes(content);
 });
 
-Then('the footnote map has {int} entry/entries', function (this: ChangeTracksWorld, count: number) {
+Then('the footnote map has {int} entry/entries', function (this: ChangeDownWorld, count: number) {
   assert.ok(this.footnoteMap, 'Footnote map not initialized');
   assert.equal(this.footnoteMap.size, count);
 });
 
 Then(
   'footnote {string} has author {string}',
-  function (this: ChangeTracksWorld, id: string, expected: string) {
+  function (this: ChangeDownWorld, id: string, expected: string) {
     assert.ok(this.footnoteMap, 'Footnote map not initialized');
     const fn = this.footnoteMap.get(id);
     assert.ok(fn, `Footnote "${id}" not found`);
@@ -81,7 +81,7 @@ Then(
 
 Then(
   'footnote {string} has date {string}',
-  function (this: ChangeTracksWorld, id: string, expected: string) {
+  function (this: ChangeDownWorld, id: string, expected: string) {
     assert.ok(this.footnoteMap, 'Footnote map not initialized');
     const fn = this.footnoteMap.get(id);
     assert.ok(fn, `Footnote "${id}" not found`);
@@ -91,7 +91,7 @@ Then(
 
 Then(
   'footnote {string} has type {string}',
-  function (this: ChangeTracksWorld, id: string, expected: string) {
+  function (this: ChangeDownWorld, id: string, expected: string) {
     assert.ok(this.footnoteMap, 'Footnote map not initialized');
     const fn = this.footnoteMap.get(id);
     assert.ok(fn, `Footnote "${id}" not found`);
@@ -101,7 +101,7 @@ Then(
 
 Then(
   'footnote {string} has status {string}',
-  function (this: ChangeTracksWorld, id: string, expected: string) {
+  function (this: ChangeDownWorld, id: string, expected: string) {
     assert.ok(this.footnoteMap, 'Footnote map not initialized');
     const fn = this.footnoteMap.get(id);
     assert.ok(fn, `Footnote "${id}" not found`);
@@ -111,7 +111,7 @@ Then(
 
 Then(
   'footnote {string} has reason {string}',
-  function (this: ChangeTracksWorld, id: string, expected: string) {
+  function (this: ChangeDownWorld, id: string, expected: string) {
     assert.ok(this.footnoteMap, 'Footnote map not initialized');
     const fn = this.footnoteMap.get(id);
     assert.ok(fn, `Footnote "${id}" not found`);
@@ -121,7 +121,7 @@ Then(
 
 Then(
   'footnote {string} has reply count {int}',
-  function (this: ChangeTracksWorld, id: string, expected: number) {
+  function (this: ChangeDownWorld, id: string, expected: number) {
     assert.ok(this.footnoteMap, 'Footnote map not initialized');
     const fn = this.footnoteMap.get(id);
     assert.ok(fn, `Footnote "${id}" not found`);
@@ -131,7 +131,7 @@ Then(
 
 Then(
   'footnote {string} has start line {int}',
-  function (this: ChangeTracksWorld, id: string, expected: number) {
+  function (this: ChangeDownWorld, id: string, expected: number) {
     assert.ok(this.footnoteMap, 'Footnote map not initialized');
     const fn = this.footnoteMap.get(id);
     assert.ok(fn, `Footnote "${id}" not found`);
@@ -141,7 +141,7 @@ Then(
 
 Then(
   'footnote {string} has end line {int}',
-  function (this: ChangeTracksWorld, id: string, expected: number) {
+  function (this: ChangeDownWorld, id: string, expected: number) {
     assert.ok(this.footnoteMap, 'Footnote map not initialized');
     const fn = this.footnoteMap.get(id);
     assert.ok(fn, `Footnote "${id}" not found`);
@@ -160,7 +160,7 @@ Then(
 
 Then(
   'change {int} has {int} approval(s)',
-  function (this: ChangeTracksWorld, changeIdx: number, count: number) {
+  function (this: ChangeDownWorld, changeIdx: number, count: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -170,7 +170,7 @@ Then(
 
 Then(
   'change {int} approval {int} has author {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, approvalIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, approvalIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -182,7 +182,7 @@ Then(
 
 Then(
   'change {int} approval {int} has date {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, approvalIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, approvalIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -194,7 +194,7 @@ Then(
 
 Then(
   'change {int} approval {int} has reason {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, approvalIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, approvalIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -206,7 +206,7 @@ Then(
 
 Then(
   'change {int} approval {int} has no reason',
-  function (this: ChangeTracksWorld, changeIdx: number, approvalIdx: number) {
+  function (this: ChangeDownWorld, changeIdx: number, approvalIdx: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -218,7 +218,7 @@ Then(
 
 Then(
   'change {int} has no approvals',
-  function (this: ChangeTracksWorld, changeIdx: number) {
+  function (this: ChangeDownWorld, changeIdx: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -230,7 +230,7 @@ Then(
 
 Then(
   'change {int} has {int} rejection(s)',
-  function (this: ChangeTracksWorld, changeIdx: number, count: number) {
+  function (this: ChangeDownWorld, changeIdx: number, count: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -240,7 +240,7 @@ Then(
 
 Then(
   'change {int} rejection {int} has author {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, rejIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, rejIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -252,7 +252,7 @@ Then(
 
 Then(
   'change {int} rejection {int} has date {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, rejIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, rejIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -264,7 +264,7 @@ Then(
 
 Then(
   'change {int} rejection {int} has reason {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, rejIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, rejIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -278,7 +278,7 @@ Then(
 
 Then(
   'change {int} has {int} request-change(s)',
-  function (this: ChangeTracksWorld, changeIdx: number, count: number) {
+  function (this: ChangeDownWorld, changeIdx: number, count: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -288,7 +288,7 @@ Then(
 
 Then(
   'change {int} request-change {int} has author {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, rcIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, rcIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -300,7 +300,7 @@ Then(
 
 Then(
   'change {int} request-change {int} has date {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, rcIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, rcIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -312,7 +312,7 @@ Then(
 
 Then(
   'change {int} request-change {int} has reason {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, rcIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, rcIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -326,7 +326,7 @@ Then(
 
 Then(
   'change {int} has context {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -336,7 +336,7 @@ Then(
 
 Then(
   'change {int} has no context',
-  function (this: ChangeTracksWorld, changeIdx: number) {
+  function (this: ChangeDownWorld, changeIdx: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -348,7 +348,7 @@ Then(
 
 Then(
   'change {int} has {int} revision(s)',
-  function (this: ChangeTracksWorld, changeIdx: number, count: number) {
+  function (this: ChangeDownWorld, changeIdx: number, count: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -358,7 +358,7 @@ Then(
 
 Then(
   'change {int} has no revisions',
-  function (this: ChangeTracksWorld, changeIdx: number) {
+  function (this: ChangeDownWorld, changeIdx: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -368,7 +368,7 @@ Then(
 
 Then(
   'change {int} revision {int} has label {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, revIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, revIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -380,7 +380,7 @@ Then(
 
 Then(
   'change {int} revision {int} has author {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, revIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, revIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -392,7 +392,7 @@ Then(
 
 Then(
   'change {int} revision {int} has date {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, revIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, revIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -404,7 +404,7 @@ Then(
 
 Then(
   'change {int} revision {int} has text {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, revIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, revIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -418,7 +418,7 @@ Then(
 
 Then(
   'change {int} has {int} discussion comment(s)',
-  function (this: ChangeTracksWorld, changeIdx: number, count: number) {
+  function (this: ChangeDownWorld, changeIdx: number, count: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -428,7 +428,7 @@ Then(
 
 Then(
   'change {int} has no discussion',
-  function (this: ChangeTracksWorld, changeIdx: number) {
+  function (this: ChangeDownWorld, changeIdx: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -438,7 +438,7 @@ Then(
 
 Then(
   'change {int} discussion {int} has author {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, discIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, discIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -450,7 +450,7 @@ Then(
 
 Then(
   'change {int} discussion {int} has date {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, discIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, discIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -462,7 +462,7 @@ Then(
 
 Then(
   'change {int} discussion {int} has text {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, discIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, discIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -474,7 +474,7 @@ Then(
 
 Then(
   'change {int} discussion {int} has multiline text:',
-  function (this: ChangeTracksWorld, changeIdx: number, discIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, discIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -486,7 +486,7 @@ Then(
 
 Then(
   'change {int} discussion {int} has depth {int}',
-  function (this: ChangeTracksWorld, changeIdx: number, discIdx: number, expected: number) {
+  function (this: ChangeDownWorld, changeIdx: number, discIdx: number, expected: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -498,7 +498,7 @@ Then(
 
 Then(
   'change {int} discussion {int} has label {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, discIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, discIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -512,7 +512,7 @@ Then(
 
 Then(
   'change {int} has resolution type {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -523,7 +523,7 @@ Then(
 
 Then(
   'change {int} has no resolution',
-  function (this: ChangeTracksWorld, changeIdx: number) {
+  function (this: ChangeDownWorld, changeIdx: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -533,7 +533,7 @@ Then(
 
 Then(
   'change {int} resolution has author {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -546,7 +546,7 @@ Then(
 
 Then(
   'change {int} resolution has date {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -559,7 +559,7 @@ Then(
 
 Then(
   'change {int} resolution has reason {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -571,7 +571,7 @@ Then(
 
 Then(
   'change {int} resolution has no reason',
-  function (this: ChangeTracksWorld, changeIdx: number) {
+  function (this: ChangeDownWorld, changeIdx: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -585,7 +585,7 @@ Then(
 
 Then(
   'change {int} has metadata author {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -595,7 +595,7 @@ Then(
 
 Then(
   'change {int} has metadata date {string}',
-  function (this: ChangeTracksWorld, changeIdx: number, expected: string) {
+  function (this: ChangeDownWorld, changeIdx: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -605,7 +605,7 @@ Then(
 
 Then(
   'change {int} has no metadata comment',
-  function (this: ChangeTracksWorld, changeIdx: number) {
+  function (this: ChangeDownWorld, changeIdx: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[changeIdx - 1];
     assert.ok(c, `No change at index ${changeIdx}`);
@@ -617,7 +617,7 @@ Then(
 // C9 - Hashline Computation Steps
 // =============================================================================
 
-Given('the hashline module is initialized', async function (this: ChangeTracksWorld) {
+Given('the hashline module is initialized', async function (this: ChangeDownWorld) {
   await initHashline();
   this.lastHash = '';
   this.formattedOutput = '';
@@ -628,7 +628,7 @@ Given('the hashline module is initialized', async function (this: ChangeTracksWo
 
 When(
   'I compute the hash of {string} at index {int}',
-  function (this: ChangeTracksWorld, content: string, idx: number) {
+  function (this: ChangeDownWorld, content: string, idx: number) {
     // Handle escape sequences in test strings
     const unescaped = content.replace(/\\r/g, '\r').replace(/\\t/g, '\t');
     this.lastHash = computeLineHash(idx, unescaped);
@@ -637,7 +637,7 @@ When(
 
 Then(
   'the hash is a valid 2-char hex string',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.match(this.lastHash, /^[0-9a-f]{2}$/);
   },
 );
@@ -645,7 +645,7 @@ Then(
 Then(
   'the hash of {string} at index {int} equals the hash of {string} at index {int}',
   function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     content1: string,
     idx1: number,
     content2: string,
@@ -662,7 +662,7 @@ Then(
 Then(
   'the hash of {string} at index {int} does not equal the hash of {string} at index {int}',
   function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     content1: string,
     idx1: number,
     content2: string,
@@ -678,7 +678,7 @@ Then(
 
 When(
   'I format hash lines for {string}',
-  function (this: ChangeTracksWorld, content: string) {
+  function (this: ChangeDownWorld, content: string) {
     const unescaped = content.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
     this.formattedOutput = formatHashLines(unescaped);
   },
@@ -686,7 +686,7 @@ When(
 
 When(
   'I format hash lines for {string} starting at line {int}',
-  function (this: ChangeTracksWorld, content: string, startLine: number) {
+  function (this: ChangeDownWorld, content: string, startLine: number) {
     const unescaped = content.replace(/\\n/g, '\n').replace(/\\t/g, '\t');
     this.formattedOutput = formatHashLines(unescaped, startLine);
   },
@@ -694,7 +694,7 @@ When(
 
 Then(
   'the formatted output has {int} lines',
-  function (this: ChangeTracksWorld, expected: number) {
+  function (this: ChangeDownWorld, expected: number) {
     const lines = this.formattedOutput.split('\n');
     assert.equal(lines.length, expected);
   },
@@ -702,7 +702,7 @@ Then(
 
 Then(
   'the formatted output line {int} is a valid hashline for {string}',
-  function (this: ChangeTracksWorld, lineNum: number, content: string) {
+  function (this: ChangeDownWorld, lineNum: number, content: string) {
     const lines = this.formattedOutput.split('\n');
     assert.ok(lineNum >= 1 && lineNum <= lines.length, `Line ${lineNum} out of range`);
     const line = lines[lineNum - 1];
@@ -714,7 +714,7 @@ Then(
 
 Then(
   'the formatted output line {int} starts with {string}',
-  function (this: ChangeTracksWorld, lineNum: number, prefix: string) {
+  function (this: ChangeDownWorld, lineNum: number, prefix: string) {
     const lines = this.formattedOutput.split('\n');
     assert.ok(lineNum >= 1 && lineNum <= lines.length, `Line ${lineNum} out of range`);
     assert.ok(
@@ -726,19 +726,19 @@ Then(
 
 When(
   'I parse line ref {string}',
-  function (this: ChangeTracksWorld, ref: string) {
+  function (this: ChangeDownWorld, ref: string) {
     this.parsedRef = parseLineRef(ref);
   },
 );
 
-Then('the parsed line is {int}', function (this: ChangeTracksWorld, expected: number) {
+Then('the parsed line is {int}', function (this: ChangeDownWorld, expected: number) {
   assert.ok(this.parsedRef, 'No parsed ref available');
   assert.equal(this.parsedRef.line, expected);
 });
 
 Then(
   'the parsed hash is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.parsedRef, 'No parsed ref available');
     assert.equal(this.parsedRef.hash, expected);
   },
@@ -746,28 +746,28 @@ Then(
 
 Then(
   'parsing line ref {string} throws an invalid ref error',
-  function (this: ChangeTracksWorld, ref: string) {
+  function (this: ChangeDownWorld, ref: string) {
     assert.throws(() => parseLineRef(ref), /invalid.*ref/i);
   },
 );
 
 Then(
   'parsing line ref {string} throws a line-must-be-positive error',
-  function (this: ChangeTracksWorld, ref: string) {
+  function (this: ChangeDownWorld, ref: string) {
     assert.throws(() => parseLineRef(ref), /line.*must be >= 1/i);
   },
 );
 
 Given(
   'file lines {string} and {string}',
-  function (this: ChangeTracksWorld, line1: string, line2: string) {
+  function (this: ChangeDownWorld, line1: string, line2: string) {
     this.fileLines = [line1, line2];
   },
 );
 
 When(
   'I validate line ref {int} against the file lines',
-  function (this: ChangeTracksWorld, lineNum: number) {
+  function (this: ChangeDownWorld, lineNum: number) {
     const hash = computeLineHash(lineNum - 1, this.fileLines[lineNum - 1], this.fileLines);
     validateLineRef({ line: lineNum, hash }, this.fileLines);
     this.validationPassed = true;
@@ -776,20 +776,20 @@ When(
 
 When(
   'I validate line ref {int} with uppercase hash against the file lines',
-  function (this: ChangeTracksWorld, lineNum: number) {
+  function (this: ChangeDownWorld, lineNum: number) {
     const hash = computeLineHash(lineNum - 1, this.fileLines[lineNum - 1], this.fileLines).toUpperCase();
     validateLineRef({ line: lineNum, hash }, this.fileLines);
     this.validationPassed = true;
   },
 );
 
-Then('the validation passes', function (this: ChangeTracksWorld) {
+Then('the validation passes', function (this: ChangeDownWorld) {
   assert.ok(this.validationPassed, 'Validation did not pass');
 });
 
 Then(
   'validating line ref {int} against the file lines throws an Error',
-  function (this: ChangeTracksWorld, lineNum: number) {
+  function (this: ChangeDownWorld, lineNum: number) {
     assert.throws(
       () => validateLineRef({ line: lineNum, hash: 'ff' }, this.fileLines),
       (err: unknown) => {
@@ -806,7 +806,7 @@ Then(
 
 When(
   'I normalize {string}',
-  function (this: ChangeTracksWorld, input: string) {
+  function (this: ChangeDownWorld, input: string) {
     // Process escape sequences for unicode
     const unescaped = unescapeUnicode(input);
     this.normalizedText = defaultNormalizer(unescaped);
@@ -815,7 +815,7 @@ When(
 
 Then(
   'the normalized text is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const unescaped = unescapeUnicode(expected);
     assert.equal(this.normalizedText, unescaped);
   },
@@ -823,7 +823,7 @@ Then(
 
 When(
   'I find {string} in {string}',
-  function (this: ChangeTracksWorld, target: string, text: string) {
+  function (this: ChangeDownWorld, target: string, text: string) {
     const t = unescapeUnicode(target);
     const s = unescapeUnicode(text);
     this.normalizedIndex = normalizedIndexOf(s, t);
@@ -832,14 +832,14 @@ When(
 
 Then(
   'the normalized index is {int}',
-  function (this: ChangeTracksWorld, expected: number) {
+  function (this: ChangeDownWorld, expected: number) {
     assert.equal(this.normalizedIndex, expected);
   },
 );
 
 When(
   'I collapse whitespace in {string}',
-  function (this: ChangeTracksWorld, input: string) {
+  function (this: ChangeDownWorld, input: string) {
     const unescaped = input.replace(/\\t/g, '\t').replace(/\\n/g, '\n');
     this.collapsedText = collapseWhitespace(unescaped);
   },
@@ -847,14 +847,14 @@ When(
 
 Then(
   'the collapsed text is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.equal(this.collapsedText, expected);
   },
 );
 
 When(
   'I find {string} in {string} with whitespace collapsing',
-  function (this: ChangeTracksWorld, target: string, text: string) {
+  function (this: ChangeDownWorld, target: string, text: string) {
     const t = target.replace(/\\t/g, '\t').replace(/\\n/g, '\n');
     const s = text.replace(/\\t/g, '\t').replace(/\\n/g, '\n');
     this.wsMatch = whitespaceCollapsedFind(s, t) ?? null;
@@ -863,7 +863,7 @@ When(
 
 Then(
   'the whitespace-collapsed match index is {int}',
-  function (this: ChangeTracksWorld, expected: number) {
+  function (this: ChangeDownWorld, expected: number) {
     assert.ok(this.wsMatch, 'No whitespace-collapsed match found');
     assert.equal(this.wsMatch.index, expected);
   },
@@ -871,7 +871,7 @@ Then(
 
 Then(
   'the whitespace-collapsed match length is {int}',
-  function (this: ChangeTracksWorld, expected: number) {
+  function (this: ChangeDownWorld, expected: number) {
     assert.ok(this.wsMatch, 'No whitespace-collapsed match found');
     assert.equal(this.wsMatch.length, expected);
   },
@@ -879,21 +879,21 @@ Then(
 
 Then(
   'the whitespace-collapsed match is null',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.equal(this.wsMatch, null);
   },
 );
 
 Then(
   '{string} in {string} is not ambiguous under whitespace collapsing',
-  function (this: ChangeTracksWorld, target: string, text: string) {
+  function (this: ChangeDownWorld, target: string, text: string) {
     assert.equal(whitespaceCollapsedIsAmbiguous(text, target), false);
   },
 );
 
 Then(
   '{string} in {string} is ambiguous under whitespace collapsing',
-  function (this: ChangeTracksWorld, target: string, text: string) {
+  function (this: ChangeDownWorld, target: string, text: string) {
     assert.equal(whitespaceCollapsedIsAmbiguous(text, target), true);
   },
 );
@@ -902,7 +902,7 @@ Then(
 // C11 - Accept/Reject Steps
 // =============================================================================
 
-Given('the parser is initialized', function (this: ChangeTracksWorld) {
+Given('the parser is initialized', function (this: ChangeDownWorld) {
   this.parser = new CriticMarkupParser();
   this.resultText = '';
 });
@@ -915,16 +915,16 @@ Given('the parser is initialized', function (this: ChangeTracksWorld) {
 
 Given(
   'the text is {string}',
-  function (this: ChangeTracksWorld, text: string) {
+  function (this: ChangeDownWorld, text: string) {
     this.lastText = text;
   },
 );
 
-Given('the text is:', function (this: ChangeTracksWorld, text: string) {
+Given('the text is:', function (this: ChangeDownWorld, text: string) {
   this.lastText = text;
 });
 
-When('I accept change {int}', function (this: ChangeTracksWorld, index: number) {
+When('I accept change {int}', function (this: ChangeDownWorld, index: number) {
   assert.ok(this.lastDoc, 'No parsed document available');
   const changes = this.lastDoc.getChanges();
   assert.ok(index < changes.length, `Change index ${index} out of range (${changes.length} changes)`);
@@ -934,7 +934,7 @@ When('I accept change {int}', function (this: ChangeTracksWorld, index: number) 
   this.resultText = applyEdit(text, edit);
 });
 
-When('I reject change {int}', function (this: ChangeTracksWorld, index: number) {
+When('I reject change {int}', function (this: ChangeDownWorld, index: number) {
   assert.ok(this.lastDoc, 'No parsed document available');
   const changes = this.lastDoc.getChanges();
   assert.ok(index < changes.length, `Change index ${index} out of range (${changes.length} changes)`);
@@ -943,7 +943,7 @@ When('I reject change {int}', function (this: ChangeTracksWorld, index: number) 
   this.resultText = applyEdit(text, edit);
 });
 
-When('I accept all changes', function (this: ChangeTracksWorld) {
+When('I accept all changes', function (this: ChangeDownWorld) {
   assert.ok(this.lastDoc, 'No parsed document available');
   const changes = this.lastDoc.getChanges();
   // Process in reverse document order to preserve ranges
@@ -957,7 +957,7 @@ When('I accept all changes', function (this: ChangeTracksWorld) {
   this.resultText = text;
 });
 
-When('I reject all changes', function (this: ChangeTracksWorld) {
+When('I reject all changes', function (this: ChangeDownWorld) {
   assert.ok(this.lastDoc, 'No parsed document available');
   const changes = this.lastDoc.getChanges();
   // Process in reverse document order to preserve ranges
@@ -973,14 +973,14 @@ When('I reject all changes', function (this: ChangeTracksWorld) {
 
 Then(
   'the resulting text is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.equal(this.resultText, expected);
   },
 );
 
 Then(
   'the resulting text contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(
       this.resultText.includes(expected),
       `Expected result to contain "${expected}" but got: "${this.resultText}"`,
@@ -990,7 +990,7 @@ Then(
 
 Then(
   'the resulting text does not contain {string}',
-  function (this: ChangeTracksWorld, unexpected: string) {
+  function (this: ChangeDownWorld, unexpected: string) {
     assert.ok(
       !this.resultText.includes(unexpected),
       `Expected result NOT to contain "${unexpected}" but it does: "${this.resultText}"`,
@@ -1002,7 +1002,7 @@ Then(
 
 When(
   'I compute footnote status edits for {string} to {string}',
-  function (this: ChangeTracksWorld, changeId: string, newStatus: string) {
+  function (this: ChangeDownWorld, changeId: string, newStatus: string) {
     this.statusEdits = computeFootnoteStatusEdits(
       this.lastText,
       [changeId],
@@ -1011,7 +1011,7 @@ When(
   },
 );
 
-When('I apply the status edits', function (this: ChangeTracksWorld) {
+When('I apply the status edits', function (this: ChangeDownWorld) {
   // Apply edits in reverse offset order to preserve positions
   const sorted = [...this.statusEdits].sort((a, b) => b.offset - a.offset);
   let text = this.lastText;
@@ -1023,14 +1023,14 @@ When('I apply the status edits', function (this: ChangeTracksWorld) {
 
 Then(
   'the footnote status edits are empty',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.equal(this.statusEdits.length, 0);
   },
 );
 
 // --- Multiline resulting text assertion ---
 
-Then('the resulting text is:', function (this: ChangeTracksWorld, expected: string) {
+Then('the resulting text is:', function (this: ChangeDownWorld, expected: string) {
   assert.equal(this.resultText, expected);
 });
 
@@ -1038,7 +1038,7 @@ Then('the resulting text is:', function (this: ChangeTracksWorld, expected: stri
 
 When(
   'I compute approval line edit for {string} as {string} by {string} on {string}',
-  function (this: ChangeTracksWorld, changeId: string, decision: string, author: string, date: string) {
+  function (this: ChangeDownWorld, changeId: string, decision: string, author: string, date: string) {
     this.approvalEdit = computeApprovalLineEdit(
       this.lastText,
       changeId,
@@ -1048,12 +1048,12 @@ When(
   },
 );
 
-When('I apply the approval edit', function (this: ChangeTracksWorld) {
+When('I apply the approval edit', function (this: ChangeDownWorld) {
   assert.ok(this.approvalEdit !== null, 'No approval edit to apply (was null)');
   this.resultText = applyEdit(this.lastText, this.approvalEdit!);
 });
 
-Then('the approval edit is null', function (this: ChangeTracksWorld) {
+Then('the approval edit is null', function (this: ChangeDownWorld) {
   assert.equal(this.approvalEdit, null);
 });
 
@@ -1063,7 +1063,7 @@ Then('the approval edit is null', function (this: ChangeTracksWorld) {
 
 When(
   'I compute settled text for {string}',
-  function (this: ChangeTracksWorld, input: string) {
+  function (this: ChangeDownWorld, input: string) {
     const unescaped = input.replace(/\\n/g, '\n');
     this.settledText = computeSettledText(unescaped);
   },
@@ -1071,14 +1071,14 @@ When(
 
 When(
   'I compute settled text for:',
-  function (this: ChangeTracksWorld, input: string) {
+  function (this: ChangeDownWorld, input: string) {
     this.settledText = computeSettledText(input);
   },
 );
 
 Then(
   'the settled text is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const unescaped = expected.replace(/\\n/g, '\n');
     assert.equal(this.settledText, unescaped);
   },
@@ -1086,7 +1086,7 @@ Then(
 
 When(
   'I settle accepted changes in:',
-  function (this: ChangeTracksWorld, input: string) {
+  function (this: ChangeDownWorld, input: string) {
     const result = settleAcceptedChangesOnly(input);
     this.settledContent = result.settledContent;
     this.settledIds = result.settledIds;
@@ -1095,7 +1095,7 @@ When(
 
 Then(
   'the settled content contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(
       this.settledContent.includes(expected),
       `Expected settled content to contain "${expected}" but got:\n${this.settledContent}`,
@@ -1105,7 +1105,7 @@ Then(
 
 Then(
   'the settled content does not contain {string}',
-  function (this: ChangeTracksWorld, unexpected: string) {
+  function (this: ChangeDownWorld, unexpected: string) {
     assert.ok(
       !this.settledContent.includes(unexpected),
       `Expected settled content NOT to contain "${unexpected}" but it does`,
@@ -1115,7 +1115,7 @@ Then(
 
 Then(
   'the settled IDs include {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(
       this.settledIds.includes(expected),
       `Expected settled IDs to include "${expected}" but got: ${JSON.stringify(this.settledIds)}`,
@@ -1125,7 +1125,7 @@ Then(
 
 Then(
   'the settled IDs are empty',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.equal(this.settledIds.length, 0);
   },
 );

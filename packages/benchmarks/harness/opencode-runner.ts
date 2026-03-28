@@ -26,8 +26,8 @@ export interface RunEpisodeOptions {
   taskPrompt: string;
   workflow?: WorkflowId;
   prompts?: PromptsConfig;
-  /** When true, pass plugin: [] so OpenCode does not load ChangeTracks (sharp baseline for A/D). */
-  disableChangeTracksPlugin?: boolean;
+  /** When true, pass plugin: [] so OpenCode does not load ChangeDown (sharp baseline for A/D). */
+  disableChangeDownPlugin?: boolean;
   model?: string;
   timeoutMs?: number;
   /** Log progress to stderr (e.g. "[runner] Server up") */
@@ -61,9 +61,9 @@ export async function runEpisode(options: RunEpisodeOptions): Promise<EpisodeRes
   let server: { url: string; close: () => void } | undefined;
   const startTime = Date.now();
 
-  const pluginConfig = options.disableChangeTracksPlugin === true
+  const pluginConfig = options.disableChangeDownPlugin === true
     ? { plugin: [] as string[] }
-    : { plugin: ["@changetracks/opencode-plugin"] as string[] };
+    : { plugin: ["@changedown/opencode-plugin"] as string[] };
   const modelStr = options.model ?? "anthropic/claude-sonnet-4-5";
   const [providerID, modelID] = modelStr.includes("/") ? modelStr.split("/", 2) : ["anthropic", "claude-sonnet-4-5"];
 
@@ -75,7 +75,7 @@ export async function runEpisode(options: RunEpisodeOptions): Promise<EpisodeRes
     } else {
       log("Getting port...");
       const port = await getAvailablePort(4096);
-      log(`Port ${port}; starting OpenCode server (plugin ${options.disableChangeTracksPlugin === true ? "off" : "on"})...`);
+      log(`Port ${port}; starting OpenCode server (plugin ${options.disableChangeDownPlugin === true ? "off" : "on"})...`);
       const created = await createOpencode({
         port,
         signal: controller.signal,

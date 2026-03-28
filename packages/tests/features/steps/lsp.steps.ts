@@ -1,6 +1,6 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import type { ChangeTracksWorld } from './world.js';
+import type { ChangeDownWorld } from './world.js';
 import {
   createHover,
   createCodeActions,
@@ -10,14 +10,14 @@ import {
   Position,
   CodeActionKind,
   DiagnosticSeverity,
-} from '@changetracks/lsp-server/internals';
-import type { Diagnostic, CodeLens } from '@changetracks/lsp-server/internals';
+} from '@changedown/lsp-server/internals';
+import type { Diagnostic, CodeLens } from '@changedown/lsp-server/internals';
 import {
   buildSemanticTokens,
   getSemanticTokensLegend,
-} from '@changetracks/lsp-server/internals';
-import type { SemanticTokensLegend } from '@changetracks/lsp-server/internals';
-import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
+} from '@changedown/lsp-server/internals';
+import type { SemanticTokensLegend } from '@changedown/lsp-server/internals';
+import { ChangeNode, ChangeType, ChangeStatus } from '@changedown/core';
 
 // =============================================================================
 // LSP World state — stored on the Cucumber world via ad-hoc properties
@@ -44,7 +44,7 @@ interface LspState {
   activeDiagnostic: Diagnostic | undefined;
 }
 
-function getLsp(world: ChangeTracksWorld): LspState {
+function getLsp(world: ChangeDownWorld): LspState {
   if (!(world as any).__lsp) {
     (world as any).__lsp = {
       documentText: '',
@@ -69,7 +69,7 @@ function getLsp(world: ChangeTracksWorld): LspState {
 
 Given(
   'the document text {string}',
-  function (this: ChangeTracksWorld, text: string) {
+  function (this: ChangeDownWorld, text: string) {
     const lsp = getLsp(this);
     lsp.documentText = text.replace(/\\n/g, '\n');
     lsp.changes = [];
@@ -78,7 +78,7 @@ Given(
 
 Given(
   'the document text:',
-  function (this: ChangeTracksWorld, docString: string) {
+  function (this: ChangeDownWorld, docString: string) {
     const lsp = getLsp(this);
     lsp.documentText = docString;
     lsp.changes = [];
@@ -87,7 +87,7 @@ Given(
 
 Given(
   'the document text with a 100-character insertion',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const lsp = getLsp(this);
     const longText = 'a'.repeat(100);
     lsp.documentText = `{++${longText}++}`;
@@ -111,7 +111,7 @@ Given(
 
 Given(
   'no parsed changes',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const lsp = getLsp(this);
     lsp.changes = [];
   },
@@ -119,7 +119,7 @@ Given(
 
 Given(
   'a parsed insertion {string} at {int}-{int} with content {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number, cStart: number, cEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number, cStart: number, cEnd: number) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id,
@@ -136,7 +136,7 @@ Given(
 
 Given(
   'a parsed deletion {string} at {int}-{int} with content {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number, cStart: number, cEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number, cStart: number, cEnd: number) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id,
@@ -153,7 +153,7 @@ Given(
 
 Given(
   'a parsed highlight {string} at {int}-{int} with content {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number, cStart: number, cEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number, cStart: number, cEnd: number) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id,
@@ -170,7 +170,7 @@ Given(
 
 Given(
   'a parsed comment {string} at {int}-{int} with content {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number, cStart: number, cEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number, cStart: number, cEnd: number) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id,
@@ -186,7 +186,7 @@ Given(
 
 Given(
   'a parsed substitution {string} at {int}-{int} with original {int}-{int} and modified {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number, oStart: number, oEnd: number, mStart: number, mEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number, oStart: number, oEnd: number, mStart: number, mEnd: number) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id,
@@ -208,7 +208,7 @@ Given(
 
 Given(
   'a parsed insertion at content range {int}-{int} with status {string}',
-  function (this: ChangeTracksWorld, cStart: number, cEnd: number, status: string) {
+  function (this: ChangeDownWorld, cStart: number, cEnd: number, status: string) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id: '1',
@@ -224,7 +224,7 @@ Given(
 
 Given(
   'a parsed deletion at content range {int}-{int} with status {string}',
-  function (this: ChangeTracksWorld, cStart: number, cEnd: number, status: string) {
+  function (this: ChangeDownWorld, cStart: number, cEnd: number, status: string) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id: '1',
@@ -240,7 +240,7 @@ Given(
 
 Given(
   'a parsed highlight at content range {int}-{int} with status {string}',
-  function (this: ChangeTracksWorld, cStart: number, cEnd: number, status: string) {
+  function (this: ChangeDownWorld, cStart: number, cEnd: number, status: string) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id: '1',
@@ -256,7 +256,7 @@ Given(
 
 Given(
   'a parsed comment at content range {int}-{int} with status {string}',
-  function (this: ChangeTracksWorld, cStart: number, cEnd: number, status: string) {
+  function (this: ChangeDownWorld, cStart: number, cEnd: number, status: string) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id: '1',
@@ -272,7 +272,7 @@ Given(
 
 Given(
   'a parsed substitution with original range {int}-{int} and modified range {int}-{int}',
-  function (this: ChangeTracksWorld, oStart: number, oEnd: number, mStart: number, mEnd: number) {
+  function (this: ChangeDownWorld, oStart: number, oEnd: number, mStart: number, mEnd: number) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id: '1',
@@ -290,7 +290,7 @@ Given(
 
 Given(
   'a parsed move-to insertion at content range {int}-{int}',
-  function (this: ChangeTracksWorld, cStart: number, cEnd: number) {
+  function (this: ChangeDownWorld, cStart: number, cEnd: number) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id: '1',
@@ -308,7 +308,7 @@ Given(
 
 Given(
   'a parsed move-from deletion at content range {int}-{int}',
-  function (this: ChangeTracksWorld, cStart: number, cEnd: number) {
+  function (this: ChangeDownWorld, cStart: number, cEnd: number) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id: '1',
@@ -328,7 +328,7 @@ Given(
 
 Given(
   'changes include a highlight at {int}-{int} with comment {string}',
-  function (this: ChangeTracksWorld, rStart: number, rEnd: number, comment: string) {
+  function (this: ChangeDownWorld, rStart: number, rEnd: number, comment: string) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id: '1',
@@ -345,7 +345,7 @@ Given(
 
 Given(
   'changes include an insertion at {int}-{int} with reason {string}',
-  function (this: ChangeTracksWorld, rStart: number, rEnd: number, reason: string) {
+  function (this: ChangeDownWorld, rStart: number, rEnd: number, reason: string) {
     const lsp = getLsp(this);
     lsp.changes.push({
       id: '1',
@@ -364,7 +364,7 @@ Given(
 
 Given(
   'a diagnostic for insertion {string} at {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number) {
     const lsp = getLsp(this);
     // Build the change node
     const contentStart = rStart + 3;
@@ -383,7 +383,7 @@ Given(
     lsp.activeDiagnostic = {
       range: { start: { line: 0, character: rStart }, end: { line: 0, character: rEnd } },
       severity: DiagnosticSeverity.Information,
-      source: 'changetracks',
+      source: 'changedown',
       message: `Insertion: ${change.modifiedText}`,
       code: id,
       data: { changeId: id, changeType: ChangeType.Insertion },
@@ -393,7 +393,7 @@ Given(
 
 Given(
   'a diagnostic for deletion {string} at {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number) {
     const lsp = getLsp(this);
     const contentStart = rStart + 3;
     const contentEnd = rEnd - 3;
@@ -411,7 +411,7 @@ Given(
     lsp.activeDiagnostic = {
       range: { start: { line: 0, character: rStart }, end: { line: 0, character: rEnd } },
       severity: DiagnosticSeverity.Information,
-      source: 'changetracks',
+      source: 'changedown',
       message: `Deletion: ${change.originalText}`,
       code: id,
       data: { changeId: id, changeType: ChangeType.Deletion },
@@ -421,7 +421,7 @@ Given(
 
 Given(
   'a diagnostic for substitution {string} at {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number) {
     const lsp = getLsp(this);
     // For {~~world~>universe~~} the structure is {~~ original ~> modified ~~}
     const text = lsp.documentText;
@@ -451,7 +451,7 @@ Given(
     lsp.activeDiagnostic = {
       range: { start: { line: 0, character: rStart }, end: { line: 0, character: rEnd } },
       severity: DiagnosticSeverity.Information,
-      source: 'changetracks',
+      source: 'changedown',
       message: `Substitution: ${originalText} \u2192 ${modifiedText}`,
       code: id,
       data: { changeId: id, changeType: ChangeType.Substitution },
@@ -461,7 +461,7 @@ Given(
 
 Given(
   'a diagnostic for highlight {string} at {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number) {
     const lsp = getLsp(this);
     const contentStart = rStart + 3;
     const contentEnd = rEnd - 3;
@@ -479,7 +479,7 @@ Given(
     lsp.activeDiagnostic = {
       range: { start: { line: 0, character: rStart }, end: { line: 0, character: rEnd } },
       severity: DiagnosticSeverity.Information,
-      source: 'changetracks',
+      source: 'changedown',
       message: `Highlight: ${change.originalText}`,
       code: id,
       data: { changeId: id, changeType: ChangeType.Highlight },
@@ -489,7 +489,7 @@ Given(
 
 Given(
   'a diagnostic for comment {string} at {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number) {
     const lsp = getLsp(this);
     const contentStart = rStart + 3;
     const contentEnd = rEnd - 3;
@@ -506,7 +506,7 @@ Given(
     lsp.activeDiagnostic = {
       range: { start: { line: 0, character: rStart }, end: { line: 0, character: rEnd } },
       severity: DiagnosticSeverity.Information,
-      source: 'changetracks',
+      source: 'changedown',
       message: `Comment: ${lsp.documentText.substring(contentStart, contentEnd)}`,
       code: id,
       data: { changeId: id, changeType: ChangeType.Comment },
@@ -516,7 +516,7 @@ Given(
 
 Given(
   'a second change deletion {string} at {int}-{int}',
-  function (this: ChangeTracksWorld, id: string, rStart: number, rEnd: number) {
+  function (this: ChangeDownWorld, id: string, rStart: number, rEnd: number) {
     const lsp = getLsp(this);
     const contentStart = rStart + 3;
     const contentEnd = rEnd - 3;
@@ -539,7 +539,7 @@ Given(
 
 When(
   'I hover at line {int} character {int}',
-  function (this: ChangeTracksWorld, line: number, character: number) {
+  function (this: ChangeDownWorld, line: number, character: number) {
     const lsp = getLsp(this);
     const text = lsp.documentText;
     // If no explicit changes were added, parse the document to build changes
@@ -555,7 +555,7 @@ When(
 
 When(
   'I request code actions',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const lsp = getLsp(this);
     assert.ok(lsp.activeDiagnostic, 'No active diagnostic set — use a "diagnostic for" Given step first');
     lsp.codeActions = createCodeActions(
@@ -569,7 +569,7 @@ When(
 
 When(
   'I create diagnostics',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const lsp = getLsp(this);
     lsp.diagnostics = createDiagnostics(lsp.changes, lsp.documentText);
   },
@@ -577,7 +577,7 @@ When(
 
 When(
   'I create code lenses',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const lsp = getLsp(this);
     // Use 'always' mode so lenses appear without requiring cursorState
     lsp.codeLenses = createCodeLenses(lsp.changes, lsp.documentText, undefined, 'always');
@@ -586,7 +586,7 @@ When(
 
 When(
   'I create document links',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const lsp = getLsp(this);
     lsp.documentLinks = createDocumentLinks(lsp.documentText, lsp.documentUri);
   },
@@ -594,7 +594,7 @@ When(
 
 When(
   'I build semantic tokens',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const lsp = getLsp(this);
     const result = buildSemanticTokens(lsp.changes, lsp.documentText);
     lsp.semanticTokensData = result.data;
@@ -603,7 +603,7 @@ When(
 
 When(
   'I request the semantic tokens legend',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const lsp = getLsp(this);
     lsp.semanticTokensLegend = getSemanticTokensLegend();
   },
@@ -615,7 +615,7 @@ When(
 
 Then(
   'the hover contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const lsp = getLsp(this);
     assert.ok(lsp.hoverResult, 'Expected a hover result but got null');
     const contents = lsp.hoverResult.contents;
@@ -629,7 +629,7 @@ Then(
 
 Then(
   'there is no hover',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const lsp = getLsp(this);
     assert.strictEqual(lsp.hoverResult, null, 'Expected no hover but got a result');
   },
@@ -641,7 +641,7 @@ Then(
 
 Then(
   'there is a quick-fix titled {string}',
-  function (this: ChangeTracksWorld, title: string) {
+  function (this: ChangeDownWorld, title: string) {
     const lsp = getLsp(this);
     assert.ok(lsp.codeActions, 'No code actions available');
     const found = lsp.codeActions.find(a => a.title === title && a.kind === CodeActionKind.QuickFix);
@@ -651,7 +651,7 @@ Then(
 
 Then(
   'there is no quick-fix titled {string}',
-  function (this: ChangeTracksWorld, title: string) {
+  function (this: ChangeDownWorld, title: string) {
     const lsp = getLsp(this);
     assert.ok(lsp.codeActions, 'No code actions available');
     const found = lsp.codeActions.find(a => a.title === title && a.kind === CodeActionKind.QuickFix);
@@ -661,7 +661,7 @@ Then(
 
 Then(
   'there is a source action titled {string}',
-  function (this: ChangeTracksWorld, title: string) {
+  function (this: ChangeDownWorld, title: string) {
     const lsp = getLsp(this);
     assert.ok(lsp.codeActions, 'No code actions available');
     const found = lsp.codeActions.find(a => a.title === title && a.kind === CodeActionKind.Source);
@@ -671,7 +671,7 @@ Then(
 
 Then(
   'the {string} edit replaces range {int}-{int} with {string}',
-  function (this: ChangeTracksWorld, actionTitle: string, _rStart: number, _rEnd: number, _newText: string) {
+  function (this: ChangeDownWorld, actionTitle: string, _rStart: number, _rEnd: number, _newText: string) {
     const lsp = getLsp(this);
     assert.ok(lsp.codeActions, 'No code actions available');
     const action = lsp.codeActions.find(a => a.title === actionTitle);
@@ -691,7 +691,7 @@ Then(
 
 Then(
   'there is {int} diagnostic',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     const lsp = getLsp(this);
     assert.strictEqual(lsp.diagnostics.length, count);
   },
@@ -699,7 +699,7 @@ Then(
 
 Then(
   'there are {int} diagnostics',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     const lsp = getLsp(this);
     assert.strictEqual(lsp.diagnostics.length, count);
   },
@@ -707,7 +707,7 @@ Then(
 
 Then(
   'diagnostic {int} has severity {string}',
-  function (this: ChangeTracksWorld, index: number, severity: string) {
+  function (this: ChangeDownWorld, index: number, severity: string) {
     const lsp = getLsp(this);
     const diag = lsp.diagnostics[index - 1];
     assert.ok(diag, `No diagnostic at index ${index}`);
@@ -719,7 +719,7 @@ Then(
 
 Then(
   'diagnostic {int} has message {string}',
-  function (this: ChangeTracksWorld, index: number, message: string) {
+  function (this: ChangeDownWorld, index: number, message: string) {
     const lsp = getLsp(this);
     const diag = lsp.diagnostics[index - 1];
     assert.ok(diag, `No diagnostic at index ${index}`);
@@ -729,7 +729,7 @@ Then(
 
 Then(
   'diagnostic {int} has source {string}',
-  function (this: ChangeTracksWorld, index: number, source: string) {
+  function (this: ChangeDownWorld, index: number, source: string) {
     const lsp = getLsp(this);
     const diag = lsp.diagnostics[index - 1];
     assert.ok(diag, `No diagnostic at index ${index}`);
@@ -739,7 +739,7 @@ Then(
 
 Then(
   'diagnostic {int} message ends with {string}',
-  function (this: ChangeTracksWorld, index: number, suffix: string) {
+  function (this: ChangeDownWorld, index: number, suffix: string) {
     const lsp = getLsp(this);
     const diag = lsp.diagnostics[index - 1];
     assert.ok(diag, `No diagnostic at index ${index}`);
@@ -749,7 +749,7 @@ Then(
 
 Then(
   'diagnostic {int} message is shorter than {int} characters',
-  function (this: ChangeTracksWorld, index: number, maxLen: number) {
+  function (this: ChangeDownWorld, index: number, maxLen: number) {
     const lsp = getLsp(this);
     const diag = lsp.diagnostics[index - 1];
     assert.ok(diag, `No diagnostic at index ${index}`);
@@ -763,7 +763,7 @@ Then(
 
 Then(
   'there are {int} code lenses',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.codeLenses !== undefined, 'Code lenses not created');
     assert.strictEqual(lsp.codeLenses.length, count);
@@ -772,7 +772,7 @@ Then(
 
 Then(
   /^there is an? "([^"]+)" lens for "([^"]+)"$/,
-  function (this: ChangeTracksWorld, title: string, changeId: string) {
+  function (this: ChangeDownWorld, title: string, changeId: string) {
     const lsp = getLsp(this);
     assert.ok(lsp.codeLenses, 'Code lenses not created');
     const found = lsp.codeLenses.find(
@@ -784,7 +784,7 @@ Then(
 
 Then(
   /^there is an? "([^"]+)" document lens$/,
-  function (this: ChangeTracksWorld, title: string) {
+  function (this: ChangeDownWorld, title: string) {
     const lsp = getLsp(this);
     assert.ok(lsp.codeLenses, 'Code lenses not created');
     const found = lsp.codeLenses.find(l => l.command?.title === title);
@@ -794,7 +794,7 @@ Then(
 
 Then(
   'the {string} lens for {string} is at line {int}',
-  function (this: ChangeTracksWorld, title: string, changeId: string, line: number) {
+  function (this: ChangeDownWorld, title: string, changeId: string, line: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.codeLenses, 'Code lenses not created');
     const found = lsp.codeLenses.find(
@@ -807,7 +807,7 @@ Then(
 
 Then(
   /^the "([^"]+)" document lens is at line (\d+)$/,
-  function (this: ChangeTracksWorld, title: string, line: number) {
+  function (this: ChangeDownWorld, title: string, line: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.codeLenses, 'Code lenses not created');
     const found = lsp.codeLenses.find(l => l.command?.title === title);
@@ -822,7 +822,7 @@ Then(
 
 Then(
   'there are {int} document links',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.documentLinks !== undefined, 'Document links not created');
     assert.strictEqual(lsp.documentLinks.length, count);
@@ -831,14 +831,14 @@ Then(
 
 Then(
   'there is a link on line {int} targeting line {int}',
-  function (this: ChangeTracksWorld, srcLine: number, targetLine: number) {
+  function (this: ChangeDownWorld, srcLine: number, targetLine: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.documentLinks, 'Document links not created');
     const link = lsp.documentLinks.find(l => l.range.start.line === srcLine);
     assert.ok(link, `No link on line ${srcLine}`);
     assert.ok(link.target, 'Link has no target');
     // Decode the target to check destination line
-    const prefix = 'command:changetracks.goToPosition?';
+    const prefix = 'command:changedown.goToPosition?';
     assert.ok(link.target.startsWith(prefix), `Unexpected target format: ${link.target}`);
     const json = decodeURIComponent(link.target.slice(prefix.length));
     const [, line] = JSON.parse(json);
@@ -848,7 +848,7 @@ Then(
 
 Then(
   'there are {int} links on line {int}',
-  function (this: ChangeTracksWorld, count: number, line: number) {
+  function (this: ChangeDownWorld, count: number, line: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.documentLinks, 'Document links not created');
     const links = lsp.documentLinks.filter(l => l.range.start.line === line);
@@ -862,7 +862,7 @@ Then(
 
 Then(
   'there are {int} semantic tokens',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.semanticTokensData !== undefined, 'Semantic tokens not built');
     assert.strictEqual(lsp.semanticTokensData.length / 5, count);
@@ -871,7 +871,7 @@ Then(
 
 Then(
   'token {int} has type index {int}',
-  function (this: ChangeTracksWorld, tokenIdx: number, typeIndex: number) {
+  function (this: ChangeDownWorld, tokenIdx: number, typeIndex: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.semanticTokensData, 'Semantic tokens not built');
     const offset = (tokenIdx - 1) * 5;
@@ -882,7 +882,7 @@ Then(
 
 Then(
   'token {int} has the proposed modifier bit set',
-  function (this: ChangeTracksWorld, tokenIdx: number) {
+  function (this: ChangeDownWorld, tokenIdx: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.semanticTokensData, 'Semantic tokens not built');
     const offset = (tokenIdx - 1) * 5;
@@ -894,7 +894,7 @@ Then(
 
 Then(
   'token {int} does not have the proposed modifier bit set',
-  function (this: ChangeTracksWorld, tokenIdx: number) {
+  function (this: ChangeDownWorld, tokenIdx: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.semanticTokensData, 'Semantic tokens not built');
     const offset = (tokenIdx - 1) * 5;
@@ -905,7 +905,7 @@ Then(
 
 Then(
   'token {int} has the accepted modifier bit set',
-  function (this: ChangeTracksWorld, tokenIdx: number) {
+  function (this: ChangeDownWorld, tokenIdx: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.semanticTokensData, 'Semantic tokens not built');
     const offset = (tokenIdx - 1) * 5;
@@ -917,7 +917,7 @@ Then(
 
 Then(
   'token {int} does not have the accepted modifier bit set',
-  function (this: ChangeTracksWorld, tokenIdx: number) {
+  function (this: ChangeDownWorld, tokenIdx: number) {
     const lsp = getLsp(this);
     assert.ok(lsp.semanticTokensData, 'Semantic tokens not built');
     const offset = (tokenIdx - 1) * 5;
@@ -928,7 +928,7 @@ Then(
 
 Then(
   'the legend includes token type {string}',
-  function (this: ChangeTracksWorld, tokenType: string) {
+  function (this: ChangeDownWorld, tokenType: string) {
     const lsp = getLsp(this);
     assert.ok(lsp.semanticTokensLegend, 'Legend not requested');
     assert.ok(
@@ -940,7 +940,7 @@ Then(
 
 Then(
   'the legend includes modifier {string}',
-  function (this: ChangeTracksWorld, modifier: string) {
+  function (this: ChangeDownWorld, modifier: string) {
     const lsp = getLsp(this);
     assert.ok(lsp.semanticTokensLegend, 'Legend not requested');
     assert.ok(

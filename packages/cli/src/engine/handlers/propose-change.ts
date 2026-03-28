@@ -14,9 +14,9 @@ import {
   settleAcceptedChangesOnly,
   settleRejectedChangesOnly,
   reviewerType,
-} from '@changetracks/core';
+} from '@changedown/core';
 import { validateOrAutoRemap, type RelocationEntry, type AutoRemapResult } from './hashline-relocate.js';
-import { HashlineMismatchError } from '@changetracks/core';
+import { HashlineMismatchError } from '@changedown/core';
 import { handleProposeBatch } from './propose-batch.js';
 import { computeAffectedLines, type AffectedLineEntry, type ViewProjection } from './propose-utils.js';
 import { resolveAuthor } from '../author.js';
@@ -26,7 +26,7 @@ import { applyProposeChange, contentZoneText, extractLineRange, findUniqueMatch,
 import { toRelativePath } from '../path-utils.js';
 import { resolveTrackingStatus } from '../scope.js';
 import { SessionState, type ViewName } from '../state.js';
-import { parseOp, nowTimestamp } from '@changetracks/core';
+import { parseOp, nowTimestamp } from '@changedown/core';
 import { resolveProtocolMode } from '../config.js';
 import { rerecordState } from '../state-utils.js';
 import { resolveAndApply, type NormalizedCompactOp } from './resolve-and-apply.js';
@@ -491,8 +491,8 @@ export async function handleProposeChange(
 
     // Identity-substitution guard: catch ref-only edits
     if (oldText && newText) {
-      const strippedOld = oldText.replace(/\[\^?ct-\d+(?:\.\d+)?\]/g, '').trim();
-      const strippedNew = newText.replace(/\[\^?ct-\d+(?:\.\d+)?\]/g, '').trim();
+      const strippedOld = oldText.replace(/\[\^?cn-\d+(?:\.\d+)?\]/g, '').trim();
+      const strippedNew = newText.replace(/\[\^?cn-\d+(?:\.\d+)?\]/g, '').trim();
       if (strippedOld === strippedNew) {
         return errorResult(
           'No prose changes detected (only footnote references differ). ' +
@@ -521,7 +521,7 @@ export async function handleProposeChange(
     // 1b. Config gate: if hashline params provided, check config.hashline.enabled
     if (hasHashlineParams(args) && !config.hashline.enabled) {
       return errorResult(
-        'Hashline addressing requires [hashline] enabled = true in .changetracks/config.toml',
+        'Hashline addressing requires [hashline] enabled = true in .changedown/config.toml',
         'HASHLINE_DISABLED',
         {
           file: relativePath,
@@ -977,7 +977,7 @@ export async function handleProposeChange(
       // Settle-on-demand: if old_text targets text inside accepted/rejected CriticMarkup
       // (i.e., the match only succeeds via the settled-text fallback), settle those
       // constructs first so the proposal operates on clean prose. This preserves the
-      // audit trail [^ct-N] refs inline adjacent to the settled text, rather than
+      // audit trail [^cn-N] refs inline adjacent to the settled text, rather than
       // having them consumed into the new proposal's raw range.
       if (oldText && !insertAfter) {
         const settleResult = settleOnDemandIfNeeded(fileContent, oldText);
@@ -1049,10 +1049,10 @@ export async function handleProposeChange(
       responseData.warning = stalenessWarning;
     }
 
-    const footnoteCount = (modifiedText.match(/^\[\^ct-\d+(?:\.\d+)?\]:/gm) || []).length;
+    const footnoteCount = (modifiedText.match(/^\[\^cn-\d+(?:\.\d+)?\]:/gm) || []).length;
     const proposedCount = (modifiedText.match(/\|\s*proposed\s*$/gm) || []).length;
     const acceptedCount = (modifiedText.match(/\|\s*accepted\s*$/gm) || []).length;
-    const authorMatches = modifiedText.match(/^\[\^ct-\d+(?:\.\d+)?\]:\s*@([^\s|]+)/gm) || [];
+    const authorMatches = modifiedText.match(/^\[\^cn-\d+(?:\.\d+)?\]:\s*@([^\s|]+)/gm) || [];
     const uniqueAuthors = new Set(
       authorMatches.map((m) => m.match(/@([^\s|]+)/)?.[1]).filter(Boolean)
     );
@@ -1165,7 +1165,7 @@ async function handleCompactProposeChange(
   args: Record<string, unknown>,
   filePath: string,
   relativePath: string,
-  config: import('../config.js').ChangeTracksConfig,
+  config: import('../config.js').ChangeDownConfig,
   state: SessionState,
   fileContent: string,
 ): Promise<ProposeChangeResult> {
@@ -1200,7 +1200,7 @@ async function handleCompactProposeChange(
   // Initialize hashline WASM
   await initHashline();
 
-  // Get next ID (scans file for existing ct-N IDs)
+  // Get next ID (scans file for existing cn-N IDs)
   const changeId = state.getNextId(filePath, fileContent);
 
   // Resolve author
@@ -1278,10 +1278,10 @@ async function handleCompactProposeChange(
   }
 
   // Build response
-  const footnoteCount = (modifiedText.match(/^\[\^ct-\d+(?:\.\d+)?\]:/gm) || []).length;
+  const footnoteCount = (modifiedText.match(/^\[\^cn-\d+(?:\.\d+)?\]:/gm) || []).length;
   const proposedCount = (modifiedText.match(/\|\s*proposed\s*$/gm) || []).length;
   const acceptedCount = (modifiedText.match(/\|\s*accepted\s*$/gm) || []).length;
-  const authorMatches = modifiedText.match(/^\[\^ct-\d+(?:\.\d+)?\]:\s*@([^\s|]+)/gm) || [];
+  const authorMatches = modifiedText.match(/^\[\^cn-\d+(?:\.\d+)?\]:\s*@([^\s|]+)/gm) || [];
   const uniqueAuthors = new Set(
     authorMatches.map((m) => m.match(/@([^\s|]+)/)?.[1]).filter(Boolean)
   );

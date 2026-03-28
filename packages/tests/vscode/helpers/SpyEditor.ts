@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { EditorPort } from 'changetracks-vscode/internals';
+import { EditorPort } from 'changedown-vscode/internals';
 
 /**
  * Records which decoration types are given which ranges.

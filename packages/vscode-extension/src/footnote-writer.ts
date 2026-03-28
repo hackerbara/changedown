@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { nowTimestamp } from '@changetracks/core';
+import { nowTimestamp } from '@changedown/core';
 
 /**
  * Locates the insertion point for a new discussion entry in a footnote block.

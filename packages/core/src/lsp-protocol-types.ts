@@ -1,6 +1,6 @@
 import type { ChangeNode, ChangeType } from './model/types.js';
 
-/** Payload for changetracks/coherenceStatus notification */
+/** Payload for changedown/coherenceStatus notification */
 export interface CoherenceStatusParams {
   uri: string;
   coherenceRate: number;
@@ -8,14 +8,16 @@ export interface CoherenceStatusParams {
   threshold: number;
 }
 
-/** Payload for changetracks/decorationData notification */
+/** Payload for changedown/decorationData notification */
 export interface DecorationDataParams {
   uri: string;
   changes: ChangeNode[];
   documentVersion: number;
+  /** Lines the extension should programmatically fold. Only sent on promotion, first open, or view mode transition. */
+  autoFoldLines?: number[];
 }
 
-/** Payload for changetracks/changeCount notification */
+/** Payload for changedown/changeCount notification */
 export interface ChangeCountParams {
   uri: string;
   counts: {
@@ -28,7 +30,7 @@ export interface ChangeCountParams {
   };
 }
 
-/** Payload for changetracks/allChangesResolved notification */
+/** Payload for changedown/allChangesResolved notification */
 export interface AllChangesResolvedParams {
   uri: string;
 }

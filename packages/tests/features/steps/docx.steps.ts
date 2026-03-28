@@ -4,8 +4,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { execSync } from 'node:child_process';
-import { importDocx, exportDocx } from '@changetracks/docx';
-import type { ExportMode } from '@changetracks/docx';
+import { importDocx, exportDocx } from '@changedown/docx';
+import type { ExportMode } from '@changedown/docx';
 import JSZip from 'jszip';
 import { DocxWorld } from './docx-world.js';
 
@@ -165,7 +165,7 @@ When(
     // Write buffer to a temp file so importDocx can read it
     if (!this.docxTmpDir) {
       this.docxTmpDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), 'ct-docx-bdd-'),
+        path.join(os.tmpdir(), 'cn-docx-bdd-'),
       );
     }
     const tmpDocx = path.join(this.docxTmpDir, 'exported.docx');
@@ -299,8 +299,8 @@ Given(
     const lines: string[] = [];
     const footnotes: string[] = [];
     for (let i = 1; i <= count; i++) {
-      lines.push(`Word{++ins${i}++}[^ct-${i}]`);
-      footnotes.push(`[^ct-${i}]: @alice | 2026-01-15 | ins | proposed`);
+      lines.push(`Word{++ins${i}++}[^cn-${i}]`);
+      footnotes.push(`[^cn-${i}]: @alice | 2026-01-15 | ins | proposed`);
     }
     this.docxInputMarkdown = lines.join(' ') + '\n\n' + footnotes.join('\n');
   },
@@ -387,12 +387,12 @@ Then(
   'each tracked change has a corresponding footnote',
   function (this: DocxWorld) {
     assert.ok(this.docxImportedMarkdown, 'No imported markdown');
-    // Count inline references like [^ct-1], [^ct-2], etc.
+    // Count inline references like [^cn-1], [^cn-2], etc.
     const inlineRefs =
-      this.docxImportedMarkdown.match(/\[\^ct-\d+\](?!:)/g) || [];
-    // Count footnote definitions like [^ct-1]:
+      this.docxImportedMarkdown.match(/\[\^cn-\d+\](?!:)/g) || [];
+    // Count footnote definitions like [^cn-1]:
     const footnoteDefs =
-      this.docxImportedMarkdown.match(/^\[\^ct-\d+\]:/gm) || [];
+      this.docxImportedMarkdown.match(/^\[\^cn-\d+\]:/gm) || [];
 
     // Each inline reference should have a definition
     const defIds = new Set(
@@ -684,7 +684,7 @@ Then(
     assert.ok(this.docxImportedMarkdown, 'No imported markdown');
     const footnoteLines = this.docxImportedMarkdown
       .split('\n')
-      .filter((l) => /^\[\^ct-\d+\]:/.test(l));
+      .filter((l) => /^\[\^cn-\d+\]:/.test(l));
     assert.ok(footnoteLines.length > 0, 'No footnote definitions found');
     const validTypes = new Set([type1, type2, type3]);
     for (const line of footnoteLines) {
@@ -704,7 +704,7 @@ Then(
     assert.ok(this.docxImportedMarkdown, 'No imported markdown');
     const footnoteLines = this.docxImportedMarkdown
       .split('\n')
-      .filter((l) => /^\[\^ct-\d+\]:/.test(l));
+      .filter((l) => /^\[\^cn-\d+\]:/.test(l));
     assert.ok(footnoteLines.length > 0, 'No footnote definitions found');
     const validTypes = new Set([type1, type2, type3, type4]);
     for (const line of footnoteLines) {
@@ -724,7 +724,7 @@ Then(
     assert.ok(this.docxImportedMarkdown, 'No imported markdown');
     const footnoteLines = this.docxImportedMarkdown
       .split('\n')
-      .filter((l) => /^\[\^ct-\d+\]:/.test(l));
+      .filter((l) => /^\[\^cn-\d+\]:/.test(l));
     assert.ok(footnoteLines.length > 0, 'No footnote definitions found');
     for (const line of footnoteLines) {
       const statusMatch = line.match(/\|\s*(proposed|accepted|rejected)\s*$/);

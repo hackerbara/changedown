@@ -1,5 +1,5 @@
 {
-  "name": "@changetracks/tests",
+  "name": "@changedown/tests",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,13 +13,13 @@
     "test:visual": "cd vscode && npm run test:visual"
   },
   "dependencies": {
-    "@changetracks/core": "file:../core",
-    "@changetracks/docx": "file:../docx",
-    "@changetracks/lsp-server": "file:../lsp-server",
-    "@changetracks/mcp": "file:../../changetracks-plugin/mcp-server",
-    "@changetracks/opencode-plugin": "file:../opencode-plugin",
-    "changetracks": "file:../cli",
-    "changetracks-hooks": "file:../../changetracks-plugin/hooks-impl",
+    "@changedown/core": "file:../core",
+    "@changedown/docx": "file:../docx",
+    "@changedown/lsp-server": "file:../lsp-server",
+    "@changedown/mcp": "file:../../changedown-plugin/mcp-server",
+    "@changedown/opencode-plugin": "file:../opencode-plugin",
+    "changedown": "file:../cli",
+    "changedown-hooks": "file:../../changedown-plugin/hooks-impl",
     "esbuild": "0.27.4",
     "happy-dom": "20.8.4",
     "vite": "8.0.0"

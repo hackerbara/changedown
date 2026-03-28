@@ -6,13 +6,13 @@
  */
 
 import { SemanticTokens, SemanticTokensLegend } from 'vscode-languageserver/node';
-import { ChangeNode, ChangeType, ChangeStatus, isGhostNode } from '@changetracks/core';
-import type { ViewName } from '@changetracks/core';
+import { ChangeNode, ChangeType, ChangeStatus, isGhostNode } from '@changedown/core';
+import type { ViewName } from '@changedown/core';
 
 /**
  * Token types for CriticMarkup syntax highlighting
  *
- * Custom token types (changetracks-*) are used instead of standard types
+ * Custom token types (changedown-*) are used instead of standard types
  * (string, comment, type) to prevent VS Code themes from overriding
  * the extension's TextEditorDecorationType colors via CSS specificity.
  * Custom types have no default theme colors in any editor.
@@ -20,14 +20,14 @@ import type { ViewName } from '@changetracks/core';
  * Order matters - indices are used in token encoding.
  */
 const TOKEN_TYPES = [
-    'changetracks-insertion',     // 0: additions and modified text
-    'changetracks-deletion',      // 1: deletions
-    'changetracks-highlight',     // 2: highlights
-    'changetracks-comment',       // 3: comments
-    'changetracks-subOriginal',   // 4: substitution original half
-    'changetracks-subModified',   // 5: substitution modified half
-    'changetracks-moveFrom',      // 6: move source
-    'changetracks-moveTo',        // 7: move target
+    'changedown-insertion',     // 0: additions and modified text
+    'changedown-deletion',      // 1: deletions
+    'changedown-highlight',     // 2: highlights
+    'changedown-comment',       // 3: comments
+    'changedown-subOriginal',   // 4: substitution original half
+    'changedown-subModified',   // 5: substitution modified half
+    'changedown-moveFrom',      // 6: move source
+    'changedown-moveTo',        // 7: move target
 ] as const;
 
 /**
@@ -51,14 +51,14 @@ const TOKEN_MODIFIERS = [
  * Token type indices (must match TOKEN_TYPES array order)
  */
 const enum TokenType {
-  Insertion = 0,     // changetracks-insertion
-  Deletion = 1,      // changetracks-deletion
-  Highlight = 2,     // changetracks-highlight
-  Comment = 3,       // changetracks-comment
-  SubOriginal = 4,   // changetracks-subOriginal
-  SubModified = 5,   // changetracks-subModified
-  MoveFrom = 6,      // changetracks-moveFrom
-  MoveTo = 7,        // changetracks-moveTo
+  Insertion = 0,     // changedown-insertion
+  Deletion = 1,      // changedown-deletion
+  Highlight = 2,     // changedown-highlight
+  Comment = 3,       // changedown-comment
+  SubOriginal = 4,   // changedown-subOriginal
+  SubModified = 5,   // changedown-subModified
+  MoveFrom = 6,      // changedown-moveFrom
+  MoveTo = 7,        // changedown-moveTo
 }
 
 /**

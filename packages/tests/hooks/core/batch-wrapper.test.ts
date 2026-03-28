@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { applyPendingEdits, appendPendingEdit, readPendingEdits } from 'changetracks-hooks/internals';
-import type { CreationTracking } from 'changetracks-hooks/internals';
+import { applyPendingEdits, appendPendingEdit, readPendingEdits } from 'changedown-hooks/internals';
+import type { CreationTracking } from 'changedown-hooks/internals';
 
 // Minimal config shape matching what applyPendingEdits expects
 function makeConfig(overrides?: {
@@ -24,8 +24,8 @@ describe('applyPendingEdits', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-batch-wrapper-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-batch-wrapper-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
   });
 
@@ -76,14 +76,14 @@ describe('applyPendingEdits', () => {
 
     const content = await fs.readFile(mdPath, 'utf-8');
     expect(content).toContain('{~~# Original heading~># Updated heading~~}');
-    expect(content).toContain('[^ct-1]');
-    expect(content).toContain('[^ct-1]: @ai:claude-opus-4.6');
+    expect(content).toContain('[^cn-1]');
+    expect(content).toContain('[^cn-1]: @ai:claude-opus-4.6');
     expect(content).toContain('| sub | proposed');
 
     expect(result.editsApplied).toBe(1);
-    expect(result.changeIds).toEqual(['ct-1']);
+    expect(result.changeIds).toEqual(['cn-1']);
     expect(result.message).toContain('1 edit(s)');
-    expect(result.message).toContain('[^ct-1]');
+    expect(result.message).toContain('[^cn-1]');
   });
 
   // ── Insertion wrapping ──
@@ -104,7 +104,7 @@ describe('applyPendingEdits', () => {
 
     const content = await fs.readFile(mdPath, 'utf-8');
     expect(content).toContain('{++New paragraph here.\n\n++}');
-    expect(content).toContain('[^ct-1]');
+    expect(content).toContain('[^cn-1]');
     expect(content).toContain('| ins | proposed');
     expect(result.editsApplied).toBe(1);
   });
@@ -129,7 +129,7 @@ describe('applyPendingEdits', () => {
 
     const content = await fs.readFile(mdPath, 'utf-8');
     expect(content).toContain('{--Removed text. --}');
-    expect(content).toContain('[^ct-1]');
+    expect(content).toContain('[^cn-1]');
     expect(content).toContain('| del | proposed');
     expect(result.editsApplied).toBe(1);
   });
@@ -159,18 +159,18 @@ describe('applyPendingEdits', () => {
     const result = await applyPendingEdits(tmpDir, 'ses_123', makeConfig());
 
     const content = await fs.readFile(mdPath, 'utf-8');
-    expect(content).toContain('[^ct-1.1]');
-    expect(content).toContain('[^ct-1.2]');
+    expect(content).toContain('[^cn-1.1]');
+    expect(content).toContain('[^cn-1.2]');
     // Parent footnote
-    expect(content).toContain('[^ct-1]: @ai:claude-opus-4.6');
+    expect(content).toContain('[^cn-1]: @ai:claude-opus-4.6');
     expect(content).toContain('| group | proposed');
     expect(result.editsApplied).toBe(2);
-    expect(result.changeIds).toEqual(['ct-1.1', 'ct-1.2']);
+    expect(result.changeIds).toEqual(['cn-1.1', 'cn-1.2']);
   });
 
   // ── Reverse-order processing ──
 
-  it('assigns ct-N.1 to the first edit in document order (forward IDs, reverse processing)', async () => {
+  it('assigns cn-N.1 to the first edit in document order (forward IDs, reverse processing)', async () => {
     const mdPath = path.join(tmpDir, 'readme.md');
     await fs.writeFile(mdPath, 'First change here.\n\nSecond change here.\n', 'utf-8');
 
@@ -197,9 +197,9 @@ describe('applyPendingEdits', () => {
     await applyPendingEdits(tmpDir, 'ses_order', makeConfig());
 
     const content = await fs.readFile(mdPath, 'utf-8');
-    // ct-1.1 = first edit, ct-1.2 = second edit (forward ID allocation)
-    expect(content).toContain('{~~first original~>First change~~}[^ct-1.1]');
-    expect(content).toContain('{~~second original~>Second change~~}[^ct-1.2]');
+    // cn-1.1 = first edit, cn-1.2 = second edit (forward ID allocation)
+    expect(content).toContain('{~~first original~>First change~~}[^cn-1.1]');
+    expect(content).toContain('{~~second original~>Second change~~}[^cn-1.2]');
   });
 
   // ── Cross-file ID scanning ──
@@ -208,16 +208,16 @@ describe('applyPendingEdits', () => {
     const mdPathA = path.join(tmpDir, 'a.md');
     const mdPathB = path.join(tmpDir, 'b.md');
 
-    // File A has existing ct-5
+    // File A has existing cn-5
     await fs.writeFile(
       mdPathA,
-      'Change in A.\n\n[^ct-5]: @someone | 2026-02-09 | ins | proposed\n',
+      'Change in A.\n\n[^cn-5]: @someone | 2026-02-09 | ins | proposed\n',
       'utf-8',
     );
-    // File B has existing ct-3
+    // File B has existing cn-3
     await fs.writeFile(
       mdPathB,
-      'Change in B.\n\n[^ct-3]: @someone | 2026-02-09 | ins | proposed\n',
+      'Change in B.\n\n[^cn-3]: @someone | 2026-02-09 | ins | proposed\n',
       'utf-8',
     );
 
@@ -246,10 +246,10 @@ describe('applyPendingEdits', () => {
     const contentB = await fs.readFile(mdPathB, 'utf-8');
 
     // Global max is 5 (from file A), so parent ID = 6
-    expect(contentA).toContain('[^ct-6.1]');
-    expect(contentB).toContain('[^ct-6.2]');
+    expect(contentA).toContain('[^cn-6.1]');
+    expect(contentB).toContain('[^cn-6.2]');
     // Parent footnote in first file
-    expect(contentA).toContain('[^ct-6]: @ai:claude-opus-4.6');
+    expect(contentA).toContain('[^cn-6]: @ai:claude-opus-4.6');
     expect(contentA).toContain('| group | proposed');
   });
 
@@ -259,7 +259,7 @@ describe('applyPendingEdits', () => {
     const mdPath = path.join(tmpDir, 'readme.md');
     await fs.writeFile(
       mdPath,
-      '# New heading\n\nSome {++inserted++}[^ct-3] text.\n\n[^ct-3]: @someone | 2026-02-09 | ins | proposed\n',
+      '# New heading\n\nSome {++inserted++}[^cn-3] text.\n\n[^cn-3]: @someone | 2026-02-09 | ins | proposed\n',
       'utf-8',
     );
 
@@ -274,8 +274,8 @@ describe('applyPendingEdits', () => {
     await applyPendingEdits(tmpDir, 'ses_123', makeConfig());
 
     const content = await fs.readFile(mdPath, 'utf-8');
-    expect(content).toContain('[^ct-4]');
-    expect(content).toContain('[^ct-3]');
+    expect(content).toContain('[^cn-4]');
+    expect(content).toContain('[^cn-3]');
   });
 
   // ── Clears pending edits ──
@@ -353,8 +353,8 @@ describe('applyPendingEdits', () => {
     // No triple+ newlines (double blank lines between footnotes)
     expect(content).not.toMatch(/\n\n\n/);
     // Footnotes separated by single newlines within the block
-    const footnoteSection = content.slice(content.indexOf('[^ct-'));
-    const footnoteLines = footnoteSection.split('\n').filter((l) => l.startsWith('[^ct-'));
+    const footnoteSection = content.slice(content.indexOf('[^cn-'));
+    const footnoteLines = footnoteSection.split('\n').filter((l) => l.startsWith('[^cn-'));
     expect(footnoteLines.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -376,7 +376,7 @@ describe('applyPendingEdits', () => {
 
     const content = await fs.readFile(mdPath, 'utf-8');
     expect(content).not.toContain('| group | proposed');
-    expect(content).toContain('[^ct-1]');
+    expect(content).toContain('[^cn-1]');
     expect(content).toContain('| sub | proposed');
   });
 
@@ -400,7 +400,7 @@ describe('applyPendingEdits', () => {
 
     const content = await fs.readFile(mdPath, 'utf-8');
     expect(content).toContain('AAA hello world BBB');
-    expect(content).toContain('CCC {++hello world++}[^ct-1] DDD');
+    expect(content).toContain('CCC {++hello world++}[^cn-1] DDD');
   });
 
   // ── File gone ──
@@ -442,8 +442,8 @@ describe('applyPendingEdits', () => {
     await applyPendingEdits(tmpDir, 'ses_create', makeConfig({ creation_tracking: 'footnote' }));
 
     const result = await fs.readFile(mdPath, 'utf-8');
-    expect(result).toContain('<!-- ctrcks.com/v1: tracked -->');
-    expect(result).toContain('[^ct-1]');
+    expect(result).toContain('<!-- changedown.com/v1: tracked -->');
+    expect(result).toContain('[^cn-1]');
     expect(result).toContain('| creation | proposed');
     expect(result).not.toContain('{++');
     expect(result).not.toContain('++}');
@@ -518,7 +518,7 @@ describe('applyPendingEdits', () => {
     await applyPendingEdits(tmpDir, 'ses_guard', makeConfig({ creation_tracking: 'footnote' }));
 
     const result = await fs.readFile(mdPath, 'utf-8');
-    expect(result).toContain('<!-- ctrcks.com/v1: tracked -->');
+    expect(result).toContain('<!-- changedown.com/v1: tracked -->');
     expect(result).toContain('| creation | proposed');
     expect(result).not.toContain('{++');
   });
@@ -549,7 +549,7 @@ describe('applyPendingEdits', () => {
 
   it('does not duplicate tracking header during creation tracking', async () => {
     const mdPath = path.join(tmpDir, 'already-tracked.md');
-    const fullContent = '<!-- ctrcks.com/v1: tracked -->\n# Already Tracked\n\nContent.\n';
+    const fullContent = '<!-- changedown.com/v1: tracked -->\n# Already Tracked\n\nContent.\n';
     await fs.writeFile(mdPath, fullContent, 'utf-8');
 
     await appendPendingEdit(tmpDir, {
@@ -565,7 +565,7 @@ describe('applyPendingEdits', () => {
     await applyPendingEdits(tmpDir, 'ses_existing', makeConfig({ creation_tracking: 'footnote' }));
 
     const result = await fs.readFile(mdPath, 'utf-8');
-    const headerCount = (result.match(/ctrcks.com\/v1/g) || []).length;
+    const headerCount = (result.match(/changedown.com\/v1/g) || []).length;
     expect(headerCount).toBe(1);
   });
 
@@ -592,7 +592,7 @@ describe('applyPendingEdits', () => {
     expect(result).toContain('{++insertion++}');
     expect(result).toContain('{--deletion--}');
     expect(result).not.toMatch(/\{[+][+]# Test Fixture/);
-    expect(result).toContain('<!-- ctrcks.com/v1: tracked -->');
+    expect(result).toContain('<!-- changedown.com/v1: tracked -->');
     expect(result).toContain('| creation | proposed');
   });
 
@@ -634,7 +634,7 @@ describe('applyPendingEdits', () => {
     const result = await applyPendingEdits(tmpDir, 'ses_123', makeConfig());
 
     expect(result.message).toContain('1 edit(s)');
-    expect(result.message).toContain('[^ct-1]');
+    expect(result.message).toContain('[^cn-1]');
     expect(result.message).toContain('review_changes');
   });
 });

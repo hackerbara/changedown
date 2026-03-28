@@ -1,4 +1,4 @@
-<!-- ctrcks.com/v1: tracked -->
+<!-- changedown.com/v1: tracked -->
 # Manual Recording Shot Lists
 
 These videos require you to drive Claude Code manually while screen recording.
@@ -9,7 +9,7 @@ Use OBS, QuickTime, or ScreenFlow to capture. Record at 1920x1080.
 ### Setup
 - Open a markdown file in VS Code (right half of screen)
 - Open Claude Code terminal (left half of screen)
-- Ensure `.changetracks/config.toml` has `mode = "safety-net"` or `mode = "strict"`
+- Ensure `.changedown/config.toml` has `mode = "safety-net"` or `mode = "strict"`
 - Have a paragraph with an obvious improvement opportunity
 
 ### Sequence
@@ -30,7 +30,7 @@ Use OBS, QuickTime, or ScreenFlow to capture. Record at 1920x1080.
 
 ### Setup
 - Same split screen layout as Video 5
-- Set policy to `strict` in `.changetracks/config.toml`:
+- Set policy to `strict` in `.changedown/config.toml`:
   ```toml
   [policy]
   mode = "strict"
@@ -50,5 +50,5 @@ Use OBS, QuickTime, or ScreenFlow to capture. Record at 1920x1080.
 - Keep the edit simple so the cycle is fast
 
 
-[^ct-1]: ai:claude-opus-4.6 | 2026-03-08 | creation | proposed
+[^cn-1]: ai:claude-opus-4.6 | 2026-03-08 | creation | proposed
     ai:claude-opus-4.6 2026-03-08T21:04:56Z: File created

@@ -25,14 +25,30 @@ import {
   spliceInsert,
   spliceDelete,
 } from './pending-buffer.js';
+import { wrapInsertion, wrapDeletion, wrapSubstitution } from '../operations/tracking.js';
+import { generateFootnoteDefinition, buildContextualL3EditOp } from '../operations/footnote-generator.js';
+import { computeLineHash } from '../hashline.js';
+import { buildLineStarts, offsetToLineNumber } from '../operations/l2-to-l3.js';
+import { ChangeType, ChangeStatus, changeTypeToAbbrev } from '../model/types.js';
+import type { TextEdit, ChangeNode } from '../model/types.js';
+import { CriticMarkupParser } from '../parser/parser.js';
+
+// Module-level singleton — CriticMarkupParser is stateless between parse() calls
+const cmParser = new CriticMarkupParser();
 
 // ── Public API ──────────────────────────────────────────────────────────
 
 export interface ProcessEventContext {
   /** Current timestamp (ms). Injected by host for deterministic replay. */
   now: number;
-  /** Allocate a new change ID (e.g., "ct-7"). Called once per buffer creation. */
+  /** Allocate a new change ID (e.g., "cn-7"). Called once per buffer creation. */
   allocateScId?: () => string;
+  /** Author identity for footnote metadata, e.g. "@alice" */
+  author?: string;
+  /** Current document text — needed for L3 hash computation and merge detection */
+  documentText?: string;
+  /** Document format — adapter determines via isFootnoteNative() or hardcodes */
+  documentFormat?: 'l2' | 'l3';
 }
 
 export interface ProcessEventResult {
@@ -60,7 +76,7 @@ export function processEvent(
 
   switch (signal) {
     case 'hard-break':
-      return handleHardBreak(state);
+      return handleHardBreak(state, context);
     case 'break':
       return handleBreak(state, event, context);
     case 'extend':
@@ -86,7 +102,7 @@ function createOverlay(buf: PendingBuffer): EditPendingOverlay {
 }
 
 /** Flush the pending buffer: crystallize + clear overlay + merge adjacent. */
-function flush(state: EditBoundaryState): { effects: Effect[]; clearedState: EditBoundaryState } {
+function flush(state: EditBoundaryState, context?: ProcessEventContext): { effects: Effect[]; clearedState: EditBoundaryState } {
   const buf = state.pending;
   if (buf === null) {
     return { effects: [], clearedState: state };
@@ -109,23 +125,94 @@ function flush(state: EditBoundaryState): { effects: Effect[]; clearedState: Edi
       changeType = 'substitution';
     }
 
-    effects.push({
-      type: 'crystallize',
-      changeType,
-      offset: buf.anchorOffset,
-      length: changeType === 'insertion' ? buf.currentText.length :
-              changeType === 'deletion' ? 0 :
-              buf.currentText.length,
-      currentText: buf.currentText,
-      originalText: buf.originalText,
-      scId: buf.scId,
-    });
+    const hasContext = context?.documentText !== undefined && context?.author !== undefined;
+    const canProduceL2 = hasContext && context?.documentFormat === 'l2';
+    const canProduceL3 = hasContext && context?.documentFormat === 'l3';
+
+    if (canProduceL2 || canProduceL3) {
+      // Shared preamble for fully-formed crystallize (L2 and L3)
+      const scId = buf.scId ?? 'cn-0';
+      const docText = context!.documentText!;
+      const ct = changeType === 'insertion' ? ChangeType.Insertion
+        : changeType === 'deletion' ? ChangeType.Deletion
+        : ChangeType.Substitution;
+      const abbrev = changeTypeToAbbrev(ct);
+      const rawAuthor = context!.author!.replace(/^@/, '');
+      const dateStr = new Date(context!.now).toISOString().slice(0, 10);
+
+      if (canProduceL2) {
+        let markupEdit = changeType === 'insertion'
+          ? wrapInsertion(buf.currentText, buf.anchorOffset, buf.scId)
+          : changeType === 'deletion'
+          ? wrapDeletion(buf.originalText, buf.anchorOffset, buf.scId)
+          : wrapSubstitution(buf.originalText, buf.currentText, buf.anchorOffset, buf.scId);
+
+        // Atomic merge: simulate post-edit document and merge adjacent same-type changes
+        const simulated =
+          docText.slice(0, markupEdit.offset) +
+          markupEdit.newText +
+          docText.slice(markupEdit.offset + markupEdit.length);
+        markupEdit = tryAtomicMerge(simulated, markupEdit, ct, buf.scId);
+
+        const footnoteText = generateFootnoteDefinition(scId, abbrev, rawAuthor, dateStr);
+        effects.push({
+          type: 'crystallize',
+          edits: {
+            format: 'l2',
+            markupEdit,
+            footnoteEdit: { offset: docText.length, length: 0, newText: footnoteText },
+          },
+        });
+      } else {
+        // L3: footnote only, body stays as-is
+        const lineStarts = buildLineStarts(docText);
+        const lineNumber = offsetToLineNumber(lineStarts, buf.anchorOffset);
+        const lineIdx = lineNumber - 1;
+        const lineContent = docText.split('\n')[lineIdx] ?? '';
+        // Only allocate allLines for blank-line context hashing
+        const allLines = lineContent.trim() === '' ? docText.split('\n') : undefined;
+        const hash = computeLineHash(lineIdx, lineContent, allLines);
+        const column = buf.anchorOffset - (lineStarts[lineIdx] ?? 0);
+        const anchorLen = changeType === 'deletion' ? 0 : buf.currentText.length;
+
+        const editOpLine = buildContextualL3EditOp({
+          changeType: ct, originalText: buf.originalText, currentText: buf.currentText,
+          lineContent, lineNumber, hash, column, anchorLen,
+        });
+
+        const footnoteHeader = generateFootnoteDefinition(scId, abbrev, rawAuthor, dateStr);
+        effects.push({
+          type: 'crystallize',
+          edits: {
+            format: 'l3',
+            markupEdit: null,
+            footnoteEdit: { offset: docText.length, length: 0, newText: footnoteHeader + '\n' + editOpLine },
+          },
+        });
+      }
+    } else {
+      // Legacy crystallize effect — host applies edits itself
+      effects.push({
+        type: 'crystallize',
+        changeType,
+        offset: buf.anchorOffset,
+        length: changeType === 'insertion' ? buf.currentText.length :
+                changeType === 'deletion' ? 0 :
+                buf.currentText.length,
+        currentText: buf.currentText,
+        originalText: buf.originalText,
+        scId: buf.scId,
+      });
+    }
   }
 
-  effects.push(
-    { type: 'updatePendingOverlay', overlay: null },
-    { type: 'mergeAdjacent', offset: buf.anchorOffset },
-  );
+  // For full crystallize effects, skip mergeAdjacent (handled atomically in Task 5)
+  const hasFullCrystallize = effects.some(e => e.type === 'crystallize' && 'edits' in e);
+
+  effects.push({ type: 'updatePendingOverlay', overlay: null });
+  if (!hasFullCrystallize) {
+    effects.push({ type: 'mergeAdjacent', offset: buf.anchorOffset });
+  }
 
   return { effects, clearedState: { ...state, pending: null } };
 }
@@ -134,8 +221,8 @@ function flush(state: EditBoundaryState): { effects: Effect[]; clearedState: Edi
  * hard-break: control events (save, editorSwitch, flush).
  * Flush pending buffer, no new buffer.
  */
-function handleHardBreak(state: EditBoundaryState): ProcessEventResult {
-  const { effects, clearedState } = flush(state);
+function handleHardBreak(state: EditBoundaryState, context: ProcessEventContext): ProcessEventResult {
+  const { effects, clearedState } = flush(state, context);
   return { newState: clearedState, effects };
 }
 
@@ -149,7 +236,7 @@ function handleBreak(
   event: EditEvent,
   context: ProcessEventContext,
 ): ProcessEventResult {
-  const { effects: flushEffects, clearedState } = flush(state);
+  const { effects: flushEffects, clearedState } = flush(state, context);
 
   if (event.type === 'insertion') {
     // Newline or paste → crystallize immediately (no pending buffer)
@@ -287,4 +374,136 @@ function handleSplice(
   }
 
   throw new Error(`Unreachable: unhandled event type in handleSplice: ${(event as EditEvent).type}`);
+}
+
+// ── Atomic Merge Helpers ─────────────────────────────────────────────
+
+/**
+ * Try to merge the newly-created CriticMarkup change with an adjacent
+ * same-type change in the simulated document text.
+ *
+ * Returns the (possibly merged) markupEdit in original-docText coordinates.
+ */
+function tryAtomicMerge(
+  simulated: string,
+  originalEdit: TextEdit,
+  expectedType: ChangeType,
+  scId: string | undefined,
+): TextEdit {
+  const parser = new CriticMarkupParser();
+  const vdoc = parser.parse(simulated);
+  const changes = vdoc.getChanges();
+
+  // Find the change we just created by matching its scId
+  const newIdx = changes.findIndex(c => c.id === scId);
+  if (newIdx < 0) return originalEdit;
+
+  const newChange = changes[newIdx];
+
+  // The markupEdit replaced docText[offset..offset+length] with newText.
+  // In the simulated text, everything before originalEdit.offset is unchanged.
+  // The delta is how much longer the simulated text is vs docText at the edit point.
+  const delta = originalEdit.newText.length - originalEdit.length;
+
+  // Check predecessor (change immediately before)
+  if (newIdx > 0) {
+    const pred = changes[newIdx - 1];
+    if (canMerge(pred, newChange, expectedType)) {
+      return buildMergedEdit(pred, newChange, expectedType, scId, originalEdit, delta, 'predecessor');
+    }
+  }
+
+  // Check successor (change immediately after)
+  if (newIdx < changes.length - 1) {
+    const succ = changes[newIdx + 1];
+    if (canMerge(newChange, succ, expectedType)) {
+      return buildMergedEdit(newChange, succ, expectedType, scId, originalEdit, delta, 'successor');
+    }
+  }
+
+  return originalEdit;
+}
+
+/** Check if two adjacent changes can be merged. */
+function canMerge(first: ChangeNode, second: ChangeNode, expectedType: ChangeType): boolean {
+  return (
+    first.type === expectedType &&
+    second.type === expectedType &&
+    first.status === ChangeStatus.Proposed &&
+    second.status === ChangeStatus.Proposed &&
+    first.range.end === second.range.start
+  );
+}
+
+/**
+ * Build a merged markupEdit that combines two adjacent same-type changes
+ * into one, mapped back to original docText coordinates.
+ */
+function buildMergedEdit(
+  first: ChangeNode,
+  second: ChangeNode,
+  changeType: ChangeType,
+  scId: string | undefined,
+  originalEdit: TextEdit,
+  delta: number,
+  direction: 'predecessor' | 'successor',
+): TextEdit {
+  // Extract content from both changes
+  let combinedContent: string;
+  let combinedOriginal: string | undefined;
+  let combinedModified: string | undefined;
+
+  if (changeType === ChangeType.Insertion) {
+    combinedContent = (first.modifiedText ?? '') + (second.modifiedText ?? '');
+  } else if (changeType === ChangeType.Deletion) {
+    combinedContent = (first.originalText ?? '') + (second.originalText ?? '');
+  } else {
+    // Substitution: combine both original and modified parts
+    combinedOriginal = (first.originalText ?? '') + (second.originalText ?? '');
+    combinedModified = (first.modifiedText ?? '') + (second.modifiedText ?? '');
+    combinedContent = ''; // not used for substitution
+  }
+
+  // Build the merged CriticMarkup text
+  let mergedNewText: string;
+  if (changeType === ChangeType.Insertion) {
+    mergedNewText = wrapInsertion(combinedContent, 0, scId).newText;
+  } else if (changeType === ChangeType.Deletion) {
+    mergedNewText = wrapDeletion(combinedContent, 0, scId).newText;
+  } else {
+    mergedNewText = wrapSubstitution(combinedOriginal!, combinedModified!, 0, scId).newText;
+  }
+
+  // Map simulated-text offsets back to docText offsets.
+  //
+  // The originalEdit replaced docText[offset..offset+length] with newText,
+  // producing 'simulated'. Everything BEFORE originalEdit.offset is at the
+  // same offset in both coordinate systems. Everything AFTER the edit point
+  // is shifted by delta = newText.length - length.
+  //
+  // For predecessor merge: the predecessor is before the edit point, so its
+  // simulated offset = its docText offset. The edit point in docText is
+  // originalEdit.offset + originalEdit.length.
+  //
+  // For successor merge: the successor is after the edit point, so its
+  // simulated offset = its docText offset + delta.
+
+  let docStartOffset: number;
+  let docEndOffset: number;
+
+  if (direction === 'predecessor') {
+    // 'first' is the predecessor (before edit point), 'second' is the new change
+    docStartOffset = first.range.start; // same in both coordinate systems
+    docEndOffset = originalEdit.offset + originalEdit.length; // end of original edit region in docText
+  } else {
+    // 'first' is the new change, 'second' is the successor (after edit point)
+    docStartOffset = originalEdit.offset; // start of the edit region in docText
+    docEndOffset = second.range.end - delta; // map successor end back to docText coordinates
+  }
+
+  return {
+    offset: docStartOffset,
+    length: docEndOffset - docStartOffset,
+    newText: mergedNewText,
+  };
 }

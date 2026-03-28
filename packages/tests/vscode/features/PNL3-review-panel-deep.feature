@@ -6,9 +6,9 @@ Feature: PNL3 — Review panel deep coverage
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
-    And I open the ChangeTracks sidebar
+    And I open the ChangeDown sidebar
 
   # ── Summary line ─────────────────────────────────────────────
 
@@ -52,18 +52,18 @@ Feature: PNL3 — Review panel deep coverage
   @fixture(journey-accept-reject) @destructive
   Scenario: PNL3-08 Accept All from panel removes all markup
     Given I open "journey-accept-reject.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
-    And I open the ChangeTracks sidebar
+    And I open the ChangeDown sidebar
     When I click the Accept All button in the summary section
     Then the change list is empty
 
   @fixture(journey-accept-reject) @destructive
   Scenario: PNL3-09 Reject All from panel removes all markup
     Given I open "journey-accept-reject.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
-    And I open the ChangeTracks sidebar
+    And I open the ChangeDown sidebar
     When I click Reject All in the panel
     Then the change list is empty
 
@@ -72,9 +72,9 @@ Feature: PNL3 — Review panel deep coverage
   @fixture(journey-accept-reject) @destructive
   Scenario: PNL3-10 Inline accept on card decrements change count
     Given I open "journey-accept-reject.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
-    And I open the ChangeTracks sidebar
+    And I open the ChangeDown sidebar
     When I accept a change from the panel's change list
     Then the change count in the panel decrements
 
@@ -98,6 +98,6 @@ Feature: PNL3 — Review panel deep coverage
   @fixture(no-header)
   Scenario: PNL3-14 Empty state when document has no changes
     Given I open "no-header.md" in VS Code
-    And the ChangeTracks extension is active
-    And I open the ChangeTracks sidebar
+    And the ChangeDown extension is active
+    And I open the ChangeDown sidebar
     Then the change list is empty

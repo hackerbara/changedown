@@ -27,7 +27,7 @@ export function resolveTracking(
   projectTrackingDefault?: string
 ): TrackingState {
   const headerMatch = docText.match(
-    /^<!--\s*ctrcks\.com\/v1:\s*(tracked|untracked)\s*-->/m
+    /^<!--\s*changedown\.com\/v1:\s*(tracked|untracked)\s*-->/m
   );
   if (headerMatch) {
     return { enabled: headerMatch[1] === 'tracked', source: 'file' };
@@ -55,5 +55,5 @@ export function sendDocumentState(
     tracking,
     viewMode,
   };
-  connection.sendNotification('changetracks/documentState', params);
+  connection.sendNotification('changedown/documentState', params);
 }

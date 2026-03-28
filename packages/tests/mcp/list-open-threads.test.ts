@@ -1,23 +1,23 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleListOpenThreads } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { handleListOpenThreads } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { createTestResolver } from './test-resolver.js';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
 describe('handleListOpenThreads', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-threads-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-threads-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -56,12 +56,12 @@ describe('handleListOpenThreads', () => {
     await fs.writeFile(
       filePath,
       [
-        'Some {~~old~>new~~}[^ct-1] text with {--removed--}[^ct-2] changes.',
+        'Some {~~old~>new~~}[^cn-1] text with {--removed--}[^cn-2] changes.',
         '',
-        `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+        `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
         `    @ai:claude-opus-4.6 ${TODAY}: Improved wording`,
         '',
-        `[^ct-2]: @human:alice | ${TODAY} | del | accepted`,
+        `[^cn-2]: @human:alice | ${TODAY} | del | accepted`,
         `    @human:alice ${TODAY}: Removed redundancy`,
       ].join('\n')
     );
@@ -75,7 +75,7 @@ describe('handleListOpenThreads', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data).toHaveLength(1);
-    expect(data[0].change_id).toBe('ct-1');
+    expect(data[0].change_id).toBe('cn-1');
     expect(data[0].status).toBe('proposed');
   });
 
@@ -84,9 +84,9 @@ describe('handleListOpenThreads', () => {
     await fs.writeFile(
       filePath,
       [
-        'Some {~~old~>new~~}[^ct-1] text.',
+        'Some {~~old~>new~~}[^cn-1] text.',
         '',
-        `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | accepted`,
+        `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | accepted`,
         `    @ai:claude-opus-4.6 ${TODAY}: Already accepted`,
       ].join('\n')
     );
@@ -107,9 +107,9 @@ describe('handleListOpenThreads', () => {
     await fs.writeFile(
       filePath,
       [
-        'Hello {++world++}[^ct-3] end.',
+        'Hello {++world++}[^cn-3] end.',
         '',
-        `[^ct-3]: @ai:claude-opus-4.6 | 2026-02-10 | ins | proposed`,
+        `[^cn-3]: @ai:claude-opus-4.6 | 2026-02-10 | ins | proposed`,
         '    @ai:claude-opus-4.6 2026-02-10: Added greeting target',
       ].join('\n')
     );
@@ -125,7 +125,7 @@ describe('handleListOpenThreads', () => {
     expect(data).toHaveLength(1);
 
     const entry = data[0];
-    expect(entry.change_id).toBe('ct-3');
+    expect(entry.change_id).toBe('cn-3');
     expect(entry.author).toBe('@ai:claude-opus-4.6');
     expect(entry.date).toBe('2026-02-10');
     expect(entry.type).toBe('ins');
@@ -139,9 +139,9 @@ describe('handleListOpenThreads', () => {
     await fs.writeFile(
       filePath,
       [
-        'The {~~quick~>slow~~}[^ct-1] fox.',
+        'The {~~quick~>slow~~}[^cn-1] fox.',
         '',
-        `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+        `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
         `    @ai:claude-opus-4.6 ${TODAY}: Speed correction`,
         `    request-changes: @human:bob ${TODAY} "Needs more context"`,
       ].join('\n')
@@ -164,9 +164,9 @@ describe('handleListOpenThreads', () => {
     await fs.writeFile(
       filePath,
       [
-        'The {~~old~>new~~}[^ct-1] text.',
+        'The {~~old~>new~~}[^cn-1] text.',
         '',
-        `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+        `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
         `    @ai:claude-opus-4.6 ${TODAY}: Improve clarity`,
         `    @human:alice ${TODAY}: I agree with this change`,
         `    @human:bob ${TODAY}: Looks good to me`,
@@ -193,16 +193,16 @@ describe('handleListOpenThreads', () => {
   it('applies default limit of 25 when omitted', async () => {
     const subDir = path.join(tmpDir, 'many');
     await fs.mkdir(subDir, { recursive: true });
-    const trackedHeader = '<!-- ctrcks.com/v1: tracked -->\n';
+    const trackedHeader = '<!-- changedown.com/v1: tracked -->\n';
     for (let i = 0; i < 30; i++) {
       const filePath = path.join(subDir, `doc-${i}.md`);
       await fs.writeFile(
         filePath,
         trackedHeader +
           [
-            `Doc ${i} {~~old~>new~~}[^ct-1]`,
+            `Doc ${i} {~~old~>new~~}[^cn-1]`,
             '',
-            `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+            `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
             `    @ai:claude-opus-4.6 ${TODAY}: Change ${i}`,
           ].join('\n')
       );
@@ -224,16 +224,16 @@ describe('handleListOpenThreads', () => {
   it('honors explicit limit when provided', async () => {
     const subDir = path.join(tmpDir, 'limit-test');
     await fs.mkdir(subDir, { recursive: true });
-    const trackedHeader = '<!-- ctrcks.com/v1: tracked -->\n';
+    const trackedHeader = '<!-- changedown.com/v1: tracked -->\n';
     for (let i = 0; i < 10; i++) {
       const filePath = path.join(subDir, `f${i}.md`);
       await fs.writeFile(
         filePath,
         trackedHeader +
           [
-            `F ${i} {~~a~>b~~}[^ct-1]`,
+            `F ${i} {~~a~>b~~}[^cn-1]`,
             '',
-            `[^ct-1]: @ai | ${TODAY} | sub | proposed`,
+            `[^cn-1]: @ai | ${TODAY} | sub | proposed`,
           ].join('\n')
       );
     }
@@ -313,16 +313,16 @@ describe('handleListOpenThreads', () => {
   it('directory: aggregates proposed changes from multiple tracked files', async () => {
     const subDir = path.join(tmpDir, 'docs');
     await fs.mkdir(subDir, { recursive: true });
-    const trackedHeader = '<!-- ctrcks.com/v1: tracked -->\n';
+    const trackedHeader = '<!-- changedown.com/v1: tracked -->\n';
     const file1 = path.join(subDir, 'a.md');
     const file2 = path.join(subDir, 'b.md');
     await fs.writeFile(
       file1,
       trackedHeader +
         [
-          'Doc A {~~old~>new~~}[^ct-1] text.',
+          'Doc A {~~old~>new~~}[^cn-1] text.',
           '',
-          `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+          `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
           `    @ai:claude-opus-4.6 ${TODAY}: Change in A`,
         ].join('\n')
     );
@@ -330,9 +330,9 @@ describe('handleListOpenThreads', () => {
       file2,
       trackedHeader +
         [
-          'Doc B {++added++}[^ct-1] text.',
+          'Doc B {++added++}[^cn-1] text.',
           '',
-          `[^ct-1]: @human:alice | ${TODAY} | ins | proposed`,
+          `[^cn-1]: @human:alice | ${TODAY} | ins | proposed`,
           `    @human:alice ${TODAY}: Change in B`,
         ].join('\n')
     );
@@ -356,12 +356,12 @@ describe('handleListOpenThreads', () => {
   it('directory: skips untracked .md files (no tracking header)', async () => {
     const subDir = path.join(tmpDir, 'mixed');
     await fs.mkdir(subDir, { recursive: true });
-    const trackedHeader = '<!-- ctrcks.com/v1: tracked -->\n';
+    const trackedHeader = '<!-- changedown.com/v1: tracked -->\n';
     const trackedFile = path.join(subDir, 'tracked.md');
     const untrackedFile = path.join(subDir, 'untracked.md');
     await fs.writeFile(
       trackedFile,
-      trackedHeader + 'Tracked {~~x~>y~~}[^ct-1].\n\n[^ct-1]: @ai | ' + TODAY + ' | sub | proposed\n'
+      trackedHeader + 'Tracked {~~x~>y~~}[^cn-1].\n\n[^cn-1]: @ai | ' + TODAY + ' | sub | proposed\n'
     );
     await fs.writeFile(untrackedFile, '# No header\nPlain markdown.\n');
 
@@ -382,11 +382,11 @@ describe('handleListOpenThreads', () => {
     await fs.writeFile(
       filePath,
       [
-        'Some {~~old~>new~~}[^ct-1] and {--x--}[^ct-2].',
+        'Some {~~old~>new~~}[^cn-1] and {--x--}[^cn-2].',
         '',
-        `[^ct-1]: @ai | ${TODAY} | sub | proposed`,
+        `[^cn-1]: @ai | ${TODAY} | sub | proposed`,
         '',
-        `[^ct-2]: @ai | ${TODAY} | del | accepted`,
+        `[^cn-2]: @ai | ${TODAY} | del | accepted`,
       ].join('\n')
     );
 
@@ -399,7 +399,7 @@ describe('handleListOpenThreads', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data).toHaveLength(1);
-    expect(data[0].change_id).toBe('ct-1');
+    expect(data[0].change_id).toBe('cn-1');
     expect(data[0].status).toBe('proposed');
   });
 
@@ -408,11 +408,11 @@ describe('handleListOpenThreads', () => {
     await fs.writeFile(
       filePath,
       [
-        'Some {~~old~>new~~}[^ct-1] and {--x--}[^ct-2].',
+        'Some {~~old~>new~~}[^cn-1] and {--x--}[^cn-2].',
         '',
-        `[^ct-1]: @ai | ${TODAY} | sub | proposed`,
+        `[^cn-1]: @ai | ${TODAY} | sub | proposed`,
         '',
-        `[^ct-2]: @ai | ${TODAY} | del | accepted`,
+        `[^cn-2]: @ai | ${TODAY} | del | accepted`,
       ].join('\n')
     );
 
@@ -425,7 +425,7 @@ describe('handleListOpenThreads', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data).toHaveLength(1);
-    expect(data[0].change_id).toBe('ct-2');
+    expect(data[0].change_id).toBe('cn-2');
     expect(data[0].status).toBe('accepted');
   });
 
@@ -434,11 +434,11 @@ describe('handleListOpenThreads', () => {
     await fs.writeFile(
       filePath,
       [
-        'A {~~a~>b~~}[^ct-1] B {--x--}[^ct-2] C.',
+        'A {~~a~>b~~}[^cn-1] B {--x--}[^cn-2] C.',
         '',
-        `[^ct-1]: @ai | ${TODAY} | sub | proposed`,
+        `[^cn-1]: @ai | ${TODAY} | sub | proposed`,
         '',
-        `[^ct-2]: @ai | ${TODAY} | del | rejected`,
+        `[^cn-2]: @ai | ${TODAY} | del | rejected`,
       ].join('\n')
     );
 
@@ -452,13 +452,13 @@ describe('handleListOpenThreads', () => {
     const data = JSON.parse(result.content[0].text);
     expect(data).toHaveLength(2);
     const ids = data.map((d: { change_id: string }) => d.change_id).sort();
-    expect(ids).toEqual(['ct-1', 'ct-2']);
+    expect(ids).toEqual(['cn-1', 'cn-2']);
   });
 
   it('directory with no matching changes: returns empty array', async () => {
     const subDir = path.join(tmpDir, 'empty');
     await fs.mkdir(subDir, { recursive: true });
-    const trackedHeader = '<!-- ctrcks.com/v1: tracked -->\n';
+    const trackedHeader = '<!-- changedown.com/v1: tracked -->\n';
     await fs.writeFile(path.join(subDir, 'nodata.md'), trackedHeader + '# No changes\n');
 
     const result = await handleListOpenThreads(
@@ -474,25 +474,25 @@ describe('handleListOpenThreads', () => {
 
   it('regression: no duplicate change_id when file has all five change types plus grouped change', async () => {
     // Fixture structure from plugin trial (section 2.3): all five types + footnote refs + grouped dotted IDs.
-    // Historically list_open_threads returned duplicate entries (ct-4, ct-5, ct-6 twice); this guards against regression.
-    const trackedHeader = '<!-- ctrcks.com/v1: tracked -->\n';
+    // Historically list_open_threads returned duplicate entries (cn-4, cn-5, cn-6 twice); this guards against regression.
+    const trackedHeader = '<!-- changedown.com/v1: tracked -->\n';
     const filePath = path.join(tmpDir, 'all-types-and-group.md');
     await fs.writeFile(
       filePath,
       trackedHeader +
         [
-          'Intro {~~sub~>substitution~~}[^ct-1] and {++insertion++}[^ct-2] and {--deletion--}[^ct-3].',
-          '{==highlight==}[^ct-4]{>>comment<<}[^ct-5].',
-          'Grouped: {~~a~>b~~}[^ct-6.1] and {~~c~>d~~}[^ct-6.2].',
+          'Intro {~~sub~>substitution~~}[^cn-1] and {++insertion++}[^cn-2] and {--deletion--}[^cn-3].',
+          '{==highlight==}[^cn-4]{>>comment<<}[^cn-5].',
+          'Grouped: {~~a~>b~~}[^cn-6.1] and {~~c~>d~~}[^cn-6.2].',
           '',
-          `[^ct-1]: @ai | ${TODAY} | sub | proposed`,
-          `[^ct-2]: @ai | ${TODAY} | ins | proposed`,
-          `[^ct-3]: @ai | ${TODAY} | del | proposed`,
-          `[^ct-4]: @ai | ${TODAY} | highlight | proposed`,
-          `[^ct-5]: @ai | ${TODAY} | comment | proposed`,
-          `[^ct-6.1]: @ai | ${TODAY} | sub | proposed`,
-          `[^ct-6.2]: @ai | ${TODAY} | sub | proposed`,
-          `[^ct-6]: @ai | ${TODAY} | group | proposed`,
+          `[^cn-1]: @ai | ${TODAY} | sub | proposed`,
+          `[^cn-2]: @ai | ${TODAY} | ins | proposed`,
+          `[^cn-3]: @ai | ${TODAY} | del | proposed`,
+          `[^cn-4]: @ai | ${TODAY} | highlight | proposed`,
+          `[^cn-5]: @ai | ${TODAY} | comment | proposed`,
+          `[^cn-6.1]: @ai | ${TODAY} | sub | proposed`,
+          `[^cn-6.2]: @ai | ${TODAY} | sub | proposed`,
+          `[^cn-6]: @ai | ${TODAY} | group | proposed`,
         ].join('\n')
     );
 

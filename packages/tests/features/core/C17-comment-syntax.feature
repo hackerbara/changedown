@@ -44,33 +44,33 @@ Feature: Comment syntax — language-aware sidecar annotations
   # --- wrapLineComment ---
 
   Scenario: Wrap deletion in Python
-    When I wrap "x = 1" as deletion with tag "ct-1" for language "#"
-    Then the wrapped line is "# - x = 1  # ct-1"
+    When I wrap "x = 1" as deletion with tag "cn-1" for language "#"
+    Then the wrapped line is "# - x = 1  # cn-1"
 
   Scenario: Wrap insertion in Python
-    When I wrap "y = 2" as insertion with tag "ct-3" for language "#"
-    Then the wrapped line is "y = 2  # ct-3"
+    When I wrap "y = 2" as insertion with tag "cn-3" for language "#"
+    Then the wrapped line is "y = 2  # cn-3"
 
   Scenario: Wrap deletion in TypeScript
-    When I wrap "const x = 1;" as deletion with tag "ct-2" for language "//"
-    Then the wrapped line is "// - const x = 1;  // ct-2"
+    When I wrap "const x = 1;" as deletion with tag "cn-2" for language "//"
+    Then the wrapped line is "// - const x = 1;  // cn-2"
 
   Scenario: Wrap preserves indentation for deletion
-    When I wrap "    x = 1" as deletion with tag "ct-5" for language "#"
-    Then the wrapped line is "    # - x = 1  # ct-5"
+    When I wrap "    x = 1" as deletion with tag "cn-5" for language "#"
+    Then the wrapped line is "    # - x = 1  # cn-5"
 
   # --- stripLineComment ---
 
   Scenario: Strip deletion line in Python
-    When I strip "# - x = 1  # ct-1" with prefix "#"
+    When I strip "# - x = 1  # cn-1" with prefix "#"
     Then the stripped code is "x = 1"
-    And the stripped tag is "ct-1"
+    And the stripped tag is "cn-1"
     And the stripped line is a deletion
 
   Scenario: Strip insertion line in Python
-    When I strip "y = 2  # ct-3" with prefix "#"
+    When I strip "y = 2  # cn-3" with prefix "#"
     Then the stripped code is "y = 2"
-    And the stripped tag is "ct-3"
+    And the stripped tag is "cn-3"
     And the stripped line is not a deletion
 
   Scenario: Strip returns null for line without sc tag
@@ -78,8 +78,8 @@ Feature: Comment syntax — language-aware sidecar annotations
     Then the strip result is null
 
   Scenario: Strip handles dotted sc IDs
-    When I strip "y = 2  # ct-17.3" with prefix "#"
-    Then the stripped tag is "ct-17.3"
+    When I strip "y = 2  # cn-17.3" with prefix "#"
+    Then the stripped tag is "cn-17.3"
     And the stripped line is not a deletion
 
   # --- Additional comment syntax gap coverage ---
@@ -89,25 +89,25 @@ Feature: Comment syntax — language-aware sidecar annotations
     Then the comment prefix is "#"
 
   Scenario: Wrap insertion in TypeScript
-    When I wrap "const y = 2;" as insertion with tag "ct-4" for language "//"
-    Then the wrapped line is "const y = 2;  // ct-4"
+    When I wrap "const y = 2;" as insertion with tag "cn-4" for language "//"
+    Then the wrapped line is "const y = 2;  // cn-4"
 
   Scenario: Wrap preserves indentation for insertion
-    When I wrap "    y = 2" as insertion with tag "ct-6" for language "#"
-    Then the wrapped line is "    y = 2  # ct-6"
+    When I wrap "    y = 2" as insertion with tag "cn-6" for language "#"
+    Then the wrapped line is "    y = 2  # cn-6"
 
   Scenario: Wrap preserves tab indentation for deletion in TypeScript
-    When I wrap "\tconst x = 1;" as deletion with tag "ct-7" for language "//"
-    Then the wrapped line is "\t// - const x = 1;  // ct-7"
+    When I wrap "\tconst x = 1;" as deletion with tag "cn-7" for language "//"
+    Then the wrapped line is "\t// - const x = 1;  // cn-7"
 
   Scenario: Wrap preserves tab indentation for insertion in TypeScript
-    When I wrap "\tconst y = 2;" as insertion with tag "ct-8" for language "//"
-    Then the wrapped line is "\tconst y = 2;  // ct-8"
+    When I wrap "\tconst y = 2;" as insertion with tag "cn-8" for language "//"
+    Then the wrapped line is "\tconst y = 2;  // cn-8"
 
   Scenario: Strip indented deletion in TypeScript
-    When I strip "    // - const x = 1;  // ct-5" with prefix "//"
+    When I strip "    // - const x = 1;  // cn-5" with prefix "//"
     Then the stripped code is "const x = 1;"
-    And the stripped tag is "ct-5"
+    And the stripped tag is "cn-5"
     And the stripped line is a deletion
 
   Scenario: Strip returns null for regular comment without sc tag

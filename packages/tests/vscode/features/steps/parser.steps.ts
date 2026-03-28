@@ -1,12 +1,12 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { CriticMarkupParser, ChangeType, ChangeStatus, VirtualDocument } from '@changetracks/core';
-import type { PendingOverlay, ChangeNode } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+import { CriticMarkupParser, ChangeType, ChangeStatus, VirtualDocument } from '@changedown/core';
+import type { PendingOverlay, ChangeNode } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 
-// Extend ChangeTracksWorld with parser state for @fast tier scenarios
+// Extend ChangeDownWorld with parser state for @fast tier scenarios
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         parser?: CriticMarkupParser;
         inputText?: string;
         parseResult?: VirtualDocument;
@@ -23,12 +23,12 @@ const TYPE_MAP: Record<string, ChangeType> = {
     comment: ChangeType.Comment,
 };
 
-Given('the input text is:', async function (this: ChangeTracksWorld, docString: string) {
+Given('the input text is:', async function (this: ChangeDownWorld, docString: string) {
     this.parser = new CriticMarkupParser();
     this.inputText = docString;
 });
 
-When('I parse the text', async function (this: ChangeTracksWorld) {
+When('I parse the text', async function (this: ChangeDownWorld) {
     assert.ok(this.parser, 'Parser not initialized — call "the input text is:" first');
     assert.ok(this.inputText !== undefined, 'Input text not set');
     this.parseResult = this.parser.parse(this.inputText);
@@ -36,20 +36,20 @@ When('I parse the text', async function (this: ChangeTracksWorld) {
 
 // ─── fromOverlayOnly (OVL1) ───────────────────────────────────────────
 
-Given('a pending overlay with range {int} to {int} and text {string}', async function (this: ChangeTracksWorld, start: number, end: number, text: string) {
+Given('a pending overlay with range {int} to {int} and text {string}', async function (this: ChangeDownWorld, start: number, end: number, text: string) {
     this.overlayState = { range: { start, end }, text, type: 'insertion' };
 });
 
-Given('a pending overlay with range {int} to {int} and text {string} and scId {string}', async function (this: ChangeTracksWorld, start: number, end: number, text: string, scId: string) {
+Given('a pending overlay with range {int} to {int} and text {string} and scId {string}', async function (this: ChangeDownWorld, start: number, end: number, text: string, scId: string) {
     this.overlayState = { range: { start, end }, text, type: 'insertion', scId };
 });
 
-When('I create a VirtualDocument from overlay only', async function (this: ChangeTracksWorld) {
+When('I create a VirtualDocument from overlay only', async function (this: ChangeDownWorld) {
     assert.ok(this.overlayState, 'Overlay not set — call "a pending overlay with..." first');
     this.parseResult = VirtualDocument.fromOverlayOnly(this.overlayState);
 });
 
-Then('the parser finds {int} change(s)', async function (this: ChangeTracksWorld, count: number) {
+Then('the parser finds {int} change(s)', async function (this: ChangeDownWorld, count: number) {
     assert.ok(this.parseResult, 'No parse result — call "I parse the text" first');
     const changes = this.parseResult.getChanges();
     assert.strictEqual(
@@ -59,7 +59,7 @@ Then('the parser finds {int} change(s)', async function (this: ChangeTracksWorld
     );
 });
 
-Then('change {int} is a/an {word}', async function (this: ChangeTracksWorld, index: number, typeName: string) {
+Then('change {int} is a/an {word}', async function (this: ChangeDownWorld, index: number, typeName: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -73,7 +73,7 @@ Then('change {int} is a/an {word}', async function (this: ChangeTracksWorld, ind
     );
 });
 
-Then('change {int} has modified text {string}', async function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has modified text {string}', async function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -81,7 +81,7 @@ Then('change {int} has modified text {string}', async function (this: ChangeTrac
     assert.strictEqual(change.modifiedText, expected);
 });
 
-Then('change {int} has original text {string}', async function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has original text {string}', async function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -89,7 +89,7 @@ Then('change {int} has original text {string}', async function (this: ChangeTrac
     assert.strictEqual(change.originalText, expected);
 });
 
-Then('change {int} has modified text:', async function (this: ChangeTracksWorld, index: number, docString: string) {
+Then('change {int} has modified text:', async function (this: ChangeDownWorld, index: number, docString: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -97,7 +97,7 @@ Then('change {int} has modified text:', async function (this: ChangeTracksWorld,
     assert.strictEqual(change.modifiedText, docString);
 });
 
-Then('change {int} has original text:', async function (this: ChangeTracksWorld, index: number, docString: string) {
+Then('change {int} has original text:', async function (this: ChangeDownWorld, index: number, docString: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -105,7 +105,7 @@ Then('change {int} has original text:', async function (this: ChangeTracksWorld,
     assert.strictEqual(change.originalText, docString);
 });
 
-Then('change {int} has comment:', async function (this: ChangeTracksWorld, index: number, docString: string) {
+Then('change {int} has comment:', async function (this: ChangeDownWorld, index: number, docString: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -113,7 +113,7 @@ Then('change {int} has comment:', async function (this: ChangeTracksWorld, index
     assert.strictEqual(change.metadata?.comment, docString);
 });
 
-Then('no changes are found', async function (this: ChangeTracksWorld) {
+Then('no changes are found', async function (this: ChangeDownWorld) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     assert.strictEqual(changes.length, 0, `Expected 0 changes, got ${changes.length}`);
@@ -121,7 +121,7 @@ Then('no changes are found', async function (this: ChangeTracksWorld) {
 
 // --- Range assertions (offset-based) ---
 
-Then('change {int} range starts at {int}', async function (this: ChangeTracksWorld, index: number, offset: number) {
+Then('change {int} range starts at {int}', async function (this: ChangeDownWorld, index: number, offset: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -129,7 +129,7 @@ Then('change {int} range starts at {int}', async function (this: ChangeTracksWor
     assert.strictEqual(change.range.start, offset, `Change ${index}: expected range.start ${offset}, got ${change.range.start}`);
 });
 
-Then('change {int} range ends at {int}', async function (this: ChangeTracksWorld, index: number, offset: number) {
+Then('change {int} range ends at {int}', async function (this: ChangeDownWorld, index: number, offset: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -137,7 +137,7 @@ Then('change {int} range ends at {int}', async function (this: ChangeTracksWorld
     assert.strictEqual(change.range.end, offset, `Change ${index}: expected range.end ${offset}, got ${change.range.end}`);
 });
 
-Then('change {int} content range starts at {int}', async function (this: ChangeTracksWorld, index: number, offset: number) {
+Then('change {int} content range starts at {int}', async function (this: ChangeDownWorld, index: number, offset: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -145,7 +145,7 @@ Then('change {int} content range starts at {int}', async function (this: ChangeT
     assert.strictEqual(change.contentRange.start, offset, `Change ${index}: expected contentRange.start ${offset}, got ${change.contentRange.start}`);
 });
 
-Then('change {int} content range ends at {int}', async function (this: ChangeTracksWorld, index: number, offset: number) {
+Then('change {int} content range ends at {int}', async function (this: ChangeDownWorld, index: number, offset: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -153,7 +153,7 @@ Then('change {int} content range ends at {int}', async function (this: ChangeTra
     assert.strictEqual(change.contentRange.end, offset, `Change ${index}: expected contentRange.end ${offset}, got ${change.contentRange.end}`);
 });
 
-Then('change {int} original range starts at {int}', async function (this: ChangeTracksWorld, index: number, offset: number) {
+Then('change {int} original range starts at {int}', async function (this: ChangeDownWorld, index: number, offset: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -162,7 +162,7 @@ Then('change {int} original range starts at {int}', async function (this: Change
     assert.strictEqual(change.originalRange.start, offset, `Change ${index}: expected originalRange.start ${offset}, got ${change.originalRange.start}`);
 });
 
-Then('change {int} original range ends at {int}', async function (this: ChangeTracksWorld, index: number, offset: number) {
+Then('change {int} original range ends at {int}', async function (this: ChangeDownWorld, index: number, offset: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -171,7 +171,7 @@ Then('change {int} original range ends at {int}', async function (this: ChangeTr
     assert.strictEqual(change.originalRange.end, offset, `Change ${index}: expected originalRange.end ${offset}, got ${change.originalRange.end}`);
 });
 
-Then('change {int} modified range starts at {int}', async function (this: ChangeTracksWorld, index: number, offset: number) {
+Then('change {int} modified range starts at {int}', async function (this: ChangeDownWorld, index: number, offset: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -180,7 +180,7 @@ Then('change {int} modified range starts at {int}', async function (this: Change
     assert.strictEqual(change.modifiedRange.start, offset, `Change ${index}: expected modifiedRange.start ${offset}, got ${change.modifiedRange.start}`);
 });
 
-Then('change {int} modified range ends at {int}', async function (this: ChangeTracksWorld, index: number, offset: number) {
+Then('change {int} modified range ends at {int}', async function (this: ChangeDownWorld, index: number, offset: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -191,7 +191,7 @@ Then('change {int} modified range ends at {int}', async function (this: ChangeTr
 
 // --- Metadata assertions ---
 
-Then('change {int} has comment {string}', async function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('change {int} has comment {string}', async function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -199,7 +199,7 @@ Then('change {int} has comment {string}', async function (this: ChangeTracksWorl
     assert.strictEqual(change.metadata?.comment, expected, `Change ${index}: expected comment "${expected}", got "${change.metadata?.comment}"`);
 });
 
-Then('change {int} has no comment', async function (this: ChangeTracksWorld, index: number) {
+Then('change {int} has no comment', async function (this: ChangeDownWorld, index: number) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -215,7 +215,7 @@ const STATUS_MAP: Record<string, ChangeStatus> = {
     rejected: ChangeStatus.Rejected,
 };
 
-Then('change {int} has status {string}', async function (this: ChangeTracksWorld, index: number, statusName: string) {
+Then('change {int} has status {string}', async function (this: ChangeDownWorld, index: number, statusName: string) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     const change = changes[index - 1];
@@ -225,7 +225,7 @@ Then('change {int} has status {string}', async function (this: ChangeTracksWorld
     assert.strictEqual(change.status, expectedStatus, `Change ${index}: expected status "${expectedStatus}", got "${change.status}"`);
 });
 
-Then('all changes have status {string}', async function (this: ChangeTracksWorld, statusName: string) {
+Then('all changes have status {string}', async function (this: ChangeDownWorld, statusName: string) {
     assert.ok(this.parseResult, 'No parse result');
     const expectedStatus = STATUS_MAP[statusName.toLowerCase()];
     assert.ok(expectedStatus, `Unknown status "${statusName}". Valid: ${Object.keys(STATUS_MAP).join(', ')}`);
@@ -238,7 +238,7 @@ Then('all changes have status {string}', async function (this: ChangeTracksWorld
 
 // --- ID uniqueness ---
 
-Then('all changes have unique IDs', async function (this: ChangeTracksWorld) {
+Then('all changes have unique IDs', async function (this: ChangeDownWorld) {
     assert.ok(this.parseResult, 'No parse result');
     const changes = this.parseResult.getChanges();
     assert.ok(changes.length > 0, 'No changes to check');

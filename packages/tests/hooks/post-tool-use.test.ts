@@ -2,16 +2,16 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handlePostToolUse, readPendingEdits } from 'changetracks-hooks/internals';
-import type { HookInput } from 'changetracks-hooks/internals';
+import { handlePostToolUse, readPendingEdits } from 'changedown-hooks/internals';
+import type { HookInput } from 'changedown-hooks/internals';
 
 describe('PostToolUse handler', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-post-'));
-    // Create .changetracks dir with config
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-post-'));
+    // Create .changedown dir with config
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     await fs.writeFile(
       path.join(scDir, 'config.toml'),
@@ -159,7 +159,7 @@ describe('PostToolUse handler', () => {
 
   describe('policy.mode gating', () => {
     it('skips logging in strict mode', async () => {
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(configPath, '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\n', 'utf-8');
       const mdPath = path.join(tmpDir, 'readme.md');
       await fs.writeFile(mdPath, '# Updated', 'utf-8');
@@ -174,7 +174,7 @@ describe('PostToolUse handler', () => {
     });
 
     it('skips logging in permissive mode', async () => {
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(configPath, '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "permissive"\n', 'utf-8');
       const mdPath = path.join(tmpDir, 'readme.md');
       await fs.writeFile(mdPath, '# Updated', 'utf-8');
@@ -189,7 +189,7 @@ describe('PostToolUse handler', () => {
     });
 
     it('logs in safety-net mode', async () => {
-      const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+      const configPath = path.join(tmpDir, '.changedown', 'config.toml');
       await fs.writeFile(configPath, '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "safety-net"\n', 'utf-8');
       const mdPath = path.join(tmpDir, 'readme.md');
       await fs.writeFile(mdPath, 'Some prefix. Updated content. Some suffix.', 'utf-8');
@@ -208,7 +208,7 @@ describe('PostToolUse handler', () => {
     // All tests need safety-net mode to log edits
     beforeEach(async () => {
       await fs.writeFile(
-        path.join(tmpDir, '.changetracks', 'config.toml'),
+        path.join(tmpDir, '.changedown', 'config.toml'),
         '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "safety-net"\n\n[author]\ndefault = "test-agent"\n',
         'utf-8',
       );

@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { loadConfig, DEFAULT_CONFIG } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { loadConfig, DEFAULT_CONFIG } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 
 /**
  * Tests that invalid or malformed config files degrade gracefully to defaults
@@ -14,17 +14,17 @@ import { ConfigResolver } from '@changetracks/mcp/internals';
 let tmpDir: string;
 
 async function setupTmpDir(): Promise<string> {
-  return fs.mkdtemp(path.join(os.tmpdir(), 'ct-config-degrade-'));
+  return fs.mkdtemp(path.join(os.tmpdir(), 'cn-config-degrade-'));
 }
 
 async function writeConfig(dir: string, content: string): Promise<void> {
-  const configDir = path.join(dir, '.changetracks');
+  const configDir = path.join(dir, '.changedown');
   await fs.mkdir(configDir, { recursive: true });
   await fs.writeFile(path.join(configDir, 'config.toml'), content, 'utf-8');
 }
 
 async function ensureConfigDirExists(dir: string): Promise<void> {
-  await fs.mkdir(path.join(dir, '.changetracks'), { recursive: true });
+  await fs.mkdir(path.join(dir, '.changedown'), { recursive: true });
 }
 
 describe('Config Graceful Degradation', () => {
@@ -40,7 +40,7 @@ describe('Config Graceful Degradation', () => {
 
   describe('loadConfig()', () => {
     it('uses defaults when config file does not exist', async () => {
-      // No .changetracks/config.toml created — just a bare temp dir
+      // No .changedown/config.toml created — just a bare temp dir
       const config = await loadConfig(tmpDir);
       expect(config).toEqual(DEFAULT_CONFIG);
     });
@@ -271,7 +271,7 @@ enforcement = "nonsense"
       await fs.writeFile(dummyFile, '# test', 'utf-8');
 
       const { config } = await resolver.forFile(dummyFile);
-      // ConfigResolver uses its own FALLBACK_CONFIG when no .changetracks/ exists
+      // ConfigResolver uses its own FALLBACK_CONFIG when no .changedown/ exists
       expect(config.tracking.include).toEqual(['**/*.md']);
       expect(config.hooks.enforcement).toBe('warn');
       expect(config.matching.mode).toBe('normalized');

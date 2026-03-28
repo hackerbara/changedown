@@ -31,7 +31,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { execSync } from 'child_process';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import { getOrCreateInstance } from './world';
 import {
     launchWithJourneyFixture,
@@ -45,7 +45,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const TEMP_DIR = os.tmpdir();
-const PANEL_STATE_PATH = path.join(TEMP_DIR, 'changetracks-test-state.json');
+const PANEL_STATE_PATH = path.join(TEMP_DIR, 'changedown-test-state.json');
 const FIXTURE_NAME = 'tracking-mode-test.md';
 const CRITICMARKUP_FIXTURE = 'journey-save-criticmarkup.md';
 
@@ -67,7 +67,7 @@ interface PanelState {
     timestamp: number;
 }
 
-async function queryEB3PanelState(world: ChangeTracksWorld): Promise<PanelState | null> {
+async function queryEB3PanelState(world: ChangeDownWorld): Promise<PanelState | null> {
     assert.ok(world.page, 'Page not available');
 
     // Dismiss any open dialogs/palettes before querying
@@ -75,7 +75,7 @@ async function queryEB3PanelState(world: ChangeTracksWorld): Promise<PanelState 
     await world.page!.waitForTimeout(200);
 
     const beforeTs = Date.now();
-    await executeCommand(world.page!, 'ChangeTracks: Test Query Panel State');
+    await executeCommand(world.page!, 'ChangeDown: Test Query Panel State');
     await world.page!.waitForTimeout(600);
     try {
         if (!fs.existsSync(PANEL_STATE_PATH)) return null;
@@ -105,15 +105,15 @@ function readCriticMarkupFixtureContent(): string {
  * Runs in the extension host process — reliable, unlike globalThis.monaco
  * which is often undefined in the Playwright renderer.
  */
-async function setEditorContent(world: ChangeTracksWorld, content: string): Promise<void> {
+async function setEditorContent(world: ChangeDownWorld, content: string): Promise<void> {
     assert.ok(world.page, 'Page not available');
-    const inputPath = path.join(os.tmpdir(), 'changetracks-test-reset-input.json');
+    const inputPath = path.join(os.tmpdir(), 'changedown-test-reset-input.json');
     fs.writeFileSync(inputPath, JSON.stringify({ content }));
-    await executeCommandViaBridge(world.page!, 'ChangeTracks: Test Reset Document');
+    await executeCommandViaBridge(world.page!, 'ChangeDown: Test Reset Document');
     await world.page!.waitForTimeout(500);
 
     // Verify reset succeeded
-    const resultPath = path.join(os.tmpdir(), 'changetracks-test-reset.json');
+    const resultPath = path.join(os.tmpdir(), 'changedown-test-reset.json');
     if (fs.existsSync(resultPath)) {
         const result = JSON.parse(fs.readFileSync(resultPath, 'utf8'));
         assert.ok(result.ok, `Failed to reset document: ${result.error}`);
@@ -157,7 +157,7 @@ async function ensureCleanEditorFocus(page: import('playwright').Page): Promise<
 Given(
     'a blank file-backed markdown document',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         // Get or reuse the shared VS Code instance
         this.instance = await getOrCreateInstance(
             FIXTURE_NAME,
@@ -183,7 +183,7 @@ Given(
         // Ensure tracking is OFF for blank file scenarios
         const state = await queryEB3PanelState(this);
         if (state && state.trackingEnabled) {
-            await executeCommand(this.page!, 'ChangeTracks: Toggle Tracking');
+            await executeCommand(this.page!, 'ChangeDown: Toggle Tracking');
             await this.page!.waitForTimeout(500);
         }
     }
@@ -192,7 +192,7 @@ Given(
 Given(
     'a blank file-backed markdown document with tracking header',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         this.instance = await getOrCreateInstance(
             FIXTURE_NAME,
             (name) => launchWithJourneyFixture(name)
@@ -203,7 +203,7 @@ Given(
         await resetFixtureFile();
         await ensureCleanEditorFocus(this.page!);
 
-        const trackedContent = '<!-- ctrcks.com/v1: tracked -->\n# Test Document\n\nSome content here.\n';
+        const trackedContent = '<!-- changedown.com/v1: tracked -->\n# Test Document\n\nSome content here.\n';
         await setEditorContent(this, trackedContent);
 
         // Save so on-disk and model are in sync
@@ -215,7 +215,7 @@ Given(
 Given(
     'a tracked file-backed document with CriticMarkup',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         this.instance = await getOrCreateInstance(
             FIXTURE_NAME,
             (name) => launchWithJourneyFixture(name)
@@ -237,7 +237,7 @@ Given(
         // Ensure tracking is ON (file has tracking header)
         const state = await queryEB3PanelState(this);
         if (state && !state.trackingEnabled) {
-            await executeCommand(this.page!, 'ChangeTracks: Toggle Tracking');
+            await executeCommand(this.page!, 'ChangeDown: Toggle Tracking');
             await this.page!.waitForTimeout(500);
         }
     }
@@ -253,7 +253,7 @@ Given(
 Then(
     'the panel shows tracking is enabled',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         const state = await queryEB3PanelState(this);
         assert.ok(state, 'Failed to query panel state');
         assert.strictEqual(state.trackingEnabled, true,
@@ -264,7 +264,7 @@ Then(
 Then(
     'the panel shows tracking is disabled',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         const state = await queryEB3PanelState(this);
         assert.ok(state, 'Failed to query panel state');
         assert.strictEqual(state.trackingEnabled, false,
@@ -275,7 +275,7 @@ Then(
 Then(
     'the controller state shows tracking is enabled',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         const state = await queryEB3PanelState(this);
         assert.ok(state, 'Failed to query controller state');
         assert.strictEqual(state.trackingEnabled, true,
@@ -286,7 +286,7 @@ Then(
 Then(
     'the controller state shows tracking is disabled',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         const state = await queryEB3PanelState(this);
         assert.ok(state, 'Failed to query controller state');
         assert.strictEqual(state.trackingEnabled, false,
@@ -301,7 +301,7 @@ Then(
 When(
     'I press Cmd+S to save',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Dismiss any overlays and focus editor before saving
         await ensureCleanEditorFocus(this.page!);
@@ -318,16 +318,16 @@ When(
 When(
     'I add a comment {string} highlighting {string} in the document',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, commentText: string, targetText: string) {
+    async function (this: ChangeDownWorld, commentText: string, targetText: string) {
         assert.ok(this.page, 'Page not available');
         const replacement = `{==${targetText}==}{>> ${commentText} <<}`;
 
         // Use _testSelectAndReplace bridge: find target text and replace atomically
-        const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-replace-input.json');
-        const resultPath = path.join(os.tmpdir(), 'changetracks-test-select-replace.json');
+        const inputPath = path.join(os.tmpdir(), 'changedown-test-select-replace-input.json');
+        const resultPath = path.join(os.tmpdir(), 'changedown-test-select-replace.json');
         try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
         fs.writeFileSync(inputPath, JSON.stringify({ target: targetText, replacement }));
-        await executeCommandViaBridge(this.page!, 'changetracks._testSelectAndReplace');
+        await executeCommandViaBridge(this.page!, 'changedown._testSelectAndReplace');
 
         // Poll for result
         const deadline = Date.now() + 5000;
@@ -350,14 +350,14 @@ When(
 When(
     'I add a footnoted comment {string} highlighting {string} in the document',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, commentText: string, targetText: string) {
+    async function (this: ChangeDownWorld, commentText: string, targetText: string) {
         assert.ok(this.page, 'Page not available');
-        const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-replace-input.json');
-        const resultPath = path.join(os.tmpdir(), 'changetracks-test-select-replace.json');
+        const inputPath = path.join(os.tmpdir(), 'changedown-test-select-replace-input.json');
+        const resultPath = path.join(os.tmpdir(), 'changedown-test-select-replace.json');
 
-        // Read current document text to compute next ct-N ID
+        // Read current document text to compute next cn-N ID
         const text = await getDocumentText(this.page!, { instanceId: this.instance?.instanceId });
-        const idMatches = text.match(/\[\^ct-(\d+)\]/g);
+        const idMatches = text.match(/\[\^cn-(\d+)\]/g);
         let maxId = 0;
         if (idMatches) {
             for (const m of idMatches) {
@@ -365,7 +365,7 @@ When(
                 if (n > maxId) maxId = n;
             }
         }
-        const newId = `ct-${maxId + 1}`;
+        const newId = `cn-${maxId + 1}`;
 
         const inlinePart = `{==${targetText}==}{>> ${commentText} <<}[^${newId}]`;
         const footnote = `\n\n[^${newId}]: @human | 2026-03-01 | comment | proposed\n    ${commentText}`;
@@ -373,7 +373,7 @@ When(
         // Edit 1: Replace the target text with inline markup
         try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
         fs.writeFileSync(inputPath, JSON.stringify({ target: targetText, replacement: inlinePart }));
-        await executeCommandViaBridge(this.page!, 'changetracks._testSelectAndReplace');
+        await executeCommandViaBridge(this.page!, 'changedown._testSelectAndReplace');
 
         // Poll for edit 1 result
         let deadline = Date.now() + 5000;
@@ -404,7 +404,7 @@ When(
             endCharacter: lastLineText.length,
             replacement: footnote,
         }));
-        await executeCommandViaBridge(this.page!, 'changetracks._testSelectAndReplace');
+        await executeCommandViaBridge(this.page!, 'changedown._testSelectAndReplace');
 
         // Poll for edit 2 result
         deadline = Date.now() + 5000;
@@ -432,7 +432,7 @@ When(
 When(
     'an external tool appends CriticMarkup to the file:',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, docString: string) {
+    async function (this: ChangeDownWorld, docString: string) {
         const current = fs.readFileSync(FIXTURE_FILE_PATH, 'utf8');
         fs.writeFileSync(FIXTURE_FILE_PATH, current + '\n' + docString + '\n', 'utf8');
     }
@@ -441,7 +441,7 @@ When(
 When(
     'an external tool writes a full change with footnote to the file:',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, docString: string) {
+    async function (this: ChangeDownWorld, docString: string) {
         const current = fs.readFileSync(FIXTURE_FILE_PATH, 'utf8');
         fs.writeFileSync(FIXTURE_FILE_PATH, current + '\n' + docString + '\n', 'utf8');
     }
@@ -450,9 +450,9 @@ When(
 When(
     'an external tool appends a new change before footnotes:',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, docString: string) {
+    async function (this: ChangeDownWorld, docString: string) {
         const current = fs.readFileSync(FIXTURE_FILE_PATH, 'utf8');
-        const footnoteIdx = current.indexOf('\n[^ct-');
+        const footnoteIdx = current.indexOf('\n[^cn-');
         if (footnoteIdx === -1) {
             fs.writeFileSync(FIXTURE_FILE_PATH, current + '\n' + docString + '\n', 'utf8');
         } else {
@@ -466,7 +466,7 @@ When(
 When(
     'an external tool appends to the footnote section:',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, docString: string) {
+    async function (this: ChangeDownWorld, docString: string) {
         const current = fs.readFileSync(FIXTURE_FILE_PATH, 'utf8');
         fs.writeFileSync(FIXTURE_FILE_PATH, current + '\n' + docString + '\n', 'utf8');
     }
@@ -479,7 +479,7 @@ When(
 When(
     'I wait for external file change to propagate',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Wait for file watcher to detect the change
         await this.page!.waitForTimeout(2000);
@@ -497,7 +497,7 @@ When(
 Then(
     'the live document contains {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, expected: string) {
+    async function (this: ChangeDownWorld, expected: string) {
         assert.ok(this.page, 'Page not available');
         const text = await getDocumentText(this.page!, { instanceId: this.instance?.instanceId });
         assert.ok(text.length > 0, 'getDocumentText returned empty');
@@ -509,7 +509,7 @@ Then(
 Then(
     'the live document does not contain {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, unexpected: string) {
+    async function (this: ChangeDownWorld, unexpected: string) {
         assert.ok(this.page, 'Page not available');
         const text = await getDocumentText(this.page!, { instanceId: this.instance?.instanceId });
         assert.ok(text.length > 0, 'getDocumentText returned empty');
@@ -526,7 +526,7 @@ Then(
 Then(
     'the on-disk file contains {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, expected: string) {
+    async function (this: ChangeDownWorld, expected: string) {
         const content = fs.readFileSync(FIXTURE_FILE_PATH, 'utf8');
         assert.ok(content.length > 0, 'On-disk file content is empty');
         assert.ok(content.includes(expected),
@@ -537,7 +537,7 @@ Then(
 Then(
     'the on-disk file does not contain {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, unexpected: string) {
+    async function (this: ChangeDownWorld, unexpected: string) {
         const content = fs.readFileSync(FIXTURE_FILE_PATH, 'utf8');
         assert.ok(!content.includes(unexpected),
             `On-disk file unexpectedly contains "${unexpected}"`);

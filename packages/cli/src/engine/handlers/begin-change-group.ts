@@ -1,9 +1,9 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { scanMaxCtId } from '@changetracks/core';
+import { scanMaxCnId } from '@changedown/core';
 import { errorResult } from '../shared/error-result.js';
 import { optionalStrArg } from '../args.js';
-import { isFileInScope, type ChangeTracksConfig } from '../config.js';
+import { isFileInScope, type ChangeDownConfig } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
 import { SessionState } from '../state.js';
 
@@ -15,7 +15,7 @@ export const beginChangeGroupTool = {
   name: 'begin_change_group',
   description:
     'Start a logical group of related changes. All subsequent propose_change calls ' +
-    'will receive dotted child IDs (ct-N.M) under this group until end_change_group is called. ' +
+    'will receive dotted child IDs (cn-N.M) under this group until end_change_group is called. ' +
     'Use for refactors, multi-step edits, or cross-file changes that belong together.',
   inputSchema: {
     type: 'object' as const,
@@ -39,13 +39,13 @@ export interface BeginChangeGroupResult {
 }
 
 /**
- * Scans all tracked files in the project for existing `[^ct-N]` IDs
+ * Scans all tracked files in the project for existing `[^cn-N]` IDs
  * and returns the highest parent ID number found. Returns 0 if no IDs
  * exist or the directory is unreadable.
  */
 export async function scanProjectForMaxId(
   projectDir: string,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
 ): Promise<number> {
   let max = 0;
   try {
@@ -56,7 +56,7 @@ export async function scanProjectForMaxId(
       if (!isFileInScope(fullPath, config, projectDir)) continue;
       try {
         const content = await fs.readFile(fullPath, 'utf-8');
-        const fileMax = scanMaxCtId(content);
+        const fileMax = scanMaxCnId(content);
         if (fileMax > max) max = fileMax;
       } catch {
         // Skip directories, binary files, unreadable files

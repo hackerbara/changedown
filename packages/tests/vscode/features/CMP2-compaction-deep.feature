@@ -6,7 +6,7 @@ Feature: CMP2 — Change compaction deep coverage
 
   Background:
     Given I open "compaction-test.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   # ── Compact fully (L2 → L0) ───────────────────────────────
@@ -15,9 +15,9 @@ Feature: CMP2 — Change compaction deep coverage
 
   Scenario: CMP2-01 Compact fully strips footnote but preserves delimiters
     When I navigate to the next change
-    And I execute "ChangeTracks: Compact Change Fully"
+    And I execute "ChangeDown: Compact Change Fully"
     And I wait for changes to load
-    Then the document does not contain "[^ct-1]"
+    Then the document does not contain "[^cn-1]"
     And the document contains "{++quick brown fox++}"
     And the document contains "jumps over the dog"
 
@@ -25,9 +25,9 @@ Feature: CMP2 — Change compaction deep coverage
 
   Scenario: CMP2-02 Compact preserves surrounding text
     When I navigate to the next change
-    And I execute "ChangeTracks: Compact Change"
+    And I execute "ChangeDown: Compact Change"
     And I wait for changes to load
-    Then the document does not contain "[^ct-1]"
+    Then the document does not contain "[^cn-1]"
     And the document contains "{++quick brown fox++}"
     And the document contains "jumps over the dog"
 
@@ -35,12 +35,12 @@ Feature: CMP2 — Change compaction deep coverage
 
   Scenario: CMP2-03 Compact first change then second change
     When I navigate to the next change
-    And I execute "ChangeTracks: Compact Change Fully"
+    And I execute "ChangeDown: Compact Change Fully"
     And I wait for changes to load
     And I navigate to the next change
-    And I execute "ChangeTracks: Compact Change Fully"
+    And I execute "ChangeDown: Compact Change Fully"
     And I wait for changes to load
-    Then the document does not contain "[^ct-1]"
+    Then the document does not contain "[^cn-1]"
     And the document contains "{++quick brown fox++}"
     And the document contains "{++was also added++}"
 
@@ -49,19 +49,19 @@ Feature: CMP2 — Change compaction deep coverage
   Scenario: CMP2-04 Compact on proposed change is blocked
     When I navigate to the next change
     And I navigate to the next change
-    And I execute "ChangeTracks: Compact Change Fully"
+    And I execute "ChangeDown: Compact Change Fully"
     And I wait for changes to load
     Then the document contains "{++was also added++}"
-    And the document contains "[^ct-2]"
+    And the document contains "[^cn-2]"
 
   # ── Level 0 change ──────────────────────────────────────────
 
   @fixture(all-markup-types)
   Scenario: CMP2-05 Compact on Level 0 change (no footnote)
     Given I open "all-markup-types.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
     When I navigate to the next change
-    And I execute "ChangeTracks: Compact Change Fully"
+    And I execute "ChangeDown: Compact Change Fully"
     And I wait for changes to load
     Then the document contains "inserted text"

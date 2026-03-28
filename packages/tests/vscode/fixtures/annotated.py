@@ -6,7 +6,7 @@ def calculate(x, y):
     return x + y
 
 
-# -- ChangeTracks ---
+# -- ChangeDown ---
 # [^sc-1]: ins | pending
 # type: insertion
 # author: git
@@ -17,4 +17,4 @@ def calculate(x, y):
 # author: git
 # timestamp: 2026-02-08T13:00:00Z
 # original: return f"Hello, {name}!"
-# -- ChangeTracks ---
+# -- ChangeDown ---

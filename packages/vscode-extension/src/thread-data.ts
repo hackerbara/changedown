@@ -11,8 +11,8 @@
  * business rules that both production and test code share.
  */
 
-import type { ChangeNode } from '@changetracks/core';
-import { ChangeStatus } from '@changetracks/core';
+import type { ChangeNode } from '@changedown/core';
+import { ChangeStatus } from '@changedown/core';
 import { typeLabel, typeLabelCapitalized } from './visual-semantics';
 
 // ── Pure data types ──────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseOp, type ParsedOp } from '@changetracks/mcp/internals';
+import { parseOp, type ParsedOp } from '@changedown/mcp/internals';
 
 describe('parseOp', () => {
   describe('substitution ({~~old~>new~~})', () => {

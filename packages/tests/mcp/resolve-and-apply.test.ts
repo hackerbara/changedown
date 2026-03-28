@@ -9,8 +9,9 @@ import {
   handleProposeChange,
   handleReadTrackedFile,
   ConfigResolver,
-} from '@changetracks/mcp/internals';
-import type { NormalizedCompactOp, ApplyResult, ChangeTracksConfig } from '@changetracks/mcp/internals';
+  HashlineMismatchError,
+} from '@changedown/mcp/internals';
+import type { NormalizedCompactOp, ApplyResult, ChangeDownConfig } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -215,16 +216,16 @@ describe('applyCompactOp', () => {
     const state = new SessionState();
     const resolved = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, applyConfig);
     const result: ApplyResult = await applyCompactOp(
-      resolved, op, fileContent, fileLines, 'ct-1', 'ai:test', applyConfig,
+      resolved, op, fileContent, fileLines, 'cn-1', 'ai:test', applyConfig,
     );
 
     expect(result.changeType).toBe('sub');
     expect(result.modifiedText).toContain('{~~quick brown~>slow red~~}');
-    expect(result.modifiedText).toContain('[^ct-1]');
+    expect(result.modifiedText).toContain('[^cn-1]');
     expect(result.supersededIds).toHaveLength(0);
     expect(result.settled).toBe(false);
     // Footnote should be appended
-    expect(result.modifiedText).toContain('[^ct-1]:');
+    expect(result.modifiedText).toContain('[^cn-1]:');
   });
 
   it('applies a deletion wrapping the target text', async () => {
@@ -242,17 +243,17 @@ describe('applyCompactOp', () => {
     const state = new SessionState();
     const resolved = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, applyConfig);
     const result: ApplyResult = await applyCompactOp(
-      resolved, op, fileContent, fileLines, 'ct-2', 'ai:test', applyConfig,
+      resolved, op, fileContent, fileLines, 'cn-2', 'ai:test', applyConfig,
     );
 
     expect(result.changeType).toBe('del');
     expect(result.modifiedText).toContain('{--world--}');
-    expect(result.modifiedText).toContain('[^ct-2]');
+    expect(result.modifiedText).toContain('[^cn-2]');
     // Original text around the deletion should still be present
     expect(result.modifiedText).toContain('Hello ');
     expect(result.modifiedText).toContain(', this is a test');
     // Footnote should be appended
-    expect(result.modifiedText).toContain('[^ct-2]:');
+    expect(result.modifiedText).toContain('[^cn-2]:');
   });
 
   it('applies an insertion after the target line', async () => {
@@ -270,19 +271,19 @@ describe('applyCompactOp', () => {
     const state = new SessionState();
     const resolved = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, applyConfig);
     const result: ApplyResult = await applyCompactOp(
-      resolved, op, fileContent, fileLines, 'ct-3', 'ai:test', applyConfig,
+      resolved, op, fileContent, fileLines, 'cn-3', 'ai:test', applyConfig,
     );
 
     expect(result.changeType).toBe('ins');
     expect(result.modifiedText).toContain('{++inserted line++}');
-    expect(result.modifiedText).toContain('[^ct-3]');
+    expect(result.modifiedText).toContain('[^cn-3]');
     // Insertion appears after the first line
     const lines = result.modifiedText.split('\n');
     const insertionLineIdx = lines.findIndex(l => l.includes('{++inserted line++}'));
     const firstLineIdx = lines.findIndex(l => l === 'First line');
     expect(insertionLineIdx).toBeGreaterThan(firstLineIdx);
     // Footnote should be appended
-    expect(result.modifiedText).toContain('[^ct-3]:');
+    expect(result.modifiedText).toContain('[^cn-3]:');
   });
 
   it('applies a whole-line deletion when oldText is empty', async () => {
@@ -300,12 +301,12 @@ describe('applyCompactOp', () => {
     const state = new SessionState();
     const resolved = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, applyConfig);
     const result: ApplyResult = await applyCompactOp(
-      resolved, op, fileContent, fileLines, 'ct-4', 'ai:test', applyConfig,
+      resolved, op, fileContent, fileLines, 'cn-4', 'ai:test', applyConfig,
     );
 
     expect(result.changeType).toBe('del');
     expect(result.modifiedText).toContain('{--Delete this line--}');
-    expect(result.modifiedText).toContain('[^ct-4]');
+    expect(result.modifiedText).toContain('[^cn-4]');
   });
 
   it('applies a level 1 substitution with inline comment instead of footnote', async () => {
@@ -328,7 +329,7 @@ describe('applyCompactOp', () => {
     const state = new SessionState();
     const resolved = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, l1Config);
     const result: ApplyResult = await applyCompactOp(
-      resolved, op, fileContent, fileLines, 'ct-5', '@ai:test', l1Config,
+      resolved, op, fileContent, fileLines, 'cn-5', '@ai:test', l1Config,
     );
 
     expect(result.changeType).toBe('sub');
@@ -336,7 +337,7 @@ describe('applyCompactOp', () => {
     // Level 1: inline comment, not footnote ref
     expect(result.modifiedText).toContain('{>>@ai:test|');
     expect(result.modifiedText).toContain('|sub|proposed<<}');
-    expect(result.modifiedText).not.toContain('[^ct-5]');
+    expect(result.modifiedText).not.toContain('[^cn-5]');
   });
 
   it('applies a comment at the end of the target line', async () => {
@@ -355,14 +356,14 @@ describe('applyCompactOp', () => {
     const state = new SessionState();
     const resolved = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, applyConfig);
     const result: ApplyResult = await applyCompactOp(
-      resolved, op, fileContent, fileLines, 'ct-6', 'ai:test', applyConfig,
+      resolved, op, fileContent, fileLines, 'cn-6', 'ai:test', applyConfig,
     );
 
     expect(result.changeType).toBe('comment');
     expect(result.modifiedText).toContain('{>>This needs clarification<<}');
-    expect(result.modifiedText).toContain('[^ct-6]');
+    expect(result.modifiedText).toContain('[^cn-6]');
     // Comment should appear at end of the line
-    expect(result.modifiedText).toContain('This is a line with content{>>This needs clarification<<}[^ct-6]');
+    expect(result.modifiedText).toContain('This is a line with content{>>This needs clarification<<}[^cn-6]');
   });
 
   it('applies a highlight wrapping the matched sub-line text', async () => {
@@ -380,13 +381,13 @@ describe('applyCompactOp', () => {
     const state = new SessionState();
     const resolved = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, applyConfig);
     const result: ApplyResult = await applyCompactOp(
-      resolved, op, fileContent, fileLines, 'ct-7', 'ai:test', applyConfig,
+      resolved, op, fileContent, fileLines, 'cn-7', 'ai:test', applyConfig,
     );
 
     expect(result.changeType).toBe('highlight');
     expect(result.modifiedText).toContain('{==quick brown fox==}');
-    expect(result.modifiedText).toContain('[^ct-7]');
-    expect(result.modifiedText).toContain('[^ct-7]:');
+    expect(result.modifiedText).toContain('[^cn-7]');
+    expect(result.modifiedText).toContain('[^cn-7]:');
   });
 
   it('settle-on-demand: settles accepted markup when target line overlaps it', async () => {
@@ -395,15 +396,15 @@ describe('applyCompactOp', () => {
     // The target line contains the accepted {~~...~~} markup itself.
     const fileContent = [
       '# Document',
-      '{~~old text~>new text~~}[^ct-1] extra words',
+      '{~~old text~>new text~~}[^cn-1] extra words',
       'Another line',
       '',
-      '[^ct-1]: @ai:test | 2026-01-01 | sub | accepted',
+      '[^cn-1]: @ai:test | 2026-01-01 | sub | accepted',
     ].join('\n');
 
     const fileLines = fileContent.split('\n');
     // Line 2 contains the accepted markup + "extra words"
-    const hash = computeLineHash(1, '{~~old text~>new text~~}[^ct-1] extra words', fileLines);
+    const hash = computeLineHash(1, '{~~old text~>new text~~}[^cn-1] extra words', fileLines);
     const op: NormalizedCompactOp = {
       at: `2:${hash}`,
       type: 'del',
@@ -414,7 +415,7 @@ describe('applyCompactOp', () => {
     const state = new SessionState();
     const resolved = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, applyConfig);
     const result: ApplyResult = await applyCompactOp(
-      resolved, op, fileContent, fileLines, 'ct-8', 'ai:test', applyConfig,
+      resolved, op, fileContent, fileLines, 'cn-8', 'ai:test', applyConfig,
     );
 
     // The result should have the deletion markup
@@ -439,7 +440,7 @@ describe('applyCompactOp', () => {
     const state = new SessionState();
     const resolved = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, applyConfig);
     const result: ApplyResult = await applyCompactOp(
-      resolved, op, fileContent, fileLines, 'ct-9', 'ai:test', applyConfig,
+      resolved, op, fileContent, fileLines, 'cn-9', 'ai:test', applyConfig,
     );
 
     expect(result.affectedStartLine).toBe(2);
@@ -474,13 +475,13 @@ describe('resolveAndApply convenience wrapper', () => {
     };
 
     const result = await resolveAndApply(
-      op, fileContent, fileLines, state, FILE_PATH, fullConfig, 'ct-1', 'ai:test',
+      op, fileContent, fileLines, state, FILE_PATH, fullConfig, 'cn-1', 'ai:test',
     );
 
     expect(result.changeType).toBe('sub');
     expect(result.modifiedText).toContain('{~~quick brown~>slow red~~}');
-    expect(result.modifiedText).toContain('[^ct-1]');
-    expect(result.modifiedText).toContain('[^ct-1]:');
+    expect(result.modifiedText).toContain('[^cn-1]');
+    expect(result.modifiedText).toContain('[^cn-1]:');
     expect(result.supersededIds).toHaveLength(0);
     expect(result.settled).toBe(false);
   });
@@ -511,12 +512,12 @@ describe('resolveAndApply convenience wrapper', () => {
     };
 
     const result = await resolveAndApply(
-      op, fileContent, fileLines, state, FILE_PATH, fullConfig, 'ct-1', 'ai:test',
+      op, fileContent, fileLines, state, FILE_PATH, fullConfig, 'cn-1', 'ai:test',
     );
 
     expect(result.changeType).toBe('ins');
     expect(result.modifiedText).toContain('{++New paragraph after first.++}');
-    expect(result.modifiedText).toContain('[^ct-1]');
+    expect(result.modifiedText).toContain('[^cn-1]');
     // Insertion goes after the target line
     const lines = result.modifiedText.split('\n');
     const targetIdx = lines.findIndex(l => l === 'First paragraph text.');
@@ -527,7 +528,7 @@ describe('resolveAndApply convenience wrapper', () => {
 
 // ── Integration tests: full handler flow ─────────────────────────────────────
 
-const integrationConfig: ChangeTracksConfig = {
+const integrationConfig: ChangeDownConfig = {
   tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
   author: { default: 'ai:test', enforcement: 'optional' },
   hooks: { enforcement: 'warn', exclude: [] },
@@ -549,7 +550,7 @@ describe('settled-view batch (friction report scenario)', () => {
   let state: SessionState;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-test-'));
     resolver = await createTestResolver(tmpDir, integrationConfig);
     state = new SessionState();
   });
@@ -561,7 +562,7 @@ describe('settled-view batch (friction report scenario)', () => {
   it('batch with settled-view coordinates succeeds after prior proposals', async () => {
     // Step 1: Create a tracked file
     const filePath = path.join(tmpDir, 'test.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\n# Title\n\nLine A\n\nLine B\n\nLine C', 'utf-8');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\n# Title\n\nLine A\n\nLine B\n\nLine C', 'utf-8');
 
     // Step 2: Read initial content and get hashes
     const initialContent = await fs.readFile(filePath, 'utf-8');
@@ -629,7 +630,7 @@ describe('auto-relocation in compact single', () => {
   let state: SessionState;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-test-'));
     resolver = await createTestResolver(tmpDir, integrationConfig);
     state = new SessionState();
   });
@@ -640,7 +641,7 @@ describe('auto-relocation in compact single', () => {
 
   it('auto-relocates drifted line in single compact proposal', async () => {
     const filePath = path.join(tmpDir, 'test.md');
-    const content = '<!-- ctrcks.com/v1: tracked -->\n# Title\nNew line\nTarget line';
+    const content = '<!-- changedown.com/v1: tracked -->\n# Title\nNew line\nTarget line';
     await fs.writeFile(filePath, content, 'utf-8');
 
     // Hash of "Target line" at its true position (line index 3, 1-indexed line 4),
@@ -672,7 +673,7 @@ describe('committed-view batch (spec test case 2)', () => {
   let state: SessionState;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-committed-batch-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-committed-batch-'));
     resolver = await createTestResolver(tmpDir, integrationConfig);
     state = new SessionState();
   });
@@ -686,7 +687,7 @@ describe('committed-view batch (spec test case 2)', () => {
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(
       filePath,
-      '<!-- ctrcks.com/v1: tracked -->\n# Title\n\nLine A\n\nLine B\n\nLine C',
+      '<!-- changedown.com/v1: tracked -->\n# Title\n\nLine A\n\nLine B\n\nLine C',
       'utf-8',
     );
 
@@ -751,7 +752,7 @@ describe('classic mode no-hashline-leakage (spec test case 4)', () => {
   let tmpDir: string;
   let state: SessionState;
 
-  const classicConfig: ChangeTracksConfig = {
+  const classicConfig: ChangeDownConfig = {
     tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
     author: { default: 'ai:test', enforcement: 'optional' },
     hooks: { enforcement: 'warn', exclude: [] },
@@ -764,7 +765,7 @@ describe('classic mode no-hashline-leakage (spec test case 4)', () => {
   };
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-classic-noleak-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-classic-noleak-'));
     state = new SessionState();
   });
 
@@ -775,7 +776,7 @@ describe('classic mode no-hashline-leakage (spec test case 4)', () => {
   it('classic mode with hashline.enabled=false rejects start_line/start_hash params cleanly', async () => {
     const resolver = await createTestResolver(tmpDir, classicConfig);
     const filePath = path.join(tmpDir, 'test.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\nSome text here.\n', 'utf-8');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\nSome text here.\n', 'utf-8');
 
     // Submit propose_change with old_text/new_text AND extra start_line/start_hash params.
     // With hashline.enabled=false, the handler must reject hashline params — not silently process.
@@ -812,7 +813,7 @@ describe('settle-on-demand in batch (spec test case 5)', () => {
   let state: SessionState;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-settle-batch-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-settle-batch-'));
     resolver = await createTestResolver(tmpDir, integrationConfig);
     state = new SessionState();
   });
@@ -825,12 +826,12 @@ describe('settle-on-demand in batch (spec test case 5)', () => {
     // Create a file with an already-accepted substitution on one of the target lines
     const filePath = path.join(tmpDir, 'test.md');
     const fileContent = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Document',
-      '{~~old text~>new text~~}[^ct-1] extra words',
+      '{~~old text~>new text~~}[^cn-1] extra words',
       'Clean line',
       '',
-      '[^ct-1]: @ai:test | 2026-01-01 | sub | accepted',
+      '[^cn-1]: @ai:test | 2026-01-01 | sub | accepted',
     ].join('\n');
     await fs.writeFile(filePath, fileContent, 'utf-8');
 
@@ -872,7 +873,7 @@ describe('batch atomicity regression (spec regression 1)', () => {
   let state: SessionState;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-atomicity-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-atomicity-'));
     resolver = await createTestResolver(tmpDir, integrationConfig);
     state = new SessionState();
   });
@@ -883,7 +884,7 @@ describe('batch atomicity regression (spec regression 1)', () => {
 
   it('file is unchanged when any op in the batch fails (atomic rollback)', async () => {
     const filePath = path.join(tmpDir, 'test.md');
-    const fileContent = '<!-- ctrcks.com/v1: tracked -->\nFirst line\nSecond line\nThird line';
+    const fileContent = '<!-- changedown.com/v1: tracked -->\nFirst line\nSecond line\nThird line';
     await fs.writeFile(filePath, fileContent, 'utf-8');
 
     const lines = fileContent.split('\n');
@@ -927,7 +928,7 @@ describe('batch delta tracking regression (spec regression 2)', () => {
   let state: SessionState;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-delta-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-delta-'));
     resolver = await createTestResolver(tmpDir, integrationConfig);
     state = new SessionState();
   });
@@ -941,7 +942,7 @@ describe('batch delta tracking regression (spec regression 2)', () => {
     // Op 2 targets line 3 using its original pre-batch hash.
     // Server must track the line delta so op 2 resolves to the correct (shifted) position.
     const filePath = path.join(tmpDir, 'test.md');
-    const fileContent = '<!-- ctrcks.com/v1: tracked -->\nAlpha line\nBeta line';
+    const fileContent = '<!-- changedown.com/v1: tracked -->\nAlpha line\nBeta line';
     await fs.writeFile(filePath, fileContent, 'utf-8');
 
     const lines = fileContent.split('\n');
@@ -978,7 +979,7 @@ describe('change grouping regression (spec regression 3)', () => {
   let state: SessionState;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-grouping-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-grouping-'));
     resolver = await createTestResolver(tmpDir, integrationConfig);
     state = new SessionState();
   });
@@ -989,7 +990,7 @@ describe('change grouping regression (spec regression 3)', () => {
 
   it('2-change compact batch produces dotted child IDs and a group parent footnote', async () => {
     const filePath = path.join(tmpDir, 'test.md');
-    const fileContent = '<!-- ctrcks.com/v1: tracked -->\nFirst sentence.\nSecond sentence.';
+    const fileContent = '<!-- changedown.com/v1: tracked -->\nFirst sentence.\nSecond sentence.';
     await fs.writeFile(filePath, fileContent, 'utf-8');
 
     const lines = fileContent.split('\n');
@@ -1017,12 +1018,12 @@ describe('change grouping regression (spec regression 3)', () => {
 
     const finalContent = await fs.readFile(filePath, 'utf-8');
 
-    // Dotted child IDs must appear in file (ct-N.1 and ct-N.2)
-    expect(finalContent).toMatch(/\[\^ct-\d+\.1\]/);
-    expect(finalContent).toMatch(/\[\^ct-\d+\.2\]/);
+    // Dotted child IDs must appear in file (cn-N.1 and cn-N.2)
+    expect(finalContent).toMatch(/\[\^cn-\d+\.1\]/);
+    expect(finalContent).toMatch(/\[\^cn-\d+\.2\]/);
 
-    // Group parent footnote must appear (ct-N: ... group ... proposed)
-    expect(finalContent).toMatch(/\[\^ct-\d+\]: @ai:test .* group .* proposed/);
+    // Group parent footnote must appear (cn-N: ... group ... proposed)
+    expect(finalContent).toMatch(/\[\^cn-\d+\]: @ai:test .* group .* proposed/);
 
     // Both substitutions must be present
     expect(finalContent).toContain('Edited first.');
@@ -1038,7 +1039,7 @@ describe('session hash mismatch falls through to Stage 3 auto-relocation', () =>
   let state: SessionState;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-stage2-fallthrough-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-stage2-fallthrough-'));
     resolver = await createTestResolver(tmpDir, integrationConfig);
     state = new SessionState();
   });
@@ -1052,7 +1053,7 @@ describe('session hash mismatch falls through to Stage 3 auto-relocation', () =>
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(
       filePath,
-      '<!-- ctrcks.com/v1: tracked -->\n# Title\n\nLine A\n\nLine B\n\nTarget line',
+      '<!-- changedown.com/v1: tracked -->\n# Title\n\nLine A\n\nLine B\n\nTarget line',
       'utf-8',
     );
 
@@ -1115,5 +1116,511 @@ describe('session hash mismatch falls through to Stage 3 auto-relocation', () =>
     expect(secondResult.isError).toBeFalsy();
     const finalContent = await fs.readFile(filePath, 'utf-8');
     expect(finalContent).toContain('Modified target');
+  });
+});
+
+// ── Stage 3.5a: findUniqueMatch fallback ──────────────────────────────────────
+
+describe('Stage 3.5a — findUniqueMatch fallback', () => {
+  it('resolves stale hash via oldText for substitution ops', () => {
+    const fileLines = [
+      'Line one',
+      'Line two',
+      'Line three',
+      'Line four',
+      'The unique target phrase for testing',
+      'Line six',
+      'Line seven',
+      'Line eight',
+      'Line nine',
+      'Line ten',
+    ];
+    const fileContent = fileLines.join('\n');
+
+    // Use a WRONG hash for line 5 — simulates stale coordinates
+    const op = makeOp('5:ff', {
+      type: 'sub',
+      oldText: 'The unique target phrase for testing',
+      newText: 'Replaced text',
+    });
+
+    const state = new SessionState();
+    const result = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, config);
+
+    // Should resolve to line 5 via findUniqueMatch fallback
+    expect(result.rawStartLine).toBe(5);
+    expect(result.rawEndLine).toBe(5);
+    expect(result.content).toBe('The unique target phrase for testing');
+  });
+
+  it('resolves stale hash via oldText for deletion ops', () => {
+    const fileLines = [
+      'First line',
+      'Second line',
+      'Delete this specific content here',
+      'Fourth line',
+    ];
+    const fileContent = fileLines.join('\n');
+
+    const op = makeOp('3:ff', {
+      type: 'del',
+      oldText: 'Delete this specific content here',
+      newText: '',
+    });
+
+    const state = new SessionState();
+    const result = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, config);
+
+    expect(result.rawStartLine).toBe(3);
+  });
+
+  it('falls through when oldText is ambiguous', () => {
+    const fileLines = [
+      'Duplicate text',
+      'Some other line',
+      'Duplicate text',  // same as line 1 — ambiguous
+    ];
+    const fileContent = fileLines.join('\n');
+
+    const op = makeOp('1:ff', {
+      type: 'sub',
+      oldText: 'Duplicate text',
+      newText: 'Changed',
+    });
+
+    const state = new SessionState();
+    // Should throw (3.5a fails due to ambiguity, 3.5b also fails — both lines have same hash)
+    expect(() =>
+      resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, config)
+    ).toThrow();
+  });
+
+  it('skips Stage 3.5a for insertions (empty oldText)', () => {
+    const fileLines = ['Line one', 'Line two'];
+    const fileContent = fileLines.join('\n');
+
+    const op = makeOp('1:ff', { type: 'ins', oldText: '', newText: 'inserted' });
+
+    const state = new SessionState();
+    // Should throw (no oldText for 3.5a, 3.5b also fails — hash 'ff' not in committed view)
+    expect(() =>
+      resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, config)
+    ).toThrow();
+  });
+});
+
+// ── Stage 3.5b: committed/settled view hash resolution ────────────────────────
+
+describe('Stage 3.5b — committed/settled view hash resolution', () => {
+  it('resolves stale insertion coordinate via committed view', () => {
+    // File with a pending substitution proposal at line 3.
+    // The {~~old~>new~~} CriticMarkup is on ONE raw line.
+    // Committed view strips it, restoring 'Original line three'.
+    const fileLines = [
+      'Line one',
+      'Line two',
+      '{~~Original line three~>Changed line three~~}[^cn-1]',
+      'Line four',
+      'Line five',
+    ];
+    const fileContent = fileLines.join('\n') + '\n\n[^cn-1]: @ai:test | 2026-03-25 | sub | proposed';
+
+    const state = new SessionState();
+    state.recordAfterRead(FILE_PATH, 'raw', [], 'original-content');
+
+    // Committed view strips the pending proposal:
+    // committed lines = ['Line one', 'Line two', 'Original line three', 'Line four', 'Line five']
+    // Agent wants to target 'Line four' which is at committed line 4, raw line 4.
+    // Compute hash of 'Line four' in the committed view context.
+    const committedLines = ['Line one', 'Line two', 'Original line three', 'Line four', 'Line five'];
+    const committedHash = computeLineHash(3, 'Line four', committedLines);
+
+    const op = makeOp(`4:${committedHash}`, {
+      type: 'ins',
+      oldText: '',
+      newText: 'Inserted content',
+    });
+
+    const result = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, config);
+
+    // Committed line 4 ('Line four') maps to raw line 4
+    expect(result.rawStartLine).toBe(4);
+  });
+
+  it('resolves coordinates from settled view agent via computeSettledView', () => {
+    const fileLines = [
+      'Line one',
+      '{++Inserted line++}[^cn-1]',
+      'Line two',
+    ];
+    const fileContent = fileLines.join('\n') + '\n\n[^cn-1]: @ai:test | 2026-03-25 | ins | proposed';
+
+    const state = new SessionState();
+    state.recordAfterRead(FILE_PATH, 'settled', [], 'original-content');
+
+    // In settled view, the insertion is accepted: "Inserted line" is at settled line 2.
+    // Hash of "Inserted line" in the settled view context.
+    const settledLines = ['Line one', 'Inserted line', 'Line two'];
+    const settledHash = computeLineHash(1, 'Inserted line', settledLines);
+
+    const op = makeOp(`2:${settledHash}`, { type: 'ins', oldText: '', newText: 'more' });
+
+    const result = resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, config);
+    // Should resolve to raw line 2 (where {++Inserted line++} is)
+    expect(result.rawStartLine).toBe(2);
+  });
+
+  it('throws hospitable error when all stages fail', () => {
+    const fileLines = ['Line one', 'Line two'];
+    const fileContent = fileLines.join('\n');
+
+    const state = new SessionState();
+    // 'ff' is a valid 2-hex-char hash that won't match any line in this simple file
+    // (real hashes of 'Line one' and 'Line two' are deterministic but not 'ff')
+    const op = makeOp('1:ff', { type: 'ins', oldText: '', newText: 'inserted' });
+
+    expect(() =>
+      resolveCoordinates(op, fileContent, fileLines, state, FILE_PATH, config)
+    ).toThrow(HashlineMismatchError);
+  });
+});
+
+// ── Chained proposal recovery — integration ───────────────────────────────────
+
+describe('Chained proposal recovery — integration', () => {
+  let tmpDir: string;
+  let resolver: ConfigResolver;
+  let state: SessionState;
+
+  const compactConfig: ChangeDownConfig = {
+    tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
+    author: { default: 'ai:test', enforcement: 'optional' },
+    hooks: { enforcement: 'warn', exclude: [] },
+    matching: { mode: 'normalized' },
+    hashline: { enabled: true, auto_remap: true },
+    settlement: { auto_on_approve: true, auto_on_reject: true },
+    policy: { mode: 'safety-net', creation_tracking: 'footnote' },
+    protocol: { mode: 'compact', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
+    reasoning: { propose: { human: false, agent: false }, review: { human: false, agent: false } },
+  } as unknown as ChangeDownConfig;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-chained-'));
+    resolver = await createTestResolver(tmpDir, compactConfig);
+    state = new SessionState();
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('second substitution succeeds after first shifts lines', async () => {
+    const header = '<!-- changedown.com/v1: tracked -->';
+    const contentLines = Array.from({ length: 20 }, (_, i) => `Unique line number ${i + 1} with distinct content`);
+    const allLines = [header, ...contentLines];
+    const filePath = path.join(tmpDir, 'test.md');
+    await fs.writeFile(filePath, allLines.join('\n'));
+
+    const readResult = await handleReadTrackedFile(
+      { file: filePath, view: 'raw' },
+      resolver, state,
+    );
+    expect(readResult.isError).toBeFalsy();
+
+    // First proposal: substitute content line 5 (allLines index 5, 1-indexed line 6)
+    const firstResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: '6:' + computeLineHash(5, contentLines[4], allLines),
+        op: `{~~${contentLines[4]}~>Replaced line 5~~}`,
+        author: 'ai:test',
+      },
+      resolver, state,
+    );
+    expect(firstResult.isError).toBeFalsy();
+
+    // Second proposal: substitute content line 15 using ORIGINAL coordinates
+    const secondResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: '16:' + computeLineHash(15, contentLines[14], allLines),
+        op: `{~~${contentLines[14]}~>Replaced line 15~~}`,
+        author: 'ai:test',
+      },
+      resolver, state,
+    );
+    expect(secondResult.isError).toBeFalsy();
+  });
+
+  it('insertion after prior proposal succeeds via committed view', async () => {
+    const header = '<!-- changedown.com/v1: tracked -->';
+    const contentLines = Array.from({ length: 10 }, (_, i) => `Distinct content line ${i + 1}`);
+    const allLines = [header, ...contentLines];
+    const filePath = path.join(tmpDir, 'test.md');
+    await fs.writeFile(filePath, allLines.join('\n'));
+
+    const readResult = await handleReadTrackedFile(
+      { file: filePath, view: 'raw' },
+      resolver, state,
+    );
+    expect(readResult.isError).toBeFalsy();
+
+    // First proposal: substitute content line 3 (allLines index 3, 1-indexed line 4)
+    const firstResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: '4:' + computeLineHash(3, contentLines[2], allLines),
+        op: `{~~${contentLines[2]}~>Changed line 3~~}`,
+        author: 'ai:test',
+      },
+      resolver, state,
+    );
+    expect(firstResult.isError).toBeFalsy();
+
+    // Second proposal: insert after content line 7 using ORIGINAL coordinates
+    const secondResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: '8:' + computeLineHash(7, contentLines[6], allLines),
+        op: '{++Newly inserted line++}',
+        author: 'ai:test',
+      },
+      resolver, state,
+    );
+    expect(secondResult.isError).toBeFalsy();
+  });
+});
+
+// ── Chained proposal recovery — edge cases ────────────────────────────────────
+
+describe('Chained proposal recovery — edge cases', () => {
+  let tmpDir: string;
+  let resolver: ConfigResolver;
+  let state: SessionState;
+
+  const compactConfig: ChangeDownConfig = {
+    tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
+    author: { default: 'ai:test', enforcement: 'optional' },
+    hooks: { enforcement: 'warn', exclude: [] },
+    matching: { mode: 'normalized' },
+    hashline: { enabled: true, auto_remap: true },
+    settlement: { auto_on_approve: true, auto_on_reject: true },
+    policy: { mode: 'safety-net', creation_tracking: 'footnote' },
+    protocol: { mode: 'compact', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
+    reasoning: { propose: { human: false, agent: false }, review: { human: false, agent: false } },
+  } as unknown as ChangeDownConfig;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-edge-'));
+    resolver = await createTestResolver(tmpDir, compactConfig);
+    state = new SessionState();
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('multi-agent: second agent resolves after first agent writes', async () => {
+    const header = '<!-- changedown.com/v1: tracked -->';
+    const contentLines = Array.from({ length: 15 }, (_, i) => `Agent test line ${i + 1} unique`);
+    const allLines = [header, ...contentLines];
+    const filePath = path.join(tmpDir, 'test.md');
+    await fs.writeFile(filePath, allLines.join('\n'));
+
+    // Agent A reads
+    await handleReadTrackedFile({ file: filePath, view: 'raw' }, resolver, state);
+
+    // Agent A proposes (modifies content line 3 = allLines index 3, 1-indexed line 4)
+    const agentAResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: '4:' + computeLineHash(3, contentLines[2], allLines),
+        op: `{~~${contentLines[2]}~>Agent A edit~~}`,
+        author: 'ai:agent-a',
+      },
+      resolver, state,
+    );
+    expect(agentAResult.isError).toBeFalsy();
+
+    // Agent B proposes using coordinates from the SAME read (stale)
+    const agentBResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: '11:' + computeLineHash(10, contentLines[9], allLines),
+        op: `{~~${contentLines[9]}~>Agent B edit~~}`,
+        author: 'ai:agent-b',
+      },
+      resolver, state,
+    );
+    expect(agentBResult.isError).toBeFalsy();
+  });
+
+  it('raw view with unsettled accepted markup: sub succeeds via Stage 3.5a', async () => {
+    // File has accepted-but-unsettled CriticMarkup (manual settlement mode)
+    const content = [
+      '<!-- changedown.com/v1: tracked -->',
+      'Line one',
+      '{++Accepted insertion++}[^cn-1]',
+      'Line three unique text here',
+      'Line four',
+    ].join('\n') + '\n\n[^cn-1]: @ai:test | 2026-03-25 | ins | accepted';
+
+    const manualSettleConfig = {
+      ...compactConfig,
+      settlement: { auto_on_approve: false, auto_on_reject: false },
+    };
+
+    const filePath = path.join(tmpDir, 'test.md');
+    await fs.writeFile(filePath, content);
+    const manualResolver = await createTestResolver(tmpDir, manualSettleConfig);
+
+    await handleReadTrackedFile({ file: filePath, view: 'raw' }, manualResolver, state);
+
+    // First proposal modifies line 2 ("Line one" is at allLines index 1)
+    const lines = content.split('\n');
+    const firstResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: '2:' + computeLineHash(1, lines[1], lines),
+        op: '{~~Line one~>Modified line one~~}',
+        author: 'ai:test',
+      },
+      manualResolver, state,
+    );
+    expect(firstResult.isError).toBeFalsy();
+
+    // Sub targeting "Line three unique text here" (index 3, 1-indexed line 4) via Stage 3.5a
+    const subResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: '4:' + computeLineHash(3, lines[3], lines),
+        op: '{~~Line three unique text here~>Changed line three~~}',
+        author: 'ai:test',
+      },
+      manualResolver, state,
+    );
+    expect(subResult.isError).toBeFalsy();
+  });
+
+  it('raw view with unsettled accepted markup: insertion with truly stale hash produces hospitable error', async () => {
+    // Build a file where the stale hash for an insertion target cannot be resolved:
+    // use a hash that was never valid for any line in any view.
+    const content = [
+      '<!-- changedown.com/v1: tracked -->',
+      'Line one',
+      '{++Accepted insertion++}[^cn-1]',
+      'Line three unique text here',
+      'Line four',
+    ].join('\n') + '\n\n[^cn-1]: @ai:test | 2026-03-25 | ins | accepted';
+
+    const manualSettleConfig = {
+      ...compactConfig,
+      settlement: { auto_on_approve: false, auto_on_reject: false },
+    };
+
+    const filePath = path.join(tmpDir, 'test.md');
+    await fs.writeFile(filePath, content);
+    const manualResolver = await createTestResolver(tmpDir, manualSettleConfig);
+
+    await handleReadTrackedFile({ file: filePath, view: 'raw' }, manualResolver, state);
+
+    const lines = content.split('\n');
+    // First proposal modifies line 2 ("Line one" is at index 1, 1-indexed line 2)
+    await handleProposeChange(
+      {
+        file: filePath,
+        at: '2:' + computeLineHash(1, lines[1], lines),
+        op: '{~~Line one~>Modified line one~~}',
+        author: 'ai:test',
+      },
+      manualResolver, state,
+    );
+
+    // Insertion with a completely fabricated hash ('ff') that won't match any
+    // line in raw, committed, or settled view — all stages fail → hospitable error
+    const insResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: '5:ff',
+        op: '{++Inserted after line four++}',
+        author: 'ai:test',
+      },
+      manualResolver, state,
+    );
+    // Should produce an error (hospitable re-read guidance)
+    expect(insResult.isError).toBeTruthy();
+  });
+});
+
+// ── propose_batch compact mode — Stage 3.5 fallback ──────────────────────────
+
+describe('propose_batch compact mode — Stage 3.5 fallback', () => {
+  let tmpDir: string;
+  let resolver: ConfigResolver;
+  let state: SessionState;
+
+  const compactConfig: ChangeDownConfig = {
+    tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
+    author: { default: 'ai:test', enforcement: 'optional' },
+    hooks: { enforcement: 'warn', exclude: [] },
+    matching: { mode: 'normalized' },
+    hashline: { enabled: true, auto_remap: true },
+    settlement: { auto_on_approve: true, auto_on_reject: true },
+    policy: { mode: 'safety-net', creation_tracking: 'footnote' },
+    protocol: { mode: 'compact', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
+    reasoning: { propose: { human: false, agent: false }, review: { human: false, agent: false } },
+  } as unknown as ChangeDownConfig;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-batch-35-'));
+    resolver = await createTestResolver(tmpDir, compactConfig);
+    state = new SessionState();
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('batch op with stale hash resolves via findUniqueMatch', async () => {
+    const header = '<!-- changedown.com/v1: tracked -->';
+    const contentLines = Array.from({ length: 10 }, (_, i) => `Batch test line ${i + 1} unique`);
+    const allLines = [header, ...contentLines];
+    const filePath = path.join(tmpDir, 'test.md');
+    await fs.writeFile(filePath, allLines.join('\n'));
+
+    await handleReadTrackedFile({ file: filePath, view: 'raw' }, resolver, state);
+
+    // First: single propose_change modifies content line 2 (allLines index 2, 1-indexed line 3)
+    const firstResult = await handleProposeChange(
+      {
+        file: filePath,
+        at: '3:' + computeLineHash(2, contentLines[1], allLines),
+        op: `{~~${contentLines[1]}~>Changed line 2~~}`,
+        author: 'ai:test',
+      },
+      resolver, state,
+    );
+    expect(firstResult.isError).toBeFalsy();
+
+    // Then: propose_batch with stale coordinates targeting content lines 5 and 8
+    // Use handleProposeChange with changes array (batch mode)
+    const batchResult = await handleProposeChange(
+      {
+        file: filePath,
+        author: 'ai:test',
+        changes: [
+          {
+            at: '6:' + computeLineHash(5, contentLines[4], allLines),
+            op: `{~~${contentLines[4]}~>Batch changed line 5~~}`,
+          },
+          {
+            at: '9:' + computeLineHash(8, contentLines[7], allLines),
+            op: `{~~${contentLines[7]}~>Batch changed line 8~~}`,
+          },
+        ],
+      },
+      resolver, state,
+    );
+    expect(batchResult.isError).toBeFalsy();
   });
 });

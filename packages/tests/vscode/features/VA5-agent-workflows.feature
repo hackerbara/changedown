@@ -15,36 +15,36 @@ Feature: Human-Agent Collaboration Workflows
       """
       # Design Document
 
-      The API uses {~~REST~>GraphQL~~}[^ct-1] for queries.
-      Auth: {~~API keys~>OAuth2~~}[^ct-2].
-      {++Rate limiting added.++}[^ct-3]
-      {--Legacy XML support removed.--}[^ct-4]
-      {~~sync~>async~~}[^ct-5] processing.
+      The API uses {~~REST~>GraphQL~~}[^cn-1] for queries.
+      Auth: {~~API keys~>OAuth2~~}[^cn-2].
+      {++Rate limiting added.++}[^cn-3]
+      {--Legacy XML support removed.--}[^cn-4]
+      {~~sync~>async~~}[^cn-5] processing.
 
-      [^ct-1]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | sub | proposed
           GraphQL gives query flexibility
-      [^ct-2]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-2]: @ai:claude | 2026-02-10 | sub | proposed
           OAuth2 is more secure
-      [^ct-3]: @ai:claude | 2026-02-10 | ins | proposed
+      [^cn-3]: @ai:claude | 2026-02-10 | ins | proposed
           Rate limiting prevents abuse
-      [^ct-4]: @ai:claude | 2026-02-10 | del | proposed
+      [^cn-4]: @ai:claude | 2026-02-10 | del | proposed
           XML is legacy, remove it
-      [^ct-5]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-5]: @ai:claude | 2026-02-10 | sub | proposed
           Async improves throughput
       """
-    # Accept ct-1 (REST → GraphQL): offset 35 is inside {~~REST...
+    # Accept cn-1 (REST → GraphQL): offset 35 is inside {~~REST...
     Given the cursor is at offset 35
     When I accept the change at the cursor with footnote update
-    # Accept ct-2 (API keys → OAuth2): offset 69 is inside {~~API keys...
+    # Accept cn-2 (API keys → OAuth2): offset 69 is inside {~~API keys...
     Given the cursor is at offset 69
     When I accept the change at the cursor with footnote update
-    # Accept ct-3 (Rate limiting insertion): offset 85 is inside {++Rate...
+    # Accept cn-3 (Rate limiting insertion): offset 85 is inside {++Rate...
     Given the cursor is at offset 85
     When I accept the change at the cursor with footnote update
-    # Reject ct-4 (Legacy XML deletion): offset 113 is inside {--Legacy...
+    # Reject cn-4 (Legacy XML deletion): offset 113 is inside {--Legacy...
     Given the cursor is at offset 113
     When I reject the change at the cursor with footnote update
-    # Reject ct-5 (sync → async): offset 148 is inside {~~sync...
+    # Reject cn-5 (sync → async): offset 148 is inside {~~sync...
     Given the cursor is at offset 148
     When I reject the change at the cursor with footnote update
     Then the document text does not contain "{~~"
@@ -76,27 +76,27 @@ Feature: Human-Agent Collaboration Workflows
   Scenario: Accept one agent change, reject another agent change
     Given a document with text:
       """
-      {~~old1~>new1~~}[^ct-1] text. {~~old2~>new2~~}[^ct-2] more.
+      {~~old1~>new1~~}[^cn-1] text. {~~old2~>new2~~}[^cn-2] more.
 
-      [^ct-1]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | sub | proposed
           Claude reasoning
-      [^ct-2]: @ai:drafter | 2026-02-10 | sub | proposed
+      [^cn-2]: @ai:drafter | 2026-02-10 | sub | proposed
           Drafter reasoning
       """
-    # Accept ct-1 (claude): cursor at offset 5 is inside {~~old1~>new1~~}
+    # Accept cn-1 (claude): cursor at offset 5 is inside {~~old1~>new1~~}
     And the cursor is at offset 5
     When I accept the change at the cursor with footnote update
     Then the document text contains "new1"
     And the document text does not contain "{~~old1"
     And the document text contains "{~~old2~>new2~~}"
-    # Reject ct-2 (drafter): after accepting ct-1, text is "new1[^ct-1] text. {~~old2~>..."
+    # Reject cn-2 (drafter): after accepting cn-1, text is "new1[^cn-1] text. {~~old2~>..."
     # {~~old2 starts at offset 18, cursor at 22 is inside "old2"
     Given the cursor is at offset 22
     When I reject the change at the cursor with footnote update
-    Then the document line starting with "[^ct-1]:" contains "| accepted"
-    And the document line starting with "[^ct-2]:" contains "| rejected"
-    And the document line starting with "[^ct-1]:" contains "@ai:claude"
-    And the document line starting with "[^ct-2]:" contains "@ai:drafter"
+    Then the document line starting with "[^cn-1]:" contains "| accepted"
+    And the document line starting with "[^cn-2]:" contains "| rejected"
+    And the document line starting with "[^cn-1]:" contains "@ai:claude"
+    And the document line starting with "[^cn-2]:" contains "@ai:drafter"
     And the document text contains "new1"
     And the document text contains "old2"
     And the document text does not contain "new2"
@@ -108,15 +108,15 @@ Feature: Human-Agent Collaboration Workflows
   Scenario: Document is clean after Accept All
     Given a document with text:
       """
-      Start. {++Insertion one.++}[^ct-1] Middle.
-      {++Insertion two.++}[^ct-2]
-      Keep {--removed text--}[^ct-3] keep.
-      {~~old value~>new value~~}[^ct-4] end.
+      Start. {++Insertion one.++}[^cn-1] Middle.
+      {++Insertion two.++}[^cn-2]
+      Keep {--removed text--}[^cn-3] keep.
+      {~~old value~>new value~~}[^cn-4] end.
 
-      [^ct-1]: @ai:claude | 2026-02-10 | ins | proposed
-      [^ct-2]: @ai:claude | 2026-02-10 | ins | proposed
-      [^ct-3]: @ai:claude | 2026-02-10 | del | proposed
-      [^ct-4]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | ins | proposed
+      [^cn-2]: @ai:claude | 2026-02-10 | ins | proposed
+      [^cn-3]: @ai:claude | 2026-02-10 | del | proposed
+      [^cn-4]: @ai:claude | 2026-02-10 | sub | proposed
       """
     When I accept all changes with footnote update
     Then the document text does not contain "{++"
@@ -154,9 +154,9 @@ Feature: Human-Agent Collaboration Workflows
     # Step 1: Start with agent-proposed change
     Given the input text is:
       """
-      Config: {~~timeout = 30~>timeout = 60~~}[^ct-1]
+      Config: {~~timeout = 30~>timeout = 60~~}[^cn-1]
 
-      [^ct-1]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | sub | proposed
           Increase for slow networks
       """
     When I parse the text
@@ -167,9 +167,9 @@ Feature: Human-Agent Collaboration Workflows
     # Step 2: Human adds comment
     Given the input text is:
       """
-      Config: {~~timeout = 30~>timeout = 60~~}[^ct-1]
+      Config: {~~timeout = 30~>timeout = 60~~}[^cn-1]
 
-      [^ct-1]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | sub | proposed
           Increase for slow networks
           @human:alice 2026-02-11: Need benchmark data
       """
@@ -181,9 +181,9 @@ Feature: Human-Agent Collaboration Workflows
     # Step 3: Agent amends
     Given the input text is:
       """
-      Config: {~~timeout = 30~>timeout = 45~~}[^ct-1]
+      Config: {~~timeout = 30~>timeout = 45~~}[^cn-1]
 
-      [^ct-1]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | sub | proposed
           Increase for slow networks
           @human:alice 2026-02-11: Need benchmark data
             @ai:claude 2026-02-11: Benchmarks show 45s is optimal
@@ -196,9 +196,9 @@ Feature: Human-Agent Collaboration Workflows
     # Step 4: Human accepts the amended change
     Given a document with text:
       """
-      Config: {~~timeout = 30~>timeout = 45~~}[^ct-1]
+      Config: {~~timeout = 30~>timeout = 45~~}[^cn-1]
 
-      [^ct-1]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | sub | proposed
           Increase for slow networks
           @human:alice 2026-02-11: Need benchmark data
             @ai:claude 2026-02-11: Benchmarks show 45s is optimal
@@ -218,22 +218,22 @@ Feature: Human-Agent Collaboration Workflows
   Scenario: Accept some, reject some, leave one pending
     Given a document with text:
       """
-      {~~alpha~>ALPHA~~}[^ct-1] and {++extra text++}[^ct-2] and {--removed--}[^ct-3] end.
+      {~~alpha~>ALPHA~~}[^cn-1] and {++extra text++}[^cn-2] and {--removed--}[^cn-3] end.
 
-      [^ct-1]: @ai:claude | 2026-02-10 | sub | proposed
-      [^ct-2]: @ai:claude | 2026-02-10 | ins | proposed
-      [^ct-3]: @ai:claude | 2026-02-10 | del | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-2]: @ai:claude | 2026-02-10 | ins | proposed
+      [^cn-3]: @ai:claude | 2026-02-10 | del | proposed
       """
-    # Accept ct-1 (cursor inside substitution)
+    # Accept cn-1 (cursor inside substitution)
     And the cursor is at offset 5
     When I accept the change at the cursor with footnote update
     Then the document text contains "ALPHA"
     And the document text does not contain "{~~alpha"
-    And the document line starting with "[^ct-1]:" contains "| accepted"
-    # ct-2 and ct-3 should still have inline markup
+    And the document line starting with "[^cn-1]:" contains "| accepted"
+    # cn-2 and cn-3 should still have inline markup
     And the document text contains "{++extra text++}"
     And the document text contains "{--removed--}"
-    And the document line starting with "[^ct-3]:" contains "| proposed"
+    And the document line starting with "[^cn-3]:" contains "| proposed"
 
   # ─── Full Human Editorial Pass with Re-Parse ────────────────────
 
@@ -242,17 +242,17 @@ Feature: Human-Agent Collaboration Workflows
       """
       # Design Document
 
-      The API uses {~~REST~>GraphQL~~}[^ct-1] for queries.
-      Auth: {~~API keys~>OAuth2~~}[^ct-2].
-      {++Rate limiting added.++}[^ct-3]
-      {--Legacy XML support removed.--}[^ct-4]
-      {~~sync~>async~~}[^ct-5] processing.
+      The API uses {~~REST~>GraphQL~~}[^cn-1] for queries.
+      Auth: {~~API keys~>OAuth2~~}[^cn-2].
+      {++Rate limiting added.++}[^cn-3]
+      {--Legacy XML support removed.--}[^cn-4]
+      {~~sync~>async~~}[^cn-5] processing.
 
-      [^ct-1]: @ai:claude | 2026-02-10 | sub | proposed
-      [^ct-2]: @ai:claude | 2026-02-10 | sub | proposed
-      [^ct-3]: @ai:claude | 2026-02-10 | ins | proposed
-      [^ct-4]: @ai:claude | 2026-02-10 | del | proposed
-      [^ct-5]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-1]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-2]: @ai:claude | 2026-02-10 | sub | proposed
+      [^cn-3]: @ai:claude | 2026-02-10 | ins | proposed
+      [^cn-4]: @ai:claude | 2026-02-10 | del | proposed
+      [^cn-5]: @ai:claude | 2026-02-10 | sub | proposed
       """
     When I accept all changes with footnote update
     Then the document text does not contain "{~~"

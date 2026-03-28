@@ -56,11 +56,11 @@ describe('HighlightStrategy', () => {
     const strategy = new HighlightStrategy();
     strategy.apply(container, matches, map);
 
-    expect(mockHighlightsMap.has('ct-ins-content')).toBe(true);
-    expect(mockHighlightsMap.has('ct-ins-delim')).toBe(true);
-    expect(mockHighlightsMap.get('ct-ins-content')!.ranges).toHaveLength(1);
+    expect(mockHighlightsMap.has('cn-ins-content')).toBe(true);
+    expect(mockHighlightsMap.has('cn-ins-delim')).toBe(true);
+    expect(mockHighlightsMap.get('cn-ins-content')!.ranges).toHaveLength(1);
     // Two delimiter ranges: {++ and ++}
-    expect(mockHighlightsMap.get('ct-ins-delim')!.ranges).toHaveLength(2);
+    expect(mockHighlightsMap.get('cn-ins-delim')!.ranges).toHaveLength(2);
   });
 
   it('creates highlight entries for deletion', () => {
@@ -72,10 +72,10 @@ describe('HighlightStrategy', () => {
     const strategy = new HighlightStrategy();
     strategy.apply(container, matches, map);
 
-    expect(mockHighlightsMap.has('ct-del-content')).toBe(true);
-    expect(mockHighlightsMap.has('ct-del-delim')).toBe(true);
-    expect(mockHighlightsMap.get('ct-del-content')!.ranges).toHaveLength(1);
-    expect(mockHighlightsMap.get('ct-del-delim')!.ranges).toHaveLength(2);
+    expect(mockHighlightsMap.has('cn-del-content')).toBe(true);
+    expect(mockHighlightsMap.has('cn-del-delim')).toBe(true);
+    expect(mockHighlightsMap.get('cn-del-content')!.ranges).toHaveLength(1);
+    expect(mockHighlightsMap.get('cn-del-delim')!.ranges).toHaveLength(2);
   });
 
   it('creates highlight entries for substitution (old + new + separator)', () => {
@@ -87,15 +87,15 @@ describe('HighlightStrategy', () => {
     const strategy = new HighlightStrategy();
     strategy.apply(container, matches, map);
 
-    expect(mockHighlightsMap.has('ct-sub-old')).toBe(true);
-    expect(mockHighlightsMap.has('ct-sub-new')).toBe(true);
-    expect(mockHighlightsMap.has('ct-sub-delim')).toBe(true);
+    expect(mockHighlightsMap.has('cn-sub-old')).toBe(true);
+    expect(mockHighlightsMap.has('cn-sub-new')).toBe(true);
+    expect(mockHighlightsMap.has('cn-sub-delim')).toBe(true);
     // old-content: 1 range
-    expect(mockHighlightsMap.get('ct-sub-old')!.ranges).toHaveLength(1);
+    expect(mockHighlightsMap.get('cn-sub-old')!.ranges).toHaveLength(1);
     // new-content: 1 range
-    expect(mockHighlightsMap.get('ct-sub-new')!.ranges).toHaveLength(1);
+    expect(mockHighlightsMap.get('cn-sub-new')!.ranges).toHaveLength(1);
     // delimiters: open {~~, separator ~>, close ~~} = 3 ranges
-    expect(mockHighlightsMap.get('ct-sub-delim')!.ranges).toHaveLength(3);
+    expect(mockHighlightsMap.get('cn-sub-delim')!.ranges).toHaveLength(3);
   });
 
   it('creates highlight entries for highlight markup', () => {
@@ -107,8 +107,8 @@ describe('HighlightStrategy', () => {
     const strategy = new HighlightStrategy();
     strategy.apply(container, matches, map);
 
-    expect(mockHighlightsMap.has('ct-hl-content')).toBe(true);
-    expect(mockHighlightsMap.has('ct-hl-delim')).toBe(true);
+    expect(mockHighlightsMap.has('cn-hl-content')).toBe(true);
+    expect(mockHighlightsMap.has('cn-hl-delim')).toBe(true);
   });
 
   it('creates highlight entries for comment markup', () => {
@@ -120,21 +120,21 @@ describe('HighlightStrategy', () => {
     const strategy = new HighlightStrategy();
     strategy.apply(container, matches, map);
 
-    expect(mockHighlightsMap.has('ct-cmt-content')).toBe(true);
-    expect(mockHighlightsMap.has('ct-cmt-delim')).toBe(true);
+    expect(mockHighlightsMap.has('cn-cmt-content')).toBe(true);
+    expect(mockHighlightsMap.has('cn-cmt-delim')).toBe(true);
   });
 
   it('creates highlight entry for footnote reference', () => {
     const container = document.createElement('div');
-    container.textContent = 'Changed text[^ct-1]';
+    container.textContent = 'Changed text[^cn-1]';
     const map = buildPositionMap(container);
-    const matches = scanCriticMarkup('Changed text[^ct-1]');
+    const matches = scanCriticMarkup('Changed text[^cn-1]');
 
     const strategy = new HighlightStrategy();
     strategy.apply(container, matches, map);
 
-    expect(mockHighlightsMap.has('ct-fnref')).toBe(true);
-    expect(mockHighlightsMap.get('ct-fnref')!.ranges).toHaveLength(1);
+    expect(mockHighlightsMap.has('cn-fnref')).toBe(true);
+    expect(mockHighlightsMap.get('cn-fnref')!.ranges).toHaveLength(1);
   });
 
   it('clears previous highlights on clear()', () => {
@@ -185,9 +185,9 @@ describe('HighlightStrategy', () => {
     strategy.apply(container, matches, map);
 
     // Two insertion content ranges
-    expect(mockHighlightsMap.get('ct-ins-content')!.ranges).toHaveLength(2);
+    expect(mockHighlightsMap.get('cn-ins-content')!.ranges).toHaveLength(2);
     // Four delimiter ranges (2 per insertion: open + close)
-    expect(mockHighlightsMap.get('ct-ins-delim')!.ranges).toHaveLength(4);
+    expect(mockHighlightsMap.get('cn-ins-delim')!.ranges).toHaveLength(4);
   });
 
   it('clears old highlights before re-applying', () => {
@@ -198,7 +198,7 @@ describe('HighlightStrategy', () => {
 
     const strategy = new HighlightStrategy();
     strategy.apply(container, matches, map);
-    expect(mockHighlightsMap.get('ct-ins-content')!.ranges).toHaveLength(1);
+    expect(mockHighlightsMap.get('cn-ins-content')!.ranges).toHaveLength(1);
 
     // Re-apply with new content
     const container2 = document.createElement('div');
@@ -208,6 +208,6 @@ describe('HighlightStrategy', () => {
 
     strategy.apply(container2, matches2, map2);
     // Should have 2 content ranges, not 3 (old one cleared)
-    expect(mockHighlightsMap.get('ct-ins-content')!.ranges).toHaveLength(2);
+    expect(mockHighlightsMap.get('cn-ins-content')!.ranges).toHaveLength(2);
   });
 });

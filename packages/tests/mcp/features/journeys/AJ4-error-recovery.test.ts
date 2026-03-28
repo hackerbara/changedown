@@ -107,8 +107,8 @@ Extra trailing content added.`;
     });
     expect(retryPropose.isError).toBeUndefined();
     const retryData = ctx.parseResult(retryPropose);
-    // ID depends on scanning — just check it's a valid ct-N
-    expect(retryData.change_id).toMatch(/^ct-\d+$/);
+    // ID depends on scanning — just check it's a valid cn-N
+    expect(retryData.change_id).toMatch(/^cn-\d+$/);
 
     // Verify the change was applied on disk
     const disk = await ctx.readDisk(filePath);
@@ -159,14 +159,14 @@ Extra trailing content added.`;
     });
     expect(propose1.isError).toBeUndefined();
     const data1 = ctx.parseResult(propose1);
-    expect(data1.change_id).toBe('ct-1');
+    expect(data1.change_id).toBe('cn-1');
 
     // Save disk state after successful propose1 for integrity check
     const diskAfterPropose1 = await ctx.readDisk(filePath);
 
     // Phase 2: Agent A tries to propose on the same phrase "hello world content"
     // The text is now wrapped in CriticMarkup:
-    // {~~hello world content~>bonjour monde stuff~~}[^ct-1]
+    // {~~hello world content~>bonjour monde stuff~~}[^cn-1]
     // With overlap detection, the propose may succeed (targeting the original text
     // inside the markup) or fail depending on matching strategy. Current behavior:
     // the handler detects the overlap with the existing proposed change and blocks it.
@@ -195,7 +195,7 @@ Extra trailing content added.`;
     expect(read.isError).toBeUndefined();
     const metaText = ctx.resultText(read);
     // Agent A sees the existing change
-    expect(metaText).toContain('ct-1');
+    expect(metaText).toContain('cn-1');
 
     // Agent A proposes on different, still-available text
     const propose3 = await ctx.propose(filePath, {
@@ -205,9 +205,9 @@ Extra trailing content added.`;
     });
     expect(propose3.isError).toBeUndefined();
     const data3 = ctx.parseResult(propose3);
-    // ID counter was advanced by the failed propose too, so ct-2 was consumed
-    // Next available is ct-3
-    expect(data3.change_id).toMatch(/^ct-\d+$/);
+    // ID counter was advanced by the failed propose too, so cn-2 was consumed
+    // Next available is cn-3
+    expect(data3.change_id).toMatch(/^cn-\d+$/);
   });
 
   // ──────────────────────────────────────────────────────────────────────
@@ -250,7 +250,7 @@ Extra trailing content added.`;
       });
       expect(normalPropose.isError).toBeUndefined();
       const data = strictCtx.parseResult(normalPropose);
-      expect(data.change_id).toBe('ct-1');
+      expect(data.change_id).toBe('cn-1');
       expect(data.type).toBe('sub');
 
       // Verify CriticMarkup was applied
@@ -275,15 +275,15 @@ Extra trailing content added.`;
     });
     expect(propose.isError).toBeUndefined();
     const data = ctx.parseResult(propose);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
 
     // Save disk state before invalid review for integrity check
     const diskBeforeInvalidReview = await ctx.readDisk(filePath);
 
-    // Phase 1: Review with nonexistent change_id ct-999
+    // Phase 1: Review with nonexistent change_id cn-999
     const reviewResult = await ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-999', decision: 'approve', reason: 'Approving nonexistent' },
+        { change_id: 'cn-999', decision: 'approve', reason: 'Approving nonexistent' },
       ],
     });
     // The review_changes handler returns partial success — per-change errors, not top-level error
@@ -303,7 +303,7 @@ Extra trailing content added.`;
     // Phase 2: Subsequent valid operation succeeds (session not crashed)
     const validReview = await ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-1', decision: 'approve', reason: 'Valid approval' },
+        { change_id: 'cn-1', decision: 'approve', reason: 'Valid approval' },
       ],
     });
     expect(validReview.isError).toBeUndefined();
@@ -352,9 +352,9 @@ Extra trailing content added.`;
       });
       expect(withAuthorPropose.isError).toBeUndefined();
       const data = strictAuthorCtx.parseResult(withAuthorPropose);
-      // The failed propose consumed ct-1 (ID allocated before author check),
-      // so the retry gets ct-2
-      expect(data.change_id).toMatch(/^ct-\d+$/);
+      // The failed propose consumed cn-1 (ID allocated before author check),
+      // so the retry gets cn-2
+      expect(data.change_id).toMatch(/^cn-\d+$/);
 
       // Verify the change was applied
       const disk = await strictAuthorCtx.readDisk(filePath);
@@ -393,7 +393,7 @@ Extra trailing content added.`;
     });
     expect(proposeResult.isError).toBeUndefined();
     const data = ctx.parseResult(proposeResult);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.type).toBe('sub');
 
     // Verify the change was applied on disk
@@ -401,9 +401,9 @@ Extra trailing content added.`;
     // The substitution markup wraps the original Unicode text (preserving the en-dash)
     expect(disk).toContain('{~~');
     expect(disk).toContain('~>normalized-dash~~}');
-    expect(disk).toContain('[^ct-1]');
+    expect(disk).toContain('[^cn-1]');
 
     // Footnote should exist
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'proposed');
   });
 });

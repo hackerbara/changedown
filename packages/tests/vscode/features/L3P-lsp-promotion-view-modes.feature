@@ -6,7 +6,7 @@ Feature: LSP-driven L3 promotion with view mode cycling
 
   Background:
     Given I open "l3-promotion-test.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
     # Poll for L3 edit-op lines as proof that workspace/applyEdit completed
     Then the document contains L3 edit-op lines
@@ -24,9 +24,9 @@ Feature: LSP-driven L3 promotion with view mode cycling
     # Substitution: old text gone from body, new text present
     Then the document contains "shortened"
     And the document contains "add comprehensive integration tests"
-    # Inline footnote refs stripped from body (check body only — footnote defs still have [^ct-N]:)
-    And the document body does not contain "[^ct-101]"
-    And the document body does not contain "[^ct-102]"
+    # Inline footnote refs stripped from body (check body only — footnote defs still have [^cn-N]:)
+    And the document body does not contain "[^cn-101]"
+    And the document body does not contain "[^cn-102]"
 
   Scenario: Decorations visible in each view mode after promotion
     When I switch to "all-markup" view mode

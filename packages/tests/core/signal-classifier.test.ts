@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type { EditBoundaryState, EditBoundaryConfig } from '@changetracks/core/edit-boundary';
-import { classifySignal, createBuffer, DEFAULT_EDIT_BOUNDARY_CONFIG } from '@changetracks/core/edit-boundary';
+import type { EditBoundaryState, EditBoundaryConfig, EditEvent } from '@changedown/core/edit-boundary';
+import { classifySignal, createBuffer, DEFAULT_EDIT_BOUNDARY_CONFIG } from '@changedown/core/edit-boundary';
 
 describe('classifySignal', () => {
   const config: EditBoundaryConfig = { ...DEFAULT_EDIT_BOUNDARY_CONFIG };
@@ -319,6 +319,40 @@ describe('classifySignal', () => {
           { type: 'insertion', offset: 10, text: 'a' },
           stateWithPending('', 10),
         )).toBe('extend');
+    });
+  });
+
+  // ── cursorMove classification ───────────────────────────────────────
+
+  describe('cursorMove classification', () => {
+    it('should classify cursorMove outside buffer as hard-break', () => {
+      const state = stateWithPending('hello', 10);
+      const event: EditEvent = { type: 'cursorMove', offset: 50 };
+      expect(classifySignal(event, state)).toBe('hard-break');
+    });
+
+    it('should classify cursorMove inside buffer as ignore', () => {
+      const state = stateWithPending('hello', 10);
+      const event: EditEvent = { type: 'cursorMove', offset: 13 };
+      expect(classifySignal(event, state)).toBe('ignore');
+    });
+
+    it('should classify cursorMove at buffer end as ignore', () => {
+      const state = stateWithPending('hello', 10);
+      const event: EditEvent = { type: 'cursorMove', offset: 15 };
+      expect(classifySignal(event, state)).toBe('ignore');
+    });
+
+    it('should classify cursorMove with no pending buffer as ignore', () => {
+      const state = stateNoPending();
+      const event: EditEvent = { type: 'cursorMove', offset: 5 };
+      expect(classifySignal(event, state)).toBe('ignore');
+    });
+
+    it('should classify cursorMove outside pure deletion buffer as ignore (exemption)', () => {
+      const state = stateWithPending('', 10, 'deleted');
+      const event: EditEvent = { type: 'cursorMove', offset: 50 };
+      expect(classifySignal(event, state)).toBe('ignore');
     });
   });
 

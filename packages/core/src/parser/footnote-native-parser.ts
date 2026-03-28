@@ -226,7 +226,7 @@ export class FootnoteNativeParser {
       let fi = 0;
       while (fi < footnoteLines.length) {
         const fline = footnoteLines[fi];
-        const idMatch = fline.match(/^\[\^(ct-[\w.]+)\]:/);
+        const idMatch = fline.match(/^\[\^(cn-[\w.]+)\]:/);
         if (idMatch) {
           const freshAnchor = freshAnchors.get(idMatch[1]);
           rebuiltFootnotes.push(fline);
@@ -273,8 +273,8 @@ export class FootnoteNativeParser {
           current.endLine = lineIdx - 1;
           entries.push(current);
         }
-        // Extract ID from [^ct-N]: prefix
-        const idMatch = line.match(/^\[\^(ct-[\w.]+)\]:/);
+        // Extract ID from [^cn-N]: prefix
+        const idMatch = line.match(/^\[\^(cn-[\w.]+)\]:/);
         const header = parseFootnoteHeader(line);
         if (idMatch && header) {
           current = {

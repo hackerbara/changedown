@@ -30,11 +30,11 @@ Feature: E9 - CLI Status & List
   Scenario: Status counts mixed accepted and rejected via footnotes
     Given content for status:
       """
-      Hello {++world++}[^ct-1] and {--goodbye--}[^ct-2].
+      Hello {++world++}[^cn-1] and {--goodbye--}[^cn-2].
 
-      [^ct-1]: @alice | 2026-02-01 | ins | accepted
+      [^cn-1]: @alice | 2026-02-01 | ins | accepted
           reason: added greeting
-      [^ct-2]: @bob | 2026-02-02 | del | rejected
+      [^cn-2]: @bob | 2026-02-02 | del | rejected
           reason: keep farewell
       """
     When I compute status
@@ -65,14 +65,14 @@ Feature: E9 - CLI Status & List
   Scenario: List shows insertion with metadata from footnote
     Given content for list:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-02-01 | ins | proposed
+      [^cn-1]: @alice | 2026-02-01 | ins | proposed
           reason: added greeting
       """
     When I compute change list
     Then the change list has 1 entry
-    And change list entry 1 has change_id "ct-1"
+    And change list entry 1 has change_id "cn-1"
     And change list entry 1 has type "ins"
     And change list entry 1 has status "proposed"
     And change list entry 1 has author "@alice"
@@ -94,39 +94,39 @@ Feature: E9 - CLI Status & List
   Scenario: List filters by accepted status
     Given content for list:
       """
-      {++added++}[^ct-1] and {--removed--}[^ct-2].
+      {++added++}[^cn-1] and {--removed--}[^cn-2].
 
-      [^ct-1]: @alice | 2026-02-01 | ins | accepted
+      [^cn-1]: @alice | 2026-02-01 | ins | accepted
           reason: good addition
-      [^ct-2]: @bob | 2026-02-02 | del | proposed
+      [^cn-2]: @bob | 2026-02-02 | del | proposed
           reason: remove this
       """
     When I compute change list filtered by status "accepted"
     Then the change list has 1 entry
-    And change list entry 1 has change_id "ct-1"
+    And change list entry 1 has change_id "cn-1"
 
   Scenario: List filters by proposed status
     Given content for list:
       """
-      {++added++}[^ct-1] and {--removed--}[^ct-2].
+      {++added++}[^cn-1] and {--removed--}[^cn-2].
 
-      [^ct-1]: @alice | 2026-02-01 | ins | accepted
+      [^cn-1]: @alice | 2026-02-01 | ins | accepted
           reason: good addition
-      [^ct-2]: @bob | 2026-02-02 | del | proposed
+      [^cn-2]: @bob | 2026-02-02 | del | proposed
           reason: remove this
       """
     When I compute change list filtered by status "proposed"
     Then the change list has 1 entry
-    And change list entry 1 has change_id "ct-2"
+    And change list entry 1 has change_id "cn-2"
 
   Scenario: List filters by rejected status returns empty when none match
     Given content for list:
       """
-      {++added++}[^ct-1] and {--removed--}[^ct-2].
+      {++added++}[^cn-1] and {--removed--}[^cn-2].
 
-      [^ct-1]: @alice | 2026-02-01 | ins | accepted
+      [^cn-1]: @alice | 2026-02-01 | ins | accepted
           reason: good addition
-      [^ct-2]: @bob | 2026-02-02 | del | proposed
+      [^cn-2]: @bob | 2026-02-02 | del | proposed
           reason: remove this
       """
     When I compute change list filtered by status "rejected"
@@ -135,11 +135,11 @@ Feature: E9 - CLI Status & List
   Scenario: List without filter returns all changes
     Given content for list:
       """
-      {++added++}[^ct-1] and {--removed--}[^ct-2].
+      {++added++}[^cn-1] and {--removed--}[^cn-2].
 
-      [^ct-1]: @alice | 2026-02-01 | ins | accepted
+      [^cn-1]: @alice | 2026-02-01 | ins | accepted
           reason: good addition
-      [^ct-2]: @bob | 2026-02-02 | del | proposed
+      [^cn-2]: @bob | 2026-02-02 | del | proposed
           reason: remove this
       """
     When I compute change list

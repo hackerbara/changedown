@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { loadConfig, DEFAULT_CONFIG } from 'changetracks-hooks/internals';
+import { loadConfig, DEFAULT_CONFIG } from 'changedown-hooks/internals';
 
 describe('loadConfig — direct import from config.ts', () => {
   let tmpDir: string;
   let configPath: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-config-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-config-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     configPath = path.join(scDir, 'config.toml');
   });
@@ -176,8 +176,8 @@ describe('loadConfig — direct import from config.ts', () => {
   // --- Missing config file ---
 
   describe('missing config', () => {
-    it('returns DEFAULT_CONFIG when .changetracks/config.toml does not exist', async () => {
-      const emptyDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-noconf-'));
+    it('returns DEFAULT_CONFIG when .changedown/config.toml does not exist', async () => {
+      const emptyDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-noconf-'));
       try {
         const config = await loadConfig(emptyDir);
         expect(config).toEqual(DEFAULT_CONFIG);

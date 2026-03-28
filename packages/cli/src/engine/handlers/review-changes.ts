@@ -5,7 +5,7 @@ import { optionalStrArg } from '../args.js';
 import { resolveAuthor } from '../author.js';
 import { isFileInScope } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
-import { findFootnoteBlock, findDiscussionInsertionIndex, countFootnoteHeadersWithStatus, initHashline, nowTimestamp, applyReview, VALID_DECISIONS, type Decision } from '@changetracks/core';
+import { findFootnoteBlock, findDiscussionInsertionIndex, countFootnoteHeadersWithStatus, initHashline, nowTimestamp, applyReview, VALID_DECISIONS, type Decision } from '@changedown/core';
 import { applyBlockingAnnotation } from '../shared/blocking-annotation.js';
 import { SessionState } from '../state.js';
 import { rerecordState } from '../state-utils.js';
@@ -35,7 +35,7 @@ export const reviewChangesTool = {
           properties: {
             change_id: {
               type: 'string',
-              description: "e.g., 'ct-7' or 'ct-7.2'",
+              description: "e.g., 'cn-7' or 'cn-7.2'",
             },
             decision: {
               type: 'string',
@@ -107,13 +107,55 @@ export async function handleReviewChanges(
 ): Promise<ReviewChangesResult> {
   try {
     const file = optionalStrArg(args, 'file', 'file');
-    const reviewsRaw = args.reviews as unknown;
-    const responsesRaw = args.responses as unknown;
-    const settleFlag = args.settle === true;
+    let reviewsRaw: unknown = args.reviews;
+    let responsesRaw: unknown = args.responses;
+    const settleFlag = args.settle === true || args.settle === 'true';
     const authorArg = optionalStrArg(args, 'author', 'author');
 
     if (!file) {
       return errorResult('Missing required argument: "file"');
+    }
+
+    // Gracefully handle string-encoded arrays (common cross-model serialization)
+    if (typeof reviewsRaw === 'string') {
+      try {
+        const parsed: unknown = JSON.parse(reviewsRaw);
+        if (Array.isArray(parsed)) {
+          reviewsRaw = parsed;
+        } else {
+          return errorResult(
+            'The "reviews" parameter was received as a JSON string but parsed to ' +
+            `${typeof parsed}, not an array. Send reviews as a JSON array of objects, e.g.: ` +
+            'reviews: [{ "change_id": "cn-1", "decision": "approve", "reason": "looks good" }]',
+          );
+        }
+      } catch {
+        return errorResult(
+          'The "reviews" parameter was received as a string but could not be parsed as JSON. ' +
+          'Send reviews as a JSON array of objects, e.g.: ' +
+          'reviews: [{ "change_id": "cn-1", "decision": "approve", "reason": "looks good" }]',
+        );
+      }
+    }
+    if (typeof responsesRaw === 'string') {
+      try {
+        const parsed: unknown = JSON.parse(responsesRaw);
+        if (Array.isArray(parsed)) {
+          responsesRaw = parsed;
+        } else {
+          return errorResult(
+            'The "responses" parameter was received as a JSON string but parsed to ' +
+            `${typeof parsed}, not an array. Send responses as a JSON array of objects, e.g.: ` +
+            'responses: [{ "change_id": "cn-1", "response": "addressed in latest revision" }]',
+          );
+        }
+      } catch {
+        return errorResult(
+          'The "responses" parameter was received as a string but could not be parsed as JSON. ' +
+          'Send responses as a JSON array of objects, e.g.: ' +
+          'responses: [{ "change_id": "cn-1", "response": "addressed in latest revision" }]',
+        );
+      }
     }
 
     const hasReviews = Array.isArray(reviewsRaw) && reviewsRaw.length > 0;
@@ -122,7 +164,10 @@ export async function handleReviewChanges(
     // At least one of reviews, responses, or settle must be provided (settle used by CLI / get_tracking_status, not in LLM schema)
     if (!hasReviews && !hasResponses && !settleFlag) {
       return errorResult(
-        'At least one of "reviews", "responses", or "settle" must be provided.'
+        'At least one of "reviews", "responses", or "settle" must be provided.\n\n' +
+        'Example:\n' +
+        '  review_changes(file: "doc.md", reviews: [{ change_id: "cn-1", decision: "approve", reason: "looks good" }])\n\n' +
+        'Required fields per review: change_id, decision (approve|reject|request_changes|withdraw), reason.',
       );
     }
 
@@ -132,7 +177,7 @@ export async function handleReviewChanges(
     if (!isFileInScope(filePath, config, projectDir)) {
       return errorResult(
         `File is not in scope for tracking: "${filePath}". ` +
-          'Check .changetracks/config.toml include/exclude patterns.'
+          'Check .changedown/config.toml include/exclude patterns.'
       );
     }
 
@@ -376,7 +421,7 @@ export async function handleReviewChanges(
 
     // ── Phase 5: Compute affected_lines for settled changes ─────────────
     //
-    // When settlement occurred, scan post-settlement content for [^ct-ID]
+    // When settlement occurred, scan post-settlement content for [^cn-ID]
     // references of settled changes to determine which lines were affected.
     // This lets the agent continue editing without a forced re-read.
 
@@ -386,10 +431,10 @@ export async function handleReviewChanges(
       const settledIdSet = new Set(settlementInfo.settledIds);
 
       // Find footnote section start so we only scan content lines, not footnote definitions
-      const footnoteStart = postLines.findIndex(l => /^\[\^ct-/.test(l));
+      const footnoteStart = postLines.findIndex(l => /^\[\^cn-/.test(l));
       const contentEnd = footnoteStart > 0 ? footnoteStart : postLines.length;
 
-      // Find lines in post-settlement content that contain [^ct-ID] refs for settled changes
+      // Find lines in post-settlement content that contain [^cn-ID] refs for settled changes
       let minLine = Infinity;
       let maxLine = -Infinity;
       for (let i = 0; i < contentEnd; i++) {

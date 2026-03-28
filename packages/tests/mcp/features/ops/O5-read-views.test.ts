@@ -23,9 +23,9 @@ describe('O5: Read tracked file views', () => {
     });
     expect(r1.isError).toBeUndefined();
 
-    // Approve ct-1 → status becomes accepted
+    // Approve cn-1 → status becomes accepted
     const rev = await ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'ok' }],
+      reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'ok' }],
     });
     expect(rev.isError).toBeUndefined();
 
@@ -37,7 +37,7 @@ describe('O5: Read tracked file views', () => {
     });
     expect(r2.isError).toBeUndefined();
 
-    // State: ct-1 = accepted sub (alpha→ALPHA), ct-2 = proposed sub (gamma→GAMMA)
+    // State: cn-1 = accepted sub (alpha→ALPHA), cn-2 = proposed sub (gamma→GAMMA)
   });
 
   afterEach(async () => {
@@ -63,19 +63,19 @@ describe('O5: Read tracked file views', () => {
     // Authors line
     expect(text).toContain('@ai:test-agent');
 
-    // Three-zone format: Zone 2 has lightweight [^ct-N] anchors,
-    // Zone 3 has {>>ct-N @author: reason | K replies<<} metadata at end of line.
+    // Three-zone format: Zone 2 has lightweight [^cn-N] anchors,
+    // Zone 3 has {>>cn-N @author: reason | K replies<<} metadata at end of line.
     // Note: propose_change stores reasoning as a thread reply line (@author date: reason),
     // which parseFootnotes counts as replyCount (not the reason field).
     // So Zone 3 shows empty reason + "N reply" suffix.
-    expect(text).toContain('[^ct-1]');
-    expect(text).toContain('[^ct-2]');
-    expect(text).toMatch(/\{>>ct-1 @ai:test-agent:.*\| 1 reply<<\}/);
-    expect(text).toMatch(/\{>>ct-2 @ai:test-agent:.*\| 1 reply<<\}/);
+    expect(text).toContain('[^cn-1]');
+    expect(text).toContain('[^cn-2]');
+    expect(text).toMatch(/\{>>cn-1 @ai:test-agent:.*\| 1 reply<<\}/);
+    expect(text).toMatch(/\{>>cn-2 @ai:test-agent:.*\| 1 reply<<\}/);
 
-    // Footnote section is elided — no [^ct-N]: definitions
-    expect(text).not.toContain('[^ct-1]:');
-    expect(text).not.toContain('[^ct-2]:');
+    // Footnote section is elided — no [^cn-N]: definitions
+    expect(text).not.toContain('[^cn-1]:');
+    expect(text).not.toContain('[^cn-2]:');
 
     // Separator present
     expect(text).toContain('---');
@@ -98,12 +98,12 @@ describe('O5: Read tracked file views', () => {
     expect(text).toContain('~~}');
 
     // Footnote references present (not replaced)
-    expect(text).toContain('[^ct-1]');
-    expect(text).toContain('[^ct-2]');
+    expect(text).toContain('[^cn-1]');
+    expect(text).toContain('[^cn-2]');
 
     // Footnote definitions included (content = full raw file)
-    expect(text).toMatch(/\[\^ct-1\]:/);
-    expect(text).toMatch(/\[\^ct-2\]:/);
+    expect(text).toMatch(/\[\^cn-1\]:/);
+    expect(text).toMatch(/\[\^cn-2\]:/);
 
     // LINE:HASH format present (hashline enabled in default config)
     expect(text).toMatch(/\d+:[0-9a-f]{2}/);
@@ -113,8 +113,8 @@ describe('O5: Read tracked file views', () => {
     expect(text).toContain('tracking:');
 
     // No inline metadata annotations
-    expect(text).not.toContain('[ct-1 accepted');
-    expect(text).not.toContain('[ct-2 proposed');
+    expect(text).not.toContain('[cn-1 accepted');
+    expect(text).not.toContain('[cn-2 proposed');
   });
 
   // ─── Scenario 3: Full view ───────────────────────────────────────────────
@@ -135,10 +135,10 @@ describe('O5: Read tracked file views', () => {
 
     // Verify it has both CriticMarkup and footnotes
     expect(fullText).toContain('{~~');
-    expect(fullText).toContain('[^ct-1]');
-    expect(fullText).toContain('[^ct-2]');
-    expect(fullText).toMatch(/\[\^ct-1\]:/);
-    expect(fullText).toMatch(/\[\^ct-2\]:/);
+    expect(fullText).toContain('[^cn-1]');
+    expect(fullText).toContain('[^cn-2]');
+    expect(fullText).toMatch(/\[\^cn-1\]:/);
+    expect(fullText).toMatch(/\[\^cn-2\]:/);
   });
 
   // ─── Scenario 4: Settled view ────────────────────────────────────────────
@@ -149,10 +149,10 @@ describe('O5: Read tracked file views', () => {
 
     const text = ctx.resultText(result);
 
-    // Accepted substitution (ct-1) applied: alpha→ALPHA → shows "ALPHA"
+    // Accepted substitution (cn-1) applied: alpha→ALPHA → shows "ALPHA"
     expect(text).toContain('ALPHA');
 
-    // Accept-all: pending substitution (ct-2) is also applied: gamma→GAMMA → shows "GAMMA"
+    // Accept-all: pending substitution (cn-2) is also applied: gamma→GAMMA → shows "GAMMA"
     expect(text).toContain('GAMMA');
     // Original "gamma" should NOT appear (accept-all applies the change)
     expect(text).not.toMatch(/\bgamma\b/);
@@ -165,8 +165,8 @@ describe('O5: Read tracked file views', () => {
     expect(text).not.toContain('{--');
 
     // Footnote definitions stripped
-    expect(text).not.toContain('[^ct-1]:');
-    expect(text).not.toContain('[^ct-2]:');
+    expect(text).not.toContain('[^cn-1]:');
+    expect(text).not.toContain('[^cn-2]:');
 
     // Unchanged line preserved
     expect(text).toContain('beta');
@@ -190,11 +190,11 @@ describe('O5: Read tracked file views', () => {
     expect(text).toContain('proposed: 1');
     expect(text).toContain('accepted: 1');
 
-    // Accepted substitution (ct-1): shows "ALPHA" with A flag
+    // Accepted substitution (cn-1): shows "ALPHA" with A flag
     // Unified format: "N:HH A| content" (space between flag and pipe)
     expect(text).toMatch(/[0-9a-f]{2} A\|.*ALPHA/);
 
-    // Pending substitution (ct-2): shows original "gamma" with P flag
+    // Pending substitution (cn-2): shows original "gamma" with P flag
     expect(text).toMatch(/[0-9a-f]{2} P\|.*gamma/);
     // "GAMMA" (pending new text) should NOT appear in committed view
     expect(text).not.toMatch(/\|.*GAMMA/);
@@ -207,8 +207,8 @@ describe('O5: Read tracked file views', () => {
     expect(text).not.toContain('~>');
 
     // Footnote definitions excluded
-    expect(text).not.toContain('[^ct-1]:');
-    expect(text).not.toContain('[^ct-2]:');
+    expect(text).not.toContain('[^cn-1]:');
+    expect(text).not.toContain('[^cn-2]:');
   });
 
   // ─── Scenario 6: Line range slicing ──────────────────────────────────────

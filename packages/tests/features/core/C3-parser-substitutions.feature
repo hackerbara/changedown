@@ -63,10 +63,10 @@ Feature: Parser — Substitutions
     And change 1 has modified text "drops the `{~~` and `~~}` wrapping."
 
   Scenario: Substitution with footnote ref
-    Given the text "{~~old~>new~~}[^ct-3]"
+    Given the text "{~~old~>new~~}[^cn-3]"
     When I parse the text
     Then there is 1 change
-    And change 1 has id "ct-3"
+    And change 1 has id "cn-3"
     And change 1 is type "Substitution"
     And change 1 has original text "old"
     And change 1 has modified text "new"
@@ -75,4 +75,4 @@ Feature: Parser — Substitutions
   Scenario: Substitution generates correct ID prefix
     Given the text "{++a++}{--b--}{~~c~>d~~}"
     When I parse the text
-    Then change 3 has id "ct-3"
+    Then change 3 has id "cn-3"

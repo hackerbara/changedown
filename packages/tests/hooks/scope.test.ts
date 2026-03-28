@@ -2,8 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { isFileInScope, isFileExcludedFromHooks, loadConfig, DEFAULT_CONFIG } from 'changetracks-hooks/internals';
-import type { ChangeTracksConfig } from 'changetracks-hooks/internals';
+import { isFileInScope, isFileExcludedFromHooks, loadConfig, DEFAULT_CONFIG } from 'changedown-hooks/internals';
+import type { ChangeDownConfig } from 'changedown-hooks/internals';
 
 describe('isFileInScope — direct import from scope.ts', () => {
   const projectDir = '/project';
@@ -33,7 +33,7 @@ describe('isFileInScope — direct import from scope.ts', () => {
   });
 
   it('respects custom include patterns', () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       ...DEFAULT_CONFIG,
       tracking: {
         ...DEFAULT_CONFIG.tracking,
@@ -45,7 +45,7 @@ describe('isFileInScope — direct import from scope.ts', () => {
   });
 
   it('respects custom exclude patterns', () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       ...DEFAULT_CONFIG,
       tracking: {
         ...DEFAULT_CONFIG.tracking,
@@ -65,7 +65,7 @@ describe('isFileExcludedFromHooks — direct import from scope.ts', () => {
   });
 
   it('returns true for files matching hooks.exclude patterns', () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       ...DEFAULT_CONFIG,
       hooks: {
         ...DEFAULT_CONFIG.hooks,
@@ -76,7 +76,7 @@ describe('isFileExcludedFromHooks — direct import from scope.ts', () => {
   });
 
   it('returns false for files NOT matching hooks.exclude patterns', () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       ...DEFAULT_CONFIG,
       hooks: {
         ...DEFAULT_CONFIG.hooks,
@@ -87,7 +87,7 @@ describe('isFileExcludedFromHooks — direct import from scope.ts', () => {
   });
 
   it('handles relative file paths', () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       ...DEFAULT_CONFIG,
       hooks: {
         ...DEFAULT_CONFIG.hooks,
@@ -103,8 +103,8 @@ describe('isFileInScope — integration with loadConfig', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-scope-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-scope-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
   });
 
@@ -114,7 +114,7 @@ describe('isFileInScope — integration with loadConfig', () => {
 
   it('uses config loaded from TOML to determine scope', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["docs/**/*.md"]\nexclude = ["docs/archive/**"]\n',
       'utf-8',
     );

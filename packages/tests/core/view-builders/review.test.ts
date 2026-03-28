@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import assert from 'node:assert';
-import { initHashline, buildReviewDocument } from '@changetracks/core/internals';
+import { initHashline, buildReviewDocument } from '@changedown/core/internals';
 
 beforeAll(async () => { await initHashline(); });
 
 describe('buildReviewDocument', () => {
   it('includes CriticMarkup in content spans with correct types', () => {
-    const content = 'Use {~~REST~>GraphQL~~}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | sub | proposed\n    reason: paradigm shift';
+    const content = 'Use {~~REST~>GraphQL~~}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | sub | proposed\n    reason: paradigm shift';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -20,21 +20,21 @@ describe('buildReviewDocument', () => {
   });
 
   it('includes full metadata in Zone 3', () => {
-    const content = 'Hello[^ct-1].\n\n[^ct-1]: @alice | 2026-01-01 | ins | proposed\n    reason: greeting';
+    const content = 'Hello[^cn-1].\n\n[^cn-1]: @alice | 2026-01-01 | ins | proposed\n    reason: greeting';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
     const meta = doc.lines[0].metadata;
     expect(meta).toHaveLength(1);
-    expect(meta[0].changeId).toBe('ct-1');
+    expect(meta[0].changeId).toBe('cn-1');
     expect(meta[0].author).toBe('@alice');
     expect(meta[0].reason).toBe('greeting');
     expect(meta[0].status).toBe('proposed');
   });
 
   it('sets P flag for lines with pending proposals', () => {
-    const content = 'Hello {++world++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello {++world++}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -43,19 +43,19 @@ describe('buildReviewDocument', () => {
   });
 
   it('strips footnote section from output lines', () => {
-    const content = 'Content.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Content.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
     for (const line of doc.lines) {
       const text = line.content.map(s => s.text).join('');
-      expect(text.includes('[^ct-1]:')).toBe(false);
+      expect(text.includes('[^cn-1]:')).toBe(false);
     }
   });
 
   it('renders footnote ref anchors with caret (matching raw file format)', () => {
-    const content = 'Hello[^ct-1] world.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello[^cn-1] world.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -63,14 +63,14 @@ describe('buildReviewDocument', () => {
     const spans = doc.lines[0].content;
     const anchorSpan = spans.find(s => s.type === 'anchor');
     expect(anchorSpan).toBeTruthy();
-    expect(anchorSpan!.text).toBe('[^ct-1]');
-    // Ensure no bare [ct-1] (without caret) is produced
+    expect(anchorSpan!.text).toBe('[^cn-1]');
+    // Ensure no bare [cn-1] (without caret) is produced
     const allText = spans.map(s => s.text).join('');
-    expect(allText.match(/\[ct-1\](?!\.\d)/)).toBe(null);
+    expect(allText.match(/\[cn-1\](?!\.\d)/)).toBe(null);
   });
 
   it('populates header with correct counts', () => {
-    const content = 'A[^ct-1]. B[^ct-2].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed\n[^ct-2]: @human | 2026-01-01 | del | accepted';
+    const content = 'A[^cn-1]. B[^cn-2].\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed\n[^cn-2]: @human | 2026-01-01 | del | accepted';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -80,7 +80,7 @@ describe('buildReviewDocument', () => {
   });
 
   it('handles insertions with correct span types', () => {
-    const content = 'Hello {++world++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello {++world++}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -92,7 +92,7 @@ describe('buildReviewDocument', () => {
   });
 
   it('handles deletions with correct span types', () => {
-    const content = 'Hello {--world--}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | del | proposed';
+    const content = 'Hello {--world--}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | del | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -104,7 +104,7 @@ describe('buildReviewDocument', () => {
   });
 
   it('handles highlights with correct span types', () => {
-    const content = 'Hello {==world==}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | highlight | proposed';
+    const content = 'Hello {==world==}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | highlight | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -128,7 +128,7 @@ describe('buildReviewDocument', () => {
   });
 
   it('handles substitutions with all sub-spans', () => {
-    const content = '{~~old~>new~~}[^ct-1]\n\n[^ct-1]: @ai:test | 2026-01-01 | sub | proposed';
+    const content = '{~~old~>new~~}[^cn-1]\n\n[^cn-1]: @ai:test | 2026-01-01 | sub | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -142,7 +142,7 @@ describe('buildReviewDocument', () => {
   });
 
   it('sets A flag for lines with accepted changes', () => {
-    const content = 'Hello {++world++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | accepted';
+    const content = 'Hello {++world++}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | accepted';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -172,7 +172,7 @@ describe('buildReviewDocument', () => {
   });
 
   it('skips blank line before footnote section', () => {
-    const content = 'Line one.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Line one.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -183,15 +183,15 @@ describe('buildReviewDocument', () => {
   });
 
   it('handles multiple footnote refs on one line', () => {
-    const content = '{++A++}[^ct-1] and {--B--}[^ct-2].\n\n[^ct-1]: @alice | 2026-01-01 | ins | proposed\n[^ct-2]: @bob | 2026-01-01 | del | rejected';
+    const content = '{++A++}[^cn-1] and {--B--}[^cn-2].\n\n[^cn-1]: @alice | 2026-01-01 | ins | proposed\n[^cn-2]: @bob | 2026-01-01 | del | rejected';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
     const anchors = doc.lines[0].content.filter(s => s.type === 'anchor');
     expect(anchors).toHaveLength(2);
-    expect(anchors[0].text).toBe('[^ct-1]');
-    expect(anchors[1].text).toBe('[^ct-2]');
+    expect(anchors[0].text).toBe('[^cn-1]');
+    expect(anchors[1].text).toBe('[^cn-2]');
     // Metadata should include both
     expect(doc.lines[0].metadata).toHaveLength(2);
     // P flag takes priority when there are mixed statuses
@@ -223,7 +223,7 @@ describe('buildReviewDocument', () => {
   // ─── Committed hash tests ─────────────────────────────────────────────────
 
   it('stores committed hash in sessionHashes for lines with proposals', () => {
-    const content = 'Hello {++an insertion++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello {++an insertion++}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -236,7 +236,7 @@ describe('buildReviewDocument', () => {
 
   it('committed hash is present for lines without proposals', () => {
     // Two-line doc: line 1 has CriticMarkup, line 2 is plain
-    const content = 'Hello {++world++}[^ct-1].\nPlain line here.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello {++world++}[^cn-1].\nPlain line here.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -254,7 +254,7 @@ describe('buildReviewDocument', () => {
   });
 
   it('margin hash is the committed hash, not the raw hash', () => {
-    const content = 'Hello {++an insertion++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello {++an insertion++}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -267,7 +267,7 @@ describe('buildReviewDocument', () => {
 
   it('entirely-pending-insertion line falls back to raw hash', () => {
     // A line that is ENTIRELY a pending insertion: committed view strips it entirely
-    const content = '{++new text++}[^ct-1]\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = '{++new text++}[^cn-1]\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildReviewDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',

@@ -13,10 +13,10 @@ Feature: H2 - Batch Wrapper
     And a pending substitution from "# Original heading" to "# Updated heading" in session "ses_1"
     When I apply pending edits for session "ses_1"
     Then the batch file "readme.md" includes "{~~# Original heading~># Updated heading~~}"
-    And the batch file "readme.md" includes "[^ct-1]"
+    And the batch file "readme.md" includes "[^cn-1]"
     And the batch file "readme.md" includes "| sub | proposed"
     And the batch result applied 1 edit
-    And the batch result change IDs include "ct-1"
+    And the batch result change IDs include "cn-1"
 
   Scenario: Pure insertion is wrapped with {++...++}
     Given a file "readme.md" with content "# Hello\n\nNew paragraph here.\n\nOld paragraph.\n"
@@ -39,8 +39,8 @@ Feature: H2 - Batch Wrapper
     And a pending substitution from "# Old Title" to "# New Title" in session "ses_1"
     And a pending substitution from "Old paragraph." to "New paragraph." in session "ses_1"
     When I apply pending edits for session "ses_1"
-    Then the batch file "readme.md" includes "[^ct-1.1]"
-    And the batch file "readme.md" includes "[^ct-1.2]"
+    Then the batch file "readme.md" includes "[^cn-1.1]"
+    And the batch file "readme.md" includes "[^cn-1.2]"
     And the batch file "readme.md" includes "| group | proposed"
     And the batch result applied 2 edits
 
@@ -54,11 +54,11 @@ Feature: H2 - Batch Wrapper
   # ── ID Continuation ──
 
   Scenario: New IDs increment from the max existing ID in the file
-    Given a file "readme.md" with content "# New heading\n\nSome {++inserted++}[^ct-3] text.\n\n[^ct-3]: @someone | 2026-02-09 | ins | proposed\n"
+    Given a file "readme.md" with content "# New heading\n\nSome {++inserted++}[^cn-3] text.\n\n[^cn-3]: @someone | 2026-02-09 | ins | proposed\n"
     And a pending substitution from "# Old heading" to "# New heading" in session "ses_1"
     When I apply pending edits for session "ses_1"
-    Then the batch file "readme.md" includes "[^ct-4]"
-    And the batch file "readme.md" includes "[^ct-3]"
+    Then the batch file "readme.md" includes "[^cn-4]"
+    And the batch file "readme.md" includes "[^cn-3]"
 
   # ── Session Isolation ──
 
@@ -80,7 +80,7 @@ Feature: H2 - Batch Wrapper
     Given a file "new-doc.md" with content "# Hello World\n\nThis is a new file.\n"
     And a pending creation of the entire file in session "ses_1"
     When I apply pending edits for session "ses_1" with creation_tracking "footnote"
-    Then the batch file "new-doc.md" includes "<!-- ctrcks.com/v1: tracked -->"
+    Then the batch file "new-doc.md" includes "<!-- changedown.com/v1: tracked -->"
     And the batch file "new-doc.md" includes "| creation | proposed"
     And the batch file "new-doc.md" excludes "{++"
 
@@ -97,19 +97,19 @@ Feature: H2 - Batch Wrapper
     And a pending substitution from "first original" to "First change" with context "" and " here." in session "ses_1"
     And a pending substitution from "second original" to "Second change" with context "\n\n" and " here." in session "ses_1"
     When I apply pending edits for session "ses_1"
-    Then the batch file "readme.md" includes "{~~first original~>First change~~}[^ct-1.1]"
-    And the batch file "readme.md" includes "{~~second original~>Second change~~}[^ct-1.2]"
+    Then the batch file "readme.md" includes "{~~first original~>First change~~}[^cn-1.1]"
+    And the batch file "readme.md" includes "{~~second original~>Second change~~}[^cn-1.2]"
 
   # ── Cross-File ID Scanning ──
 
   Scenario: Cross-file ID scanning avoids collisions
-    Given a file "a.md" with content "Change in A.\n\n[^ct-5]: @someone | 2026-02-09 | ins | proposed\n"
-    And a file "b.md" with content "Change in B.\n\n[^ct-3]: @someone | 2026-02-09 | ins | proposed\n"
+    Given a file "a.md" with content "Change in A.\n\n[^cn-5]: @someone | 2026-02-09 | ins | proposed\n"
+    And a file "b.md" with content "Change in B.\n\n[^cn-3]: @someone | 2026-02-09 | ins | proposed\n"
     And a pending substitution from "old A" to "Change in A" with context "" and "." in session "ses_1" for file "a.md"
     And a pending substitution from "old B" to "Change in B" with context "" and "." in session "ses_1" for file "b.md"
     When I apply pending edits for session "ses_1"
-    Then the batch file "a.md" includes "[^ct-6.1]"
-    And the batch file "b.md" includes "[^ct-6.2]"
+    Then the batch file "a.md" includes "[^cn-6.1]"
+    And the batch file "b.md" includes "[^cn-6.2]"
     And the batch file "a.md" includes "| group | proposed"
 
   # ── Session Isolation: Other Session Preserved ──
@@ -139,7 +139,7 @@ Feature: H2 - Batch Wrapper
     And a pending insertion of "hello world" with context "CCC " and " DDD" in session "ses_1"
     When I apply pending edits for session "ses_1"
     Then the batch file "readme.md" includes "AAA hello world BBB"
-    And the batch file "readme.md" includes "CCC {++hello world++}[^ct-1] DDD"
+    And the batch file "readme.md" includes "CCC {++hello world++}[^cn-1] DDD"
 
   # ── File Deleted Between Edit and Batch ──
 
@@ -163,14 +163,14 @@ Feature: H2 - Batch Wrapper
     Given a file "replaced.md" with content "# Fully Replaced\n\nEntire file was rewritten.\n"
     And a pending large insertion covering the entire file in session "ses_1"
     When I apply pending edits for session "ses_1" with creation_tracking "footnote"
-    Then the batch file "replaced.md" includes "<!-- ctrcks.com/v1: tracked -->"
+    Then the batch file "replaced.md" includes "<!-- changedown.com/v1: tracked -->"
     And the batch file "replaced.md" includes "| creation | proposed"
     And the batch file "replaced.md" excludes "{++"
 
   # ── Header Preservation ──
 
   Scenario: Header preservation does not duplicate tracking header
-    Given a file "already-tracked.md" with content "<!-- ctrcks.com/v1: tracked -->\n# Already Tracked\n\nContent.\n"
+    Given a file "already-tracked.md" with content "<!-- changedown.com/v1: tracked -->\n# Already Tracked\n\nContent.\n"
     And a pending creation of the entire file in session "ses_1"
     When I apply pending edits for session "ses_1" with creation_tracking "footnote"
     Then the batch file "already-tracked.md" has exactly 1 tracking header

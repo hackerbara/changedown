@@ -12,13 +12,13 @@
 
 import * as assert from 'assert';
 import { buildCardData, buildCardHtml, generateReviewHtml, ChangeCardData } from '../../review-panel';
-import { ChangeNode, ChangeType } from '@changetracks/core';
+import { ChangeNode, ChangeType } from '@changedown/core';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function makeChange(overrides: Partial<ChangeNode> = {}): ChangeNode {
     return {
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Insertion,
         range: { start: 0, end: 20 },
         contentRange: { start: 3, end: 17 },
@@ -122,7 +122,7 @@ suite('ReviewPanel', () => {
     suite('buildCardHtml', () => {
         test('collapsed card only shows accept and reject action buttons', () => {
             const card: ChangeCardData = {
-                id: 'ct-1', type: 'INSERTION', text: 'hello', author: 'human:alice',
+                id: 'cn-1', type: 'INSERTION', text: 'hello', author: 'human:alice',
                 status: 'proposed', colorClass: 'insertion', replyCount: 0,
                 hasDiscussion: false, isResolved: false, hasRequestChanges: false,
                 hasAmendments: false, isOwnChange: false, date: '', discussionPreview: [],

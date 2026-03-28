@@ -1,6 +1,6 @@
 @integration @git @GIT1
 Feature: GIT1 — Git integration, annotation command, and auto-annotate
-  As a ChangeTracks user with git-tracked files
+  As a ChangeDown user with git-tracked files
   I want to annotate changes from git history
   So that I can review what changed since the last commit
 
@@ -73,8 +73,8 @@ Feature: GIT1 — Git integration, annotation command, and auto-annotate
     When I modify the file to "def hello():\n    print(\"hello world\")\n"
     And I run annotateFromGit on the editor
     Then annotateFromGit returns true
-    And the document contains sidecar block "# -- ChangeTracks"
-    And the git document contains "# ct-"
+    And the document contains sidecar block "# -- ChangeDown"
+    And the git document contains "# cn-"
 
   Scenario: Returns false for unsupported language
     Given a git repo with file "data.bin" committed as "binary content\n"
@@ -131,9 +131,9 @@ Feature: GIT1 — Git integration, annotation command, and auto-annotate
     Then the scmIntegrationMode config value is one of "scm-first,hybrid,legacy"
 
   Scenario: SCM commands are registered
-    Then the command "changetracks.openDiffForResource" is registered
-    And the command "changetracks.acceptAllInFile" is registered
-    And the command "changetracks.rejectAllInFile" is registered
+    Then the command "changedown.openDiffForResource" is registered
+    And the command "changedown.acceptAllInFile" is registered
+    And the command "changedown.rejectAllInFile" is registered
 
   # ── Code file annotations ──────────────────────────────────────────
 

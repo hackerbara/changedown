@@ -1,14 +1,14 @@
 import { When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import {
     executeCommandViaBridge,
     setCursorPosition,
     getDecorationCounts,
     getDocumentText,
 } from '../../journeys/playwrightHarness';
-import { resolveViewName, VIEW_NAMES } from '@changetracks/core';
-import type { ViewName } from '@changetracks/core';
+import { resolveViewName, VIEW_NAMES } from '@changedown/core';
+import type { ViewName } from '@changedown/core';
 
 // Note: getEditorText uses textContent (includes CSS-hidden text).
 // For assertions that need to respect display:none, use hasHiddenSpans
@@ -30,7 +30,7 @@ export const VIEW_MODE_ORDER: readonly ViewName[] = VIEW_NAMES;
  */
 export const instanceViewMode = new Map<string, string>();
 
-export function getInstanceKey(world: ChangeTracksWorld): string {
+export function getInstanceKey(world: ChangeDownWorld): string {
     return world.fixtureFile ?? 'default';
 }
 
@@ -40,7 +40,7 @@ export function getInstanceKey(world: ChangeTracksWorld): string {
 // instance is in whatever mode the previous scenario left it in, causing
 // the toggle count calculation to be wrong.
 
-When('I switch to {string} view mode', { timeout: 20000 }, async function (this: ChangeTracksWorld, viewMode: string) {
+When('I switch to {string} view mode', { timeout: 20000 }, async function (this: ChangeDownWorld, viewMode: string) {
     assert.ok(this.page, 'Page not available');
     const canonical = resolveViewName(viewMode);
     assert.ok(
@@ -63,7 +63,7 @@ When('I switch to {string} view mode', { timeout: 20000 }, async function (this:
     const toggles = (targetIdx - currentIdx + VIEW_MODE_ORDER.length) % VIEW_MODE_ORDER.length;
 
     for (let i = 0; i < toggles; i++) {
-        await executeCommandViaBridge(this.page, 'ChangeTracks: Toggle Smart View');
+        await executeCommandViaBridge(this.page, 'ChangeDown: Toggle Smart View');
         await this.page.waitForTimeout(600);
     }
 
@@ -113,7 +113,7 @@ function findChangePosition(text: string, delimiter: string): [number, number] |
 }
 
 When('I move the cursor {word} the {word} change', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, position: string, changeType: string
+    this: ChangeDownWorld, position: string, changeType: string
 ) {
     assert.ok(this.page, 'Page not available');
 
@@ -202,20 +202,20 @@ async function getVisibleEditorText(page: Page): Promise<string> {
 // ── Decoration assertions ────────────────────────────────────────────
 
 Then('decorations are visible on the {word} change', { timeout: 5000 }, async function (
-    this: ChangeTracksWorld, changeType: string
+    this: ChangeDownWorld, changeType: string
 ) {
     assert.ok(this.page, 'Page not available');
     const deco = await getDecorationCounts(this.page);
     assert.ok(deco.total > 0, `No decorations found for ${changeType} change`);
 });
 
-Then('strikethrough is applied', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Then('strikethrough is applied', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const deco = await getDecorationCounts(this.page);
     assert.ok(deco.withStrikethrough > 0, 'No strikethrough decorations found');
 });
 
-Then('delimiters are hidden via display:none', { timeout: 20000 }, async function (this: ChangeTracksWorld) {
+Then('delimiters are hidden via display:none', { timeout: 20000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     // Wait for decoration batches to settle after view mode switch
     await this.page.waitForTimeout(1000);
@@ -223,21 +223,21 @@ Then('delimiters are hidden via display:none', { timeout: 20000 }, async functio
     assert.ok(hidden, 'No hidden (display:none) decorations found');
 });
 
-Then('delimiters are visible', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('delimiters are visible', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const hidden = await hasHiddenSpans(this.page);
     // In all-markup mode, delimiters should NOT be hidden
     assert.ok(!hidden, 'Delimiters are hidden but should be visible in all-markup mode');
 });
 
-Then('no hidden decorations exist', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('no hidden decorations exist', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const hidden = await hasHiddenSpans(this.page);
     assert.ok(!hidden, 'Unexpected hidden decorations found');
 });
 
 Then('the text {string} is visible in the editor', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, text: string
+    this: ChangeDownWorld, text: string
 ) {
     assert.ok(this.page, 'Page not available');
     const visibleText = await getVisibleEditorText(this.page);
@@ -245,7 +245,7 @@ Then('the text {string} is visible in the editor', { timeout: 10000 }, async fun
 });
 
 Then('the text {string} is not visible in the editor', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, text: string
+    this: ChangeDownWorld, text: string
 ) {
     assert.ok(this.page, 'Page not available');
     const visibleText = await getVisibleEditorText(this.page);
@@ -260,7 +260,7 @@ Then('the text {string} is not visible in the editor', { timeout: 10000 }, async
  * properties are expected.
  */
 Then('the {word} decoration in {word} with cursor {word} matches the baseline', { timeout: 10000 },
-    async function (this: ChangeTracksWorld, changeType: string, viewMode: string, cursorState: string) {
+    async function (this: ChangeDownWorld, changeType: string, viewMode: string, cursorState: string) {
         assert.ok(this.page, 'Page not available');
         const baselineName = `${changeType}-${viewMode}-${cursorState}`;
         const assertFn = DECORATION_BASELINES[baselineName];
@@ -474,7 +474,7 @@ async function countColoredTextSpans(page: Page): Promise<number> {
     return count as number;
 }
 
-Then('decorations include colored spans for change types', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('decorations include colored spans for change types', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     // Allow brief settling
     await this.page.waitForTimeout(500);
@@ -482,7 +482,7 @@ Then('decorations include colored spans for change types', { timeout: 10000 }, a
     assert.ok(count > 0, `Expected colored decoration spans in editor, found ${count}`);
 });
 
-Then('no colored text decorations remain', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('no colored text decorations remain', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     // Allow brief settling after view mode switch
     await this.page.waitForTimeout(500);

@@ -15,14 +15,14 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import type { Page } from 'playwright';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import { executeCommand } from '../../journeys/playwrightHarness';
 
-const CONFIG_STATE_PATH = path.join(os.tmpdir(), 'changetracks-test-config.json');
+const CONFIG_STATE_PATH = path.join(os.tmpdir(), 'changedown-test-config.json');
 
 async function queryConfig(page: Page): Promise<Record<string, unknown> | null> {
     const beforeTs = Date.now();
-    await executeCommand(page, 'ChangeTracks: Test Read Config');
+    await executeCommand(page, 'ChangeDown: Test Read Config');
     await page.waitForTimeout(300);
     try {
         if (!fs.existsSync(CONFIG_STATE_PATH)) return null;
@@ -34,12 +34,12 @@ async function queryConfig(page: Page): Promise<Record<string, unknown> | null> 
 }
 
 /**
- * Strip the "changetracks." prefix from a full config key to get the
+ * Strip the "changedown." prefix from a full config key to get the
  * lookup key in the bridge command's output. Nested keys like
- * "changetracks.editBoundary.pauseThresholdMs" become "editBoundary.pauseThresholdMs".
+ * "changedown.editBoundary.pauseThresholdMs" become "editBoundary.pauseThresholdMs".
  */
 function toConfigKey(fullKey: string): string {
-    return fullKey.startsWith('changetracks.') ? fullKey.slice('changetracks.'.length) : fullKey;
+    return fullKey.startsWith('changedown.') ? fullKey.slice('changedown.'.length) : fullKey;
 }
 
 // ── Then steps — configuration key assertions ────────────────────────
@@ -47,7 +47,7 @@ function toConfigKey(fullKey: string): string {
 Then(
     'configuration key {string} exists',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, key: string) {
+    async function (this: ChangeDownWorld, key: string) {
         assert.ok(this.page, 'Page not available');
         const config = await queryConfig(this.page!);
         assert.ok(config, 'Failed to read config via bridge command');
@@ -63,7 +63,7 @@ Then(
 Then(
     'configuration key {string} does not exist',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, key: string) {
+    async function (this: ChangeDownWorld, key: string) {
         assert.ok(this.page, 'Page not available');
         const config = await queryConfig(this.page!);
         assert.ok(config, 'Failed to read config via bridge command');
@@ -82,7 +82,7 @@ Then(
 Then(
     'configuration key {string} has type {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, key: string, expectedType: string) {
+    async function (this: ChangeDownWorld, key: string, expectedType: string) {
         assert.ok(this.page, 'Page not available');
         const config = await queryConfig(this.page!);
         assert.ok(config, 'Failed to read config via bridge command');
@@ -100,7 +100,7 @@ Then(
 Then(
     'configuration key {string} has value {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, key: string, expectedValue: string) {
+    async function (this: ChangeDownWorld, key: string, expectedValue: string) {
         assert.ok(this.page, 'Page not available');
         const config = await queryConfig(this.page!);
         assert.ok(config, 'Failed to read config via bridge command');
@@ -118,7 +118,7 @@ Then(
 Then(
     'configuration key {string} has boolean value {word}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, key: string, expectedStr: string) {
+    async function (this: ChangeDownWorld, key: string, expectedStr: string) {
         assert.ok(this.page, 'Page not available');
         const config = await queryConfig(this.page!);
         assert.ok(config, 'Failed to read config via bridge command');
@@ -137,7 +137,7 @@ Then(
 Then(
     'scmIntegrationMode is one of {string}, {string}, {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, opt1: string, opt2: string, opt3: string) {
+    async function (this: ChangeDownWorld, opt1: string, opt2: string, opt3: string) {
         assert.ok(this.page, 'Page not available');
         const config = await queryConfig(this.page!);
         assert.ok(config, 'Failed to read config via bridge command');

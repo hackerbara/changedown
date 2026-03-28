@@ -1,4 +1,4 @@
-import { findFootnoteBlock, findReviewInsertionIndex } from '@changetracks/core';
+import { findFootnoteBlock, findReviewInsertionIndex } from '@changedown/core';
 
 /**
  * Post-processes review content to add [label] suffix and/or blocked: line

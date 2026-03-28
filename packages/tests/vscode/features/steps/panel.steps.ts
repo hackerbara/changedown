@@ -3,7 +3,7 @@ import { strict as assert } from 'assert';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import type { Page, Frame } from 'playwright';
 import {
     executeCommand,
@@ -21,8 +21,8 @@ import {
 //   2. Playwright hover does not reliably trigger :hover in nested iframes
 //   3. VS Code iframe sandboxing restricts event propagation
 //
-// Instead, the extension registers a `changetracks._testQueryPanelState`
-// command (with palette title "ChangeTracks: Test Query Panel State")
+// Instead, the extension registers a `changedown._testQueryPanelState`
+// command (with palette title "ChangeDown: Test Query Panel State")
 // that writes the current panel state to a temp JSON file. Tests invoke
 // the command via the command palette, then read the file from disk.
 //
@@ -40,12 +40,12 @@ interface PanelState {
 }
 
 /** Path where the extension command writes its state JSON. */
-const PANEL_STATE_PATH = path.join(os.tmpdir(), 'changetracks-test-state.json');
+const PANEL_STATE_PATH = path.join(os.tmpdir(), 'changedown-test-state.json');
 
 /**
  * Query panel state via the extension's test command.
  *
- * Triggers `changetracks._testQueryPanelState` via the IPC bridge
+ * Triggers `changedown._testQueryPanelState` via the IPC bridge
  * (bypasses command palette MRU fuzzy-match issues), waits for the
  * extension host to write the state file, and reads it back.
  *
@@ -55,7 +55,7 @@ async function queryPanelState(page: Page): Promise<PanelState | null> {
     const beforeTs = Date.now();
 
     for (let attempt = 0; attempt < 3; attempt++) {
-        await executeCommandViaBridge(page, 'changetracks._testQueryPanelState');
+        await executeCommandViaBridge(page, 'changedown._testQueryPanelState');
         await page.waitForTimeout(500 + attempt * 500); // 500, 1000, 1500ms
 
         try {
@@ -107,10 +107,10 @@ async function queryViewMode(page: Page): Promise<string> {
 // ── Panel webview frame helpers ─────────────────────────────────────
 
 /**
- * Find a ChangeTracks WebviewView frame inside the sidebar.
+ * Find a ChangeDown WebviewView frame inside the sidebar.
  *
- * Both the Review Panel (changetracksReview) and Settings Panel
- * (changetracksSettings) are WebviewViews rendered inside nested iframes.
+ * Both the Review Panel (changedownReview) and Settings Panel
+ * (changedownSettings) are WebviewViews rendered inside nested iframes.
  * This function searches Playwright frames for the one containing our
  * panel content.
  *
@@ -237,58 +237,58 @@ async function getTrackingToggleState(page: Page): Promise<boolean> {
 
 // ── Given steps ─────────────────────────────────────────────────────
 
-Given('the Explorer sidebar is visible', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Given('the Explorer sidebar is visible', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommand(this.page, 'workbench.view.extension.changetracks');
+    await executeCommand(this.page, 'workbench.view.extension.changedown');
     await this.page.waitForTimeout(1500);
 });
 
-Given('the Changes tab is visible in the Explorer sidebar', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Given('the Changes tab is visible in the Explorer sidebar', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommand(this.page, 'workbench.view.extension.changetracks');
+    await executeCommand(this.page, 'workbench.view.extension.changedown');
     await this.page.waitForTimeout(1500);
 });
 
-Given('tracking is currently OFF', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Given('tracking is currently OFF', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const isOn = await queryTrackingEnabled(this.page);
     if (isOn) {
         // Toggle it off
-        await executeCommand(this.page, 'ChangeTracks: Toggle Tracking');
+        await executeCommand(this.page, 'ChangeDown: Toggle Tracking');
         await this.page.waitForTimeout(800);
     }
 });
 
-Given('smart view is currently OFF', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Given('smart view is currently OFF', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     // Smart view starts OFF by default. If it were on we would toggle it.
     assert.ok(this.page, 'Page not available');
 });
 
-Given('tracking is ON and smart view is OFF', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Given('tracking is ON and smart view is OFF', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const isOn = await queryTrackingEnabled(this.page);
     if (!isOn) {
-        await executeCommand(this.page, 'ChangeTracks: Toggle Tracking');
+        await executeCommand(this.page, 'ChangeDown: Toggle Tracking');
         await this.page.waitForTimeout(800);
     }
 });
 
 // ── When steps: Review Panel interactions ────────────────────────────
 
-When('I open the ChangeTracks sidebar', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I open the ChangeDown sidebar', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommand(this.page, 'workbench.view.extension.changetracks');
+    await executeCommand(this.page, 'workbench.view.extension.changedown');
     await this.page.waitForTimeout(1500);
 });
 
-When('I look at the Changes tab in the Explorer sidebar', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I look at the Changes tab in the Explorer sidebar', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommand(this.page, 'workbench.view.extension.changetracks');
+    await executeCommand(this.page, 'workbench.view.extension.changedown');
     await this.page.waitForTimeout(1500);
 });
 
 When('I click the {string} toggle item in the Changes tab', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, toggleName: string
+    this: ChangeDownWorld, toggleName: string
 ) {
     assert.ok(this.page, 'Page not available');
     if (toggleName === 'Tracking') {
@@ -297,45 +297,45 @@ When('I click the {string} toggle item in the Changes tab', { timeout: 10000 }, 
     } else if (toggleName === 'Smart View') {
         // Smart View toggle is not currently in the review panel —
         // use the extension command instead.
-        await executeCommand(this.page, 'ChangeTracks: Toggle Smart View');
+        await executeCommand(this.page, 'ChangeDown: Toggle Smart View');
     }
     await this.page.waitForTimeout(1000);
 });
 
-When('I click the Next Change button in the summary section', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click the Next Change button in the summary section', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const clicked = await clickInReviewPanel(this.page, '#nextBtn');
     assert.ok(clicked, 'Failed to click Next Change button in the Review Panel');
     await this.page.waitForTimeout(800);
 });
 
-When('I click the Previous Change button in the summary section', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click the Previous Change button in the summary section', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const clicked = await clickInReviewPanel(this.page, '#prevBtn');
     assert.ok(clicked, 'Failed to click Previous Change button in the Review Panel');
     await this.page.waitForTimeout(800);
 });
 
-When('I click the Accept All button in the summary section', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click the Accept All button in the summary section', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommandViaBridge(this.page, 'changetracks.acceptAll');
+    await executeCommandViaBridge(this.page, 'changedown.acceptAll');
     await this.page.waitForTimeout(1000);
 });
 
-When('I click the Reject All button in the summary section', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click the Reject All button in the summary section', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommandViaBridge(this.page, 'changetracks.rejectAll');
+    await executeCommandViaBridge(this.page, 'changedown.rejectAll');
     await this.page.waitForTimeout(1000);
 });
 
-When('I click Reject All in the panel', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click Reject All in the panel', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommandViaBridge(this.page, 'changetracks.rejectAll');
+    await executeCommandViaBridge(this.page, 'changedown.rejectAll');
     await this.page.waitForTimeout(1000);
 });
 
 When('I expand the {string} section', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, sectionName: string
+    this: ChangeDownWorld, sectionName: string
 ) {
     assert.ok(this.page, 'Page not available');
     if (sectionName.startsWith('Changes')) {
@@ -346,7 +346,7 @@ When('I expand the {string} section', { timeout: 10000 }, async function (
     await this.page.waitForTimeout(500);
 });
 
-When('I expand the change list', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I expand the change list', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const frame = await findReviewPanelFrame(this.page);
     assert.ok(frame, 'Review Panel frame not found');
@@ -360,7 +360,7 @@ When('I expand the change list', { timeout: 10000 }, async function (this: Chang
     }
 });
 
-When('I click a change item', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click a change item', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const frame = await findReviewPanelFrame(this.page);
     assert.ok(frame, 'Review Panel frame not found');
@@ -370,23 +370,23 @@ When('I click a change item', { timeout: 10000 }, async function (this: ChangeTr
     await this.page.waitForTimeout(800);
 });
 
-When('I click the Accept button on an insertion item', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click the Accept button on an insertion item', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommandViaBridge(this.page, 'changetracks.nextChange');
+    await executeCommandViaBridge(this.page, 'changedown.nextChange');
     await this.page.waitForTimeout(500);
-    await executeCommandViaBridge(this.page, 'changetracks.acceptChange', [undefined, 'approve']);
+    await executeCommandViaBridge(this.page, 'changedown.acceptChange', [undefined, 'approve']);
     await this.page.waitForTimeout(800);
 });
 
-When('I click the Reject button on a deletion item', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click the Reject button on a deletion item', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommandViaBridge(this.page, 'changetracks.nextChange');
+    await executeCommandViaBridge(this.page, 'changedown.nextChange');
     await this.page.waitForTimeout(300);
-    await executeCommandViaBridge(this.page, 'changetracks.rejectChange', [undefined, 'reject']);
+    await executeCommandViaBridge(this.page, 'changedown.rejectChange', [undefined, 'reject']);
     await this.page.waitForTimeout(800);
 });
 
-When('I accept a change from the panel\'s change list', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I accept a change from the panel\'s change list', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const frame = await findReviewPanelFrame(this.page);
     assert.ok(frame, 'Review Panel frame not found');
@@ -409,14 +409,14 @@ When('I accept a change from the panel\'s change list', { timeout: 10000 }, asyn
     await this.page.waitForTimeout(800);
 });
 
-When('I click the text preview on a change card', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click the text preview on a change card', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommandViaBridge(this.page, 'changetracks.nextChange');
+    await executeCommandViaBridge(this.page, 'changedown.nextChange');
     await this.page.waitForTimeout(800);
 });
 
 When('I switch to the {string} view mode from the panel', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, viewMode: string
+    this: ChangeDownWorld, viewMode: string
 ) {
     assert.ok(this.page, 'Page not available');
     const clicked = await clickInReviewPanel(this.page, `.vm-btn[data-mode="${viewMode}"]`);
@@ -425,57 +425,57 @@ When('I switch to the {string} view mode from the panel', { timeout: 10000 }, as
     await this.page.waitForTimeout(1000);
 });
 
-When('I click the Tracking toggle', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click the Tracking toggle', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommandViaBridge(this.page, 'changetracks.toggleTracking');
+    await executeCommandViaBridge(this.page, 'changedown.toggleTracking');
     await this.page.waitForTimeout(1000);
 });
 
-When('I click the Smart View toggle', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click the Smart View toggle', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     // Smart View toggle is handled via command (not embedded in review panel)
-    await executeCommand(this.page, 'ChangeTracks: Toggle Smart View');
+    await executeCommand(this.page, 'ChangeDown: Toggle Smart View');
     await this.page.waitForTimeout(1000);
 });
 
-When('I toggle smart view ON', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I toggle smart view ON', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommand(this.page, 'ChangeTracks: Toggle Smart View');
+    await executeCommand(this.page, 'ChangeDown: Toggle Smart View');
     await this.page.waitForTimeout(1000);
 });
 
 // ── When steps: Settings Panel interactions ─────────────────────────
 
-When('I navigate to the Settings tab in the Explorer sidebar', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I navigate to the Settings tab in the Explorer sidebar', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    // Focus the ChangeTracks sidebar container
-    await executeCommand(this.page, 'workbench.view.extension.changetracks');
+    // Focus the ChangeDown sidebar container
+    await executeCommand(this.page, 'workbench.view.extension.changedown');
     await this.page.waitForTimeout(1000);
     // The Settings tab is a separate view within the sidebar;
     // VS Code renders it as a collapsible section. Click its header to expand.
     try {
-        await this.page.click('[id*="changetracksSettings"] .pane-header, [aria-label*="Project Settings"]', { timeout: 3000 });
+        await this.page.click('[id*="changedownSettings"] .pane-header, [aria-label*="Project Settings"]', { timeout: 3000 });
     } catch {
         // If the selector fails, try focusing via command
-        await executeCommand(this.page, 'changetracksSettings.focus');
+        await executeCommand(this.page, 'changedownSettings.focus');
     }
     await this.page.waitForTimeout(1000);
 });
 
-When('I open the Settings Panel', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I open the Settings Panel', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
-    await executeCommand(this.page, 'workbench.view.extension.changetracks');
+    await executeCommand(this.page, 'workbench.view.extension.changedown');
     await this.page.waitForTimeout(1000);
     try {
-        await this.page.click('[id*="changetracksSettings"] .pane-header, [aria-label*="Project Settings"]', { timeout: 3000 });
+        await this.page.click('[id*="changedownSettings"] .pane-header, [aria-label*="Project Settings"]', { timeout: 3000 });
     } catch {
-        await executeCommand(this.page, 'changetracksSettings.focus');
+        await executeCommand(this.page, 'changedownSettings.focus');
     }
     await this.page.waitForTimeout(1000);
 });
 
 When('I change author to {string} in Settings', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, author: string
+    this: ChangeDownWorld, author: string
 ) {
     assert.ok(this.page, 'Page not available');
     const frame = await findSettingsPanelFrame(this.page);
@@ -487,7 +487,7 @@ When('I change author to {string} in Settings', { timeout: 10000 }, async functi
 });
 
 When('I change Enforcement from {string} to {string}', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, _from: string, to: string
+    this: ChangeDownWorld, _from: string, to: string
 ) {
     assert.ok(this.page, 'Page not available');
     const frame = await findSettingsPanelFrame(this.page);
@@ -496,7 +496,7 @@ When('I change Enforcement from {string} to {string}', { timeout: 10000 }, async
     await this.page.waitForTimeout(300);
 });
 
-When('I click Save', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I click Save', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     // Try Settings Panel first, then Review Panel
     let frame = await findSettingsPanelFrame(this.page);
@@ -510,7 +510,7 @@ When('I click Save', { timeout: 10000 }, async function (this: ChangeTracksWorld
     await this.page.waitForTimeout(1000);
 });
 
-When('I save settings', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+When('I save settings', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const frame = await findSettingsPanelFrame(this.page);
     assert.ok(frame, 'Settings Panel frame not found');
@@ -521,11 +521,11 @@ When('I save settings', { timeout: 10000 }, async function (this: ChangeTracksWo
 });
 
 When('I click {string} in the Changes tab', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, buttonText: string
+    this: ChangeDownWorld, buttonText: string
 ) {
     assert.ok(this.page, 'Page not available');
     if (buttonText === 'Add Comment') {
-        await executeCommand(this.page, 'ChangeTracks: Add Comment');
+        await executeCommand(this.page, 'ChangeDown: Add Comment');
     } else {
         const frame = await findReviewPanelFrame(this.page);
         assert.ok(frame, 'Review Panel frame not found');
@@ -544,7 +544,7 @@ const VIEW_MODE_ALIASES: Record<string, string> = {
 // ── Then steps: Review Panel assertions ─────────────────────────────
 
 Then('the Review Panel shows {int} change cards', { timeout: 15000 }, async function (
-    this: ChangeTracksWorld, expectedCount: number
+    this: ChangeDownWorld, expectedCount: number
 ) {
     assert.ok(this.page, 'Page not available');
     const count = await queryChangeCount(this.page);
@@ -552,7 +552,7 @@ Then('the Review Panel shows {int} change cards', { timeout: 15000 }, async func
     assert.strictEqual(count, expectedCount, `Expected ${expectedCount} change cards, got ${count}`);
 });
 
-Then('the Review Panel shows change cards', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+Then('the Review Panel shows change cards', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const count = await queryChangeCount(this.page);
     this.lastChangeCount = count;
@@ -560,7 +560,7 @@ Then('the Review Panel shows change cards', { timeout: 15000 }, async function (
 });
 
 Then('the summary line shows {string}', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, expectedText: string
+    this: ChangeDownWorld, expectedText: string
 ) {
     assert.ok(this.page, 'Page not available');
     const summaryText = await getReviewPanelText(this.page, '.summary-line');
@@ -571,7 +571,7 @@ Then('the summary line shows {string}', { timeout: 10000 }, async function (
 });
 
 Then('the summary shows {string}', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, expectedText: string
+    this: ChangeDownWorld, expectedText: string
 ) {
     assert.ok(this.page, 'Page not available');
     const summaryText = await getReviewPanelText(this.page, '.summary-line');
@@ -582,7 +582,7 @@ Then('the summary shows {string}', { timeout: 10000 }, async function (
 });
 
 Then('the summary updates to {string}', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, expectedText: string
+    this: ChangeDownWorld, expectedText: string
 ) {
     assert.ok(this.page, 'Page not available');
     // Wait for debounced refresh
@@ -595,7 +595,7 @@ Then('the summary updates to {string}', { timeout: 10000 }, async function (
 });
 
 Then('the tracking toggle shows {string}', { timeout: 15000 }, async function (
-    this: ChangeTracksWorld, state: string
+    this: ChangeDownWorld, state: string
 ) {
     assert.ok(this.page, 'Page not available');
     // Primary: command-mediated query (bypasses iframe)
@@ -614,32 +614,32 @@ Then('the tracking toggle shows {string}', { timeout: 15000 }, async function (
     }
 });
 
-Then('tracking mode activates', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+Then('tracking mode activates', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     await this.page.waitForTimeout(500);
     const isOn = await queryTrackingEnabled(this.page);
     assert.ok(isOn, 'Tracking mode did not activate');
 });
 
-Then('smart view activates', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Then('smart view activates', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     // Smart view activation is verified by checking for hidden decorations
     assert.ok(this.page, 'Page not available');
 });
 
-Then('the expandable change list is empty', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+Then('the expandable change list is empty', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const count = await queryChangeCount(this.page);
     assert.strictEqual(count, 0, `Expected empty change list but found ${count} changes`);
 });
 
-Then('the change list is empty', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+Then('the change list is empty', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const count = await queryChangeCount(this.page);
     assert.strictEqual(count, 0, `Expected empty change list but found ${count} changes`);
 });
 
 Then('the panel summary shows {string}', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, expectedText: string
+    this: ChangeDownWorld, expectedText: string
 ) {
     assert.ok(this.page, 'Page not available');
     await this.page.waitForTimeout(500);
@@ -650,7 +650,7 @@ Then('the panel summary shows {string}', { timeout: 10000 }, async function (
     );
 });
 
-Then('the change count in the panel decrements', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+Then('the change count in the panel decrements', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     await this.page.waitForTimeout(500);
     const count = await queryChangeCount(this.page);
@@ -665,7 +665,7 @@ Then('the change count in the panel decrements', { timeout: 15000 }, async funct
 });
 
 Then('the active view mode is {string}', { timeout: 15000 }, async function (
-    this: ChangeTracksWorld, expectedMode: string
+    this: ChangeDownWorld, expectedMode: string
 ) {
     assert.ok(this.page, 'Page not available');
     const mode = await queryViewMode(this.page);
@@ -673,7 +673,7 @@ Then('the active view mode is {string}', { timeout: 15000 }, async function (
     assert.strictEqual(mode, resolved, `Expected active view mode "${expectedMode}" (resolved: "${resolved}"), got "${mode}"`);
 });
 
-Then('the panel\'s Tracking toggle reflects the new state', { timeout: 15000 }, async function (this: ChangeTracksWorld) {
+Then('the panel\'s Tracking toggle reflects the new state', { timeout: 15000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     await this.page.waitForTimeout(500);
     // Verify tracking state is queryable (command-mediated, no iframe dependency)
@@ -697,7 +697,7 @@ Then('the panel\'s Tracking toggle reflects the new state', { timeout: 15000 }, 
     }
 });
 
-Then('I see each change listed with content preview, author, and type icon', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('I see each change listed with content preview, author, and type icon', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const frame = await findReviewPanelFrame(this.page);
     assert.ok(frame, 'Review Panel frame not found');
@@ -712,7 +712,7 @@ Then('I see each change listed with content preview, author, and type icon', { t
     assert.ok(hasStructure, 'Change cards do not have the expected structure (type-badge + card-text)');
 });
 
-Then('each item has inline Accept and Reject buttons', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('each item has inline Accept and Reject buttons', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const frame = await findReviewPanelFrame(this.page);
     assert.ok(frame, 'Review Panel frame not found');
@@ -724,38 +724,38 @@ Then('each item has inline Accept and Reject buttons', { timeout: 10000 }, async
     assert.ok(hasButtons, 'Change cards do not have Accept and Reject buttons');
 });
 
-Then('the editor scrolls to the next change', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Then('the editor scrolls to the next change', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     // Verify cursor moved by checking status bar position
     const status = await getStatusBarText(this.page);
     assert.ok(status.includes('Ln'), 'Status bar does not show cursor position');
 });
 
-Then('the editor scrolls to the previous change', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Then('the editor scrolls to the previous change', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const status = await getStatusBarText(this.page);
     assert.ok(status.includes('Ln'), 'Status bar does not show cursor position');
 });
 
-Then('the editor scrolls to reveal that change', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Then('the editor scrolls to reveal that change', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const status = await getStatusBarText(this.page);
     assert.ok(status.includes('Ln'), 'Status bar does not show cursor position');
 });
 
-Then('the cursor is positioned inside the change', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Then('the cursor is positioned inside the change', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const status = await getStatusBarText(this.page);
     assert.ok(status.includes('Ln'), 'Cursor position not available in status bar');
 });
 
-Then('the cursor is positioned inside that change', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Then('the cursor is positioned inside that change', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const status = await getStatusBarText(this.page);
     assert.ok(status.includes('Ln'), 'Cursor position not available in status bar');
 });
 
-Then('all changes in the current file are accepted', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('all changes in the current file are accepted', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     await this.page.waitForTimeout(1000);
     const editorText = await getEditorText(this.page);
@@ -763,7 +763,7 @@ Then('all changes in the current file are accepted', { timeout: 10000 }, async f
     assert.ok(!hasDelimiters, 'CriticMarkup delimiters still present after Accept All');
 });
 
-Then('all changes in the current file are rejected', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('all changes in the current file are rejected', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     await this.page.waitForTimeout(1000);
     const editorText = await getEditorText(this.page);
@@ -773,11 +773,11 @@ Then('all changes in the current file are rejected', { timeout: 10000 }, async f
 
 // ── Then steps: Status bar assertions ───────────────────────────────
 
-Then('the status bar indicator updates to show tracking active', { timeout: 5000 }, async function (this: ChangeTracksWorld) {
+Then('the status bar indicator updates to show tracking active', { timeout: 5000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const status = await getStatusBarText(this.page);
     assert.ok(
-        status.includes('ChangeTracks') || status.includes('tracking'),
+        status.includes('ChangeDown') || status.includes('tracking'),
         `Status bar does not indicate tracking active. Text: "${status}"`
     );
 });
@@ -785,7 +785,7 @@ Then('the status bar indicator updates to show tracking active', { timeout: 5000
 // ── Then steps: Project Status header assertions ────────────────────
 
 Then('I see a {string} section at the top', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, sectionName: string
+    this: ChangeDownWorld, sectionName: string
 ) {
     assert.ok(this.page, 'Page not available');
     const panelText = await getReviewPanelText(this.page);
@@ -796,7 +796,7 @@ Then('I see a {string} section at the top', { timeout: 10000 }, async function (
 });
 
 Then('it shows {string}', { timeout: 5000 }, async function (
-    this: ChangeTracksWorld, expectedText: string
+    this: ChangeDownWorld, expectedText: string
 ) {
     assert.ok(this.page, 'Page not available');
     const panelText = await getReviewPanelText(this.page);
@@ -807,7 +807,7 @@ Then('it shows {string}', { timeout: 5000 }, async function (
 });
 
 Then('the Project Status shows {string}', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, expectedText: string
+    this: ChangeDownWorld, expectedText: string
 ) {
     assert.ok(this.page, 'Page not available');
     await this.page.waitForTimeout(500);
@@ -818,7 +818,7 @@ Then('the Project Status shows {string}', { timeout: 10000 }, async function (
     );
 });
 
-Then('the Project Status header updates', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('the Project Status header updates', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     await this.page.waitForTimeout(500);
     // Verify the panel has re-rendered (has content)
@@ -829,7 +829,7 @@ Then('the Project Status header updates', { timeout: 10000 }, async function (th
 // ── Then steps: J10 — Panel status header assertions ─────────────────
 
 Then('the Review Panel header shows {string}', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, expected: string
+    this: ChangeDownWorld, expected: string
 ) {
     assert.ok(this.page, 'Page not available');
     const text = await getReviewPanelText(this.page, '.panel-header');
@@ -840,7 +840,7 @@ Then('the Review Panel header shows {string}', { timeout: 10000 }, async functio
 });
 
 Then('the Project Status header shows:', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, dataTable: any
+    this: ChangeDownWorld, dataTable: any
 ) {
     assert.ok(this.page, 'Page not available');
     const panelText = await getReviewPanelText(this.page);
@@ -857,7 +857,7 @@ Then('the Project Status header shows:', { timeout: 10000 }, async function (
 // ── Then steps: J9 — Settings Panel form assertions ──────────────────
 
 Then('the Settings panel shows author {string}', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, expectedAuthor: string
+    this: ChangeDownWorld, expectedAuthor: string
 ) {
     assert.ok(this.page, 'Page not available');
     const frame = await findSettingsPanelFrame(this.page);
@@ -868,7 +868,7 @@ Then('the Settings panel shows author {string}', { timeout: 10000 }, async funct
 });
 
 Then('the Settings panel shows enforcement {string}', { timeout: 10000 }, async function (
-    this: ChangeTracksWorld, expectedEnforcement: string
+    this: ChangeDownWorld, expectedEnforcement: string
 ) {
     assert.ok(this.page, 'Page not available');
     const frame = await findSettingsPanelFrame(this.page);
@@ -880,11 +880,11 @@ Then('the Settings panel shows enforcement {string}', { timeout: 10000 }, async 
 
 // ── Then steps: J11 — Status bar assertions ──────────────────────────
 
-Then('the status bar item is visible', { timeout: 10000 }, async function (this: ChangeTracksWorld) {
+Then('the status bar item is visible', { timeout: 10000 }, async function (this: ChangeDownWorld) {
     assert.ok(this.page, 'Page not available');
     const statusText = await getStatusBarText(this.page);
     assert.ok(
-        statusText.includes('ChangeTracks'),
+        statusText.includes('ChangeDown'),
         `Status bar item not visible. Status bar text: "${statusText}"`
     );
 });

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "changedown": {
+      "command": "node",
+      "args": ["${workspaceFolder}/changedown-plugin/mcp-server/dist/index.js"]
+    }
+  }
+}

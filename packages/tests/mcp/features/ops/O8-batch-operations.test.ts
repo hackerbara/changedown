@@ -9,9 +9,9 @@ import { ScenarioContext } from '../scenario-context.js';
  *
  * Batch flow:
  *   1. propose_change with `changes` array (2+ items) delegates to handleProposeBatch
- *   2. state.beginGroup() reserves parent ID (ct-N), children get ct-N.1, ct-N.2, ...
+ *   2. state.beginGroup() reserves parent ID (cn-N), children get cn-N.1, cn-N.2, ...
  *   3. applySingleOperation applies each change with coordinate adjustment
- *   4. Group footnote [^ct-N] written with type "group"
+ *   4. Group footnote [^cn-N] written with type "group"
  *   5. Response returns { group_id, changes: [{change_id, type, index}] }
  */
 
@@ -53,20 +53,20 @@ describe('O8: Batch operations', () => {
     const data = ctx.parseResult(result);
 
     // Response contains grouped IDs under the group parent
-    expect(data.group_id).toBe('ct-1');
+    expect(data.group_id).toBe('cn-1');
     const changes = data.applied as Array<{ change_id: string; type: string; index: number }>;
     expect(changes).toHaveLength(3);
-    expect(changes[0].change_id).toBe('ct-1.1');
-    expect(changes[1].change_id).toBe('ct-1.2');
-    expect(changes[2].change_id).toBe('ct-1.3');
+    expect(changes[0].change_id).toBe('cn-1.1');
+    expect(changes[1].change_id).toBe('cn-1.2');
+    expect(changes[2].change_id).toBe('cn-1.3');
 
     // All three child footnotes exist on disk with the group prefix
     const disk = await ctx.readDisk(filePath);
-    expect(disk).toContain('[^ct-1.1]:');
-    expect(disk).toContain('[^ct-1.2]:');
-    expect(disk).toContain('[^ct-1.3]:');
+    expect(disk).toContain('[^cn-1.1]:');
+    expect(disk).toContain('[^cn-1.2]:');
+    expect(disk).toContain('[^cn-1.3]:');
     // Group footnote also exists
-    expect(disk).toContain('[^ct-1]:');
+    expect(disk).toContain('[^cn-1]:');
 
     // Inline markup is present for each change
     expect(disk).toContain('{~~alpha~>ALPHA~~}');
@@ -91,8 +91,8 @@ describe('O8: Batch operations', () => {
 
     // Each child footnote contains its own reasoning
     // Find the footnote blocks for each child
-    const sc11Section = extractFootnoteSection(disk, 'ct-1.1');
-    const sc12Section = extractFootnoteSection(disk, 'ct-1.2');
+    const sc11Section = extractFootnoteSection(disk, 'cn-1.1');
+    const sc12Section = extractFootnoteSection(disk, 'cn-1.2');
 
     expect(sc11Section).toContain('reason-for-alpha');
     expect(sc12Section).toContain('reason-for-beta');
@@ -117,8 +117,8 @@ describe('O8: Batch operations', () => {
 
     const disk = await ctx.readDisk(filePath);
 
-    // The shared reasoning goes into the group footnote [^ct-1]
-    const groupSection = extractFootnoteSection(disk, 'ct-1');
+    // The shared reasoning goes into the group footnote [^cn-1]
+    const groupSection = extractFootnoteSection(disk, 'cn-1');
     expect(groupSection).toContain('capitalize for emphasis');
     // Group footnote has type "group"
     expect(groupSection).toContain('group');
@@ -178,31 +178,31 @@ Third paragraph here.`;
     expect(proposeResult.isError).toBeUndefined();
 
     // All three should be proposed
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.1', 'proposed');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.2', 'proposed');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.3', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.1', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.2', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.3', 'proposed');
 
     // Approve all three in one review call
     const reviewResult = await ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-1.1', decision: 'approve', reason: 'looks good' },
-        { change_id: 'ct-1.2', decision: 'approve', reason: 'looks good' },
-        { change_id: 'ct-1.3', decision: 'approve', reason: 'looks good' },
+        { change_id: 'cn-1.1', decision: 'approve', reason: 'looks good' },
+        { change_id: 'cn-1.2', decision: 'approve', reason: 'looks good' },
+        { change_id: 'cn-1.3', decision: 'approve', reason: 'looks good' },
       ],
     });
     expect(reviewResult.isError).toBeUndefined();
 
     // All three footnotes show "accepted"
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.1', 'accepted');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.2', 'accepted');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.3', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.1', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.2', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.3', 'accepted');
   });
 
   // ─── Scenario 7: Batch affected_lines returns bounded window ────────
 
   it('Scenario: Batch affected_lines returns bounded window, not entire file', async () => {
     // Create a 55-line file (well above the 50+ line threshold)
-    const lines = ['<!-- ctrcks.com/v1: tracked -->', '# Large Document', ''];
+    const lines = ['<!-- changedown.com/v1: tracked -->', '# Large Document', ''];
     for (let i = 1; i <= 52; i++) {
       lines.push(`Line ${i} of the specification document.`);
     }
@@ -273,18 +273,18 @@ Third paragraph here.`;
     // Mixed decisions: approve first, reject second, request_changes on third
     const reviewResult = await ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-1.1', decision: 'approve', reason: 'alpha change is correct' },
-        { change_id: 'ct-1.2', decision: 'reject', reason: 'beta should stay lowercase' },
-        { change_id: 'ct-1.3', decision: 'request_changes', reason: 'gamma needs different casing' },
+        { change_id: 'cn-1.1', decision: 'approve', reason: 'alpha change is correct' },
+        { change_id: 'cn-1.2', decision: 'reject', reason: 'beta should stay lowercase' },
+        { change_id: 'cn-1.3', decision: 'request_changes', reason: 'gamma needs different casing' },
       ],
     });
     expect(reviewResult.isError).toBeUndefined();
 
     // Each footnote reflects its individual decision
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.1', 'accepted');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.2', 'rejected');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.1', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.2', 'rejected');
     // request_changes does not change status from proposed
-    await ctx.assertFootnoteStatus(filePath, 'ct-1.3', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1.3', 'proposed');
 
     // Verify the review decisions are recorded in the footnotes
     const disk = await ctx.readDisk(filePath);
@@ -302,7 +302,7 @@ Third paragraph here.`;
  */
 function extractFootnoteSection(content: string, changeId: string): string {
   const lines = content.split('\n');
-  // Use regex with exact match to avoid substring matches (e.g. [^ct-1]: matching [^ct-1.1]:)
+  // Use regex with exact match to avoid substring matches (e.g. [^cn-1]: matching [^cn-1.1]:)
   const escapedId = changeId.replace('.', '\\.');
   const headerRegex = new RegExp(`^\\[\\^${escapedId}\\]:`);
   const startIdx = lines.findIndex(l => headerRegex.test(l));

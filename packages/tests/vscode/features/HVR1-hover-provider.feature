@@ -6,16 +6,16 @@ Feature: HVR1 — Hover provider shows change metadata
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   Scenario: Hovering over a change shows metadata
     When I navigate to the next change
-    Then hovering shows text containing "ct-"
+    Then hovering shows text containing "cn-"
 
   @wip @coverage-gap @slow @fixture(untracked-file)
   Scenario: PB-24 hover on untracked file shows no content
-    Given an untracked markdown file (no changetracks header)
+    Given an untracked markdown file (no changedown header)
     When I hover over a text position
     Then no hover content is displayed
     # FIXED in hover-provider.ts — hints only shown when tracking header present.

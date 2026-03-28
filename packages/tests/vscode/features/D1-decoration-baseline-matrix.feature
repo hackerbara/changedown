@@ -6,7 +6,7 @@ Feature: Decoration baseline matrix — all types x all views
 
   Background:
     Given I open "decoration-baseline-matrix.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   Scenario Outline: <change_type> decoration in <view_mode> view with cursor <cursor_state>

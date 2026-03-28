@@ -6,7 +6,7 @@
  * everything happens to also appear in index.ts — but as the
  * public API gets trimmed, test-only symbols will migrate here.
  *
- * Import with:  import { ... } from '@changetracks/core/internals';
+ * Import with:  import { ... } from '@changedown/core/internals';
  */
 
 // Re-export everything from the public surface so test files

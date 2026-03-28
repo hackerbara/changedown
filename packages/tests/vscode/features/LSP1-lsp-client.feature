@@ -26,25 +26,25 @@ Feature: LSP1 -- LSP client lifecycle
 
   # ── Custom notification handlers ────────────────────────────────────
 
-  Scenario: LSP client handles changetracks/decorationData notification
+  Scenario: LSP client handles changedown/decorationData notification
     Given I open "tracking-mode-test.md" in VS Code
     When the LSP client is started
     Then the LSP client is running
-    And notification handler "changetracks/decorationData" is registered
+    And notification handler "changedown/decorationData" is registered
     When the LSP client is stopped
 
-  Scenario: LSP client handles changetracks/changeCount notification
+  Scenario: LSP client handles changedown/changeCount notification
     Given I open "tracking-mode-test.md" in VS Code
     When the LSP client is started
     Then the LSP client is running
-    And notification handler "changetracks/changeCount" is registered
+    And notification handler "changedown/changeCount" is registered
     When the LSP client is stopped
 
-  Scenario: LSP client handles changetracks/allChangesResolved notification
+  Scenario: LSP client handles changedown/allChangesResolved notification
     Given I open "tracking-mode-test.md" in VS Code
     When the LSP client is started
     Then the LSP client is running
-    And notification handler "changetracks/allChangesResolved" is registered
+    And notification handler "changedown/allChangesResolved" is registered
     When the LSP client is stopped
 
   # ── Document selector ──────────────────────────────────────────────

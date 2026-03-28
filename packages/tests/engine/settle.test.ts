@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { computeSettlement } from 'changetracks/internals';
+import { computeSettlement } from 'changedown/internals';
 
 describe('computeSettlement', () => {
   it('settles an accepted insertion (removes markup, keeps text)', () => {
     const content = [
-      'Hello {++world++}[^ct-1].',
+      'Hello {++world++}[^cn-1].',
       '',
-      '[^ct-1]: @alice | 2026-02-01 | ins | accepted',
+      '[^cn-1]: @alice | 2026-02-01 | ins | accepted',
       '    reason: added greeting',
     ].join('\n');
     const result = computeSettlement(content);
@@ -19,9 +19,9 @@ describe('computeSettlement', () => {
 
   it('settles an accepted deletion (removes markup and text)', () => {
     const content = [
-      'Hello {--world--}[^ct-1] there.',
+      'Hello {--world--}[^cn-1] there.',
       '',
-      '[^ct-1]: @alice | 2026-02-01 | del | accepted',
+      '[^cn-1]: @alice | 2026-02-01 | del | accepted',
       '    reason: removed word',
     ].join('\n');
     const result = computeSettlement(content);

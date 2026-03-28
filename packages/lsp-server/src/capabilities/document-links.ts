@@ -1,19 +1,19 @@
 /**
  * Document Links Capability
  *
- * Makes footnote references clickable: clicking [^ct-N] inline jumps to
- * the [^ct-N]: definition at the bottom, and clicking a definition header
+ * Makes footnote references clickable: clicking [^cn-N] inline jumps to
+ * the [^cn-N]: definition at the bottom, and clicking a definition header
  * jumps back to the inline reference.
  */
 
 import { DocumentLink, Range } from 'vscode-languageserver';
 import { offsetToPosition } from '../converters';
 
-/** Matches inline footnote refs like [^ct-1] or [^ct-1.2] */
-const INLINE_REF = /\[\^(ct-\d+(?:\.\d+)?)\]/g;
+/** Matches inline footnote refs like [^cn-1] or [^cn-1.2] */
+const INLINE_REF = /\[\^(cn-\d+(?:\.\d+)?)\]/g;
 
-/** Matches footnote definition headers like [^ct-1]: at start of line */
-const DEF_HEADER = /^\[\^(ct-\d+(?:\.\d+)?)\]:/gm;
+/** Matches footnote definition headers like [^cn-1]: at start of line */
+const DEF_HEADER = /^\[\^(cn-\d+(?:\.\d+)?)\]:/gm;
 
 interface RefLocation {
   id: string;
@@ -75,7 +75,7 @@ export function createDocumentLinks(text: string, uri: string): DocumentLink[] {
 
     links.push({
       range: Range.create(refStart, refEnd),
-      target: `command:changetracks.goToPosition?${encodeURIComponent(JSON.stringify([uri, defPos.line, defPos.character]))}`,
+      target: `command:changedown.goToPosition?${encodeURIComponent(JSON.stringify([uri, defPos.line, defPos.character]))}`,
       tooltip: `Go to footnote definition [^${ref.id}]`,
     });
   }
@@ -91,7 +91,7 @@ export function createDocumentLinks(text: string, uri: string): DocumentLink[] {
 
     links.push({
       range: Range.create(defStart, defEnd),
-      target: `command:changetracks.goToPosition?${encodeURIComponent(JSON.stringify([uri, refPos.line, refPos.character]))}`,
+      target: `command:changedown.goToPosition?${encodeURIComponent(JSON.stringify([uri, refPos.line, refPos.character]))}`,
       tooltip: `Go to inline change [^${def.id}]`,
     });
   }

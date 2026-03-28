@@ -43,7 +43,7 @@ describe('O2: Propose changes via Surface E (committed view)', () => {
     });
     expect(proposeResult.isError).toBeUndefined();
     const data = ctx.parseResult(proposeResult);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
 
     const disk = await ctx.readDisk(filePath);
     expect(disk).toContain('{~~timeout = 30~>timeout = 60~~}');
@@ -125,8 +125,8 @@ describe('O2: Propose changes via Surface E (committed view)', () => {
     expect(r2.isError).toBeUndefined();
 
     const disk = await ctx.readDisk(filePath);
-    expect(disk).toContain('[^ct-1]');
-    expect(disk).toContain('[^ct-2]');
+    expect(disk).toContain('[^cn-1]');
+    expect(disk).toContain('[^cn-2]');
   });
 
   it('Scenario: Committed view hides pending changes', async () => {

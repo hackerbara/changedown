@@ -27,7 +27,7 @@ export function toDocxAuthor(author: string): DocxAuthor {
   return { displayName: displayName || 'Unknown Author', initials };
 }
 
-export function toChangeTracksAuthor(displayName: string): string {
+export function toChangeDownAuthor(displayName: string): string {
   if (!displayName) return '@unknown';
 
   if (displayName.startsWith('ai:')) {

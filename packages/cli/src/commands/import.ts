@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { importDocx } from '@changetracks/docx';
-import type { ImportOptions } from '@changetracks/docx';
+import { importDocx } from '@changedown/docx';
+import type { ImportOptions } from '@changedown/docx';
 
 export interface ImportCliOptions {
   output?: string;
@@ -23,7 +23,7 @@ export async function handleImport(
   const { markdown, stats } = await importDocx(file, importOpts);
 
   const baseName = path.basename(file, path.extname(file));
-  const outputPath = opts.output ?? `${baseName}-changetracks.md`;
+  const outputPath = opts.output ?? `${baseName}-changedown.md`;
 
   fs.writeFileSync(outputPath, markdown, 'utf-8');
 

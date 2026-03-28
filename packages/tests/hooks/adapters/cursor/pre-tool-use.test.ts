@@ -2,17 +2,17 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { cursorPreToolUse as handlePreToolUse } from 'changetracks-hooks/internals';
-import type { HookInput } from 'changetracks-hooks/internals';
+import { cursorPreToolUse as handlePreToolUse } from 'changedown-hooks/internals';
+import type { HookInput } from 'changedown-hooks/internals';
 
 describe('Cursor preToolUse handler', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cursor-pretool-'));
-    await fs.mkdir(path.join(tmpDir, '.changetracks'), { recursive: true });
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cursor-pretool-'));
+    await fs.mkdir(path.join(tmpDir, '.changedown'), { recursive: true });
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\nexclude = ["node_modules/**"]\n\n[policy]\nmode = "strict"\n\n[author]\ndefault = "ai:claude"\n',
       'utf-8',
     );
@@ -49,7 +49,7 @@ describe('Cursor preToolUse handler', () => {
     };
     const result = await handlePreToolUse(input);
     expect(result.decision).toBe('deny');
-    expect(result.reason).toContain('tracked by ChangeTracks');
+    expect(result.reason).toContain('tracked by ChangeDown');
   });
 
   it('allows edit on non-tracked file type in strict mode', async () => {
@@ -72,7 +72,7 @@ describe('Cursor preToolUse handler', () => {
 
   it('allows write to non-existent tracked file when creation tracking enabled', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\ncreation_tracking = "footnote"\n',
       'utf-8',
     );

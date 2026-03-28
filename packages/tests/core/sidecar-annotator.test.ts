@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { annotateSidecar, AnnotationMetadata } from '@changetracks/core/internals';
+import { annotateSidecar, AnnotationMetadata } from '@changedown/core/internals';
 
 describe('Sidecar Annotator - annotateSidecar', () => {
 
@@ -31,17 +31,17 @@ describe('Sidecar Annotator - annotateSidecar', () => {
   // ─── simple insertion ────────────────────────────────────────────
 
   describe('simple insertion', () => {
-    it('annotates a single inserted line with ct-N tag and sidecar block', () => {
+    it('annotates a single inserted line with cn-N tag and sidecar block', () => {
       const old = 'x = 1\ny = 2\n';
       const now = 'x = 1\nz = 3\ny = 2\n';
       const result = annotateSidecar(old, now, 'python');
       expect(result !== undefined).toBeTruthy();
 
       // The inserted line gets an insertion tag
-      expect(result!.includes('z = 3  # ct-1')).toBeTruthy();
+      expect(result!.includes('z = 3  # cn-1')).toBeTruthy();
       // Sidecar block exists with ins entry
-      expect(result!.includes('# -- ChangeTracks')).toBeTruthy();
-      expect(result!.includes('# [^ct-1]: ins | pending')).toBeTruthy();
+      expect(result!.includes('# -- ChangeDown')).toBeTruthy();
+      expect(result!.includes('# [^cn-1]: ins | pending')).toBeTruthy();
     });
   });
 
@@ -55,26 +55,26 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       expect(result !== undefined).toBeTruthy();
 
       // The deleted line becomes a commented deletion marker
-      expect(result!.includes('# - y = 2  # ct-1')).toBeTruthy();
+      expect(result!.includes('# - y = 2  # cn-1')).toBeTruthy();
       // Sidecar block has del entry
-      expect(result!.includes('# [^ct-1]: del | pending')).toBeTruthy();
+      expect(result!.includes('# [^cn-1]: del | pending')).toBeTruthy();
     });
   });
 
   // ─── substitution ────────────────────────────────────────────────
 
   describe('substitution', () => {
-    it('annotates a changed line as deletion + insertion with same ct-N tag', () => {
+    it('annotates a changed line as deletion + insertion with same cn-N tag', () => {
       const old = 'x = 1\nresults = []\nz = 3\n';
       const now = 'x = 1\nresults = {}\nz = 3\n';
       const result = annotateSidecar(old, now, 'python');
       expect(result !== undefined).toBeTruthy();
 
       // Deletion line for old value + insertion line for new value, same tag
-      expect(result!.includes('# - results = []  # ct-1')).toBeTruthy();
-      expect(result!.includes('results = {}  # ct-1')).toBeTruthy();
+      expect(result!.includes('# - results = []  # cn-1')).toBeTruthy();
+      expect(result!.includes('results = {}  # cn-1')).toBeTruthy();
       // Sidecar block has sub entry
-      expect(result!.includes('# [^ct-1]: sub | pending')).toBeTruthy();
+      expect(result!.includes('# [^cn-1]: sub | pending')).toBeTruthy();
     });
   });
 
@@ -88,9 +88,9 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       expect(result !== undefined).toBeTruthy();
 
       // Uses // comment syntax
-      expect(result!.includes('const z = 3;  // ct-1')).toBeTruthy();
-      expect(result!.includes('// -- ChangeTracks')).toBeTruthy();
-      expect(result!.includes('// [^ct-1]: ins | pending')).toBeTruthy();
+      expect(result!.includes('const z = 3;  // cn-1')).toBeTruthy();
+      expect(result!.includes('// -- ChangeDown')).toBeTruthy();
+      expect(result!.includes('// [^cn-1]: ins | pending')).toBeTruthy();
     });
   });
 
@@ -104,12 +104,12 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       expect(result !== undefined).toBeTruthy();
 
       // Both old lines become deletion markers, both new lines get insertion tags
-      expect(result!.includes('# - b = 2  # ct-1')).toBeTruthy();
-      expect(result!.includes('# - c = 3  # ct-1')).toBeTruthy();
-      expect(result!.includes('x = 10  # ct-1')).toBeTruthy();
-      expect(result!.includes('y = 20  # ct-1')).toBeTruthy();
+      expect(result!.includes('# - b = 2  # cn-1')).toBeTruthy();
+      expect(result!.includes('# - c = 3  # cn-1')).toBeTruthy();
+      expect(result!.includes('x = 10  # cn-1')).toBeTruthy();
+      expect(result!.includes('y = 20  # cn-1')).toBeTruthy();
       // Single sub entry in sidecar
-      expect(result!.includes('# [^ct-1]: sub | pending')).toBeTruthy();
+      expect(result!.includes('# [^cn-1]: sub | pending')).toBeTruthy();
     });
   });
 
@@ -122,8 +122,8 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const result = annotateSidecar(old, now, 'python');
       expect(result !== undefined).toBeTruthy();
 
-      // Indentation preserved: "    # - x = 1  # ct-1"
-      expect(result!.includes('    # - x = 1  # ct-1')).toBeTruthy();
+      // Indentation preserved: "    # - x = 1  # cn-1"
+      expect(result!.includes('    # - x = 1  # cn-1')).toBeTruthy();
     });
   });
 
@@ -161,13 +161,13 @@ describe('Sidecar Annotator - annotateSidecar', () => {
       const result = annotateSidecar(old, now, 'python');
       expect(result !== undefined).toBeTruthy();
 
-      // First change: deletion of "b = 2" -> ct-1
-      expect(result!.includes('# - b = 2  # ct-1')).toBeTruthy();
-      // Second change: substitution of "d = 4" -> "e = 5" -> ct-2
-      expect(result!.includes('ct-2')).toBeTruthy();
+      // First change: deletion of "b = 2" -> cn-1
+      expect(result!.includes('# - b = 2  # cn-1')).toBeTruthy();
+      // Second change: substitution of "d = 4" -> "e = 5" -> cn-2
+      expect(result!.includes('cn-2')).toBeTruthy();
       // Sidecar should have both entries
-      expect(result!.includes('# [^ct-1]: del | pending')).toBeTruthy();
-      expect(result!.includes('# [^ct-2]:')).toBeTruthy();
+      expect(result!.includes('# [^cn-1]: del | pending')).toBeTruthy();
+      expect(result!.includes('# [^cn-2]:')).toBeTruthy();
     });
   });
 
@@ -182,7 +182,7 @@ describe('Sidecar Annotator - annotateSidecar', () => {
 
       const lines = result!.split('\n');
       // Find the sidecar delimiters
-      const openIdx = lines.findIndex((l: string) => l.startsWith('# -- ChangeTracks'));
+      const openIdx = lines.findIndex((l: string) => l.startsWith('# -- ChangeDown'));
       const closeIdx = lines.findIndex((l: string) => l.startsWith('# -----'));
       expect(openIdx >= 0).toBeTruthy();
       expect(closeIdx > openIdx).toBeTruthy();

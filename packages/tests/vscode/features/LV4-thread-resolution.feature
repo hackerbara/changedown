@@ -5,25 +5,25 @@ Feature: LV4 — Thread resolution
   the change's status. Uses VS Code's native Resolved state.
 
   Scenario: Resolve thread sets resolved state
-    Given a resolution document with a proposed insertion ct-1 with discussion
-    When I resolve the thread for ct-1
-    Then the thread state for ct-1 is "Resolved"
+    Given a resolution document with a proposed insertion cn-1 with discussion
+    When I resolve the thread for cn-1
+    Then the thread state for cn-1 is "Resolved"
     And the resolution result footnote contains "resolved: @bob"
 
   Scenario: Resolved thread is still accessible
-    Given a resolution document with a resolved insertion ct-1
+    Given a resolution document with a resolved insertion cn-1
     When I build resolution threads
-    Then a resolution thread exists for "ct-1"
-    And the thread state for ct-1 is "Resolved"
+    Then a resolution thread exists for "cn-1"
+    And the thread state for cn-1 is "Resolved"
 
   Scenario: Unresolve thread restores Unresolved state
-    Given a resolution document with a resolved insertion ct-1
-    When I unresolve the thread for ct-1
-    Then the thread state for ct-1 is "Unresolved"
+    Given a resolution document with a resolved insertion cn-1
+    When I unresolve the thread for cn-1
+    Then the thread state for cn-1 is "Unresolved"
     And the resolution result footnote does not contain "resolved:"
 
   Scenario: Resolution independent of change status
-    Given a resolution document with an accepted insertion ct-1 with unresolved discussion
+    Given a resolution document with an accepted insertion cn-1 with unresolved discussion
     When I build resolution threads
-    Then the thread state for ct-1 is "Unresolved"
+    Then the thread state for cn-1 is "Unresolved"
     And the resolution footnote status is "accepted"

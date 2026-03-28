@@ -11,20 +11,20 @@ import { Given, When, Then, Before } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
 import {
     CriticMarkupParser,
-    scanMaxCtId,
+    scanMaxCnId,
     promoteToLevel2,
     ensureL2,
     findFootnoteBlock,
     findDiscussionInsertionIndex,
-} from '@changetracks/core';
-import type { TextEdit } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+} from '@changedown/core';
+import type { TextEdit } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 import { applyEdit, TEST_DATE } from './test-utils';
 
 // ── Extend World with reply state ─────────────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         replyDocText?: string;
         replyResultText?: string;
     }
@@ -32,7 +32,7 @@ declare module './world' {
 
 // ── Lifecycle ─────────────────────────────────────────────────────
 
-Before({ tags: '@fast and @LV3' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @LV3' }, function (this: ChangeDownWorld) {
     this.replyDocText = undefined;
     this.replyResultText = undefined;
 });
@@ -71,17 +71,17 @@ function insertReplyIntoFootnote(docText: string, changeId: string, author: stri
 
 // ── Step definitions ─────────────────────────────────────────────
 
-Given('a reply document with text:', function (this: ChangeTracksWorld, docString: string) {
+Given('a reply document with text:', function (this: ChangeDownWorld, docString: string) {
     this.replyDocText = docString;
 });
 
-When('I reply to {word} with {string}', function (this: ChangeTracksWorld, changeId: string, replyText: string) {
+When('I reply to {word} with {string}', function (this: ChangeDownWorld, changeId: string, replyText: string) {
     assert.ok(this.replyDocText !== undefined, 'Document text not set — call "a reply document with text:" first');
     const text = replyText.replace(/\\n/g, '\n');
     this.replyResultText = insertReplyIntoFootnote(this.replyDocText, changeId, 'bob', text);
 });
 
-When('I reply to the L1 change with {string}', function (this: ChangeTracksWorld, replyText: string) {
+When('I reply to the L1 change with {string}', function (this: ChangeDownWorld, replyText: string) {
     assert.ok(this.replyDocText !== undefined, 'Document text not set — call "a reply document with text:" first');
 
     // Parse document to find the L1 change
@@ -91,11 +91,11 @@ When('I reply to the L1 change with {string}', function (this: ChangeTracksWorld
     const l1Index = changes.findIndex(c => c.level === 1);
     assert.ok(l1Index >= 0, 'No L1 change found in document');
 
-    // Allocate a new ct-ID
-    const maxId = scanMaxCtId(this.replyDocText);
-    const newId = `ct-${maxId + 1}`;
+    // Allocate a new cn-ID
+    const maxId = scanMaxCnId(this.replyDocText);
+    const newId = `cn-${maxId + 1}`;
 
-    // Promote L1 to L2: removes inline comment, adds [^ct-N] ref and footnote definition
+    // Promote L1 to L2: removes inline comment, adds [^cn-N] ref and footnote definition
     let result = promoteToLevel2(this.replyDocText, l1Index, newId);
 
     // Append the reply as a discussion line in the new footnote
@@ -105,7 +105,7 @@ When('I reply to the L1 change with {string}', function (this: ChangeTracksWorld
 });
 
 When('I reply again to {word} with {string} as {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     replyText: string,
     author: string,
@@ -118,7 +118,7 @@ When('I reply again to {word} with {string} as {string}', function (
 });
 
 When('I reply to the L0 change at offset {int} with {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     offset: number,
     replyText: string,
 ) {
@@ -135,7 +135,7 @@ When('I reply to the L0 change at offset {int} with {string}', function (
     this.replyResultText = insertReplyIntoFootnote(promoted.text, promoted.changeId, 'bob', replyText);
 });
 
-Then('the reply result footnote for {word} contains {string}', function (this: ChangeTracksWorld, changeId: string, expected: string) {
+Then('the reply result footnote for {word} contains {string}', function (this: ChangeDownWorld, changeId: string, expected: string) {
     assert.ok(this.replyResultText, 'No reply result — run a reply action first');
 
     // Extract the footnote block for the given change ID
@@ -151,30 +151,30 @@ Then('the reply result footnote for {word} contains {string}', function (this: C
     );
 });
 
-Then('the reply result contains a footnote reference', function (this: ChangeTracksWorld) {
+Then('the reply result contains a footnote reference', function (this: ChangeDownWorld) {
     assert.ok(this.replyResultText, 'No reply result — run a reply action first');
     assert.ok(
-        /\[\^ct-\d+\]/.test(this.replyResultText) &&
+        /\[\^cn-\d+\]/.test(this.replyResultText) &&
         // Ensure there's an inline ref (not just the definition)
-        /\[\^ct-\d+\][^:]/.test(this.replyResultText),
+        /\[\^cn-\d+\][^:]/.test(this.replyResultText),
         `Reply result does not contain a footnote reference.\nResult:\n${this.replyResultText}`
     );
 });
 
-Then('the reply result contains a footnote block', function (this: ChangeTracksWorld) {
+Then('the reply result contains a footnote block', function (this: ChangeDownWorld) {
     assert.ok(this.replyResultText, 'No reply result — run a reply action first');
     assert.ok(
-        /^\[\^ct-\d+\]:/m.test(this.replyResultText),
+        /^\[\^cn-\d+\]:/m.test(this.replyResultText),
         `Reply result does not contain a footnote definition block.\nResult:\n${this.replyResultText}`
     );
 });
 
-Then('the reply result footnote contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the reply result footnote contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.replyResultText, 'No reply result — run a reply action first');
 
     // Find the first footnote block in the result
     const lines = this.replyResultText.split('\n');
-    const footnoteStartIdx = lines.findIndex(l => /^\[\^ct-\d+\]:/.test(l));
+    const footnoteStartIdx = lines.findIndex(l => /^\[\^cn-\d+\]:/.test(l));
     assert.ok(footnoteStartIdx >= 0, `No footnote found in reply result.\nResult:\n${this.replyResultText}`);
 
     // Collect all footnote lines (header + indented body)

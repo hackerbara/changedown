@@ -1,4 +1,4 @@
-<!-- ctrcks.com/v1: tracked -->
+<!-- changedown.com/v1: tracked -->
 
 # ADR-019: Adopt Apache Kafka for Message Queue Architecture
 
@@ -34,7 +34,7 @@ The platform currently uses a combination of direct HTTP calls and a shared Post
 
 The current architecture has reached its limits:
 
-- **Throughput ceiling:** The PostgreSQL job queue saturates at approximately {~~12,000 events/minute~>12,000 events per minute~~}[^ct-2.1]. The platform now processes 45,000 events/minute at peak, causing queue backlogs of 20+ minutes during traffic spikes.
+- **Throughput ceiling:** The PostgreSQL job queue saturates at approximately {~~12,000 events/minute~>12,000 events per minute~~}[^cn-2.1]. The platform now processes 45,000 events/minute at peak, causing queue backlogs of 20+ minutes during traffic spikes.
 - **Coupling:** 14 of 32 services make synchronous HTTP calls for operations that should be asynchronous, creating cascading failure scenarios. In Q3 2025, an inventory service outage caused order processing to halt for 47 minutes.
 - **Fan-out cost:** When an order event needs to reach 6 downstream consumers, the job queue creates 6 separate rows. This multiplies write volume and creates contention on the shared `events` table.
 - **No replay:** Once a consumer acknowledges a job queue row, it is deleted. There is no ability to replay events for debugging, backfilling, or onboarding new consumers.
@@ -189,7 +189,7 @@ Pulsar is a cloud-native distributed messaging platform that combines messaging 
 
 **Verdict:** Architecturally compelling, especially the compute-storage separation and geo-replication. However, the operational complexity, ecosystem immaturity, and team expertise gap present unacceptable risk for a critical infrastructure migration.
 
-{~~## Short-term Migration~>## Migration Plan~~}[^ct-1.1]
+{~~## Short-term Migration~>## Migration Plan~~}[^cn-1.1]
 
 The migration will proceed in weekly phases to minimize risk and enable rollback at any checkpoint.
 
@@ -225,8 +225,8 @@ The migration will proceed in weekly phases to minimize risk and enable rollback
 - Prepare runbook for emergency rollback to PostgreSQL job queue.
 - Document operational procedures: topic creation, partition increase, consumer group reset, dead letter investigation.
 
-{++### Extended Rollout (Weeks 5-12)++}[^ct-1.2]
-{--## Long-term Migration--}[^ct-1.3]
+{++### Extended Rollout (Weeks 5-12)++}[^cn-1.2]
+{--## Long-term Migration--}[^cn-1.3]
 
 ### Week 5-6: Remaining Consumers
 
@@ -258,7 +258,7 @@ The migration will proceed in weekly phases to minimize risk and enable rollback
 - Conduct chaos engineering tests: broker failure, network partition, consumer crash during rebalance.
 - Final documentation update and team knowledge transfer sessions.
 
-As noted in the migration phases {~~below~>above~~}[^ct-1.4], each phase includes explicit rollback procedures to minimize risk during the transition.
+As noted in the migration phases {~~below~>above~~}[^cn-1.4], each phase includes explicit rollback procedures to minimize risk during the transition.
 
 ## Consequences
 
@@ -279,23 +279,23 @@ As noted in the migration phases {~~below~>above~~}[^ct-1.4], each phase include
 - **Migration risk:** The 12-week migration involves dual-write periods and feature flag coordination across 7 services. Careful sequencing and rollback procedures are essential to avoid data loss or service disruption.
 
 
-[^ct-1.1]: @ai:gpt-5.3-codex | 2026-02-27 | sub | proposed
+[^cn-1.1]: @ai:gpt-5.3-codex | 2026-02-27 | sub | proposed
     @ai:gpt-5.3-codex 2026-02-27: merge migration phases under one heading
 
-[^ct-1.2]: @ai:gpt-5.3-codex | 2026-02-27 | ins | proposed
+[^cn-1.2]: @ai:gpt-5.3-codex | 2026-02-27 | ins | proposed
     @ai:gpt-5.3-codex 2026-02-27: retain long-term phase intent as subsection
 
-[^ct-1.3]: @ai:gpt-5.3-codex | 2026-02-27 | del | proposed
+[^cn-1.3]: @ai:gpt-5.3-codex | 2026-02-27 | del | proposed
     @ai:gpt-5.3-codex 2026-02-27: remove duplicate top-level heading after merge
 
-[^ct-1.4]: @ai:gpt-5.3-codex | 2026-02-27 | sub | proposed
+[^cn-1.4]: @ai:gpt-5.3-codex | 2026-02-27 | sub | proposed
     @ai:gpt-5.3-codex 2026-02-27: cross-reference direction corrected after section merge
 
-[^ct-1]: @ai:gpt-5.3-codex | 2026-02-27 | group | proposed
+[^cn-1]: @ai:gpt-5.3-codex | 2026-02-27 | group | proposed
     @ai:gpt-5.3-codex 2026-02-27: propose_batch
 
-[^ct-2.1]: @ai:gpt-5.3-codex | 2026-02-27 | sub | proposed
+[^cn-2.1]: @ai:gpt-5.3-codex | 2026-02-27 | sub | proposed
     @ai:gpt-5.3-codex 2026-02-27: style normalization
 
-[^ct-2]: @ai:gpt-5.3-codex | 2026-02-27 | group | proposed
+[^cn-2]: @ai:gpt-5.3-codex | 2026-02-27 | group | proposed
     @ai:gpt-5.3-codex 2026-02-27: propose_batch

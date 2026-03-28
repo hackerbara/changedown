@@ -1,14 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { resolveTracking } from '@changetracks/lsp-server/internals';
+import { resolveTracking } from '@changedown/lsp-server/internals';
 
 describe('resolveTracking', () => {
   it('returns file source when tracked header present', () => {
-    const result = resolveTracking('<!-- ctrcks.com/v1: tracked -->\n# Doc');
+    const result = resolveTracking('<!-- changedown.com/v1: tracked -->\n# Doc');
     expect(result).toStrictEqual({ enabled: true, source: 'file' });
   });
 
   it('returns file source when untracked header present', () => {
-    const result = resolveTracking('<!-- ctrcks.com/v1: untracked -->\n# Doc');
+    const result = resolveTracking('<!-- changedown.com/v1: untracked -->\n# Doc');
     expect(result).toStrictEqual({ enabled: false, source: 'file' });
   });
 
@@ -28,12 +28,12 @@ describe('resolveTracking', () => {
   });
 
   it('file header takes precedence over project config', () => {
-    const result = resolveTracking('<!-- ctrcks.com/v1: untracked -->\n# Doc', 'tracked');
+    const result = resolveTracking('<!-- changedown.com/v1: untracked -->\n# Doc', 'tracked');
     expect(result).toStrictEqual({ enabled: false, source: 'file' });
   });
 
   it('handles header with extra whitespace', () => {
-    const result = resolveTracking('<!--  ctrcks.com/v1:  tracked  -->\n# Doc');
+    const result = resolveTracking('<!--  changedown.com/v1:  tracked  -->\n# Doc');
     expect(result).toStrictEqual({ enabled: true, source: 'file' });
   });
 });

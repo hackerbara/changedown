@@ -6,7 +6,7 @@ Feature: E5 - Guide Composer
     And guide delivery is enabled
     And a tracked markdown file "doc.md" with content:
       """
-      <!-- ctrcks.com/v1: tracked -->
+      <!-- changedown.com/v1: tracked -->
       # Test
       Some content.
       """
@@ -19,7 +19,7 @@ Feature: E5 - Guide Composer
     And guide delivery is enabled
     And a tracked markdown file "doc.md" with content:
       """
-      <!-- ctrcks.com/v1: tracked -->
+      <!-- changedown.com/v1: tracked -->
       # Test
       Some content.
       """
@@ -32,7 +32,7 @@ Feature: E5 - Guide Composer
     And guide delivery is enabled
     And a tracked markdown file "doc.md" with content:
       """
-      <!-- ctrcks.com/v1: tracked -->
+      <!-- changedown.com/v1: tracked -->
       # Test
       Some content.
       """
@@ -45,7 +45,7 @@ Feature: E5 - Guide Composer
     And guide delivery is enabled
     And a tracked markdown file "doc.md" with content:
       """
-      <!-- ctrcks.com/v1: tracked -->
+      <!-- changedown.com/v1: tracked -->
       # Test
       Some content.
       """
@@ -58,7 +58,7 @@ Feature: E5 - Guide Composer
     And guide delivery is enabled
     And a tracked markdown file "doc.md" with content:
       """
-      <!-- ctrcks.com/v1: tracked -->
+      <!-- changedown.com/v1: tracked -->
       # Test
       Some content.
       """

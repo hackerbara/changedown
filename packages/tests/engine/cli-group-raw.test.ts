@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { initHashline } from '@changetracks/core';
-import { runCommand } from 'changetracks/cli-runner';
+import { initHashline } from '@changedown/core';
+import { runCommand } from 'changedown/cli-runner';
 
 describe('sc group', () => {
   let tmpDir: string;
@@ -13,8 +13,8 @@ describe('sc group', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-group-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-group-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -35,7 +35,7 @@ describe('sc group', () => {
     expect(beginResult.success).toBe(true);
     expect(beginResult.data).toHaveProperty('group_id');
     const groupId = beginResult.data.group_id as string;
-    expect(groupId).toMatch(/^ct-\d+$/);
+    expect(groupId).toMatch(/^cn-\d+$/);
   });
 
   it('end without active group returns error', async () => {
@@ -69,8 +69,8 @@ describe('sc raw-edit', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-raw-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-raw-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),

@@ -6,19 +6,19 @@ import {
 import {
   CriticMarkupParser,
   VirtualDocument,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 /**
- * Cucumber World class for ChangeTracks BDD tests.
+ * Cucumber World class for ChangeDown BDD tests.
  *
  * Wraps ScenarioContext (MCP-level tests) and exposes direct access to
- * @changetracks/core functions (parser/operations tests).
+ * @changedown/core functions (parser/operations tests).
  *
  * ScenarioContext is lazily initialized -- only created when a step
  * calls setupContext() or accesses an MCP tool method. This keeps
  * pure parser/core tests lightweight.
  */
-export class ChangeTracksWorld extends World {
+export class ChangeDownWorld extends World {
   /** MCP scenario context (lazy -- call setupContext() first) */
   ctx!: ScenarioContext;
   /** Last tool result from any MCP call */
@@ -54,9 +54,9 @@ export class ChangeTracksWorld extends World {
   }
 }
 
-setWorldConstructor(ChangeTracksWorld);
+setWorldConstructor(ChangeDownWorld);
 
-Before(async function (this: ChangeTracksWorld) {
+Before(async function (this: ChangeDownWorld) {
   // Reset per-scenario state
   this.configOverrides = {};
   this.lastResult = null;
@@ -70,7 +70,7 @@ Before(async function (this: ChangeTracksWorld) {
   this.lastText = '';
 });
 
-After(async function (this: ChangeTracksWorld) {
+After(async function (this: ChangeDownWorld) {
   if (this.ctx && !this.tornDown) {
     await this.ctx.teardown();
   }

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { computeLineHash } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { computeLineHash } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -24,7 +24,7 @@ describe('quick_fix field in hashline errors', () => {
   let resolver: ConfigResolver;
 
   // Classic mode config with hashline enabled
-  const classicConfig: ChangeTracksConfig = {
+  const classicConfig: ChangeDownConfig = {
     tracking: {
       include: ['**/*.md'],
       exclude: ['node_modules/**', 'dist/**'],
@@ -52,7 +52,7 @@ describe('quick_fix field in hashline errors', () => {
   };
 
   // Compact mode config with hashline enabled
-  const compactConfig: ChangeTracksConfig = {
+  const compactConfig: ChangeDownConfig = {
     ...classicConfig,
     protocol: { mode: 'compact', level: 2, reasoning: 'optional', batch_reasoning: 'optional' },
   };
@@ -62,7 +62,7 @@ describe('quick_fix field in hashline errors', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-quickfix-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-quickfix-'));
     state = new SessionState();
   });
 
@@ -77,10 +77,12 @@ describe('quick_fix field in hashline errors', () => {
 
     it('hashline error includes machine-parseable quick_fix field', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
-      await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\n# Title\n\nSome content here.\n');
+      await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\n# Title\n\nSome content here.\n');
 
+      // Use an insertion op (empty oldText) so Stage 3.5a is skipped.
+      // Hash 'de' is fabricated and won't be found in any view by Stage 3.5b.
       const result = await handleProposeChange(
-        { file: filePath, at: '4:de', op: '{~~Some~>Other~~}', author: 'ai:test', reason: 'test' },
+        { file: filePath, at: '4:de', op: '{++extra text++}', author: 'ai:test', reason: 'test' },
         resolver, state,
       );
       expect(result.isError).toBe(true);
@@ -92,11 +94,13 @@ describe('quick_fix field in hashline errors', () => {
 
     it('quick_fix includes stale_line and current_hash when available', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
-      const content = '<!-- ctrcks.com/v1: tracked -->\n# Title\n\nSome content here.\n';
+      const content = '<!-- changedown.com/v1: tracked -->\n# Title\n\nSome content here.\n';
       await fs.writeFile(filePath, content);
 
+      // Use an insertion op (empty oldText) so Stage 3.5a is skipped.
+      // Hash 'de' is fabricated and won't be found in any view by Stage 3.5b.
       const result = await handleProposeChange(
-        { file: filePath, at: '4:de', op: '{~~Some~>Other~~}', author: 'ai:test', reason: 'test' },
+        { file: filePath, at: '4:de', op: '{++extra text++}', author: 'ai:test', reason: 'test' },
         resolver, state,
       );
       expect(result.isError).toBe(true);

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initHashline, convertL3ToL2, isL3Format } from '@changetracks/core/internals';
+import { initHashline, convertL3ToL2, isL3Format } from '@changedown/core/internals';
 
 beforeAll(async () => { await initHashline(); });
 
@@ -8,20 +8,20 @@ describe('status-aware L3→L2 demotion', () => {
     const l3 = [
       'The very lazy dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:7b The {++very ++}lazy dog.',
     ].join('\n');
     const l2 = await convertL3ToL2(l3);
     // Proposed change: body should have inline CriticMarkup
     expect(l2).toContain('{++');
-    expect(l2).toContain('[^ct-1]');
+    expect(l2).toContain('[^cn-1]');
   });
 
   it('skips CriticMarkup insertion for accepted changes', async () => {
     const l3 = [
       'The very lazy dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:7b The {++very ++}lazy dog.',
       '    approved: @bob 2026-03-21 "Looks good"',
     ].join('\n');
@@ -29,25 +29,25 @@ describe('status-aware L3→L2 demotion', () => {
     // Extract the document body (before the first footnote definition).
     // The edit-op line inside the footnote DOES contain {++ — that is intentional.
     // We only care that the body itself has no inline CriticMarkup.
-    const bodyPart = l2.slice(0, l2.indexOf('[^ct-1]:'));
+    const bodyPart = l2.slice(0, l2.indexOf('[^cn-1]:'));
     expect(bodyPart).not.toMatch(/\{\+\+/);
     // Footnote should KEEP the edit-op line
     expect(l2).toMatch(/\d+:[a-f0-9]+/);
     // Footnote header should be preserved
-    expect(l2).toContain('[^ct-1]:');
+    expect(l2).toContain('[^cn-1]:');
   });
 
   it('skips CriticMarkup insertion for rejected changes', async () => {
     const l3 = [
       'The lazy dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | rejected',
+      '[^cn-1]: @alice | 2026-03-20 | ins | rejected',
       '    1:a1 The {++very ++}lazy dog.',
       '    rejected: @bob 2026-03-21 "Not needed"',
     ].join('\n');
     const l2 = await convertL3ToL2(l3);
     // Extract body only — the edit-op in the footnote keeps {++ intentionally.
-    const bodyPart = l2.slice(0, l2.indexOf('[^ct-1]:'));
+    const bodyPart = l2.slice(0, l2.indexOf('[^cn-1]:'));
     expect(bodyPart).not.toMatch(/\{\+\+/);
     // Edit-op line preserved in the footnote
     expect(l2).toMatch(/\d+:[a-f0-9]+/);
@@ -57,27 +57,27 @@ describe('status-aware L3→L2 demotion', () => {
     const l3 = [
       'The very lazy brown dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:7b The {++very ++}lazy brown dog.',
       '    approved: @bob 2026-03-21 "OK"',
       '',
-      '[^ct-2]: @carol | 2026-03-21 | ins | proposed',
+      '[^cn-2]: @carol | 2026-03-21 | ins | proposed',
       '    1:7b The very lazy {++brown ++}dog.',
     ].join('\n');
     const l2 = await convertL3ToL2(l3);
-    // ct-2 (proposed) should have CriticMarkup in body
+    // cn-2 (proposed) should have CriticMarkup in body
     expect(l2).toContain('{++');
-    expect(l2).toContain('[^ct-2]');
-    // ct-1 (accepted) should NOT add CriticMarkup
-    // But ct-1's footnote should keep its edit-op line
-    expect(l2).toContain('[^ct-1]:');
+    expect(l2).toContain('[^cn-2]');
+    // cn-1 (accepted) should NOT add CriticMarkup
+    // But cn-1's footnote should keep its edit-op line
+    expect(l2).toContain('[^cn-1]:');
   });
 
   it('isL3Format returns false for hybrid output with proposed changes', async () => {
     const l3 = [
       'The very lazy dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:7b The {++very ++}lazy dog.',
     ].join('\n');
     const l2 = await convertL3ToL2(l3);
@@ -89,7 +89,7 @@ describe('status-aware L3→L2 demotion', () => {
     const l3 = [
       'The very lazy dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-20 | ins | accepted',
       '    1:7b The {++very ++}lazy dog.',
       '    approved: @bob 2026-03-21 "OK"',
     ].join('\n');

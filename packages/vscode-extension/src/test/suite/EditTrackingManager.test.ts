@@ -6,7 +6,7 @@ suite('EditTrackingManager', () => {
         assert.strictEqual(isCriticMarkupSyntax('{++hello++}'), true);
         assert.strictEqual(isCriticMarkupSyntax('{--text--}'), true);
         assert.strictEqual(isCriticMarkupSyntax('{~~old~>new~~}'), true);
-        assert.strictEqual(isCriticMarkupSyntax('[^ct-1]'), true);
+        assert.strictEqual(isCriticMarkupSyntax('[^cn-1]'), true);
         assert.strictEqual(isCriticMarkupSyntax('plain text'), false);
     });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { annotateMarkdown } from '@changetracks/core/internals';
+import { annotateMarkdown } from '@changedown/core/internals';
 
 describe('Markdown Annotator - annotateMarkdown', () => {
   describe('no differences', () => {

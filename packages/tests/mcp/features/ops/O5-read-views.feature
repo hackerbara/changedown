@@ -8,7 +8,7 @@ Feature: Read tracked file views
 
   Scenario: Meta view projects deliberation inline
     When I call read_tracked_file with view = "meta"
-    Then the output contains inline annotations like "[ct-1 accepted @ai:test-agent: capitalize]"
+    Then the output contains inline annotations like "[cn-1 accepted @ai:test-agent: capitalize]"
     And the footnote section is elided
     And a deliberation summary header appears at the top
     And the header contains proposed and accepted counts

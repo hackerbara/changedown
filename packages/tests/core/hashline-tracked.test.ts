@@ -6,7 +6,7 @@ import {
   computeSettledLineHash,
   formatTrackedHashLines,
   formatTrackedHeader,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 describe('hashline-tracked', () => {
   beforeAll(async () => {
@@ -44,12 +44,12 @@ describe('hashline-tracked', () => {
       expect(settledLine('Hello {>>note<<} world')).toBe('Hello  world');
     });
 
-    it('strips footnote references [^ct-N]', () => {
-      expect(settledLine('Hello[^ct-1] world')).toBe('Hello world');
+    it('strips footnote references [^cn-N]', () => {
+      expect(settledLine('Hello[^cn-1] world')).toBe('Hello world');
     });
 
-    it('strips dotted footnote references [^ct-N.M]', () => {
-      expect(settledLine('Hello[^ct-1.2] world')).toBe('Hello world');
+    it('strips dotted footnote references [^cn-N.M]', () => {
+      expect(settledLine('Hello[^cn-1.2] world')).toBe('Hello world');
     });
 
     it('handles multiple markup instances on one line', () => {
@@ -66,13 +66,13 @@ describe('hashline-tracked', () => {
 
     it('handles multiple footnote refs', () => {
       expect(
-        settledLine('A[^ct-1] B[^ct-2] C[^ct-3.1]'),
+        settledLine('A[^cn-1] B[^cn-2] C[^cn-3.1]'),
       ).toBe('A B C');
     });
 
     it('handles mixed content: markup + footnote refs + plain text', () => {
       expect(
-        settledLine('Hello {++new ++}[^ct-1]{--old --}[^ct-2]world'),
+        settledLine('Hello {++new ++}[^cn-1]{--old --}[^cn-2]world'),
       ).toBe('Hello new world');
     });
 
@@ -268,10 +268,10 @@ describe('hashline-tracked', () => {
 
     it('counts proposed/accepted/rejected changes', () => {
       const content = [
-        'Hello {++world++}[^ct-1] and {--gone--}[^ct-2]',
+        'Hello {++world++}[^cn-1] and {--gone--}[^cn-2]',
         '',
-        '[^ct-1]: @a | 2026-02-11 | ins | proposed',
-        '[^ct-2]: @a | 2026-02-11 | del | accepted',
+        '[^cn-1]: @a | 2026-02-11 | ins | proposed',
+        '[^cn-2]: @a | 2026-02-11 | del | accepted',
       ].join('\n');
       const header = formatTrackedHeader('test.md', content);
       expect(header.includes('1 proposed')).toBeTruthy();
@@ -280,9 +280,9 @@ describe('hashline-tracked', () => {
 
     it('counts rejected changes', () => {
       const content = [
-        'Hello {++world++}[^ct-1]',
+        'Hello {++world++}[^cn-1]',
         '',
-        '[^ct-1]: @a | 2026-02-11 | ins | rejected',
+        '[^cn-1]: @a | 2026-02-11 | ins | rejected',
       ].join('\n');
       const header = formatTrackedHeader('test.md', content);
       expect(header.includes('1 rejected')).toBeTruthy();
@@ -317,7 +317,7 @@ describe('hashline-tracked', () => {
     });
 
     it('shows standard tip', () => {
-      const content = 'Line one\n{++added++}[^ct-1]\n\n[^ct-1]: @test | 2026-02-12 | ins | proposed';
+      const content = 'Line one\n{++added++}[^cn-1]\n\n[^cn-1]: @test | 2026-02-12 | ins | proposed';
       const header = formatTrackedHeader('/path/to/file.md', content, 'tracked');
       expect(header.includes('LINE:HASH')).toBeTruthy();
       expect(!header.includes('RAW.SETTLED')).toBeTruthy();

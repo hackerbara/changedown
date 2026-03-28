@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
-import { sendDecorationData, sendChangeCount } from '@changetracks/lsp-server/internals';
-import type { Connection } from '@changetracks/lsp-server/internals';
+import { ChangeNode, ChangeType, ChangeStatus } from '@changedown/core';
+import { sendDecorationData, sendChangeCount } from '@changedown/lsp-server/internals';
+import type { Connection } from '@changedown/lsp-server/internals';
 
 /**
  * Create a spy connection that captures sendNotification calls
@@ -36,7 +36,7 @@ describe('Notifications', () => {
       sendDecorationData(connection, uri, changes, 0);
 
       expect(connection.notifications).toHaveLength(1);
-      expect(connection.notifications[0].method).toBe('changetracks/decorationData');
+      expect(connection.notifications[0].method).toBe('changedown/decorationData');
       expect(connection.notifications[0].params).toStrictEqual({
         uri,
         changes,
@@ -52,7 +52,7 @@ describe('Notifications', () => {
       sendDecorationData(connection, uri, changes, 0);
 
       expect(connection.notifications).toHaveLength(1);
-      expect(connection.notifications[0].method).toBe('changetracks/decorationData');
+      expect(connection.notifications[0].method).toBe('changedown/decorationData');
       expect(connection.notifications[0].params).toStrictEqual({
         uri,
         changes: [],
@@ -152,7 +152,7 @@ describe('Notifications', () => {
 
       expect(connection.notifications).toHaveLength(1);
       const notification = connection.notifications[0];
-      expect(notification.method).toBe('changetracks/changeCount');
+      expect(notification.method).toBe('changedown/changeCount');
       expect(notification.params).toStrictEqual({
         uri,
         counts: {
@@ -178,7 +178,7 @@ describe('Notifications', () => {
 
       // First notification: changeCount
       const changeCountNotif = connection.notifications[0];
-      expect(changeCountNotif.method).toBe('changetracks/changeCount');
+      expect(changeCountNotif.method).toBe('changedown/changeCount');
       expect(changeCountNotif.params).toStrictEqual({
         uri,
         counts: {
@@ -193,7 +193,7 @@ describe('Notifications', () => {
 
       // Second notification: allChangesResolved
       const resolvedNotif = connection.notifications[1];
-      expect(resolvedNotif.method).toBe('changetracks/allChangesResolved');
+      expect(resolvedNotif.method).toBe('changedown/allChangesResolved');
       expect(resolvedNotif.params).toStrictEqual({ uri });
     });
 
@@ -207,10 +207,10 @@ describe('Notifications', () => {
       expect(connection.notifications).toHaveLength(2);
 
       // First notification: changeCount
-      expect(connection.notifications[0].method).toBe('changetracks/changeCount');
+      expect(connection.notifications[0].method).toBe('changedown/changeCount');
 
       // Second notification: allChangesResolved
-      expect(connection.notifications[1].method).toBe('changetracks/allChangesResolved');
+      expect(connection.notifications[1].method).toBe('changedown/allChangesResolved');
       expect(connection.notifications[1].params).toStrictEqual({ uri });
     });
 
@@ -231,7 +231,7 @@ describe('Notifications', () => {
       sendChangeCount(connection, uri, changes);
 
       expect(connection.notifications).toHaveLength(1);
-      expect(connection.notifications[0].method).toBe('changetracks/changeCount');
+      expect(connection.notifications[0].method).toBe('changedown/changeCount');
     });
 
     it('should count multiple changes of same type', () => {

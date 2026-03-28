@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   classicProposeChangeSchema,
   compactProposeChangeSchema,
-} from '@changetracks/mcp/internals';
+} from '@changedown/mcp/internals';
 
 describe('tool schemas', () => {
   describe('classic mode', () => {

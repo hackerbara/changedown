@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import { realpathSync } from 'node:fs';
-import { scanMaxCtId } from '@changetracks/core';
+import { scanMaxCnId } from '@changedown/core';
 
 export type ViewName = 'review' | 'changes' | 'settled' | 'raw';
 
@@ -22,14 +22,14 @@ export interface ActiveGroup {
 
 /**
  * Session state manager that tracks per-file ID counters for generating
- * unique `ct-N` change identifiers, and manages change group lifecycle.
+ * unique `cn-N` change identifiers, and manages change group lifecycle.
  *
- * On first call for a file, scans existing `[^ct-N]` patterns in the
+ * On first call for a file, scans existing `[^cn-N]` patterns in the
  * document text to find the max ID. Subsequent calls increment from
  * the cached value without re-scanning.
  *
  * When a group is active (via `beginGroup`), `getNextId` returns dotted
- * child IDs (`ct-N.M`) instead of flat IDs. The group parent ID (`ct-N`)
+ * child IDs (`cn-N.M`) instead of flat IDs. The group parent ID (`cn-N`)
  * is reserved for the group footnote written by `endGroup`.
  *
  * --- Fork divergence from opencode-plugin SessionState ---
@@ -79,7 +79,7 @@ export class SessionState {
     // Start from 1 or from knownMaxId if provided
     // Do NOT use globalMaxId - each file and group should be independent
     const numericId = (knownMaxId || 0) + 1;
-    const groupId = `ct-${numericId}`;
+    const groupId = `cn-${numericId}`;
 
     this.activeGroup = {
       id: groupId,
@@ -97,12 +97,12 @@ export class SessionState {
   /**
    * Returns the next available change identifier for the given file.
    *
-   * When a group is active, returns a dotted child ID (`ct-N.M`) and
+   * When a group is active, returns a dotted child ID (`cn-N.M`) and
    * tracks the file as part of the group. Otherwise returns a flat
-   * `ct-N` identifier.
+   * `cn-N` identifier.
    *
-   * On first call for a file (outside a group), uses `scanMaxCtId(currentText)`
-   * to find the max existing ID, then returns `ct-(max+1)`. On subsequent
+   * On first call for a file (outside a group), uses `scanMaxCnId(currentText)`
+   * to find the max existing ID, then returns `cn-(max+1)`. On subsequent
    * calls, increments from the cached counter.
    */
   getNextId(filePath: string, currentText: string): string {
@@ -110,7 +110,7 @@ export class SessionState {
     if (this.activeGroup) {
       // In a group: assign dotted child ID
       this.activeGroup.childCount++;
-      const childId = `ct-${this.activeGroup.numericId}.${this.activeGroup.childCount}`;
+      const childId = `cn-${this.activeGroup.numericId}.${this.activeGroup.childCount}`;
       this.activeGroup.childIds.push(childId);
       this.activeGroup.files.add(filePath);
 
@@ -118,7 +118,7 @@ export class SessionState {
       // non-group IDs don't collide with the group's reserved range
       const currentCounter = this.counters.get(filePath);
       if (currentCounter === undefined) {
-        const scannedMax = scanMaxCtId(currentText);
+        const scannedMax = scanMaxCnId(currentText);
         this.counters.set(filePath, Math.max(scannedMax, this.activeGroup.numericId));
       } else {
         this.counters.set(filePath, Math.max(currentCounter, this.activeGroup.numericId));
@@ -127,17 +127,17 @@ export class SessionState {
       return childId;
     }
 
-    // Original logic: flat ct-N IDs
+    // Original logic: flat cn-N IDs
     let counter = this.counters.get(filePath);
     if (counter === undefined) {
       // First call for this file: scan existing IDs from this file only
-      counter = scanMaxCtId(currentText);
+      counter = scanMaxCnId(currentText);
     }
     counter++;
 
     // Each file tracks its own IDs independently
     this.counters.set(filePath, counter);
-    return `ct-${counter}`;
+    return `cn-${counter}`;
   }
 
   /**

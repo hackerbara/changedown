@@ -143,7 +143,7 @@ Single change (convenience):
   sc review <file> <change-id> --decision approve --reason "..."
 
 Batch mode:
-  sc review <file> --reviews '[{"change_id":"ct-1","decision":"approve","reasoning":"..."}]'
+  sc review <file> --reviews '[{"change_id":"cn-1","decision":"approve","reasoning":"..."}]'
 
 Flags:
   --decision DECISION  approve, reject, or request_changes (single mode)

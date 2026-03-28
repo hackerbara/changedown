@@ -12,7 +12,7 @@ Feature: DOCX2 — DOCX preview editor v2 components
     Then there is 1 comment pair
     And comment pair 0 has highlightText "highlighted text"
     And comment pair 0 has commentText "this needs work"
-    And comment pair 0 has a pairId matching "ct-pair-"
+    And comment pair 0 has a pairId matching "cn-pair-"
 
   Scenario: DOCX2-02 No comments produces empty array
     Given docx preview source text "{++inserted text++}"
@@ -53,26 +53,26 @@ Feature: DOCX2 — DOCX preview editor v2 components
   Scenario: DOCX2-07 Render CriticMarkup insertions
     Given docx preview markdown "Some {++added++} text"
     When I render markdown to preview HTML
-    Then the docx preview HTML contains "ct-ins"
+    Then the docx preview HTML contains "cn-ins"
     And the docx preview HTML contains "added"
 
   Scenario: DOCX2-08 Render CriticMarkup deletions
     Given docx preview markdown "Some {--removed--} text"
     When I render markdown to preview HTML
-    Then the docx preview HTML contains "ct-del"
+    Then the docx preview HTML contains "cn-del"
     And the docx preview HTML contains "removed"
 
   Scenario: DOCX2-09 Render highlights
     Given docx preview markdown "{==highlighted==}"
     When I render markdown to preview HTML
-    Then the docx preview HTML contains "ct-hl"
+    Then the docx preview HTML contains "cn-hl"
 
   # ── Webview HTML generation ─────────────────────────────
 
   Scenario: DOCX2-10 Loading HTML includes spinner
     Given a docx file named "test.docx"
     When I build loading HTML
-    Then the webview HTML contains "ct-docx-spinner"
+    Then the webview HTML contains "cn-docx-spinner"
     And the webview HTML contains "test.docx"
 
   Scenario: DOCX2-11 Error HTML shows message and pandoc link
@@ -83,7 +83,7 @@ Feature: DOCX2 — DOCX preview editor v2 components
 
   Scenario: DOCX2-12 Choice HTML shows both options
     Given a docx file named "test.docx"
-    And an existing markdown file "test-changetracks.md"
+    And an existing markdown file "test-changedown.md"
     When I build choice HTML
     Then the webview HTML contains "Open existing"
     And the webview HTML contains "Re-import"
@@ -91,39 +91,39 @@ Feature: DOCX2 — DOCX preview editor v2 components
 
   Scenario: DOCX2-13 Preview HTML includes toolbar, body, and margin panel
     Given a docx preview with body "<p>content</p>"
-    And a comment pair with pairId "ct-pair-0" and text "a comment" by "@alice"
+    And a comment pair with pairId "cn-pair-0" and text "a comment" by "@alice"
     And import stats of 3 insertions, 1 deletion, 0 substitutions by "@alice"
     When I build preview HTML
-    Then the webview HTML contains "ct-docx-toolbar"
-    And the webview HTML contains "ct-preview-body"
-    And the webview HTML contains "ct-sidebar"
+    Then the webview HTML contains "cn-docx-toolbar"
+    And the webview HTML contains "cn-preview-body"
+    And the webview HTML contains "cn-sidebar"
     And the webview HTML contains "content"
     And the webview HTML contains "a comment"
     And the webview HTML contains "@alice"
     And the webview HTML contains "3 ins"
 
-  # ── data-ct-pair attribute injection ────────────────────
+  # ── data-cn-pair attribute injection ────────────────────
 
-  Scenario: DOCX2-14 Preview renders data-ct-pair on highlight with merged comment
+  Scenario: DOCX2-14 Preview renders data-cn-pair on highlight with merged comment
     Given preview source text "{==highlighted==}{>>a comment<<}"
     When I build preview replacements
-    Then the preview HTML contains "data-ct-pair="
+    Then the preview HTML contains "data-cn-pair="
 
-  Scenario: DOCX2-15 Preview renders matching data-ct-pair on adjacent highlight and comment
+  Scenario: DOCX2-15 Preview renders matching data-cn-pair on adjacent highlight and comment
     Given preview source text "{==text==}{>>note<<}"
     When I build preview replacements
-    Then the preview HTML contains "<mark class=\"ct-hl\" data-ct-pair=\"ct-pair-0\">"
-    And the preview HTML contains "data-ct-pair=\"ct-pair-0\""
+    Then the preview HTML contains "<mark class=\"cn-hl\" data-cn-pair=\"cn-pair-0\">"
+    And the preview HTML contains "data-cn-pair=\"cn-pair-0\""
 
-  Scenario: DOCX2-16 Preview renders data-ct-pair on standalone comment
+  Scenario: DOCX2-16 Preview renders data-cn-pair on standalone comment
     Given preview source text "hello {>>orphan<<} world"
     When I build preview replacements
-    Then the preview HTML contains "data-ct-pair=\"ct-pair-6\""
+    Then the preview HTML contains "data-cn-pair=\"cn-pair-6\""
 
-  Scenario: DOCX2-17 Highlight without comment has data-ct-pair
+  Scenario: DOCX2-17 Highlight without comment has data-cn-pair
     Given preview source text "{==just highlighted==}"
     When I build preview replacements
-    Then the preview HTML contains "data-ct-pair"
+    Then the preview HTML contains "data-cn-pair"
 
   # ── Bidirectional sidebar linking (v3) ─────────────────────
 
@@ -137,11 +137,11 @@ Feature: DOCX2 — DOCX preview editor v2 components
     When I build preview HTML with view mode "simple"
     Then the webview HTML contains "data-view-mode=\"simple\""
 
-  Scenario: DOCX2-20 Sidebar cards have data-ct-id attribute
+  Scenario: DOCX2-20 Sidebar cards have data-cn-id attribute
     Given a docx preview with body "<p>content</p>"
-    And a comment pair with pairId "ct-pair-0" and text "a note" by "@bob"
+    And a comment pair with pairId "cn-pair-0" and text "a note" by "@bob"
     When I build preview HTML
-    Then the webview HTML contains "data-ct-id=\"ct-pair-0\""
+    Then the webview HTML contains "data-cn-id=\"cn-pair-0\""
 
   Scenario: DOCX2-21 Preview HTML has inline anchor click handler
     Given a docx preview with body "<p>content</p>"
@@ -153,37 +153,37 @@ Feature: DOCX2 — DOCX preview editor v2 components
     Given a docx preview with body "<p>content</p>"
     When I build preview HTML
     Then the webview HTML contains "Footnote ref badge click"
-    And the webview HTML contains "closest('.ct-ref')"
+    And the webview HTML contains "closest('.cn-ref')"
 
   # ── Simple view mode rendering ─────────────────────────────
 
   Scenario: DOCX2-23 Simple mode renders insertion as plain text with ref badge
-    Given docx preview markdown "Hello {++world++}[^ct-1]\n\n[^ct-1]: @alice | 2026-03-01 | ins | proposed"
+    Given docx preview markdown "Hello {++world++}[^cn-1]\n\n[^cn-1]: @alice | 2026-03-01 | ins | proposed"
     When I render markdown to preview HTML in "simple" mode
     Then the docx preview HTML contains "world"
-    And the docx preview HTML contains "ct-ins"
-    And the docx preview HTML contains "ct-ref"
+    And the docx preview HTML contains "cn-ins"
+    And the docx preview HTML contains "cn-ref"
 
   Scenario: DOCX2-24 Simple mode keeps footnote ref badges visible
-    Given docx preview markdown "Some {++text++}[^ct-1]\n\n[^ct-1]: @alice | 2026-03-01 | ins | proposed"
+    Given docx preview markdown "Some {++text++}[^cn-1]\n\n[^cn-1]: @alice | 2026-03-01 | ins | proposed"
     When I render markdown to preview HTML in "simple" mode
-    Then the docx preview HTML contains "ct-fn-ref-ct-1"
+    Then the docx preview HTML contains "cn-fn-ref-cn-1"
 
   Scenario: DOCX2-25 Simple mode preserves author colors
-    Given docx preview markdown "Some {++text++}[^ct-1]\n\n[^ct-1]: @alice | 2026-03-01 | ins | proposed"
+    Given docx preview markdown "Some {++text++}[^cn-1]\n\n[^cn-1]: @alice | 2026-03-01 | ins | proposed"
     When I render markdown to preview HTML in "simple" mode
-    Then the docx preview HTML contains "ct-ins"
+    Then the docx preview HTML contains "cn-ins"
 
   Scenario: DOCX2-26 Simple mode CSS hides deletions and keeps insertions
-    Given a docx preview with body "<p><ins class='ct-ins'>added</ins></p>"
+    Given a docx preview with body "<p><ins class='cn-ins'>added</ins></p>"
     When I build preview HTML with view mode "simple"
-    Then the webview HTML contains "[data-view-mode=\"simple\"] .ct-del"
-    And the webview HTML contains "[data-view-mode=\"simple\"] .ct-ins"
+    Then the webview HTML contains "[data-view-mode=\"simple\"] .cn-del"
+    And the webview HTML contains "[data-view-mode=\"simple\"] .cn-ins"
     And the webview HTML contains "display: none"
     And the webview HTML contains "text-decoration: none"
 
   Scenario: DOCX2-27 Simple mode CSS has gutter indicators
-    Given a docx preview with body "<p><ins class='ct-ins'>text</ins></p>"
+    Given a docx preview with body "<p><ins class='cn-ins'>text</ins></p>"
     When I build preview HTML with view mode "simple"
     Then the webview HTML contains "Gutter: insertion"
     And the webview HTML contains "Gutter: deletion"
@@ -193,26 +193,26 @@ Feature: DOCX2 — DOCX preview editor v2 components
   Scenario: DOCX2-28 Simple mode hides footnote definitions via CSS
     Given a docx preview with body "<p>content</p>"
     When I build preview HTML with view mode "simple"
-    Then the webview HTML contains "[data-view-mode=\"simple\"] .ct-footnotes { display: none; }"
+    Then the webview HTML contains "[data-view-mode=\"simple\"] .cn-footnotes { display: none; }"
 
   Scenario: DOCX2-29 allMarkup mode renders footnote ref badges (provider hides via showFootnotes config)
-    Given docx preview markdown "Some {++text++}[^ct-1]\n\n[^ct-1]: @alice | 2026-03-01 | ins | proposed"
+    Given docx preview markdown "Some {++text++}[^cn-1]\n\n[^cn-1]: @alice | 2026-03-01 | ins | proposed"
     When I render markdown to preview HTML in "allMarkup" mode
-    Then the docx preview HTML contains "ct-fn-ref-ct-1"
+    Then the docx preview HTML contains "cn-fn-ref-cn-1"
 
   Scenario: DOCX2-30 Simple mode renders deletion markup for gutter detection
     Given docx preview markdown "Text {--removed--} here"
     When I render markdown to preview HTML in "simple" mode
-    Then the docx preview HTML contains "ct-del"
+    Then the docx preview HTML contains "cn-del"
 
   Scenario: DOCX2-31 Simple mode preserves content underlines while removing ins underline
     Given docx preview markdown "Some {++Hello <u>world</u>++} text"
     When I render markdown to preview HTML in "simple" mode
     Then the docx preview HTML contains "<u>world</u>"
-    And the docx preview HTML contains "ct-ins"
+    And the docx preview HTML contains "cn-ins"
 
   Scenario: DOCX2-32 Simple mode CSS removes ins text-decoration but not content underlines
-    Given a docx preview with body "<p><ins class='ct-ins'>Hello <u>world</u></ins></p>"
+    Given a docx preview with body "<p><ins class='cn-ins'>Hello <u>world</u></ins></p>"
     When I build preview HTML with view mode "simple"
     Then the webview HTML contains "text-decoration: none"
     And the webview HTML contains "Hello <u>world</u>"

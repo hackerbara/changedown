@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -11,12 +11,12 @@ import * as os from 'node:os';
 describe('proposal reasoning enforcement', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
   let filePath: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-reasoning-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-reasoning-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -93,7 +93,7 @@ describe('proposal reasoning enforcement', () => {
 
   it('accepts proposal without annotation when reasoning.propose.agent = false', async () => {
     // Override: agents do NOT require reasoning
-    const noReasoningConfig: ChangeTracksConfig = {
+    const noReasoningConfig: ChangeDownConfig = {
       ...config,
       reasoning: {
         ...config.reasoning,
@@ -123,7 +123,7 @@ describe('proposal reasoning enforcement', () => {
   });
 
   it('requires human annotation when reasoning.propose.human = true', async () => {
-    const humanRequiredConfig: ChangeTracksConfig = {
+    const humanRequiredConfig: ChangeDownConfig = {
       ...config,
       reasoning: {
         ...config.reasoning,

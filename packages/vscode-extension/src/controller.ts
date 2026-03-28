@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import type { PendingOverlay } from '@changetracks/core';
-import { Workspace, VirtualDocument, ChangeNode, scanMaxCtId, findFootnoteBlock, tryFindUniqueMatch, splitBodyAndFootnotes, parseContextualEditOp, isGhostNode, computeLineHash, FOOTNOTE_L3_EDIT_OP, DEFAULT_CONFIG } from '@changetracks/core';
+import type { PendingOverlay } from '@changedown/core';
+import { Workspace, VirtualDocument, ChangeNode, scanMaxCnId, findFootnoteBlock, tryFindUniqueMatch, splitBodyAndFootnotes, parseContextualEditOp, isGhostNode, computeLineHash, FOOTNOTE_L3_EDIT_OP, DEFAULT_CONFIG } from '@changedown/core';
 import { EditorDecorator } from './decorator';
 import { ViewMode, VIEW_MODE_LABELS, resolveViewName } from './view-mode';
 import { getCachedDecorationData, invalidateDecorationCache, transformCachedDecorations, getStatusBarCoherence } from './lsp-client';
@@ -72,7 +72,7 @@ export class ExtensionController {
         );
 
         // Read decoration style and author colors from configuration
-        const config0 = vscode.workspace.getConfiguration('changetracks');
+        const config0 = vscode.workspace.getConfiguration('changedown');
         const rawStyle = config0.get<string>('decorationStyle', 'foreground');
         const decorationStyle = rawStyle === 'background' ? 'background' : 'foreground';
         const rawAuthorColors = config0.get<string>('authorColors', 'auto');
@@ -88,9 +88,9 @@ export class ExtensionController {
         // Listen for decoration style / author colors configuration changes
         vscode.workspace.onDidChangeConfiguration(event => {
             try {
-                if (event.affectsConfiguration('changetracks.decorationStyle') ||
-                    event.affectsConfiguration('changetracks.authorColors')) {
-                    const cfg = vscode.workspace.getConfiguration('changetracks');
+                if (event.affectsConfiguration('changedown.decorationStyle') ||
+                    event.affectsConfiguration('changedown.authorColors')) {
+                    const cfg = vscode.workspace.getConfiguration('changedown');
                     const rawNewStyle = cfg.get<string>('decorationStyle', 'foreground');
                     const newStyle = rawNewStyle === 'background' ? 'background' : 'foreground';
                     const rawNewAuthorColors = cfg.get<string>('authorColors', 'auto');
@@ -111,13 +111,13 @@ export class ExtensionController {
                         }
                     });
                 }
-                if (event.affectsConfiguration('changetracks.editBoundary')) {
-                    const cfg = vscode.workspace.getConfiguration('changetracks');
+                if (event.affectsConfiguration('changedown.editBoundary')) {
+                    const cfg = vscode.workspace.getConfiguration('changedown');
                     this.editTracking.applyEditBoundaryConfig(cfg);
                 }
-                if (event.affectsConfiguration('changetracks.showDelimiters')) {
+                if (event.affectsConfiguration('changedown.showDelimiters')) {
                     this.viewModeManager.updateShowDelimiters(
-                        vscode.workspace.getConfiguration('changetracks').get<boolean>('showDelimiters', false)
+                        vscode.workspace.getConfiguration('changedown').get<boolean>('showDelimiters', false)
                     );
                     vscode.window.visibleTextEditors.forEach(editor => {
                         if (isSupported(editor.document)) {
@@ -158,7 +158,7 @@ export class ExtensionController {
                 const ds = this.docStateManager.getState(uri);
                 if (ds?.userTrackingOverride === undefined) {
                     this.editTracking.setTrackingModeRaw(state.tracking.enabled);
-                    setContextKey('changetracks:trackingEnabled', state.tracking.enabled);
+                    setContextKey('changedown:trackingEnabled', state.tracking.enabled);
                 }
             }
         });
@@ -236,12 +236,18 @@ export class ExtensionController {
                         // Scan tracking header from promoted text
                         const promotedText = editor.document.getText();
                         const headerMatch = promotedText.match(
-                            /^<!--\s*ctrcks\.com\/v1:\s*(tracked|untracked)\s*-->/m
+                            /^<!--\s*changedown\.com\/v1:\s*(tracked|untracked)\s*-->/m
                         );
                         if (headerMatch) {
                             this.editTracking.setTrackingModeRaw(headerMatch[1] === 'tracked');
-                            setContextKey('changetracks:trackingEnabled', this.editTracking.trackingMode);
+                            setContextKey('changedown:trackingEnabled', this.editTracking.trackingMode);
                         }
+
+                        // Cache L3 state on document state for cursor-move fast path
+                        const isL3 = this.workspace.isFootnoteNative(promotedText);
+                        const docState = this.docStateManager.getState(uri);
+                        if (docState) docState.isL3 = isL3;
+
                     }
                 }
             }
@@ -249,24 +255,24 @@ export class ExtensionController {
         });
 
         // Read tracking mode and edit boundary sub-settings from configuration
-        const config = vscode.workspace.getConfiguration('changetracks');
+        const config = vscode.workspace.getConfiguration('changedown');
         this.editTracking.setTrackingModeRaw(config.get<boolean>('trackingMode', false));
         this.editTracking.applyEditBoundaryConfig(config);
-        this.localParseHotPath = vscode.workspace.getConfiguration('changetracks').get('localParseHotPath', false);
+        this.localParseHotPath = vscode.workspace.getConfiguration('changedown').get('localParseHotPath', false);
 
         // Clear decoration scheduler when extension context is disposed
         context.subscriptions.push(this.decorationScheduler);
 
         // Initialize context keys for UI
-        setContextKey('changetracks:trackingEnabled', this.editTracking.trackingMode);
-        setContextKey('changetracks:viewMode', this.viewModeManager.viewMode);
+        setContextKey('changedown:trackingEnabled', this.editTracking.trackingMode);
+        setContextKey('changedown:viewMode', this.viewModeManager.viewMode);
 
         // Status bar item: persistent view mode indicator
         this.viewModeStatusBar = vscode.window.createStatusBarItem(
             vscode.StatusBarAlignment.Right, 100
         );
-        this.viewModeStatusBar.command = 'changetracks.toggleView';
-        this.viewModeStatusBar.tooltip = 'ChangeTracks: Click to cycle view mode';
+        this.viewModeStatusBar.command = 'changedown.toggleView';
+        this.viewModeStatusBar.tooltip = 'ChangeDown: Click to cycle view mode';
         this.updateStatusBar();
 
         // Listen to active editor changes
@@ -294,7 +300,7 @@ export class ExtensionController {
                         const text = editor.document.getText();
                         if (this.workspace.isFootnoteNative(text)) {
                             if (editorState.nextScId === 1) {
-                                const maxId = scanMaxCtId(text);
+                                const maxId = scanMaxCnId(text);
                                 editorState.nextScId = maxId + 1;
                             }
                         }
@@ -307,23 +313,23 @@ export class ExtensionController {
                         if (override !== undefined) {
                             // User explicitly toggled — honour their choice
                             this.editTracking.setTrackingModeRaw(override);
-                            setContextKey('changetracks:trackingEnabled', override);
+                            setContextKey('changedown:trackingEnabled', override);
                         } else {
                             const text = editor.document.getText();
-                            const headerMatch = text.match(/^<!--\s*ctrcks\.com\/v1:\s*(tracked|untracked)\s*-->/m);
+                            const headerMatch = text.match(/^<!--\s*changedown\.com\/v1:\s*(tracked|untracked)\s*-->/m);
                             if (headerMatch) {
                                 this.editTracking.setTrackingModeRaw(headerMatch[1] === 'tracked');
-                                setContextKey('changetracks:trackingEnabled', this.editTracking.trackingMode);
+                                setContextKey('changedown:trackingEnabled', this.editTracking.trackingMode);
                             } else {
                                 // No header, no override — default to off (H5 fix)
                                 this.editTracking.setTrackingModeRaw(false);
-                                setContextKey('changetracks:trackingEnabled', false);
+                                setContextKey('changedown:trackingEnabled', false);
                             }
                         }
                     } else {
                         // Non-markdown file — tracking off (H5 fix)
                         this.editTracking.setTrackingModeRaw(false);
-                        setContextKey('changetracks:trackingEnabled', false);
+                        setContextKey('changedown:trackingEnabled', false);
                     }
                 } catch (err: any) {
                     getOutputChannel()?.appendLine(`[onDidChangeActiveTextEditor] Error: ${err.message}\n${err.stack}`);
@@ -350,12 +356,12 @@ export class ExtensionController {
                     const text = activeEditor.document.getText();
                     if (this.workspace.isFootnoteNative(text)) {
                         // Already L3 — initialize scId counter and scan tracking header
-                        const maxId = scanMaxCtId(text);
+                        const maxId = scanMaxCnId(text);
                         startupState.nextScId = maxId + 1;
-                        const headerMatch = text.match(/^<!--\s*ctrcks\.com\/v1:\s*(tracked|untracked)\s*-->/m);
+                        const headerMatch = text.match(/^<!--\s*changedown\.com\/v1:\s*(tracked|untracked)\s*-->/m);
                         if (headerMatch) {
                             this.editTracking.setTrackingModeRaw(headerMatch[1] === 'tracked');
-                            setContextKey('changetracks:trackingEnabled', this.editTracking.trackingMode);
+                            setContextKey('changedown:trackingEnabled', this.editTracking.trackingMode);
                         }
                     }
                     // For L2 documents: LSP will promote on didOpen and send promotionComplete,
@@ -364,7 +370,7 @@ export class ExtensionController {
                 this.navigationManager.updateChangeAtCursorContext(activeEditor);
                 this.updateStatusBar();
             } else {
-                setContextKey('changetracks:changeAtCursor', false);
+                setContextKey('changedown:changeAtCursor', false);
                 for (const editor of vscode.window.visibleTextEditors) {
                     if (isSupported(editor.document)) {
                         const docUri = editor.document.uri.toString();
@@ -485,11 +491,6 @@ export class ExtensionController {
 
                     this.navigationManager.snapCursorPastHiddenRanges(editor, event);
 
-                    // Update folding provider cursor position in Simple mode
-                    if (this.viewModeManager.viewMode === 'changes' && this.viewModeManager.foldingProvider) {
-                        const changes = this.getChangesForDocument(editor.document);
-                        this.viewModeManager.foldingProvider.updateState(this.viewModeManager.viewMode, event.selections[0].active.line, changes);
-                    }
                 }
             } catch (err: any) {
                 getOutputChannel()?.appendLine(`[onDidChangeTextEditorSelection] ${err.message}\n${err.stack}`);
@@ -544,7 +545,7 @@ export class ExtensionController {
 
         // Register coherence/anchor commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('changetracks.inspectUnresolved', () => {
+            vscode.commands.registerCommand('changedown.inspectUnresolved', () => {
                 const editor = vscode.window.activeTextEditor;
                 if (!editor) return;
                 const changes = this.getChangesForDocument(editor.document);
@@ -577,7 +578,7 @@ export class ExtensionController {
         );
 
         context.subscriptions.push(
-            vscode.commands.registerCommand('changetracks.searchAnchorText', async (changeId: string) => {
+            vscode.commands.registerCommand('changedown.searchAnchorText', async (changeId: string) => {
                 const editor = vscode.window.activeTextEditor;
                 if (!editor) return;
                 const text = editor.document.getText();
@@ -607,7 +608,7 @@ export class ExtensionController {
         );
 
         context.subscriptions.push(
-            vscode.commands.registerCommand('changetracks.jumpToFootnote', (changeId: string) => {
+            vscode.commands.registerCommand('changedown.jumpToFootnote', (changeId: string) => {
                 const editor = vscode.window.activeTextEditor;
                 if (!editor) return;
                 this.navigationManager.jumpToFootnoteInEditor(editor, changeId);
@@ -615,7 +616,7 @@ export class ExtensionController {
         );
 
         context.subscriptions.push(
-            vscode.commands.registerCommand('changetracks.reanchorToSelection', async () => {
+            vscode.commands.registerCommand('changedown.reanchorToSelection', async () => {
                 const editor = vscode.window.activeTextEditor;
                 if (!editor || editor.selection.isEmpty) {
                     vscode.window.showInformationMessage('Select text in the document body first, then run this command.');
@@ -793,14 +794,6 @@ export class ExtensionController {
     }
 
     /**
-     * Set the folding provider for hidden deletion regions in Simple mode.
-     * Called by extension.ts after creating both the controller and the provider.
-     */
-    public setFoldingProvider(provider: import('./folding-provider').ChangeTracksFoldingProvider): void {
-        this.viewModeManager.setFoldingProvider(provider);
-    }
-
-    /**
      * Send a lifecycle LSP request and apply the returned edits to the active editor.
      * Delegates to LspBridge.
      */
@@ -830,7 +823,7 @@ export class ExtensionController {
     }
 
     /**
-     * Called when LSP sends changetracks/promotionStarting.
+     * Called when LSP sends changedown/promotionStarting.
      * Delegates to LspBridge.
      */
     public handlePromotionStarting(uri: string): void {
@@ -838,7 +831,7 @@ export class ExtensionController {
     }
 
     /**
-     * Called when LSP sends changetracks/promotionComplete.
+     * Called when LSP sends changedown/promotionComplete.
      * Delegates to LspBridge which fires onDidCompletePromotion for controller subscriber.
      */
     public handlePromotionComplete(uri: string): void {
@@ -904,7 +897,7 @@ export class ExtensionController {
     }
 
     /**
-     * Called when LSP sends changetracks/documentState.
+     * Called when LSP sends changedown/documentState.
      * Delegates to DocumentStateManager; context keys updated via onDidChangeDocumentState subscriber.
      */
     public setDocumentState(uri: string, state: { tracking: { enabled: boolean; source: string }; viewMode: string }): void {
@@ -939,16 +932,16 @@ export class ExtensionController {
             const resolved = count - cs.unresolvedCount;
             if (cs.rate < cs.threshold) {
                 this.viewModeStatusBar.text = `$(error) DEGRADED: ${cs.unresolvedCount} unresolved · ${label}`;
-                this.viewModeStatusBar.tooltip = `ChangeTracks: ${cs.unresolvedCount} anchor${cs.unresolvedCount === 1 ? '' : 's'} could not be resolved (coherence ${cs.rate}% < threshold ${cs.threshold}%). External or manual edits are the most common cause.`;
+                this.viewModeStatusBar.tooltip = `ChangeDown: ${cs.unresolvedCount} anchor${cs.unresolvedCount === 1 ? '' : 's'} could not be resolved (coherence ${cs.rate}% < threshold ${cs.threshold}%). External or manual edits are the most common cause.`;
                 this.viewModeStatusBar.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
             } else {
                 this.viewModeStatusBar.text = `$(warning) ${cs.unresolvedCount} unresolved · ${resolved >= 0 ? resolved : 0} resolved · ${label}`;
-                this.viewModeStatusBar.tooltip = `ChangeTracks: ${cs.unresolvedCount} unresolved anchor${cs.unresolvedCount === 1 ? '' : 's'} (coherence ${cs.rate}%). Click to toggle view.`;
+                this.viewModeStatusBar.tooltip = `ChangeDown: ${cs.unresolvedCount} unresolved anchor${cs.unresolvedCount === 1 ? '' : 's'} (coherence ${cs.rate}%). Click to toggle view.`;
                 this.viewModeStatusBar.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
             }
         } else {
             this.viewModeStatusBar.text = `$(diff) ${count} change${count === 1 ? '' : 's'} · ${label}`;
-            this.viewModeStatusBar.tooltip = `ChangeTracks: ${count} tracked change${count === 1 ? '' : 's'} in ${label} mode. Click to toggle view.`;
+            this.viewModeStatusBar.tooltip = `ChangeDown: ${count} tracked change${count === 1 ? '' : 's'} in ${label} mode. Click to toggle view.`;
             this.viewModeStatusBar.backgroundColor = undefined;
         }
         this.viewModeStatusBar.show();
@@ -1117,7 +1110,7 @@ export class ExtensionController {
      */
     public setStateForTest(uri: string, opts: { tracking: boolean; shadow: string; nextScId?: number }): void {
         this.editTracking.setTrackingModeRaw(opts.tracking);
-        setContextKey('changetracks:trackingEnabled', opts.tracking);
+        setContextKey('changedown:trackingEnabled', opts.tracking);
         const state = this.docStateManager.getState(uri);
         if (state) {
             state.shadow = opts.shadow;

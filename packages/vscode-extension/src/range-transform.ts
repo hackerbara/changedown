@@ -8,7 +8,7 @@
  * vscode-languageclient/node (which requires a full VS Code environment).
  */
 
-import { ChangeNode } from '@changetracks/core';
+import { ChangeNode } from '@changedown/core';
 
 // ---------------------------------------------------------------------------
 // Decoration cache (shared with lsp-client.ts)
@@ -47,8 +47,8 @@ export function invalidateDecorationCache(uri: string): void {
 
 /**
  * Set cached decoration data.
- * Used when the extension receives changes via changetracks/getChanges request
- * or via the changetracks/decorationData notification.
+ * Used when the extension receives changes via changedown/getChanges request
+ * or via the changedown/decorationData notification.
  */
 export function setCachedDecorationData(uri: string, changes: ChangeNode[], documentVersion: number): void {
     decorationCache.set(uri, { changes, documentVersion });
@@ -91,7 +91,7 @@ export function transformRange(
 /**
  * Optimistic range transform: adjust all cached ChangeNode ranges by edit deltas.
  * Call from onDidChangeTextDocument to keep decorations stable during the LSP
- * round-trip. The authoritative LSP push (changetracks/decorationData) overwrites
+ * round-trip. The authoritative LSP push (changedown/decorationData) overwrites
  * the cache when the server responds.
  *
  * @param newVersion The document version after the edit — stamped onto the cache entry.

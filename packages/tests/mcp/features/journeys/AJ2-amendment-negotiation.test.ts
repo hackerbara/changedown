@@ -35,18 +35,18 @@ describe('AJ2: Amendment negotiation cycle', () => {
     });
     expect(proposeResult.isError).toBeUndefined();
     const proposeData = ctx.parseResult(proposeResult);
-    expect(proposeData.change_id).toBe('ct-1');
+    expect(proposeData.change_id).toBe('cn-1');
     expect(proposeData.type).toBe('sub');
 
     // Verify disk: substitution markup present
     const disk1 = await ctx.readDisk(filePath);
     expect(disk1).toContain('{~~basic authentication~>OAuth2~~}');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'proposed');
 
     // ── Step 2: Reviewer gives feedback via thread response ──────────
     const feedbackResult = await ctx.review(filePath, {
       responses: [{
-        change_id: 'ct-1',
+        change_id: 'cn-1',
         response: 'OAuth2 is good but we need to specify the grant type. Consider Authorization Code flow.',
         label: 'suggestion',
       }],
@@ -61,7 +61,7 @@ describe('AJ2: Amendment negotiation cycle', () => {
     expect(disk2).toContain('ai:reviewer');
 
     // ── Step 3: Original author amends based on feedback (supersede) ──
-    const amendResult = await ctx.amend(filePath, 'ct-1', {
+    const amendResult = await ctx.amend(filePath, 'cn-1', {
       new_text: 'OAuth2 with Authorization Code flow',
       reason: 'Incorporated reviewer suggestion',
       author: 'ai:proposer',
@@ -69,7 +69,7 @@ describe('AJ2: Amendment negotiation cycle', () => {
     expect(amendResult.isError).toBeUndefined();
 
     const amendData = ctx.parseResult(amendResult);
-    expect(amendData.change_id).toBe('ct-1');
+    expect(amendData.change_id).toBe('cn-1');
     expect(amendData.new_change_id).toBeDefined();
     expect(amendData.amended).toBe(true);
     const newChangeId = amendData.new_change_id as string;
@@ -77,14 +77,14 @@ describe('AJ2: Amendment negotiation cycle', () => {
     // Verify inline markup updated via supersede
     const disk3 = await ctx.readDisk(filePath);
     expect(disk3).toContain('{~~basic authentication~>OAuth2 with Authorization Code flow~~}');
-    // Original ct-1 is rejected, new change proposes the amended text
+    // Original cn-1 is rejected, new change proposes the amended text
     expect(disk3).toContain(`superseded-by: ${newChangeId}`);
-    expect(disk3).toContain('supersedes: ct-1');
+    expect(disk3).toContain('supersedes: cn-1');
     expect(disk3).toContain('Incorporated reviewer suggestion');
     // New change has its own footnote
     expect(disk3).toContain(`[^${newChangeId}]:`);
 
-    // ── Step 4: Reviewer approves the NEW change (not ct-1) ──────────
+    // ── Step 4: Reviewer approves the NEW change (not cn-1) ──────────
     const approveResult = await ctx.review(filePath, {
       reviews: [{
         change_id: newChangeId,
@@ -122,8 +122,8 @@ describe('AJ2: Amendment negotiation cycle', () => {
     expect(disk5).toContain('OAuth2 with Authorization Code flow');
     expect(disk5).not.toContain('basic authentication');
 
-    // Original ct-1 footnote preserves deliberation history
-    expect(disk5).toContain('[^ct-1]:');
+    // Original cn-1 footnote preserves deliberation history
+    expect(disk5).toContain('[^cn-1]:');
     expect(disk5).toContain('Modern auth standard');                  // original reasoning
     expect(disk5).toContain('OAuth2 is good but we need to specify'); // reviewer feedback
     // New change footnote has amendment reasoning and approval
@@ -146,12 +146,12 @@ describe('AJ2: Amendment negotiation cycle', () => {
     });
     expect(proposeResult.isError).toBeUndefined();
     const proposeData = ctx.parseResult(proposeResult);
-    expect(proposeData.change_id).toBe('ct-1');
+    expect(proposeData.change_id).toBe('cn-1');
 
     // ── Round 1: Reviewer requests changes ───────────────────────────
     const rc1 = await ctx.review(filePath, {
       reviews: [{
-        change_id: 'ct-1',
+        change_id: 'cn-1',
         decision: 'request_changes',
         reason: 'Token auth is too vague. Specify JWT or opaque tokens.',
       }],
@@ -159,10 +159,10 @@ describe('AJ2: Amendment negotiation cycle', () => {
     });
     expect(rc1.isError).toBeUndefined();
     // Status stays proposed after request_changes
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'proposed');
 
-    // ── Round 1: Proposer amends (supersede ct-1) ────────────────────
-    const amend1 = await ctx.amend(filePath, 'ct-1', {
+    // ── Round 1: Proposer amends (supersede cn-1) ────────────────────
+    const amend1 = await ctx.amend(filePath, 'cn-1', {
       new_text: 'JWT authentication',
       reason: 'Specified JWT per reviewer request',
       author: 'ai:proposer',
@@ -218,13 +218,13 @@ describe('AJ2: Amendment negotiation cycle', () => {
     // ── Verify full deliberation history ─────────────────────────────
     const finalDisk = await ctx.readDisk(filePath);
 
-    // Supersede cross-references form a chain: ct-1 -> round1Id -> round2Id
+    // Supersede cross-references form a chain: cn-1 -> round1Id -> round2Id
     expect(finalDisk).toContain(`superseded-by: ${round1Id}`);
-    expect(finalDisk).toContain(`supersedes: ct-1`);
+    expect(finalDisk).toContain(`supersedes: cn-1`);
     expect(finalDisk).toContain(`superseded-by: ${round2Id}`);
     expect(finalDisk).toContain(`supersedes: ${round1Id}`);
 
-    // 2 request-changes entries (on ct-1 and round1Id)
+    // 2 request-changes entries (on cn-1 and round1Id)
     const rcMatches = finalDisk.match(/request-changes:/g);
     expect(rcMatches).not.toBeNull();
     expect(rcMatches!.length).toBe(2);
@@ -243,7 +243,7 @@ describe('AJ2: Amendment negotiation cycle', () => {
   it('Scenario 3: Amendment rejected — original author proposes new change instead', async () => {
     const filePath = await ctx.createFile('design.md', DESIGN_DOC);
 
-    // ── Agent A proposes ct-1 ────────────────────────────────────────
+    // ── Agent A proposes cn-1 ────────────────────────────────────────
     const propose1 = await ctx.propose(filePath, {
       old_text: 'basic authentication',
       new_text: 'API keys',
@@ -252,19 +252,19 @@ describe('AJ2: Amendment negotiation cycle', () => {
     });
     expect(propose1.isError).toBeUndefined();
     const data1 = ctx.parseResult(propose1);
-    expect(data1.change_id).toBe('ct-1');
+    expect(data1.change_id).toBe('cn-1');
 
-    // ── Agent B rejects ct-1 ─────────────────────────────────────────
+    // ── Agent B rejects cn-1 ─────────────────────────────────────────
     const rejectResult = await ctx.review(filePath, {
       reviews: [{
-        change_id: 'ct-1',
+        change_id: 'cn-1',
         decision: 'reject',
         reason: 'Wrong approach entirely — API keys are not secure enough',
       }],
       author: 'ai:reviewer',
     });
     expect(rejectResult.isError).toBeUndefined();
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'rejected');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'rejected');
 
     // Rejection markup still present (no auto_on_reject)
     const diskAfterReject = await ctx.readDisk(filePath);
@@ -281,10 +281,10 @@ describe('AJ2: Amendment negotiation cycle', () => {
     // So we need auto_on_reject or handle this differently.
     //
     // Since auto_on_reject is false, the rejected markup stays. The proposer
-    // proposes a NEW change on DIFFERENT text (since ct-1 markup still wraps "basic authentication").
+    // proposes a NEW change on DIFFERENT text (since cn-1 markup still wraps "basic authentication").
     // Let's propose on a different part of the same sentence.
 
-    // ── Agent A proposes ct-2 on different text ──────────────────────
+    // ── Agent A proposes cn-2 on different text ──────────────────────
     const propose2 = await ctx.propose(filePath, {
       old_text: 'all endpoints',
       new_text: 'all public endpoints with OAuth2 scopes',
@@ -293,37 +293,37 @@ describe('AJ2: Amendment negotiation cycle', () => {
     });
     expect(propose2.isError).toBeUndefined();
     const data2 = ctx.parseResult(propose2);
-    expect(data2.change_id).toBe('ct-2');
+    expect(data2.change_id).toBe('cn-2');
 
-    // ── Agent B approves ct-2 ────────────────────────────────────────
+    // ── Agent B approves cn-2 ────────────────────────────────────────
     const approve2 = await ctx.review(filePath, {
       reviews: [{
-        change_id: 'ct-2',
+        change_id: 'cn-2',
         decision: 'approve',
         reason: 'OAuth2 scopes is the right approach',
       }],
       author: 'ai:reviewer',
     });
     expect(approve2.isError).toBeUndefined();
-    await ctx.assertFootnoteStatus(filePath, 'ct-2', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-2', 'accepted');
 
     // ── Verify both footnotes exist with correct statuses ────────────
     const finalDisk = await ctx.readDisk(filePath);
 
-    // ct-1: rejected
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'rejected');
-    expect(finalDisk).toContain('[^ct-1]');
+    // cn-1: rejected
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'rejected');
+    expect(finalDisk).toContain('[^cn-1]');
     expect(finalDisk).toContain('Wrong approach entirely');
 
-    // ct-2: accepted (independent from ct-1)
-    await ctx.assertFootnoteStatus(filePath, 'ct-2', 'accepted');
-    expect(finalDisk).toContain('[^ct-2]');
+    // cn-2: accepted (independent from cn-1)
+    await ctx.assertFootnoteStatus(filePath, 'cn-2', 'accepted');
+    expect(finalDisk).toContain('[^cn-2]');
     expect(finalDisk).toContain('OAuth2 scopes is the right approach');
 
     // Both footnotes coexist in the file
-    expect(finalDisk).toContain('[^ct-1]:');
-    expect(finalDisk).toContain('[^ct-2]:');
-    const footnoteCount = (finalDisk.match(/\[\^ct-\d+\]:/g) ?? []).length;
+    expect(finalDisk).toContain('[^cn-1]:');
+    expect(finalDisk).toContain('[^cn-2]:');
+    const footnoteCount = (finalDisk.match(/\[\^cn-\d+\]:/g) ?? []).length;
     expect(footnoteCount).toBe(2);
   });
 });

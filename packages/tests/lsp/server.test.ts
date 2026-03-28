@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createServer, ChangetracksServer, TextDocumentSyncKind } from '@changetracks/lsp-server/internals';
-import type { Connection, InitializeParams, InitializeResult } from '@changetracks/lsp-server/internals';
-import { ChangeType } from '@changetracks/core';
+import { ChangedownServer, TextDocumentSyncKind } from '@changedown/lsp-server/internals';
+import type { Connection, InitializeParams, InitializeResult } from '@changedown/lsp-server/internals';
+import { ChangeType } from '@changedown/core';
 
 /**
  * Create a mock connection for testing
@@ -23,6 +23,7 @@ function createMockConnection(): Connection {
     onDidSaveTextDocument: (handler: any) => { handlers.didSave = handler; },
     onHover: (handler: any) => { handlers.hover = handler; },
     onCodeLens: (handler: any) => { handlers.codeLens = handler; },
+    onFoldingRanges: (handler: any) => { handlers.foldingRanges = handler; },
     onCodeAction: (handler: any) => { handlers.codeAction = handler; },
     onDocumentLinks: (handler: any) => { handlers.documentLinks = handler; },
     onRequest: (method: string, handler: any) => { handlers[`request:${method}`] = handler; },
@@ -47,28 +48,36 @@ function createMockConnection(): Connection {
 }
 
 describe('Server', () => {
-  describe('createServer', () => {
+  describe('ChangedownServer constructor', () => {
     it('should create a server instance', () => {
       const mockConnection = createMockConnection();
-      const server = createServer(mockConnection);
+      const server = new ChangedownServer(mockConnection);
       expect(server).toBeTruthy();
-      expect(server instanceof ChangetracksServer).toBeTruthy();
+      expect(server instanceof ChangedownServer).toBeTruthy();
     });
 
     it('should initialize workspace on creation', () => {
       const mockConnection = createMockConnection();
-      const server = createServer(mockConnection);
+      const server = new ChangedownServer(mockConnection);
       expect(server.workspace).toBeTruthy();
+    });
+
+    it('should accept ServerOptions', () => {
+      const mockConnection = createMockConnection();
+      const server = new ChangedownServer(mockConnection, {
+        loadConfig: () => undefined,
+      });
+      expect(server).toBeTruthy();
     });
   });
 
-  describe('ChangetracksServer', () => {
-    let server: ChangetracksServer;
+  describe('ChangedownServer', () => {
+    let server: ChangedownServer;
     let mockConnection: Connection;
 
     beforeEach(() => {
       mockConnection = createMockConnection();
-      server = createServer(mockConnection);
+      server = new ChangedownServer(mockConnection);
     });
 
     it('should have a connection', () => {
@@ -90,7 +99,7 @@ describe('Server', () => {
       const result = await server.handleInitialize(params);
       expect(result).toBeTruthy();
       expect(result.capabilities).toBeTruthy();
-      expect(result.capabilities.textDocumentSync).toBe(TextDocumentSyncKind.Full);
+      expect(result.capabilities.textDocumentSync).toBe(TextDocumentSyncKind.Incremental);
     });
 
     it('should handle initialized notification', () => {
@@ -132,7 +141,7 @@ describe('Server', () => {
       const initialText = 'plain text';
       // Use L3 format (footnote-native) so handleDocumentChange does not
       // attempt L2-to-L3 re-promotion which requires workspace.applyEdit.
-      const updatedText = '{++addition++}[^ct-1]\n\n[^ct-1]: ins | proposed | @test | 2026-01-01';
+      const updatedText = '{++addition++}[^cn-1]\n\n[^cn-1]: ins | proposed | @test | 2026-01-01';
 
       server.handleDocumentOpen(uri, initialText);
       let parseResult = server.getParseResult(uri);
@@ -172,12 +181,12 @@ describe('Server', () => {
       expect(server.getParseResult(uri)?.getChanges()).toHaveLength(0);
 
       // Use L3 format to avoid L2-to-L3 re-promotion path
-      await server.handleDocumentChange(uri, '{++addition++}[^ct-1]\n\n[^ct-1]: ins | proposed | @test | 2026-01-01');
+      await server.handleDocumentChange(uri, '{++addition++}[^cn-1]\n\n[^cn-1]: ins | proposed | @test | 2026-01-01');
       const result1 = server.getParseResult(uri);
       expect(result1).toBeTruthy();
       expect(result1.getChanges()).toHaveLength(1);
 
-      await server.handleDocumentChange(uri, '{++add1++}[^ct-1] and {--del1--}[^ct-2]\n\n[^ct-1]: ins | proposed | @test | 2026-01-01\n[^ct-2]: del | proposed | @test | 2026-01-01');
+      await server.handleDocumentChange(uri, '{++add1++}[^cn-1] and {--del1--}[^cn-2]\n\n[^cn-1]: ins | proposed | @test | 2026-01-01\n[^cn-2]: del | proposed | @test | 2026-01-01');
       const result2 = server.getParseResult(uri);
       expect(result2).toBeTruthy();
       expect(result2.getChanges()).toHaveLength(2);
@@ -250,8 +259,8 @@ describe('Server', () => {
 
       // Check that we have per-change lenses
       const perChangeLenses = lenses.filter(lens =>
-        lens.command?.command === 'changetracks.acceptChange' ||
-        lens.command?.command === 'changetracks.rejectChange'
+        lens.command?.command === 'changedown.acceptChange' ||
+        lens.command?.command === 'changedown.rejectChange'
       );
       expect(perChangeLenses).toHaveLength(4);
     });
@@ -316,13 +325,13 @@ describe('Server', () => {
 
     it('should parse Python file with sidecar annotations when languageId is python', async () => {
       const uri = 'file:///test.py';
-      const text = `def greet(name):  # ct-1
+      const text = `def greet(name):  # cn-1
     return "Hello"
 
-# -- ChangeTracks ---
-# [^ct-1]: ins | pending
+# -- ChangeDown ---
+# [^cn-1]: ins | pending
 # type: insertion
-# -- ChangeTracks ---`;
+# -- ChangeDown ---`;
 
       await server.handleDocumentOpen(uri, text, 'python');
 
@@ -331,19 +340,19 @@ describe('Server', () => {
       expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
       expect(change.type).toBe(ChangeType.Insertion);
-      expect(change.id).toBe('ct-1');
+      expect(change.id).toBe('cn-1');
     });
 
     it('should parse JavaScript file with sidecar annotations when languageId is javascript', async () => {
       const uri = 'file:///test.js';
-      const text = `function greet(name) {  // ct-1
+      const text = `function greet(name) {  // cn-1
     return "Hello";
 }
 
-// -- ChangeTracks ---
-// [^ct-1]: ins | pending
+// -- ChangeDown ---
+// [^cn-1]: ins | pending
 // type: insertion
-// -- ChangeTracks ---`;
+// -- ChangeDown ---`;
 
       await server.handleDocumentOpen(uri, text, 'javascript');
 
@@ -352,19 +361,19 @@ describe('Server', () => {
       expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
       expect(change.type).toBe(ChangeType.Insertion);
-      expect(change.id).toBe('ct-1');
+      expect(change.id).toBe('cn-1');
     });
 
     it('should parse TypeScript file with sidecar annotations when languageId is typescript', async () => {
       const uri = 'file:///test.ts';
-      const text = `function greet(name: string): string {  // ct-1
+      const text = `function greet(name: string): string {  // cn-1
     return "Hello";
 }
 
-// -- ChangeTracks ---
-// [^ct-1]: ins | pending
+// -- ChangeDown ---
+// [^cn-1]: ins | pending
 // type: insertion
-// -- ChangeTracks ---`;
+// -- ChangeDown ---`;
 
       await server.handleDocumentOpen(uri, text, 'typescript');
 
@@ -373,7 +382,7 @@ describe('Server', () => {
       expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
       expect(change.type).toBe(ChangeType.Insertion);
-      expect(change.id).toBe('ct-1');
+      expect(change.id).toBe('cn-1');
     });
 
     it('should handle code file without sidecar annotations', async () => {
@@ -391,13 +400,13 @@ describe('Server', () => {
     it('should update parse result with languageId on document change', async () => {
       const uri = 'file:///test.py';
       const initialText = 'def greet():\n    pass';
-      const updatedText = `def greet():  # ct-1
+      const updatedText = `def greet():  # cn-1
     pass
 
-# -- ChangeTracks ---
-# [^ct-1]: ins | pending
+# -- ChangeDown ---
+# [^cn-1]: ins | pending
 # type: insertion
-# -- ChangeTracks ---`;
+# -- ChangeDown ---`;
 
       await server.handleDocumentOpen(uri, initialText, 'python');
       let parseResult = server.getParseResult(uri);
@@ -409,20 +418,20 @@ describe('Server', () => {
       expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
       expect(change.type).toBe(ChangeType.Insertion);
-      expect(change.id).toBe('ct-1');
+      expect(change.id).toBe('cn-1');
     });
 
     it('should handle sidecar substitution in code file', async () => {
       const uri = 'file:///test.py';
       const text = `def greet(name):
-    # - return f"Hello, {name}!"  # ct-1
-    return f"Hi, {name}!"  # ct-1
+    # - return f"Hello, {name}!"  # cn-1
+    return f"Hi, {name}!"  # cn-1
 
-# -- ChangeTracks ---
-# [^ct-1]: sub | pending
+# -- ChangeDown ---
+# [^cn-1]: sub | pending
 # type: substitution
 # original: return f"Hello, {name}!"
-# -- ChangeTracks ---`;
+# -- ChangeDown ---`;
 
       await server.handleDocumentOpen(uri, text, 'python');
 
@@ -431,23 +440,23 @@ describe('Server', () => {
       expect(parseResult.getChanges()).toHaveLength(1);
       const change = parseResult.getChanges()[0];
       expect(change.type).toBe(ChangeType.Substitution);
-      expect(change.id).toBe('ct-1');
+      expect(change.id).toBe('cn-1');
     });
 
     it('should parse code file with multiple sidecar changes', async () => {
       const uri = 'file:///test.py';
-      const text = `def greet(name):  # ct-1
-    # - return f"Hello, {name}!"  # ct-2
-    return f"Hi, {name}!"  # ct-2
+      const text = `def greet(name):  # cn-1
+    # - return f"Hello, {name}!"  # cn-2
+    return f"Hi, {name}!"  # cn-2
 
-# -- ChangeTracks ---
-# [^ct-1]: ins | pending
+# -- ChangeDown ---
+# [^cn-1]: ins | pending
 # type: insertion
 #
-# [^ct-2]: sub | pending
+# [^cn-2]: sub | pending
 # type: substitution
 # original: return f"Hello, {name}!"
-# -- ChangeTracks ---`;
+# -- ChangeDown ---`;
 
       await server.handleDocumentOpen(uri, text, 'python');
 
@@ -476,7 +485,7 @@ describe('Server', () => {
 
       // decorationData must NOT have been sent during the batch window
       const decoNotifs = notifications.filter(
-        (n) => n.method === 'changetracks/decorationData'
+        (n) => n.method === 'changedown/decorationData'
       );
       expect(decoNotifs).toHaveLength(0);
 
@@ -502,7 +511,7 @@ describe('Server', () => {
 
       // No decorationData should have been sent during the batch
       const decosDuringBatch = notifications.filter(
-        (n) => n.method === 'changetracks/decorationData'
+        (n) => n.method === 'changedown/decorationData'
       );
       expect(decosDuringBatch).toHaveLength(0);
 
@@ -511,7 +520,7 @@ describe('Server', () => {
 
       // Should now have exactly one decorationData notification
       const decoNotifs = notifications.filter(
-        (n) => n.method === 'changetracks/decorationData'
+        (n) => n.method === 'changedown/decorationData'
       );
       expect(decoNotifs).toHaveLength(1);
       expect(decoNotifs[0].params.uri).toBe(uri);

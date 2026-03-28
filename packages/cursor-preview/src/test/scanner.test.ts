@@ -52,7 +52,7 @@ describe('scanCriticMarkup', () => {
   });
 
   it('finds a footnote reference', () => {
-    const matches = scanCriticMarkup('Changed text[^ct-1]');
+    const matches = scanCriticMarkup('Changed text[^cn-1]');
     expect(matches).toHaveLength(1);
     expect(matches[0].type).toBe('footnote-ref');
     expect(matches[0].start).toBe(12);
@@ -60,7 +60,7 @@ describe('scanCriticMarkup', () => {
   });
 
   it('finds dotted footnote reference', () => {
-    const matches = scanCriticMarkup('Moved[^ct-3.1]');
+    const matches = scanCriticMarkup('Moved[^cn-3.1]');
     expect(matches).toHaveLength(1);
     expect(matches[0].type).toBe('footnote-ref');
   });

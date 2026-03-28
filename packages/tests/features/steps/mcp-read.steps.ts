@@ -6,7 +6,7 @@
  */
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 
 // =============================================================================
 // O5: Background — tracked file with mixed accepted + pending state
@@ -14,7 +14,7 @@ import { ChangeTracksWorld } from './world.js';
 
 Given(
   'a tracked file {string} with {int} accepted substitution alpha to ALPHA and {int} pending substitution gamma to GAMMA',
-  async function (this: ChangeTracksWorld, name: string, _acceptedCount: number, _pendingCount: number) {
+  async function (this: ChangeDownWorld, name: string, _acceptedCount: number, _pendingCount: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = await this.ctx.createFile(name, 'alpha\nbeta\ngamma');
     this.files.set(name, filePath);
@@ -27,11 +27,11 @@ Given(
     });
     assert.ok(!r1.isError, 'Failed to propose alpha->ALPHA');
 
-    // Approve ct-1
+    // Approve cn-1
     const rev = await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'ok' }],
+      reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'ok' }],
     });
-    assert.ok(!rev.isError, 'Failed to approve ct-1');
+    assert.ok(!rev.isError, 'Failed to approve cn-1');
 
     // Propose substitution on 'gamma' -> 'GAMMA' (stays proposed)
     const r2 = await this.ctx.propose(filePath, {
@@ -51,7 +51,7 @@ Given(
 
 When(
   'I call read_tracked_file with offset = {int}, limit = {int}',
-  async function (this: ChangeTracksWorld, offset: number, limit: number) {
+  async function (this: ChangeDownWorld, offset: number, limit: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -69,7 +69,7 @@ When(
 
 When(
   'I call read_tracked_file with include_meta = true, view = {string}',
-  async function (this: ChangeTracksWorld, view: string) {
+  async function (this: ChangeDownWorld, view: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -92,28 +92,28 @@ When(
 
 Then(
   'the output contains inline annotations like {string}',
-  function (this: ChangeTracksWorld, _example: string) {
+  function (this: ChangeDownWorld, _example: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
-    // The meta view produces [^ct-N] anchors and {>>ct-N @author: reason<<} metadata
-    assert.ok(text.includes('[^ct-1]'), 'Expected [^ct-1] inline anchor');
-    assert.ok(text.includes('[^ct-2]'), 'Expected [^ct-2] inline anchor');
+    // The meta view produces [^cn-N] anchors and {>>cn-N @author: reason<<} metadata
+    assert.ok(text.includes('[^cn-1]'), 'Expected [^cn-1] inline anchor');
+    assert.ok(text.includes('[^cn-2]'), 'Expected [^cn-2] inline anchor');
   },
 );
 
 Then(
   'the footnote section is elided',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
-    assert.ok(!text.includes('[^ct-1]:'), 'Expected footnote definitions to be elided');
-    assert.ok(!text.includes('[^ct-2]:'), 'Expected footnote definitions to be elided');
+    assert.ok(!text.includes('[^cn-1]:'), 'Expected footnote definitions to be elided');
+    assert.ok(!text.includes('[^cn-2]:'), 'Expected footnote definitions to be elided');
   },
 );
 
 Then(
   'a deliberation summary header appears at the top',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes('policy:'), 'Expected policy in header');
@@ -123,7 +123,7 @@ Then(
 
 Then(
   'the header contains proposed and accepted counts',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes('proposed'), 'Expected proposed count in header');
@@ -135,7 +135,7 @@ Then(
 
 Then(
   /^the output contains literal CriticMarkup delimiters \(\{~~ and ~> and ~~\}\)$/,
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes('{~~'), 'Expected {~~ delimiter');
@@ -146,17 +146,17 @@ Then(
 
 Then(
   'footnote definitions ARE included \\(content = full raw file)',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
-    assert.match(text, /\[\^ct-1\]:/, 'Expected [^ct-1]: footnote definition');
-    assert.match(text, /\[\^ct-2\]:/, 'Expected [^ct-2]: footnote definition');
+    assert.match(text, /\[\^cn-1\]:/, 'Expected [^cn-1]: footnote definition');
+    assert.match(text, /\[\^cn-2\]:/, 'Expected [^cn-2]: footnote definition');
   },
 );
 
 Then(
   'LINE:HASH coordinates appear on each line',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.match(text, /\d+:[0-9a-f]{2}/, 'Expected LINE:HASH coordinates');
@@ -167,17 +167,17 @@ Then(
 
 Then(
   'the output contains both inline CriticMarkup and full footnotes',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes('{~~'), 'Expected CriticMarkup');
-    assert.match(text, /\[\^ct-1\]:/, 'Expected footnote');
+    assert.match(text, /\[\^cn-1\]:/, 'Expected footnote');
   },
 );
 
 Then(
   'the output format is identical to content view',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     // The test verifies that full and content views produce identical output.
     // This assertion is more of a documentation step; the actual comparison
     // requires reading both views, which is done in the test file.
@@ -189,7 +189,7 @@ Then(
 
 Then(
   'the output shows {string} \\(accepted substitution applied)',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes(expected), `Expected "${expected}" in settled view`);
@@ -198,7 +198,7 @@ Then(
 
 Then(
   '{string} does NOT appear \\(replaced by ALPHA... wait, gamma is a different change)',
-  function (this: ChangeTracksWorld, _text: string) {
+  function (this: ChangeDownWorld, _text: string) {
     // This step's phrasing acknowledges a correction in the feature file itself.
     // The settled view shows accept-all, so gamma IS replaced by GAMMA.
     // Assertion handled by the next step.
@@ -207,7 +207,7 @@ Then(
 
 Then(
   '{string} appears \\(pending substitution reverted to original)',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     // In settled view, accept-all mode: both pending and accepted are applied.
@@ -224,7 +224,7 @@ Then(
 
 Then(
   'no CriticMarkup delimiters appear in the content lines',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     const delimiters = ['{~~', '~~}', '{++', '++}', '{--', '--}'];
@@ -236,10 +236,10 @@ Then(
 
 Then(
   'footnote definitions are stripped',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
-    assert.ok(!text.includes('[^ct-1]:'), 'Expected footnote definitions to be stripped');
+    assert.ok(!text.includes('[^cn-1]:'), 'Expected footnote definitions to be stripped');
   },
 );
 
@@ -247,7 +247,7 @@ Then(
 
 Then(
   'accepted changes show their new text \\({string})',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes(expected), `Expected "${expected}" in committed view`);
@@ -256,7 +256,7 @@ Then(
 
 Then(
   'pending changes show original text \\({string}, not {string})',
-  function (this: ChangeTracksWorld, original: string, _newText: string) {
+  function (this: ChangeDownWorld, original: string, _newText: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes(original), `Expected original "${original}" in committed view`);
@@ -265,7 +265,7 @@ Then(
 
 Then(
   'A flag marks lines with accepted changes',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.match(text, /[0-9a-f]{2}\s*A\|/, 'Expected A flag on accepted lines');
@@ -274,7 +274,7 @@ Then(
 
 Then(
   'P flag marks lines with pending changes',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.match(text, /[0-9a-f]{2}\s*P\|/, 'Expected P flag on pending lines');
@@ -283,7 +283,7 @@ Then(
 
 Then(
   'a change summary appears in the header \\(e.g. {string})',
-  function (this: ChangeTracksWorld, _example: string) {
+  function (this: ChangeDownWorld, _example: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     // Committed view header uses "proposed: N | accepted: N" format
@@ -299,7 +299,7 @@ Then(
 
 Then(
   'only {int} line is returned in the content',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     const parts = text.split('\n\n');
@@ -313,7 +313,7 @@ Then(
 
 Then(
   'hashline coordinates are present',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.match(text, /\d+:[0-9a-f]{2}/, 'Expected LINE:HASH coordinates');
@@ -324,7 +324,7 @@ Then(
 
 Then(
   'the header includes a {string} line',
-  function (this: ChangeTracksWorld, headerLine: string) {
+  function (this: ChangeDownWorld, headerLine: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     // The feature file uses "## change levels:" which maps to the

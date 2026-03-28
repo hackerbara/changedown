@@ -37,9 +37,9 @@ if (isVscodeAvailable) {
     const fs = require('fs');
     const os = require('os');
     const { spawn } = require('child_process');
-    const { getPreviousVersion } = require('changetracks-vscode/internals');
-    const { annotateFromGit } = require('changetracks-vscode/internals');
-    const { ExtensionController } = require('changetracks-vscode/internals');
+    const { getPreviousVersion } = require('changedown-vscode/internals');
+    const { annotateFromGit } = require('changedown-vscode/internals');
+    const { ExtensionController } = require('changedown-vscode/internals');
 
     // ── Extend World with git annotation test state ─────────────────
 
@@ -72,7 +72,7 @@ if (isVscodeAvailable) {
     }
 
     async function createTestRepo(world: any, repoName: string): Promise<string> {
-        const repoPath = path.join(os.tmpdir(), `changetracks-test-${repoName}-${Date.now()}`);
+        const repoPath = path.join(os.tmpdir(), `changedown-test-${repoName}-${Date.now()}`);
         if (fs.existsSync(repoPath)) {
             fs.rmSync(repoPath, { recursive: true, force: true });
         }
@@ -166,7 +166,7 @@ if (isVscodeAvailable) {
     ) {
         const repoPath = await createTestRepo(this, 'py-sidecar');
         const filePath = path.join(repoPath, filename);
-        fs.writeFileSync(filePath, 'print("hello")\n\n# -- ChangeTracks ---\n# [^ct-1]: ins\n');
+        fs.writeFileSync(filePath, 'print("hello")\n\n# -- ChangeDown ---\n# [^cn-1]: ins\n');
         await execGit(repoPath, 'add', filename);
         await execGit(repoPath, 'commit', '-m', 'Add Python file');
         this.gitFilePath = filePath;
@@ -190,7 +190,7 @@ if (isVscodeAvailable) {
     });
 
     Given('a file outside any git repo', { timeout: 5000 }, async function (this: any) {
-        const nonGitPath = path.join(os.tmpdir(), `changetracks-test-non-git-${Date.now()}`);
+        const nonGitPath = path.join(os.tmpdir(), `changedown-test-non-git-${Date.now()}`);
         fs.mkdirSync(nonGitPath, { recursive: true });
         const filePath = path.join(nonGitPath, 'file.md');
         fs.writeFileSync(filePath, 'Content\n');
@@ -210,7 +210,7 @@ if (isVscodeAvailable) {
     });
 
     Given('persistAnnotations config is true', { timeout: 5000 }, async function (this: any) {
-        const config = vscode.workspace.getConfiguration('changetracks');
+        const config = vscode.workspace.getConfiguration('changedown');
         const shouldPersist = config.get('persistAnnotations', true);
         assert.strictEqual(shouldPersist, true, 'persistAnnotations should default to true');
     });
@@ -218,7 +218,7 @@ if (isVscodeAvailable) {
     Given('annotateOnOpen config is {word}', { timeout: 5000 }, async function (
         this: any, value: string
     ) {
-        const config = vscode.workspace.getConfiguration('changetracks');
+        const config = vscode.workspace.getConfiguration('changedown');
         await config.update('annotateOnOpen', value === 'true', vscode.ConfigurationTarget.Global);
     });
 
@@ -234,8 +234,8 @@ if (isVscodeAvailable) {
         this.gitEditor = await vscode.window.showTextDocument(doc);
         this.gitFileUri = uri;
 
-        const extension = vscode.extensions.getExtension('hackerbara.changetracks-vscode')
-            ?? vscode.extensions.all.find((ext: any) => ext.id.endsWith('.changetracks-vscode'));
+        const extension = vscode.extensions.getExtension('hackerbara.changedown-vscode')
+            ?? vscode.extensions.all.find((ext: any) => ext.id.endsWith('.changedown-vscode'));
         if (extension) {
             const context = {
                 subscriptions: [],
@@ -384,7 +384,7 @@ if (isVscodeAvailable) {
     Then('the document does not contain sidecar block', function (this: any) {
         assert.ok(this.gitEditor, 'No editor available');
         const content = this.gitEditor.document.getText();
-        assert.ok(!content.includes('-- ChangeTracks'), 'Should not contain sidecar block');
+        assert.ok(!content.includes('-- ChangeDown'), 'Should not contain sidecar block');
     });
 
     Then('the document contains sidecar block {string}', function (this: any, expected: string) {
@@ -438,7 +438,7 @@ if (isVscodeAvailable) {
     Then('the scmIntegrationMode config value is one of {string}', function (
         this: any, validValues: string
     ) {
-        const config = vscode.workspace.getConfiguration('changetracks');
+        const config = vscode.workspace.getConfiguration('changedown');
         const mode = config.get('scmIntegrationMode', 'scm-first');
         const valid = validValues.split(',');
         assert.ok(valid.includes(mode), `scmIntegrationMode "${mode}" should be one of ${validValues}`);

@@ -6,9 +6,9 @@ Feature: Using SCM diff to understand net changes
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   Scenario: Diff command opens a diff editor
-    When I execute "ChangeTracks: Show Diff"
+    When I execute "ChangeDown: Show Diff"
     Then a diff editor is open

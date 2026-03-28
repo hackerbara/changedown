@@ -1,19 +1,19 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { ConfigResolver } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 
 /**
  * Creates a ConfigResolver for tests by writing a temporary config.toml
- * from the given ChangeTracksConfig object. The config is written to
- * `tmpDir/.changetracks/config.toml` so the resolver discovers it when
+ * from the given ChangeDownConfig object. The config is written to
+ * `tmpDir/.changedown/config.toml` so the resolver discovers it when
  * given file paths under tmpDir.
  */
 export async function createTestResolver(
   tmpDir: string,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
 ): Promise<ConfigResolver> {
-  const configDir = path.join(tmpDir, '.changetracks');
+  const configDir = path.join(tmpDir, '.changedown');
   await fs.mkdir(configDir, { recursive: true });
 
   // Build TOML from config
@@ -23,7 +23,7 @@ export async function createTestResolver(
   return new ConfigResolver(tmpDir);
 }
 
-function configToToml(config: ChangeTracksConfig): string {
+function configToToml(config: ChangeDownConfig): string {
   const lines: string[] = [];
 
   lines.push('[tracking]');

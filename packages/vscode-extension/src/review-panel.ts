@@ -9,7 +9,7 @@
  */
 
 import * as vscode from 'vscode';
-import { ChangeNode, ChangeType, isGhostNode } from '@changetracks/core';
+import { ChangeNode, ChangeType, isGhostNode } from '@changedown/core';
 import { ViewMode } from './view-mode';
 import { typeLabel } from './visual-semantics';
 import { resolveAuthorIdentity } from './author-identity';
@@ -286,7 +286,7 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider, vscode.D
         );
 
         // Refresh content when the panel becomes visible again (e.g. user returns
-        // to the ChangeTracks sidebar after viewing Explorer or another panel).
+        // to the ChangeDown sidebar after viewing Explorer or another panel).
         this.disposables.push(
             webviewView.onDidChangeVisibility(() => {
                 if (webviewView.visible) {
@@ -317,76 +317,76 @@ export class ReviewPanelProvider implements vscode.WebviewViewProvider, vscode.D
     private handleMessage(msg: { command: string; value?: string; mode?: string; id?: string; filter?: string; grouping?: string; sorting?: string }): void {
         switch (msg.command) {
             case 'toggleTracking':
-                vscode.commands.executeCommand('changetracks.toggleTracking');
+                vscode.commands.executeCommand('changedown.toggleTracking');
                 this.scheduleRefresh();
                 break;
             case 'setViewMode':
-                vscode.commands.executeCommand('changetracks.setViewMode', msg.mode ?? msg.value);
+                vscode.commands.executeCommand('changedown.setViewMode', msg.mode ?? msg.value);
                 this.scheduleRefresh();
                 break;
             case 'prevChange':
-                vscode.commands.executeCommand('changetracks.previousChange');
+                vscode.commands.executeCommand('changedown.previousChange');
                 break;
             case 'nextChange':
-                vscode.commands.executeCommand('changetracks.nextChange');
+                vscode.commands.executeCommand('changedown.nextChange');
                 break;
             case 'acceptAll':
-                vscode.commands.executeCommand('changetracks.acceptAll');
+                vscode.commands.executeCommand('changedown.acceptAll');
                 break;
             case 'rejectAll':
-                vscode.commands.executeCommand('changetracks.rejectAll');
+                vscode.commands.executeCommand('changedown.rejectAll');
                 break;
             case 'revealChange':
                 if (msg.value) {
-                    vscode.commands.executeCommand('changetracks.revealChange', msg.value);
+                    vscode.commands.executeCommand('changedown.revealChange', msg.value);
                 }
                 break;
             case 'acceptChange':
                 if (msg.value) {
-                    vscode.commands.executeCommand('changetracks.acceptChange', msg.value);
+                    vscode.commands.executeCommand('changedown.acceptChange', msg.value);
                 }
                 break;
             case 'rejectChange':
                 if (msg.value) {
-                    vscode.commands.executeCommand('changetracks.rejectChange', msg.value);
+                    vscode.commands.executeCommand('changedown.rejectChange', msg.value);
                 }
                 break;
             case 'replyToChange':
                 if (msg.id) {
-                    vscode.commands.executeCommand('changetracks.revealChange', msg.id)
-                        .then(() => vscode.commands.executeCommand('changetracks.addComment'));
+                    vscode.commands.executeCommand('changedown.revealChange', msg.id)
+                        .then(() => vscode.commands.executeCommand('changedown.addComment'));
                 }
                 break;
             case 'resolveChange':
                 if (msg.id) {
-                    vscode.commands.executeCommand('changetracks.resolveByChangeId', msg.id);
+                    vscode.commands.executeCommand('changedown.resolveByChangeId', msg.id);
                 }
                 break;
             case 'unresolveChange':
                 if (msg.id) {
-                    vscode.commands.executeCommand('changetracks.unresolveByChangeId', msg.id);
+                    vscode.commands.executeCommand('changedown.unresolveByChangeId', msg.id);
                 }
                 break;
             case 'requestChanges':
                 if (msg.id) {
-                    vscode.commands.executeCommand('changetracks.requestChanges', msg.id);
+                    vscode.commands.executeCommand('changedown.requestChanges', msg.id);
                 }
                 break;
             case 'amendChange':
                 if (msg.id) {
-                    vscode.commands.executeCommand('changetracks.amendChange', msg.id);
+                    vscode.commands.executeCommand('changedown.amendChange', msg.id);
                 }
                 break;
             case 'supersedeChange':
                 if (msg.id) {
-                    vscode.commands.executeCommand('changetracks.supersedeChange', msg.id);
+                    vscode.commands.executeCommand('changedown.supersedeChange', msg.id);
                 }
                 break;
             case 'openMarkdownPreview':
                 vscode.commands.executeCommand('markdown.showPreviewToSide');
                 break;
             case 'exportToDocx':
-                vscode.commands.executeCommand('changetracks.exportToDocx');
+                vscode.commands.executeCommand('changedown.exportToDocx');
                 break;
             case 'setFilter':
                 if (msg.filter) {

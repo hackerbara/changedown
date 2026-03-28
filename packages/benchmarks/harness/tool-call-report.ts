@@ -86,8 +86,8 @@ interface ParsedEvent {
 }
 
 function parseToolName(raw: string): string {
-  // Strip "changetracks_" prefix for readability
-  return raw.replace(/^changetracks_/, "");
+  // Strip "changedown_" prefix for readability
+  return raw.replace(/^changedown_/, "");
 }
 
 function truncate(s: string, max: number): string {

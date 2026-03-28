@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 
 // --- Imports from hooks-impl via package internals barrel ---
 import {
@@ -21,11 +21,11 @@ import {
   formatReadRedirect,
   handlePreToolUse,
   handlePostToolUse,
-} from 'changetracks-hooks/internals';
-import type { ChangeTracksConfig } from 'changetracks-hooks/internals';
-import type { CreationTracking } from 'changetracks-hooks/internals';
+} from 'changedown-hooks/internals';
+import type { ChangeDownConfig } from 'changedown-hooks/internals';
+import type { CreationTracking } from 'changedown-hooks/internals';
 // PolicyDecision is used as a type — import from internals barrel
-import type { PolicyDecision } from 'changetracks-hooks/internals';
+import type { PolicyDecision } from 'changedown-hooks/internals';
 
 // =============================================================================
 // Shared state stored on the World instance via attached properties
@@ -33,8 +33,8 @@ import type { PolicyDecision } from 'changetracks-hooks/internals';
 
 // Extend the world with hooks-specific state
 declare module './world.js' {
-  interface ChangeTracksWorld {
-    hooksConfig: ChangeTracksConfig;
+  interface ChangeDownWorld {
+    hooksConfig: ChangeDownConfig;
     hooksProjectDir: string;
     policyResult: PolicyDecision | null;
     // ID allocator state
@@ -60,7 +60,7 @@ declare module './world.js' {
 // Lifecycle hooks
 // =============================================================================
 
-Before({ tags: '' }, function (this: ChangeTracksWorld) {
+Before({ tags: '' }, function (this: ChangeDownWorld) {
   this.hooksConfig = structuredClone(DEFAULT_CONFIG);
   this.hooksProjectDir = '/project';
   this.policyResult = null;
@@ -78,7 +78,7 @@ Before({ tags: '' }, function (this: ChangeTracksWorld) {
   this.auditLogged = false;
 });
 
-After(async function (this: ChangeTracksWorld) {
+After(async function (this: ChangeDownWorld) {
   if (this.batchTmpDir) {
     await fs.rm(this.batchTmpDir, { recursive: true, force: true });
   }
@@ -88,38 +88,38 @@ After(async function (this: ChangeTracksWorld) {
 // H1 - Policy Engine steps
 // =============================================================================
 
-Given('a project directory', function (this: ChangeTracksWorld) {
+Given('a project directory', function (this: ChangeDownWorld) {
   this.hooksProjectDir = '/project';
 });
 
 Given(
   'the policy mode is {string}',
-  function (this: ChangeTracksWorld, mode: string) {
+  function (this: ChangeDownWorld, mode: string) {
     this.hooksConfig.policy.mode = mode as 'strict' | 'safety-net' | 'permissive';
   },
 );
 
 Given(
   'the hooks exclude pattern is {string}',
-  function (this: ChangeTracksWorld, pattern: string) {
+  function (this: ChangeDownWorld, pattern: string) {
     this.hooksConfig.hooks.exclude = [pattern];
   },
 );
 
 Given(
   'the author enforcement is {string}',
-  function (this: ChangeTracksWorld, enforcement: string) {
+  function (this: ChangeDownWorld, enforcement: string) {
     this.hooksConfig.author.enforcement = enforcement as 'optional' | 'required';
   },
 );
 
-Given('hashline is enabled', function (this: ChangeTracksWorld) {
+Given('hashline is enabled', function (this: ChangeDownWorld) {
   this.hooksConfig.hashline.enabled = true;
 });
 
 When(
   'I evaluate a raw edit to a tracked file {string}',
-  function (this: ChangeTracksWorld, filePath: string) {
+  function (this: ChangeDownWorld, filePath: string) {
     const fullPath = path.join(this.hooksProjectDir, filePath);
     this.policyResult = evaluateRawEdit(fullPath, this.hooksConfig, this.hooksProjectDir);
   },
@@ -127,7 +127,7 @@ When(
 
 When(
   'I evaluate a raw edit to an untracked file {string}',
-  function (this: ChangeTracksWorld, filePath: string) {
+  function (this: ChangeDownWorld, filePath: string) {
     const fullPath = path.join(this.hooksProjectDir, filePath);
     this.policyResult = evaluateRawEdit(fullPath, this.hooksConfig, this.hooksProjectDir);
   },
@@ -135,7 +135,7 @@ When(
 
 When(
   'I evaluate a raw read to a tracked file {string}',
-  function (this: ChangeTracksWorld, filePath: string) {
+  function (this: ChangeDownWorld, filePath: string) {
     const fullPath = path.join(this.hooksProjectDir, filePath);
     this.policyResult = evaluateRawRead(fullPath, this.hooksConfig, this.hooksProjectDir);
   },
@@ -143,7 +143,7 @@ When(
 
 When(
   'I evaluate a raw read to an untracked file {string}',
-  function (this: ChangeTracksWorld, filePath: string) {
+  function (this: ChangeDownWorld, filePath: string) {
     const fullPath = path.join(this.hooksProjectDir, filePath);
     this.policyResult = evaluateRawRead(fullPath, this.hooksConfig, this.hooksProjectDir);
   },
@@ -151,14 +151,14 @@ When(
 
 When(
   'I evaluate an MCP call {string} with no author',
-  function (this: ChangeTracksWorld, toolName: string) {
+  function (this: ChangeDownWorld, toolName: string) {
     this.policyResult = evaluateMcpCall(toolName, { file: 'test.md' }, this.hooksConfig);
   },
 );
 
 When(
   'I evaluate an MCP call {string} with author {string}',
-  function (this: ChangeTracksWorld, toolName: string, author: string) {
+  function (this: ChangeDownWorld, toolName: string, author: string) {
     this.policyResult = evaluateMcpCall(
       toolName,
       { file: 'test.md', op: '{~~old~>new~~}', author },
@@ -169,7 +169,7 @@ When(
 
 Then(
   'the policy action is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.policyResult, 'No policy result available');
     assert.equal(this.policyResult.action, expected);
   },
@@ -177,7 +177,7 @@ Then(
 
 Then(
   'the policy hint contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.policyResult, 'No policy result available');
     assert.ok(
       this.policyResult.agentHint?.includes(expected),
@@ -188,7 +188,7 @@ Then(
 
 Then(
   'the policy reason contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.policyResult, 'No policy result available');
     assert.ok(
       this.policyResult.reason?.includes(expected),
@@ -201,15 +201,15 @@ Then(
 // H2 - Batch Wrapper steps
 // =============================================================================
 
-Given('a temporary project directory', async function (this: ChangeTracksWorld) {
-  this.batchTmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-bdd-hooks-'));
-  const scDir = path.join(this.batchTmpDir, '.changetracks');
+Given('a temporary project directory', async function (this: ChangeDownWorld) {
+  this.batchTmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-bdd-hooks-'));
+  const scDir = path.join(this.batchTmpDir, '.changedown');
   await fs.mkdir(scDir, { recursive: true });
 });
 
 Given(
   'a file {string} with content {string}',
-  async function (this: ChangeTracksWorld, name: string, content: string) {
+  async function (this: ChangeDownWorld, name: string, content: string) {
     assert.ok(this.batchTmpDir, 'No temporary project directory');
     // Unescape literal \n in the Gherkin string
     const resolved = content.replace(/\\n/g, '\n');
@@ -222,7 +222,7 @@ Given(
 
 Given(
   'a pending substitution from {string} to {string} in session {string}',
-  async function (this: ChangeTracksWorld, oldText: string, newText: string, sessionId: string) {
+  async function (this: ChangeDownWorld, oldText: string, newText: string, sessionId: string) {
     assert.ok(this.batchTmpDir, 'No temporary project directory');
     const filePath = [...this.batchFiles.values()].pop()!;
     await appendPendingEdit(this.batchTmpDir, {
@@ -237,7 +237,7 @@ Given(
 
 Given(
   'a pending insertion of {string} in session {string}',
-  async function (this: ChangeTracksWorld, newText: string, sessionId: string) {
+  async function (this: ChangeDownWorld, newText: string, sessionId: string) {
     assert.ok(this.batchTmpDir, 'No temporary project directory');
     const filePath = [...this.batchFiles.values()].pop()!;
     const resolved = newText.replace(/\\n/g, '\n');
@@ -254,7 +254,7 @@ Given(
 Given(
   'a pending deletion of {string} with context {string} and {string} in session {string}',
   async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     oldText: string,
     ctxBefore: string,
     ctxAfter: string,
@@ -276,7 +276,7 @@ Given(
 
 Given(
   'a pending creation of the entire file in session {string}',
-  async function (this: ChangeTracksWorld, sessionId: string) {
+  async function (this: ChangeDownWorld, sessionId: string) {
     assert.ok(this.batchTmpDir, 'No temporary project directory');
     const filePath = [...this.batchFiles.values()].pop()!;
     const content = await fs.readFile(filePath, 'utf-8');
@@ -295,7 +295,7 @@ Given(
 Given(
   'a pending substitution from {string} to {string} with context {string} and {string} in session {string}',
   async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     oldText: string,
     newText: string,
     ctxBefore: string,
@@ -321,7 +321,7 @@ Given(
 Given(
   'a pending substitution from {string} to {string} in session {string} for file {string}',
   async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     oldText: string,
     newText: string,
     sessionId: string,
@@ -343,7 +343,7 @@ Given(
 Given(
   'a pending substitution from {string} to {string} with context {string} and {string} in session {string} for file {string}',
   async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     oldText: string,
     newText: string,
     ctxBefore: string,
@@ -371,7 +371,7 @@ Given(
 Given(
   'a pending insertion of {string} with context {string} and {string} in session {string}',
   async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     newText: string,
     ctxBefore: string,
     ctxAfter: string,
@@ -394,7 +394,7 @@ Given(
 
 Given(
   'a pending substitution from {string} to {string} for a deleted file in session {string}',
-  async function (this: ChangeTracksWorld, oldText: string, newText: string, sessionId: string) {
+  async function (this: ChangeDownWorld, oldText: string, newText: string, sessionId: string) {
     assert.ok(this.batchTmpDir, 'No temporary project directory');
     const deletedPath = path.join(this.batchTmpDir, 'deleted.md');
     // Do not create the file -- it has been deleted
@@ -410,7 +410,7 @@ Given(
 
 Given(
   'a pending large insertion covering the entire file in session {string}',
-  async function (this: ChangeTracksWorld, sessionId: string) {
+  async function (this: ChangeDownWorld, sessionId: string) {
     assert.ok(this.batchTmpDir, 'No temporary project directory');
     const filePath = [...this.batchFiles.values()].pop()!;
     const content = await fs.readFile(filePath, 'utf-8');
@@ -428,7 +428,7 @@ Given(
 
 When(
   'I apply pending edits for session {string}',
-  async function (this: ChangeTracksWorld, sessionId: string) {
+  async function (this: ChangeDownWorld, sessionId: string) {
     assert.ok(this.batchTmpDir, 'No temporary project directory');
     this.batchResult = await applyPendingEdits(this.batchTmpDir, sessionId, {
       author: { default: 'ai:claude-opus-4.6' },
@@ -439,7 +439,7 @@ When(
 
 When(
   'I apply pending edits for session {string} with creation_tracking {string}',
-  async function (this: ChangeTracksWorld, sessionId: string, tracking: string) {
+  async function (this: ChangeDownWorld, sessionId: string, tracking: string) {
     assert.ok(this.batchTmpDir, 'No temporary project directory');
     this.batchResult = await applyPendingEdits(this.batchTmpDir, sessionId, {
       author: { default: 'ai:claude-opus-4.6' },
@@ -451,7 +451,7 @@ When(
 // Use unique step names to avoid collision with common.steps.ts
 Then(
   'the batch file {string} includes {string}',
-  async function (this: ChangeTracksWorld, name: string, expected: string) {
+  async function (this: ChangeDownWorld, name: string, expected: string) {
     const filePath = this.batchFiles.get(name);
     assert.ok(filePath, `No batch file named "${name}" in this scenario`);
     const content = await fs.readFile(filePath, 'utf-8');
@@ -464,7 +464,7 @@ Then(
 
 Then(
   'the batch file {string} excludes {string}',
-  async function (this: ChangeTracksWorld, name: string, unexpected: string) {
+  async function (this: ChangeDownWorld, name: string, unexpected: string) {
     const filePath = this.batchFiles.get(name);
     assert.ok(filePath, `No batch file named "${name}" in this scenario`);
     const content = await fs.readFile(filePath, 'utf-8');
@@ -477,7 +477,7 @@ Then(
 
 Then(
   'the batch result applied {int} edit(s)',
-  function (this: ChangeTracksWorld, expected: number) {
+  function (this: ChangeDownWorld, expected: number) {
     assert.ok(this.batchResult, 'No batch result available');
     assert.equal(this.batchResult.editsApplied, expected);
   },
@@ -485,7 +485,7 @@ Then(
 
 Then(
   'the batch result change IDs include {string}',
-  function (this: ChangeTracksWorld, expectedId: string) {
+  function (this: ChangeDownWorld, expectedId: string) {
     assert.ok(this.batchResult, 'No batch result available');
     assert.ok(
       this.batchResult.changeIds.includes(expectedId),
@@ -496,7 +496,7 @@ Then(
 
 Then(
   'the pending edits file is empty',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.batchTmpDir, 'No temporary project directory');
     const remaining = await readPendingEdits(this.batchTmpDir);
     assert.equal(remaining.length, 0, `Expected no pending edits but found ${remaining.length}`);
@@ -505,7 +505,7 @@ Then(
 
 Then(
   'the batch file {string} has unchanged content',
-  async function (this: ChangeTracksWorld, name: string) {
+  async function (this: ChangeDownWorld, name: string) {
     const filePath = this.batchFiles.get(name);
     assert.ok(filePath, `No file named "${name}" in this scenario`);
     const current = await fs.readFile(filePath, 'utf-8');
@@ -517,7 +517,7 @@ Then(
 
 Then(
   'the batch file {string} has no triple newlines',
-  async function (this: ChangeTracksWorld, name: string) {
+  async function (this: ChangeDownWorld, name: string) {
     const filePath = this.batchFiles.get(name);
     assert.ok(filePath, `No batch file named "${name}" in this scenario`);
     const content = await fs.readFile(filePath, 'utf-8');
@@ -530,7 +530,7 @@ Then(
 
 Then(
   'the pending edits for session {string} still exist',
-  async function (this: ChangeTracksWorld, sessionId: string) {
+  async function (this: ChangeDownWorld, sessionId: string) {
     assert.ok(this.batchTmpDir, 'No temporary project directory');
     const remaining = await readPendingEdits(this.batchTmpDir);
     const sessionEdits = remaining.filter((e) => e.session_id === sessionId);
@@ -543,11 +543,11 @@ Then(
 
 Then(
   'the batch file {string} has exactly {int} tracking header(s)',
-  async function (this: ChangeTracksWorld, name: string, expected: number) {
+  async function (this: ChangeDownWorld, name: string, expected: number) {
     const filePath = this.batchFiles.get(name);
     assert.ok(filePath, `No batch file named "${name}" in this scenario`);
     const content = await fs.readFile(filePath, 'utf-8');
-    const count = (content.match(/ctrcks.com\/v1/g) || []).length;
+    const count = (content.match(/changedown.com\/v1/g) || []).length;
     assert.equal(
       count,
       expected,
@@ -562,42 +562,42 @@ Then(
 
 Given(
   'text containing {string}',
-  function (this: ChangeTracksWorld, text: string) {
+  function (this: ChangeDownWorld, text: string) {
     this.inputText = text;
   },
 );
 
 Given(
   'a max existing ID of {int}',
-  function (this: ChangeTracksWorld, maxId: number) {
+  function (this: ChangeDownWorld, maxId: number) {
     this.scannedMaxId = maxId;
   },
 );
 
 When(
   'I scan for the max SC-ID',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     this.scannedMaxId = scanMaxId(this.inputText);
   },
 );
 
 Then(
   'the max ID is {int}',
-  function (this: ChangeTracksWorld, expected: number) {
+  function (this: ChangeDownWorld, expected: number) {
     assert.equal(this.scannedMaxId, expected);
   },
 );
 
 When(
   'I allocate IDs for {int} edit',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     this.allocatedIds = allocateIds(count, this.scannedMaxId);
   },
 );
 
 Then(
   'the allocated IDs are {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const expectedIds = expected.split(',').map((s) => s.trim());
     assert.deepEqual(this.allocatedIds, expectedIds);
   },
@@ -605,7 +605,7 @@ Then(
 
 Then(
   'the allocated IDs are empty',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.deepEqual(this.allocatedIds, []);
   },
 );
@@ -616,35 +616,35 @@ Then(
 
 When(
   'I classify an edit with tool {string} old {string} new {string}',
-  function (this: ChangeTracksWorld, toolName: string, oldText: string, newText: string) {
+  function (this: ChangeDownWorld, toolName: string, oldText: string, newText: string) {
     this.editClass = classifyEdit(toolName, oldText, newText);
   },
 );
 
 Then(
   'the edit class is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.equal(this.editClass, expected);
   },
 );
 
 When(
   'I check if edits should be logged in {string} mode',
-  function (this: ChangeTracksWorld, mode: string) {
+  function (this: ChangeDownWorld, mode: string) {
     this.editLoggingEnabled = shouldLogEdit(mode as 'strict' | 'safety-net' | 'permissive');
   },
 );
 
 Then(
   'edit logging is enabled',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.equal(this.editLoggingEnabled, true);
   },
 );
 
 Then(
   'edit logging is disabled',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.equal(this.editLoggingEnabled, false);
   },
 );
@@ -653,13 +653,13 @@ Then(
 // H5 - Read Interception steps
 // =============================================================================
 
-Given('the default view is {string}', function (this: ChangeTracksWorld, view: string) {
+Given('the default view is {string}', function (this: ChangeDownWorld, view: string) {
   this.hooksConfig.policy.default_view = view as 'review' | 'changes' | 'settled';
 });
 
-Given('a strict mode config', async function (this: ChangeTracksWorld) {
+Given('a strict mode config', async function (this: ChangeDownWorld) {
   assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
-  const scDir = path.join(this.batchTmpDir, '.changetracks');
+  const scDir = path.join(this.batchTmpDir, '.changedown');
   await fs.mkdir(scDir, { recursive: true });
   await fs.writeFile(
     path.join(scDir, 'config.toml'),
@@ -668,9 +668,9 @@ Given('a strict mode config', async function (this: ChangeTracksWorld) {
   );
 });
 
-Given('a safety-net mode config', async function (this: ChangeTracksWorld) {
+Given('a safety-net mode config', async function (this: ChangeDownWorld) {
   assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
-  const scDir = path.join(this.batchTmpDir, '.changetracks');
+  const scDir = path.join(this.batchTmpDir, '.changedown');
   await fs.mkdir(scDir, { recursive: true });
   await fs.writeFile(
     path.join(scDir, 'config.toml'),
@@ -681,7 +681,7 @@ Given('a safety-net mode config', async function (this: ChangeTracksWorld) {
 
 Given(
   'a tracked file {string} with content {string}',
-  async function (this: ChangeTracksWorld, name: string, content: string) {
+  async function (this: ChangeDownWorld, name: string, content: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const filePath = path.join(this.batchTmpDir, name);
     await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -691,7 +691,7 @@ Given(
 
 When(
   'I format a read redirect for {string}',
-  function (this: ChangeTracksWorld, filePath: string) {
+  function (this: ChangeDownWorld, filePath: string) {
     this.readRedirectResult = formatReadRedirect(filePath, {
       policy: this.hooksConfig.policy,
     });
@@ -700,7 +700,7 @@ When(
 
 Then(
   'the redirect contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.readRedirectResult, 'No redirect result available');
     assert.ok(
       this.readRedirectResult.includes(expected),
@@ -711,7 +711,7 @@ Then(
 
 When(
   'I call PreToolUse with Read on {string}',
-  async function (this: ChangeTracksWorld, fileName: string) {
+  async function (this: ChangeDownWorld, fileName: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     this.hookOutput = await handlePreToolUse({
       hook_event_name: 'PreToolUse',
@@ -724,7 +724,7 @@ When(
 
 Then(
   'the hook decision is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.hookOutput, 'No hook output available');
     assert.equal(this.hookOutput.hookSpecificOutput?.permissionDecision, expected);
   },
@@ -732,7 +732,7 @@ Then(
 
 Then(
   'the hook reason contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.hookOutput, 'No hook output available');
     const reason = this.hookOutput.hookSpecificOutput?.permissionDecisionReason ?? '';
     assert.ok(
@@ -742,13 +742,13 @@ Then(
   },
 );
 
-Then('the hook returns empty', function (this: ChangeTracksWorld) {
+Then('the hook returns empty', function (this: ChangeDownWorld) {
   assert.deepStrictEqual(this.hookOutput, {});
 });
 
 When(
   'I call PostToolUse with Read on {string}',
-  async function (this: ChangeTracksWorld, fileName: string) {
+  async function (this: ChangeDownWorld, fileName: string) {
     assert.ok(this.batchTmpDir, 'Need a temporary project directory first');
     const result = await handlePostToolUse({
       hook_event_name: 'PostToolUse',
@@ -763,11 +763,11 @@ When(
 
 Then(
   'the audit log contains a read entry for {string}',
-  function (this: ChangeTracksWorld, _fileName: string) {
+  function (this: ChangeDownWorld, _fileName: string) {
     assert.ok(this.auditLogged, 'Expected audit log entry but none was logged');
   },
 );
 
-Then('no audit entry is logged', function (this: ChangeTracksWorld) {
+Then('no audit entry is logged', function (this: ChangeDownWorld) {
   assert.ok(!this.auditLogged, 'Expected no audit log entry but one was logged');
 });

@@ -1,10 +1,10 @@
-# ChangeTracks Demo
+# ChangeDown Demo
 
-Track changes in markdown — for humans and AI agents. This page shows what ChangeTracks looks like in practice.
+Track changes in markdown — for humans and AI agents. This page shows what ChangeDown looks like in practice.
 
 ## The Syntax
 
-ChangeTracks uses [CriticMarkup](https://criticmarkup.com/) — plain text markup that works in any editor:
+ChangeDown uses [CriticMarkup](https://criticmarkup.com/) — plain text markup that works in any editor:
 
 | Type | You write | Meaning |
 |------|-----------|---------|
@@ -24,7 +24,7 @@ You can use as much or as little of the format as you want — bare CriticMarkup
 
 ## A Real Example
 
-Here's an excerpt from a real ChangeTracks deliberation — an API caching strategy document where humans and AI agents collaborated ([full document](../../examples/api-caching-deliberation.md)):
+Here's an excerpt from a real ChangeDown deliberation — an API caching strategy document where humans and AI agents collaborated ([full document](../../examples/api-caching-deliberation.md)):
 
 **The AI proposes removing Redis.** An agent analyzed the caching architecture and proposed deleting the Redis layer, arguing that PostgreSQL's built-in caching plus the application LRU cache already achieved a 94% hit rate. The operational complexity wasn't worth the marginal benefit.
 
@@ -34,27 +34,27 @@ Here's an excerpt from a real ChangeTracks deliberation — an API caching strat
 
 **Meanwhile, another proposal succeeds.** The AI proposed changing "REST" to "GraphQL." @james corrected it to gRPC (per a recent architecture decision), the AI revised its proposal with detailed technical reasoning, and @james approved. The full revision chain — original proposal, pushback, revision, approval — lives in the footnote thread.
 
-This is what ChangeTracks is for: the file carries its own deliberation history. Anyone reading it — a new team member, a code reviewer, an AI agent — sees not just the current state but the reasoning that produced it.
+This is what ChangeDown is for: the file carries its own deliberation history. Anyone reading it — a new team member, a code reviewer, an AI agent — sees not just the current state but the reasoning that produced it.
 
 ## Install
 
 ### Quick start
 
 ```
-npx changetracks init
+npx changedown init
 ```
 
-Interactive setup: detects your editors and agents, creates `.changetracks/config.toml`, and installs everything.
+Interactive setup: detects your editors and agents, creates `.changedown/config.toml`, and installs everything.
 
 ### VS Code / Cursor
 
-Search "ChangeTracks" in the Extensions marketplace.
+Search "ChangeDown" in the Extensions marketplace.
 
 ### Claude Code
 
 ```
-/plugin marketplace add hackerbara/changetracks
-/plugin install changetracks@hackerbara
+/plugin marketplace add hackerbara/changedown
+/plugin install changedown@hackerbara
 ```
 
 ### OpenCode
@@ -62,12 +62,12 @@ Search "ChangeTracks" in the Extensions marketplace.
 Add to your project's `opencode.json`:
 
 ```json
-{ "plugin": ["@changetracks/opencode-plugin"] }
+{ "plugin": ["@changedown/opencode-plugin"] }
 ```
 
 ## Your First 5 Minutes
 
-1. **Open a markdown file** — ChangeTracks activates automatically on `.md` files.
+1. **Open a markdown file** — ChangeDown activates automatically on `.md` files.
 
 2. **Turn on tracking** (`Alt+Cmd+T` / `Ctrl+Alt+T`) — your edits are now auto-wrapped in CriticMarkup. Type normally; insertions appear in green.
 
@@ -77,7 +77,7 @@ Add to your project's `opencode.json`:
 
 5. **Add a comment** (`Alt+Cmd+/`) — attach a note to any change. Comments appear in the sidebar and inline.
 
-6. **Use the sidebar** — the ChangeTracks Activity Bar icon opens the Review panel with navigable change cards, bulk accept/reject, and project settings.
+6. **Use the sidebar** — the ChangeDown Activity Bar icon opens the Review panel with navigable change cards, bulk accept/reject, and project settings.
 
 ### Keyboard shortcuts
 
@@ -108,13 +108,13 @@ Agents see a structured view with hash-verified line addressing. Their changes a
 
 **Concurrent editing is safe.** LINE:HASH coordinates include a content hash that detects stale reads. If two agents target the same line and one modifies it first, the second agent's operation fails with a hash mismatch rather than silently corrupting the document.
 
-**Policy hooks** ensure agents go through ChangeTracks tools rather than raw file editing. In strict mode, direct `Edit`/`Write` calls on tracked files are blocked. In safety-net mode, raw edits are automatically wrapped in CriticMarkup.
+**Policy hooks** ensure agents go through ChangeDown tools rather than raw file editing. In strict mode, direct `Edit`/`Write` calls on tracked files are blocked. In safety-net mode, raw edits are automatically wrapped in CriticMarkup.
 
 ## Go Deeper
 
 - [How Track Changes Works](how-track-changes-works.md) — CriticMarkup, the VS Code experience, agent tools, footnotes and threading
-- [ChangeTracks and Hashlines Explained](changetracks-and-hashlines-explained.md) — From-zero introduction for newcomers
+- [ChangeDown and Hashlines Explained](changedown-and-hashlines-explained.md) — From-zero introduction for newcomers
 - [How Views and Addressing Work](how-views-and-addressing-work.md) — Four views, hash-addressed coordinates, the three-zone format
-- [How ChangeTracks Is Benchmarked](how-changetracks-is-benchmarked.md) — Agent efficiency benchmarks and methodology
-- [Format Specification](changetracks-format.md) — Formal spec
+- [How ChangeDown Is Benchmarked](how-changedown-is-benchmarked.md) — Agent efficiency benchmarks and methodology
+- [Format Specification](changedown-format.md) — Formal spec
 - [Glossary](glossary.md) — Term definitions

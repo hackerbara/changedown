@@ -1,7 +1,7 @@
 @fast @comment @COM1
 Feature: COM1 -- Comment insertion logic
   Port of InsertComment.test.ts (6 mocha tests).
-  Tests the core insertComment function from @changetracks/core which
+  Tests the core insertComment function from @changedown/core which
   produces TextEdits for inline comment and highlight+comment wrapping.
 
   # ── Insert comment at cursor (no selection) ─────────────────────────
@@ -53,7 +53,7 @@ Feature: COM1 -- Comment insertion logic
 
   # ── Markdown-only guard (NOT testable at @fast tier) ───────────────────
   # The addComment command in ExtensionController silently no-ops for
-  # non-markdown files. This guard is NOT in @changetracks/core so it
+  # non-markdown files. This guard is NOT in @changedown/core so it
   # requires VS Code Extension Host to test.
   # See: EXT1-extension-lifecycle.feature for the @integration version,
   # or add a dedicated COM1-integration.feature when the @slow

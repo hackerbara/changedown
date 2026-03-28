@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -12,7 +12,7 @@ import * as os from 'node:os';
 describe('handleReadTrackedFile', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   // initHashline is async and must be called once before any hash operations
@@ -21,7 +21,7 @@ describe('handleReadTrackedFile', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-read-tracked-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-read-tracked-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -59,7 +59,7 @@ describe('handleReadTrackedFile', () => {
   // ─── Hashline disabled ─────────────────────────────────────────────────
 
   it('returns full-file content with line numbers (no hashes) when hashline is disabled', async () => {
-    const disabledConfig: ChangeTracksConfig = {
+    const disabledConfig: ChangeDownConfig = {
       ...config,
       hashline: { enabled: false, auto_remap: false },
     };
@@ -86,7 +86,7 @@ describe('handleReadTrackedFile', () => {
   });
 
   it('supports offset/limit pagination even when hashline is disabled', async () => {
-    const disabledConfig: ChangeTracksConfig = {
+    const disabledConfig: ChangeDownConfig = {
       ...config,
       hashline: { enabled: false, auto_remap: false },
     };
@@ -161,7 +161,7 @@ describe('handleReadTrackedFile', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      '<!-- ctrcks.com/v1: tracked -->\nHello {++world++}[^ct-1].\n\n[^ct-1]: @ai | 2026-01-01 | ins | proposed',
+      '<!-- changedown.com/v1: tracked -->\nHello {++world++}[^cn-1].\n\n[^cn-1]: @ai | 2026-01-01 | ins | proposed',
     );
 
     const result = await handleReadTrackedFile(
@@ -179,7 +179,7 @@ describe('handleReadTrackedFile', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      '<!-- ctrcks.com/v1: tracked -->\nHello {++world++}[^ct-1].\n\n[^ct-1]: @ai | 2026-01-01 | ins | proposed',
+      '<!-- changedown.com/v1: tracked -->\nHello {++world++}[^cn-1].\n\n[^cn-1]: @ai | 2026-01-01 | ins | proposed',
     );
 
     const result = await handleReadTrackedFile(
@@ -327,12 +327,12 @@ describe('handleReadTrackedFile', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     // Use accepted footnotes so settled view applies the changes
     const content = [
-      'Hello {++beautiful ++}[^ct-1]world.',
+      'Hello {++beautiful ++}[^cn-1]world.',
       'Plain line.',
-      '{--removed--}[^ct-2] text.',
+      '{--removed--}[^cn-2] text.',
       '',
-      '[^ct-1]: @test | 2026-02-12 | ins | accepted',
-      '[^ct-2]: @test | 2026-02-12 | del | accepted',
+      '[^cn-1]: @test | 2026-02-12 | ins | accepted',
+      '[^cn-2]: @test | 2026-02-12 | del | accepted',
     ].join('\n');
     await fs.writeFile(filePath, content);
 
@@ -445,7 +445,7 @@ describe('handleReadTrackedFile', () => {
 
   it('includes tracking status from file header when present', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\nHello world.');
+    await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\nHello world.');
 
     const result = await handleReadTrackedFile(
       { file: filePath, view: 'raw' },
@@ -462,7 +462,7 @@ describe('handleReadTrackedFile', () => {
   // ─── Policy mode in header ──────────────────────────────────────
 
   it('includes protocol mode in header (unified renderer uses protocol.mode)', async () => {
-    const strictConfig: ChangeTracksConfig = { ...config, policy: { mode: 'strict' as const, creation_tracking: 'footnote' as const } };
+    const strictConfig: ChangeDownConfig = { ...config, policy: { mode: 'strict' as const, creation_tracking: 'footnote' as const } };
     const strictResolver = await createTestResolver(tmpDir, strictConfig);
     const filePath = path.join(tmpDir, 'policy-test.md');
     await fs.writeFile(filePath, 'Hello world.');
@@ -496,7 +496,7 @@ describe('handleReadTrackedFile', () => {
   });
 
   it('includes policy mode in header when hashline is disabled', async () => {
-    const disabledConfig: ChangeTracksConfig = {
+    const disabledConfig: ChangeDownConfig = {
       ...config,
       hashline: { enabled: false, auto_remap: false },
       policy: { mode: 'permissive' as const, creation_tracking: 'footnote' as const },
@@ -612,7 +612,7 @@ describe('handleReadTrackedFile', () => {
     it('correctly settles multi-line insertions (accept-all: proposed kept)', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       // Multi-line insertion spanning lines 2-4
-      const content = 'Line one\n{++Line two\nLine three\nLine four++}[^ct-1]\nLine five\n\n[^ct-1]: @test | 2026-02-12 | ins | proposed';
+      const content = 'Line one\n{++Line two\nLine three\nLine four++}[^cn-1]\nLine five\n\n[^cn-1]: @test | 2026-02-12 | ins | proposed';
       await fs.writeFile(filePath, content);
 
       const result = await handleReadTrackedFile(
@@ -631,12 +631,12 @@ describe('handleReadTrackedFile', () => {
       expect(text).toContain('Line three');
       expect(text).toContain('Line four');
       // Footnotes stripped
-      expect(text).not.toContain('[^ct-1]');
+      expect(text).not.toContain('[^cn-1]');
     });
 
     it('correctly settles multi-line deletions (accept-all: proposed removes text)', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
-      const content = 'Line one\n{--Line two\nLine three--}[^ct-1]\nLine four\n\n[^ct-1]: @test | 2026-02-12 | del | proposed';
+      const content = 'Line one\n{--Line two\nLine three--}[^cn-1]\nLine four\n\n[^cn-1]: @test | 2026-02-12 | del | proposed';
       await fs.writeFile(filePath, content);
 
       const result = await handleReadTrackedFile(
@@ -657,7 +657,7 @@ describe('handleReadTrackedFile', () => {
 
     it('accepted deletion removes text and settled view has fewer lines', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
-      const content = 'Line one\n{--Line two\nLine three--}[^ct-1]\nLine four\n\n[^ct-1]: @test | 2026-02-12 | del | accepted';
+      const content = 'Line one\n{--Line two\nLine three--}[^cn-1]\nLine four\n\n[^cn-1]: @test | 2026-02-12 | del | accepted';
       await fs.writeFile(filePath, content);
 
       const result = await handleReadTrackedFile(
@@ -682,11 +682,11 @@ describe('handleReadTrackedFile', () => {
     // Use accepted footnote so settled view applies the insertion
     const content = [
       'Line 1',
-      'Hello {++world++}[^ct-1].',
+      'Hello {++world++}[^cn-1].',
       'Line 3',
       'Line 4',
       '',
-      '[^ct-1]: @test | 2026-02-12 | ins | accepted',
+      '[^cn-1]: @test | 2026-02-12 | ins | accepted',
     ].join('\n');
     await fs.writeFile(filePath, content);
 
@@ -776,7 +776,7 @@ describe('handleReadTrackedFile', () => {
   describe('view name aliases', () => {
     it('view=review produces same output as view=meta', async () => {
       const filePath = path.join(tmpDir, 'alias-test.md');
-      await fs.writeFile(filePath, 'Hello {++world++}[^ct-1].\n\n[^ct-1]: @ai | 2026-01-01 | ins | proposed');
+      await fs.writeFile(filePath, 'Hello {++world++}[^cn-1].\n\n[^cn-1]: @ai | 2026-01-01 | ins | proposed');
 
       const metaResult = await handleReadTrackedFile(
         { file: filePath, view: 'meta' }, resolver, state);
@@ -787,7 +787,7 @@ describe('handleReadTrackedFile', () => {
 
     it('view=changes produces same output as view=committed', async () => {
       const filePath = path.join(tmpDir, 'alias-test.md');
-      await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\nHello world.\n\n[^ct-1]: @ai | 2026-01-01 | ins | proposed');
+      await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\nHello world.\n\n[^cn-1]: @ai | 2026-01-01 | ins | proposed');
 
       const committedResult = await handleReadTrackedFile(
         { file: filePath, view: 'committed' }, resolver, state);
@@ -807,7 +807,7 @@ describe('handleReadTrackedFile', () => {
 
     it('view=simple is alias for changes (committed)', async () => {
       const filePath = path.join(tmpDir, 'alias-test.md');
-      await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\nHello world.');
+      await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\nHello world.');
 
       const result = await handleReadTrackedFile(
         { file: filePath, view: 'simple' }, resolver, state);
@@ -842,12 +842,12 @@ describe('handleReadTrackedFile', () => {
     // Create file with footnotes that will be stripped — the blank line before
     // footnotes becomes a trailing blank line after stripping
     await fs.writeFile(filePath, [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Title',
       '',
       'Content here.',
       '',
-      '[^ct-1]: @ai:test | 2026-02-20 | ins | proposed',
+      '[^cn-1]: @ai:test | 2026-02-20 | ins | proposed',
       '    @ai:test 2026-02-20: reason',
     ].join('\n'));
 
@@ -874,7 +874,7 @@ describe('handleReadTrackedFile', () => {
 
   describe('view_policy = require', () => {
     it('returns error when agent requests non-default view', async () => {
-      const requireConfig: ChangeTracksConfig = {
+      const requireConfig: ChangeDownConfig = {
         ...config,
         policy: { mode: 'safety-net', creation_tracking: 'footnote', default_view: 'review', view_policy: 'require' },
       };
@@ -894,7 +894,7 @@ describe('handleReadTrackedFile', () => {
     });
 
     it('allows the default view when explicitly requested', async () => {
-      const requireConfig: ChangeTracksConfig = {
+      const requireConfig: ChangeDownConfig = {
         ...config,
         policy: { mode: 'safety-net', creation_tracking: 'footnote', default_view: 'review', view_policy: 'require' },
       };
@@ -912,7 +912,7 @@ describe('handleReadTrackedFile', () => {
     });
 
     it('allows when no view specified (uses default)', async () => {
-      const requireConfig: ChangeTracksConfig = {
+      const requireConfig: ChangeDownConfig = {
         ...config,
         policy: { mode: 'safety-net', creation_tracking: 'footnote', default_view: 'review', view_policy: 'require' },
       };
@@ -930,7 +930,7 @@ describe('handleReadTrackedFile', () => {
     });
 
     it('rejects alias of non-default view', async () => {
-      const requireConfig: ChangeTracksConfig = {
+      const requireConfig: ChangeDownConfig = {
         ...config,
         policy: { mode: 'safety-net', creation_tracking: 'footnote', default_view: 'review', view_policy: 'require' },
       };
@@ -950,7 +950,7 @@ describe('handleReadTrackedFile', () => {
     });
 
     it('accepts alias of default view', async () => {
-      const requireConfig: ChangeTracksConfig = {
+      const requireConfig: ChangeDownConfig = {
         ...config,
         policy: { mode: 'safety-net', creation_tracking: 'footnote', default_view: 'review', view_policy: 'require' },
       };
@@ -971,7 +971,7 @@ describe('handleReadTrackedFile', () => {
 
   describe('view_policy = suggest', () => {
     it('uses default_view when no view specified', async () => {
-      const suggestConfig: ChangeTracksConfig = {
+      const suggestConfig: ChangeDownConfig = {
         ...config,
         hashline: { enabled: false, auto_remap: false },
         policy: { mode: 'safety-net', creation_tracking: 'footnote', default_view: 'settled', view_policy: 'suggest' },
@@ -994,7 +994,7 @@ describe('handleReadTrackedFile', () => {
     });
 
     it('allows agent to override with a different view', async () => {
-      const suggestConfig: ChangeTracksConfig = {
+      const suggestConfig: ChangeDownConfig = {
         ...config,
         hashline: { enabled: false, auto_remap: false },
         policy: { mode: 'safety-net', creation_tracking: 'footnote', default_view: 'settled', view_policy: 'suggest' },

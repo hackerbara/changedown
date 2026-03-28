@@ -1,15 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import type {
+  EditEvent,
   EditBoundaryState,
   EditBoundaryConfig,
   Effect,
-} from '@changetracks/core/edit-boundary';
+  FullCrystallizeEffect,
+} from '@changedown/core/edit-boundary';
 import {
   processEvent,
   createBuffer,
   DEFAULT_EDIT_BOUNDARY_CONFIG,
-} from '@changetracks/core/edit-boundary';
-import type { ProcessEventContext } from '@changetracks/core/edit-boundary';
+} from '@changedown/core/edit-boundary';
+import type { ProcessEventContext } from '@changedown/core/edit-boundary';
+import { initHashline } from '@changedown/core';
 
 // ── Test helpers ────────────────────────────────────────────────────────
 
@@ -31,7 +34,7 @@ function stateWithPending(
   text: string,
   anchorOffset = 10,
   configOverride?: Partial<EditBoundaryConfig>,
-  scId = 'ct-1',
+  scId = 'cn-1',
   originalText = '',
 ): EditBoundaryState {
   return {
@@ -46,7 +49,7 @@ function stateComposing(
   anchorOffset = 10,
 ): EditBoundaryState {
   return {
-    pending: createBuffer(anchorOffset, text, '', NOW, 'ct-1'),
+    pending: createBuffer(anchorOffset, text, '', NOW, 'cn-1'),
     isComposing: true,
     config: defaultConfig(),
   };
@@ -116,10 +119,10 @@ describe('processEvent (state machine)', () => {
       const { newState } = processEvent(
         stateNoPending(),
         { type: 'insertion', offset: 5, text: 'x' },
-        ctx(() => { called = true; return 'ct-42'; }),
+        ctx(() => { called = true; return 'cn-42'; }),
       );
       expect(called, 'allocateScId should have been called').toBeTruthy();
-      expect(newState.pending!.scId).toBe('ct-42');
+      expect(newState.pending!.scId).toBe('cn-42');
     });
 
     it('works without allocateScId', () => {
@@ -171,10 +174,10 @@ describe('processEvent (state machine)', () => {
       const { newState } = processEvent(
         stateNoPending(),
         { type: 'deletion', offset: 5, deletedText: 'x' },
-        ctx(() => { called = true; return 'ct-42'; }),
+        ctx(() => { called = true; return 'cn-42'; }),
       );
       expect(called, 'allocateScId should have been called').toBeTruthy();
-      expect(newState.pending!.scId).toBe('ct-42');
+      expect(newState.pending!.scId).toBe('cn-42');
     });
   });
 
@@ -240,11 +243,11 @@ describe('processEvent (state machine)', () => {
 
     it('preserves scId through extension', () => {
       const { newState } = processEvent(
-        stateWithPending('a', 10, {}, 'ct-99'),
+        stateWithPending('a', 10, {}, 'cn-99'),
         { type: 'insertion', offset: 11, text: 'b' },
         ctx(),
       );
-      expect(newState.pending!.scId).toBe('ct-99');
+      expect(newState.pending!.scId).toBe('cn-99');
     });
   });
 
@@ -634,26 +637,26 @@ describe('processEvent (state machine)', () => {
   describe('multiple sequential insertions', () => {
     it('three sequential typed characters share the same buffer', () => {
       let state = stateNoPending();
-      let result = processEvent(state, { type: 'insertion', offset: 0, text: 'h' }, ctx(() => 'ct-1'));
+      let result = processEvent(state, { type: 'insertion', offset: 0, text: 'h' }, ctx(() => 'cn-1'));
       state = result.newState;
       expect(state.pending!.currentText).toBe('h');
-      expect(state.pending!.scId).toBe('ct-1');
+      expect(state.pending!.scId).toBe('cn-1');
 
       result = processEvent(state, { type: 'insertion', offset: 1, text: 'e' }, ctx());
       state = result.newState;
       expect(state.pending!.currentText).toBe('he');
-      expect(state.pending!.scId).toBe('ct-1');
+      expect(state.pending!.scId).toBe('cn-1');
 
       result = processEvent(state, { type: 'insertion', offset: 2, text: 'l' }, ctx());
       state = result.newState;
       expect(state.pending!.currentText).toBe('hel');
-      expect(state.pending!.scId).toBe('ct-1');
+      expect(state.pending!.scId).toBe('cn-1');
     });
 
     it('only one buffer is ever active (no double-create)', () => {
       let state = stateNoPending();
       let allocCount = 0;
-      const alloc = () => { allocCount++; return `ct-${allocCount}`; };
+      const alloc = () => { allocCount++; return `cn-${allocCount}`; };
 
       processEvent(state, { type: 'insertion', offset: 0, text: 'a' }, ctx(alloc));
       state = processEvent(state, { type: 'insertion', offset: 0, text: 'a' }, ctx(alloc)).newState;
@@ -730,7 +733,7 @@ describe('processEvent (state machine)', () => {
       processEvent(
         stateNoPending(),
         { type: 'insertion', offset: 5, text: 'a' },
-        ctx(() => { count++; return 'ct-' + count; }),
+        ctx(() => { count++; return 'cn-' + count; }),
       );
       expect(count).toBe(1);
     });
@@ -740,43 +743,43 @@ describe('processEvent (state machine)', () => {
       const { newState: s1 } = processEvent(
         state,
         { type: 'insertion', offset: 0, text: 'a' },
-        ctx(() => 'ct-100'),
+        ctx(() => 'cn-100'),
       );
       state = s1;
 
       const { newState: s2 } = processEvent(
         state,
         { type: 'insertion', offset: 1, text: 'b' },
-        ctx(() => 'ct-SHOULD-NOT-CALL'),
+        ctx(() => 'cn-SHOULD-NOT-CALL'),
       );
-      expect(s2.pending!.scId).toBe('ct-100');
+      expect(s2.pending!.scId).toBe('cn-100');
     });
 
     it('scId included in crystallize effect on flush', () => {
-      const state = stateWithPending('abc', 10, {}, 'ct-77');
+      const state = stateWithPending('abc', 10, {}, 'cn-77');
       const { effects } = processEvent(state, { type: 'flush' }, ctx());
       const cryst = singleEffect(effects, 'crystallize');
-      expect(cryst.scId).toBe('ct-77');
+      expect(cryst.scId).toBe('cn-77');
     });
 
     it('scId preserved through splice operations (backspace)', () => {
-      const state = stateWithPending('abc', 10, {}, 'ct-42');
+      const state = stateWithPending('abc', 10, {}, 'cn-42');
       const { newState } = processEvent(
         state,
         { type: 'deletion', offset: 12, deletedText: 'c' },
         ctx(),
       );
-      expect(newState.pending!.scId).toBe('ct-42');
+      expect(newState.pending!.scId).toBe('cn-42');
     });
 
     it('scId preserved through splice operations (insert)', () => {
-      const state = stateWithPending('hello', 10, {}, 'ct-99');
+      const state = stateWithPending('hello', 10, {}, 'cn-99');
       const { newState } = processEvent(
         state,
         { type: 'insertion', offset: 12, text: 'X' },
         ctx(),
       );
-      expect(newState.pending!.scId).toBe('ct-99');
+      expect(newState.pending!.scId).toBe('cn-99');
     });
   });
 
@@ -933,9 +936,9 @@ describe('processEvent (state machine)', () => {
       const { newState } = processEvent(
         stateNoPending(),
         { type: 'deletion', offset: 7, deletedText: 'x' },
-        ctx(() => { scIdValue = 'ct-42'; return scIdValue; }),
+        ctx(() => { scIdValue = 'cn-42'; return scIdValue; }),
       );
-      expect(newState.pending!.scId).toBe('ct-42');
+      expect(newState.pending!.scId).toBe('cn-42');
     });
   });
 
@@ -958,7 +961,7 @@ describe('processEvent (state machine)', () => {
       let state = stateNoPending();
 
       // Type "hel"
-      state = processEvent(state, { type: 'insertion', offset: 0, text: 'h' }, ctx(() => 'ct-1')).newState;
+      state = processEvent(state, { type: 'insertion', offset: 0, text: 'h' }, ctx(() => 'cn-1')).newState;
       state = processEvent(state, { type: 'insertion', offset: 1, text: 'e' }, ctx()).newState;
       state = processEvent(state, { type: 'insertion', offset: 2, text: 'l' }, ctx()).newState;
 
@@ -971,14 +974,14 @@ describe('processEvent (state machine)', () => {
       expect(newState.pending).toBeNull();
       const cryst = singleEffect(effects, 'crystallize');
       expect(cryst.currentText).toBe('hXel');
-      expect(cryst.scId).toBe('ct-1');
+      expect(cryst.scId).toBe('cn-1');
     });
 
     it('type → editor switch → type again = two separate buffers', () => {
       let state = stateNoPending();
 
       // Type "abc"
-      state = processEvent(state, { type: 'insertion', offset: 0, text: 'a' }, ctx(() => 'ct-1')).newState;
+      state = processEvent(state, { type: 'insertion', offset: 0, text: 'a' }, ctx(() => 'cn-1')).newState;
       state = processEvent(state, { type: 'insertion', offset: 1, text: 'b' }, ctx()).newState;
       state = processEvent(state, { type: 'insertion', offset: 2, text: 'c' }, ctx()).newState;
 
@@ -991,20 +994,20 @@ describe('processEvent (state machine)', () => {
       expect(flushed.pending).toBeNull();
       const cryst1 = singleEffect(flushEffects, 'crystallize');
       expect(cryst1.currentText).toBe('abc');
-      expect(cryst1.scId).toBe('ct-1');
+      expect(cryst1.scId).toBe('cn-1');
 
       // Type "xy" — new buffer
-      state = processEvent(flushed, { type: 'insertion', offset: 20, text: 'x' }, ctx(() => 'ct-2')).newState;
+      state = processEvent(flushed, { type: 'insertion', offset: 20, text: 'x' }, ctx(() => 'cn-2')).newState;
       state = processEvent(state, { type: 'insertion', offset: 21, text: 'y' }, ctx()).newState;
       expect(state.pending!.currentText).toBe('xy');
-      expect(state.pending!.scId).toBe('ct-2');
+      expect(state.pending!.scId).toBe('cn-2');
     });
 
     it('type → backspace all → type again = new buffer with new scId', () => {
       let state = stateNoPending();
 
       // Type "ab"
-      state = processEvent(state, { type: 'insertion', offset: 0, text: 'a' }, ctx(() => 'ct-1')).newState;
+      state = processEvent(state, { type: 'insertion', offset: 0, text: 'a' }, ctx(() => 'cn-1')).newState;
       state = processEvent(state, { type: 'insertion', offset: 1, text: 'b' }, ctx()).newState;
 
       // Backspace both (splice to empty)
@@ -1015,15 +1018,15 @@ describe('processEvent (state machine)', () => {
       expect(state.pending).toBeNull();
 
       // Type again → new buffer
-      state = processEvent(state, { type: 'insertion', offset: 0, text: 'X' }, ctx(() => 'ct-2')).newState;
+      state = processEvent(state, { type: 'insertion', offset: 0, text: 'X' }, ctx(() => 'cn-2')).newState;
       expect(state.pending!.currentText).toBe('X');
-      expect(state.pending!.scId).toBe('ct-2');
+      expect(state.pending!.scId).toBe('cn-2');
     });
 
     it('type + save + type again = two separate buffers', () => {
       let state = stateNoPending();
 
-      state = processEvent(state, { type: 'insertion', offset: 0, text: 'a' }, ctx(() => 'ct-1')).newState;
+      state = processEvent(state, { type: 'insertion', offset: 0, text: 'a' }, ctx(() => 'cn-1')).newState;
       const { newState: savedState, effects: saveEffects } = processEvent(
         state,
         { type: 'save' },
@@ -1032,8 +1035,8 @@ describe('processEvent (state machine)', () => {
       expect(savedState.pending).toBeNull();
       singleEffect(saveEffects, 'crystallize');
 
-      state = processEvent(savedState, { type: 'insertion', offset: 1, text: 'b' }, ctx(() => 'ct-2')).newState;
-      expect(state.pending!.scId).toBe('ct-2');
+      state = processEvent(savedState, { type: 'insertion', offset: 1, text: 'b' }, ctx(() => 'cn-2')).newState;
+      expect(state.pending!.scId).toBe('cn-2');
     });
   });
 
@@ -1178,7 +1181,7 @@ describe('processEvent (state machine)', () => {
     it('deletion crystallize via flush: length is 0 (deleted text gone from document)', () => {
       // Create a deletion buffer and flush it
       const state: EditBoundaryState = {
-        pending: createBuffer(3, '', 'abcdef', NOW, 'ct-1'),
+        pending: createBuffer(3, '', 'abcdef', NOW, 'cn-1'),
         isComposing: false,
         config: defaultConfig(),
       };
@@ -1191,7 +1194,7 @@ describe('processEvent (state machine)', () => {
     it('substitution crystallize via flush: length matches currentText length', () => {
       // Create a substitution buffer (original "abc" → current "hello") and flush it
       const state: EditBoundaryState = {
-        pending: createBuffer(3, 'hello', 'abc', NOW, 'ct-1'),
+        pending: createBuffer(3, 'hello', 'abc', NOW, 'cn-1'),
         isComposing: false,
         config: defaultConfig(),
       };
@@ -1207,7 +1210,7 @@ describe('processEvent (state machine)', () => {
       let state = stateNoPending();
 
       // Type "hel"
-      state = processEvent(state, { type: 'insertion', offset: 0, text: 'h' }, ctx(() => 'ct-1')).newState;
+      state = processEvent(state, { type: 'insertion', offset: 0, text: 'h' }, ctx(() => 'cn-1')).newState;
       state = processEvent(state, { type: 'insertion', offset: 1, text: 'e' }, ctx()).newState;
       state = processEvent(state, { type: 'insertion', offset: 2, text: 'l' }, ctx()).newState;
       expect(state.pending!.currentText).toBe('hel');
@@ -1299,7 +1302,7 @@ describe('processEvent (state machine)', () => {
     describe('extend-backward (backspace before region)', () => {
       it('prepends to originalText and shifts anchor', () => {
         const state: EditBoundaryState = {
-          pending: createBuffer(10, 'new', 'old', NOW, 'ct-1'),
+          pending: createBuffer(10, 'new', 'old', NOW, 'cn-1'),
           isComposing: false,
           config: defaultConfig(),
         };
@@ -1347,7 +1350,7 @@ describe('processEvent (state machine)', () => {
 
       it('deletion: currentText empty, originalText non-empty', () => {
         const state: EditBoundaryState = {
-          pending: createBuffer(10, '', 'deleted', NOW, 'ct-1'),
+          pending: createBuffer(10, '', 'deleted', NOW, 'cn-1'),
           isComposing: false,
           config: defaultConfig(),
         };
@@ -1360,7 +1363,7 @@ describe('processEvent (state machine)', () => {
 
       it('substitution: both non-empty', () => {
         const state: EditBoundaryState = {
-          pending: createBuffer(10, 'new', 'old', NOW, 'ct-1'),
+          pending: createBuffer(10, 'new', 'old', NOW, 'cn-1'),
           isComposing: false,
           config: defaultConfig(),
         };
@@ -1374,7 +1377,7 @@ describe('processEvent (state machine)', () => {
 
       it('self-cancellation: both empty → no crystallize', () => {
         const state: EditBoundaryState = {
-          pending: createBuffer(10, '', '', NOW, 'ct-1'),
+          pending: createBuffer(10, '', '', NOW, 'cn-1'),
           isComposing: false,
           config: defaultConfig(),
         };
@@ -1448,7 +1451,7 @@ describe('processEvent (state machine)', () => {
 
       it('type-then-backspace-all produces self-cancellation', () => {
         let state = stateNoPending();
-        let result = processEvent(state, { type: 'insertion', offset: 0, text: 'a' }, ctx(() => 'ct-1'));
+        let result = processEvent(state, { type: 'insertion', offset: 0, text: 'a' }, ctx(() => 'cn-1'));
         state = result.newState;
         result = processEvent(state, { type: 'insertion', offset: 1, text: 'b' }, ctx());
         state = result.newState;
@@ -1487,7 +1490,7 @@ describe('processEvent (state machine)', () => {
     describe('timestamp-based break', () => {
       it('breaks when time gap exceeds pauseThresholdMs', () => {
         const state: EditBoundaryState = {
-          pending: createBuffer(0, 'ab', '', 1000, 'ct-1'),
+          pending: createBuffer(0, 'ab', '', 1000, 'cn-1'),
           isComposing: false,
           config: { ...DEFAULT_EDIT_BOUNDARY_CONFIG, pauseThresholdMs: 5000 },
         };
@@ -1505,7 +1508,7 @@ describe('processEvent (state machine)', () => {
 
       it('extends when time gap is within pauseThresholdMs', () => {
         const state: EditBoundaryState = {
-          pending: createBuffer(0, 'ab', '', 1000, 'ct-1'),
+          pending: createBuffer(0, 'ab', '', 1000, 'cn-1'),
           isComposing: false,
           config: { ...DEFAULT_EDIT_BOUNDARY_CONFIG, pauseThresholdMs: 5000 },
         };
@@ -1521,7 +1524,7 @@ describe('processEvent (state machine)', () => {
 
       it('skips timestamp check when pauseThresholdMs is 0', () => {
         const state: EditBoundaryState = {
-          pending: createBuffer(0, 'ab', '', 1000, 'ct-1'),
+          pending: createBuffer(0, 'ab', '', 1000, 'cn-1'),
           isComposing: false,
           config: { ...DEFAULT_EDIT_BOUNDARY_CONFIG, pauseThresholdMs: 0 },
         };
@@ -1533,6 +1536,270 @@ describe('processEvent (state machine)', () => {
         );
         expect(newState.pending!.currentText).toBe('abc');
       });
+    });
+  });
+
+  describe('cursorMove event', () => {
+    it('should not flush when cursor is inside pending buffer', () => {
+      const state = stateWithPending('hello', 10);
+      const event: EditEvent = { type: 'cursorMove', offset: 13 };
+      const result = processEvent(state, event, ctx());
+      expect(result.newState.pending).not.toBeNull();
+      expect(result.effects).toHaveLength(0);
+    });
+
+    it('should not flush when cursor is at buffer end', () => {
+      const state = stateWithPending('hello', 10);
+      const event: EditEvent = { type: 'cursorMove', offset: 15 };
+      const result = processEvent(state, event, ctx());
+      expect(result.newState.pending).not.toBeNull();
+    });
+
+    it('should flush when cursor moves outside buffer range', () => {
+      const state = stateWithPending('hello', 10);
+      const event: EditEvent = { type: 'cursorMove', offset: 50 };
+      const result = processEvent(state, event, ctx());
+      expect(result.newState.pending).toBeNull();
+      const crystallizes = result.effects.filter(e => e.type === 'crystallize');
+      expect(crystallizes).toHaveLength(1);
+    });
+
+    it('should not flush when cursor moves outside pure deletion buffer', () => {
+      const state = stateWithPending('', 10, undefined, 'cn-1', 'del');
+      const event: EditEvent = { type: 'cursorMove', offset: 50 };
+      const result = processEvent(state, event, ctx());
+      expect(result.newState.pending).not.toBeNull();
+      expect(result.effects).toHaveLength(0);
+    });
+
+    it('should be no-op when no pending buffer exists', () => {
+      const state = stateNoPending();
+      const event: EditEvent = { type: 'cursorMove', offset: 5 };
+      const result = processEvent(state, event, ctx());
+      expect(result.newState.pending).toBeNull();
+      expect(result.effects).toHaveLength(0);
+    });
+
+    it('should not flush after enter key when cursor stays at buffer end', () => {
+      // Simulate: type "hi", press Enter, cursor moves to new line
+      // breakOnNewline=false so newline extends the buffer instead of breaking
+      let state = stateNoPending({ breakOnNewline: false });
+      let result = processEvent(state, { type: 'insertion', offset: 0, text: 'h' }, ctx());
+      state = result.newState;
+      result = processEvent(state, { type: 'insertion', offset: 1, text: 'i' }, ctx());
+      state = result.newState;
+      result = processEvent(state, { type: 'insertion', offset: 2, text: '\n' }, ctx());
+      state = result.newState;
+      result = processEvent(state, { type: 'cursorMove', offset: 3 }, ctx());
+      expect(result.newState.pending).not.toBeNull();
+      expect(result.newState.pending!.currentText).toBe('hi\n');
+    });
+  });
+
+  describe('fully-formed L2 crystallize effects', () => {
+    const fullCtx = (overrides?: Partial<ProcessEventContext>): ProcessEventContext => ({
+      now: NOW,
+      allocateScId: () => 'cn-1',
+      author: '@alice',
+      documentText: 'hello world',
+      documentFormat: 'l2',
+      ...overrides,
+    });
+
+    it('should produce L2 markupEdit + footnoteEdit for insertion', () => {
+      const state = stateWithPending(' new', 5, undefined, 'cn-1');
+      const result = processEvent(state, { type: 'flush' }, fullCtx({
+        documentText: 'hello new world',
+      }));
+
+      const cryst = result.effects.find(e => e.type === 'crystallize');
+      expect(cryst).toBeDefined();
+      expect('edits' in cryst!).toBe(true);
+      const edits = (cryst as FullCrystallizeEffect).edits;
+      expect(edits.format).toBe('l2');
+      if (edits.format === 'l2') {
+        expect(edits.markupEdit.newText).toContain(' new');
+        expect(edits.markupEdit.newText).toContain('++}');
+        expect(edits.markupEdit.offset).toBe(5);
+        expect(edits.markupEdit.length).toBe(4); // length of ' new'
+        expect(edits.footnoteEdit.newText).toContain('[^cn-1]:');
+        expect(edits.footnoteEdit.newText).toContain('@alice');
+        expect(edits.footnoteEdit.newText).toContain('ins');
+        expect(edits.footnoteEdit.newText).toContain('proposed');
+      }
+    });
+
+    it('should produce L2 markupEdit for deletion', () => {
+      const state = stateWithPending('', 5, undefined, 'cn-2', ' old');
+      const result = processEvent(state, { type: 'flush' }, fullCtx({
+        documentText: 'helloworld',
+        allocateScId: () => 'cn-2',
+      }));
+
+      const cryst = result.effects.find(e => e.type === 'crystallize') as FullCrystallizeEffect;
+      expect(cryst.edits.format).toBe('l2');
+      if (cryst.edits.format === 'l2') {
+        expect(cryst.edits.markupEdit.newText).toContain('--}');
+        expect(cryst.edits.markupEdit.length).toBe(0); // deletion inserts at point
+        expect(cryst.edits.footnoteEdit.newText).toContain('del');
+      }
+    });
+
+    it('should produce L2 markupEdit for substitution', () => {
+      const state = stateWithPending('new', 5, undefined, 'cn-3', 'old');
+      const result = processEvent(state, { type: 'flush' }, fullCtx({
+        documentText: 'hellonewworld',
+        allocateScId: () => 'cn-3',
+      }));
+
+      const cryst = result.effects.find(e => e.type === 'crystallize') as FullCrystallizeEffect;
+      expect(cryst.edits.format).toBe('l2');
+      if (cryst.edits.format === 'l2') {
+        expect(cryst.edits.markupEdit.newText).toContain('new');
+        expect(cryst.edits.markupEdit.newText).toContain('~~}');
+      }
+    });
+
+    it('should fall back to legacy crystallize when context lacks documentText', () => {
+      const state = stateWithPending('test', 5);
+      const result = processEvent(state, { type: 'flush' }, ctx());
+
+      const cryst = result.effects.find(e => e.type === 'crystallize');
+      expect(cryst).toBeDefined();
+      expect('changeType' in cryst!).toBe(true);
+      expect('edits' in cryst!).toBe(false);
+    });
+  });
+
+  describe('fully-formed L3 crystallize effects', () => {
+    beforeAll(async () => {
+      await initHashline();
+    });
+
+    const l3Ctx = (docText: string, overrides?: Partial<ProcessEventContext>): ProcessEventContext => ({
+      now: NOW,
+      allocateScId: () => 'cn-1',
+      author: '@alice',
+      documentText: docText,
+      documentFormat: 'l3',
+      ...overrides,
+    });
+
+    it('should produce L3 footnoteEdit with LINE:HASH for insertion', () => {
+      // stateWithPending(text, anchorOffset, configOverride, scId, originalText)
+      const state = stateWithPending('new ', 6, undefined, 'cn-1', '');
+      const docText = 'hello new world\n';
+      const result = processEvent(state, { type: 'flush' }, l3Ctx(docText));
+
+      const cryst = result.effects.find(e => e.type === 'crystallize') as FullCrystallizeEffect;
+      expect(cryst).toBeDefined();
+      expect(cryst.edits.format).toBe('l3');
+      if (cryst.edits.format === 'l3') {
+        expect(cryst.edits.markupEdit).toBeNull();
+        expect(cryst.edits.footnoteEdit.newText).toContain('[^cn-1]:');
+        expect(cryst.edits.footnoteEdit.newText).toContain('@alice');
+        expect(cryst.edits.footnoteEdit.newText).toContain('new ');
+        // Should contain LINE:HASH format
+        expect(cryst.edits.footnoteEdit.newText).toMatch(/\d+:[a-f0-9]+/);
+      }
+    });
+
+    it('should produce L3 footnoteEdit for deletion', () => {
+      // stateWithPending(text, anchorOffset, configOverride, scId, originalText)
+      const state = stateWithPending('', 5, undefined, 'cn-2', ' old');
+      const docText = 'helloworld\n';
+      const result = processEvent(state, { type: 'flush' }, l3Ctx(docText, {
+        allocateScId: () => 'cn-2',
+      }));
+
+      const cryst = result.effects.find(e => e.type === 'crystallize') as FullCrystallizeEffect;
+      expect(cryst).toBeDefined();
+      expect(cryst.edits.format).toBe('l3');
+      if (cryst.edits.format === 'l3') {
+        expect(cryst.edits.markupEdit).toBeNull();
+        expect(cryst.edits.footnoteEdit.newText).toContain('[^cn-2]:');
+        expect(cryst.edits.footnoteEdit.newText).toContain(' old');
+        expect(cryst.edits.footnoteEdit.newText).toContain('del');
+        expect(cryst.edits.footnoteEdit.newText).toMatch(/\d+:[a-f0-9]+/);
+      }
+    });
+
+    it('should produce L3 footnoteEdit for substitution', () => {
+      // stateWithPending(text, anchorOffset, configOverride, scId, originalText)
+      const state = stateWithPending('new', 5, undefined, 'cn-3', 'old');
+      const docText = 'hellonewworld\n';
+      const result = processEvent(state, { type: 'flush' }, l3Ctx(docText, {
+        allocateScId: () => 'cn-3',
+      }));
+
+      const cryst = result.effects.find(e => e.type === 'crystallize') as FullCrystallizeEffect;
+      expect(cryst).toBeDefined();
+      expect(cryst.edits.format).toBe('l3');
+      if (cryst.edits.format === 'l3') {
+        expect(cryst.edits.markupEdit).toBeNull();
+        expect(cryst.edits.footnoteEdit.newText).toContain('[^cn-3]:');
+        expect(cryst.edits.footnoteEdit.newText).toContain('~~}');
+        expect(cryst.edits.footnoteEdit.newText).toMatch(/\d+:[a-f0-9]+/);
+      }
+    });
+
+    it('should set footnoteEdit offset to document end', () => {
+      const state = stateWithPending('new ', 6, undefined, 'cn-1', '');
+      const docText = 'hello new world\n';
+      const result = processEvent(state, { type: 'flush' }, l3Ctx(docText));
+
+      const cryst = result.effects.find(e => e.type === 'crystallize') as FullCrystallizeEffect;
+      if (cryst.edits.format === 'l3') {
+        expect(cryst.edits.footnoteEdit.offset).toBe(docText.length);
+        expect(cryst.edits.footnoteEdit.length).toBe(0);
+      }
+    });
+  });
+
+  describe('atomic merge in crystallize', () => {
+    it('should merge adjacent insertion when documentText reveals neighbor', () => {
+      // Document has an existing {++first++}[^cn-1] at position 0, then user typed 'second' right after it
+      // The documentText contains the already-applied CriticMarkup from a previous edit
+      // After wrapping 'second' in {++second++}, the two adjacent insertions should be merged
+      const docText = '{++first++}[^cn-1]second rest of doc';
+      // 'second' starts at offset 18 (after '{++first++}[^cn-1]')
+      const state = stateWithPending('second', 18, undefined, 'cn-2');
+      const result = processEvent(state, { type: 'flush' }, {
+        now: NOW,
+        allocateScId: () => 'cn-2',
+        author: '@alice',
+        documentText: docText,
+        documentFormat: 'l2',
+      });
+
+      const cryst = result.effects.find(e => e.type === 'crystallize') as FullCrystallizeEffect;
+      expect(cryst.edits.format).toBe('l2');
+      if (cryst.edits.format === 'l2') {
+        // Merged: should combine both insertions into one markup span
+        expect(cryst.edits.markupEdit.newText).toContain('firstsecond');
+      }
+    });
+
+    it('should not emit mergeAdjacent when documentText is provided', () => {
+      const state = stateWithPending('test', 5, undefined, 'cn-1');
+      const result = processEvent(state, { type: 'flush' }, {
+        now: NOW,
+        allocateScId: () => 'cn-1',
+        author: '@alice',
+        documentText: 'hellotest world',
+        documentFormat: 'l2',
+      });
+
+      const merges = result.effects.filter(e => e.type === 'mergeAdjacent');
+      expect(merges).toHaveLength(0);
+    });
+
+    it('should still emit mergeAdjacent when documentText is absent (legacy)', () => {
+      const state = stateWithPending('test', 5);
+      const result = processEvent(state, { type: 'flush' }, ctx());
+
+      const merges = result.effects.filter(e => e.type === 'mergeAdjacent');
+      expect(merges).toHaveLength(1);
     });
   });
 });

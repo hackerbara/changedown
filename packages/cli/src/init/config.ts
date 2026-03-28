@@ -22,7 +22,7 @@ export interface InitConfigOptions {
 }
 
 /**
- * Generate a .changetracks/config.toml string from options.
+ * Generate a .changedown/config.toml string from options.
  */
 export function generateDefaultConfig(options: InitConfigOptions): string {
   const include = options.trackingInclude ?? ['**/*.md'];
@@ -66,11 +66,11 @@ reasoning = "${reasoning}"
 }
 
 /**
- * Parse an existing .changetracks/config.toml and return a human-readable summary.
+ * Parse an existing .changedown/config.toml and return a human-readable summary.
  * Returns null if the config file does not exist.
  */
 export function parseConfigSummary(projectDir: string): ConfigSummary | null {
-  const configPath = path.join(projectDir, '.changetracks', 'config.toml');
+  const configPath = path.join(projectDir, '.changedown', 'config.toml');
   if (!fs.existsSync(configPath)) return null;
 
   const content = fs.readFileSync(configPath, 'utf8');

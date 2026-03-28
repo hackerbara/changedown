@@ -8,15 +8,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handleStop, appendPendingEdit, readPendingEdits } from 'changetracks-hooks/internals';
-import type { HookInput } from 'changetracks-hooks/internals';
+import { handleStop, appendPendingEdit, readPendingEdits } from 'changedown-hooks/internals';
+import type { HookInput } from 'changedown-hooks/internals';
 
 describe('Claude Code Stop adapter — I/O contract', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-adapter-stop-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-adapter-stop-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     // Default safety-net config
     await fs.writeFile(
@@ -81,7 +81,7 @@ describe('Claude Code Stop adapter — I/O contract', () => {
 
   it('returns empty object in strict mode (no batch-wrapping)', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\n\n[author]\ndefault = "ai:claude-opus-4.6"\n',
       'utf-8',
     );
@@ -101,7 +101,7 @@ describe('Claude Code Stop adapter — I/O contract', () => {
 
   it('returns empty object in permissive mode (no batch-wrapping)', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "permissive"\n\n[author]\ndefault = "ai:claude-opus-4.6"\n',
       'utf-8',
     );
@@ -139,7 +139,7 @@ describe('Claude Code Stop adapter — I/O contract', () => {
 
   it('clears pending edits in non-safety-net mode (strict)', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[policy]\nmode = "strict"\n\n[author]\ndefault = "ai:claude-opus-4.6"\n',
       'utf-8',
     );

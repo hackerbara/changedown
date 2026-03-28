@@ -1,4 +1,4 @@
-import { settleAcceptedChangesOnly, settleRejectedChangesOnly } from '@changetracks/core';
+import { settleAcceptedChangesOnly, settleRejectedChangesOnly } from '@changedown/core';
 
 /**
  * Thin wrapper around core's settleAcceptedChangesOnly. Used by review handlers

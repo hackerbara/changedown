@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildContextualL3EditOp, ChangeType } from '@changetracks/core/internals';
+import { buildContextualL3EditOp, ChangeType } from '@changedown/core/internals';
 
 describe('buildContextualL3EditOp', () => {
   it('produces contextual insertion on a simple line', () => {

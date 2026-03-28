@@ -1,4 +1,4 @@
-{~~{++# Bug Report: Benchmark Execution Findings~># Bug Report: Benchmark Execution Findings~~}[^ct-2.1]
+{~~{++# Bug Report: Benchmark Execution Findings~># Bug Report: Benchmark Execution Findings~~}[^cn-2.1]
 
 **Date:** 2026-02-16
 **Context:** Full benchmark matrix execution (Phases 1-4)
@@ -12,9 +12,9 @@
 
 **Severity:** CRITICAL
 {~~**Status:** 🔴 NOT FIXED~>**Status:** ✅ FIXED (2026-02-13, commit 2ad050f)
-**Validation:** C-task4 test on 2026-02-16 confirmed fix working~~}[^ct-4.1]
+**Validation:** C-task4 test on 2026-02-16 confirmed fix working~~}[^cn-4.1]
 **Affects:** Both Surface C (MCP) and Surface D (CLI)
-**Location:** `@changetracks/core` accept/reject implementation
+**Location:** `@changedown/core` accept/reject implementation
 
 #### Description
 
@@ -26,9 +26,9 @@ When accepting a tracked change via `review_change` (MCP) or `sc review` (CLI) w
 
 **Expected behavior per format spec:**
 ```markdown
-For public API responses[^ct-1]  # Markup removed, ref kept
+For public API responses[^cn-1]  # Markup removed, ref kept
 
-[^ct-1]: @ai:... | 2026-02-14 | ins | accepted  # Status updated to "accepted"
+[^cn-1]: @ai:... | 2026-02-14 | ins | accepted  # Status updated to "accepted"
     approved: @ai:benchmark-agent 2026-02-16 "Good addition..."
   @ai:... 2026-02-14: Added explicit performance benefit...
   @reviewer 2026-02-15: Should we specify which responses...
@@ -45,7 +45,7 @@ For public API responses  # Markup removed, ref removed, footnote deleted entire
 **C-task4 (MCP Surface):**
 - File: `packages/benchmarks/results/phase2-new-tasks/c-task4/C-task4/after/api-spec.md`
 - Operation: `review_change` with `decision: "approve"` for ct-1
-- Result: Footnote `[^ct-1]` completely removed from document
+- Result: Footnote `[^cn-1]` completely removed from document
 
 **D-task4 (CLI Surface):**
 - File: `packages/benchmarks/results/phase2-new-tasks/d-task4/D-task4/after/api-spec.md`
@@ -147,13 +147,13 @@ D-task3 retry after fix:
 
 ## Performance Issues (Not Bugs)
 
-{~~### PERF-001: D-task5 Incompleteness (60% Correct)~>### PERF-001: D-task5 High Variance (Measured: 61-113% Range)~~}[^ct-4.2]
+{~~### PERF-001: D-task5 Incompleteness (60% Correct)~>### PERF-001: D-task5 High Variance (Measured: 61-113% Range)~~}[^cn-4.2]
 
 {~~**Severity:** MEDIUM
 **Status:** 🟡 INVESTIGATION NEEDED
 **Nature:** Model thoroughness variance, not a bug~>**Severity:** MEDIUM
 **Status:** ✅ VARIANCE MEASURED (2026-02-16)
-**Nature:** High stochastic variance (23% CV), not a bug~~}[^ct-4.3]
+**Nature:** High stochastic variance (23% CV), not a bug~~}[^cn-4.3]
 
 #### Description
 
@@ -164,7 +164,7 @@ D-task3 retry after fix:
 - Validation run 3: 24 edits (77%)
 - **Mean: 27 edits (87%), std dev 7 (23% variance)**
 
-Original 61% result was worst case, not typical. Surface D trades some thoroughness for 40% faster execution (42s vs 70s).~~}[^ct-4.4]
+Original 61% result was worst case, not typical. Surface D trades some thoroughness for 40% faster execution (42s vs 70s).~~}[^cn-4.4]
 
 #### Analysis
 
@@ -258,13 +258,13 @@ The agent attempts `sc batch` for complex structural operations (section moves, 
 
 ---
 
-## Design Issues (Not Bugs, But Problematic)~~}[^ct-4.5]
+## Design Issues (Not Bugs, But Problematic)~~}[^cn-4.5]
 
 ### DESIGN-001: CLI Batch Command Has Poor Error Messages
 
 **Severity:** LOW
 **Status:** 🟡 IMPROVEMENT RECOMMENDED
-**Location:** `changetracks-plugin/mcp-server/src/cli-helpers.ts`
+**Location:** `changedown-plugin/mcp-server/src/cli-helpers.ts`
 
 #### Description
 
@@ -368,7 +368,7 @@ Missing tests for:
 
 ### TEST-002: CLI Commands Lack Integration Tests
 
-**Location:** `changetracks-plugin/mcp-server/src/test/`
+**Location:** `changedown-plugin/mcp-server/src/test/`
 
 Current tests are unit tests. Need integration tests for:
 - End-to-end workflow: read → batch → review → amend
@@ -493,17 +493,17 @@ The benchmark execution successfully filled the test matrix and identified:
 The "Environment > Instructions" hypothesis was tested and **definitively rejected**. Instruction quality is the dominant factor in agent performance, not environmental simplicity.
 
 {~~**Next steps:** Fix BUG-001, add tests, complete master results compilation.
-++}[^ct-3.5]
+++}[^cn-3.5]
 
-[^ct-3.5]: @ai:claude-opus-4.6 | 2026-02-16 | ins | proposed~>**Next steps:** Fix BUG-001, add tests, complete master results compilation.~~}[^ct-2.2]
+[^cn-3.5]: @ai:claude-opus-4.6 | 2026-02-16 | ins | proposed~>**Next steps:** Fix BUG-001, add tests, complete master results compilation.~~}[^cn-2.2]
 
-[^ct-2]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
-[^ct-2.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
-[^ct-2.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-2]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
+[^cn-2.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-2.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
 
-[^ct-4]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
-[^ct-4.5]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
-[^ct-4.4]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
-[^ct-4.3]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
-[^ct-4.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
-[^ct-4.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-4]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
+[^cn-4.5]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-4.4]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-4.3]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-4.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-4.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed

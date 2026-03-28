@@ -104,8 +104,8 @@ export interface ChangeNode {
   moveRole?: 'from' | 'to';
   groupId?: string;
   settled?: boolean;
-  anchored: boolean;  // true = [^ct-N] exists in file; false = parse-assigned
-  footnoteRefStart?: number;  // byte offset where [^ct-N] starts (set by parser for L2 anchored changes)
+  anchored: boolean;  // true = [^cn-N] exists in file; false = parse-assigned
+  footnoteRefStart?: number;  // byte offset where [^cn-N] starts (set by parser for L2 anchored changes)
   /** Line range of the footnote definition block in the raw text (0-based, inclusive). */
   footnoteLineRange?: { startLine: number; endLine: number };
   /** Number of discussion thread reply lines in the footnote body. */
@@ -125,7 +125,7 @@ export interface ChangeNode {
  * Carried on VirtualDocument.unresolvedDiagnostics for display in hover / status bar.
  */
 export interface UnresolvedDiagnostic {
-  /** The footnote ID (e.g., "ct-5") */
+  /** The footnote ID (e.g., "cn-5") */
   changeId: string;
   /** What text was expected in the body */
   expectedText: string;

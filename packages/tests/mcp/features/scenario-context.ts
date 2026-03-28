@@ -1,16 +1,16 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { initHashline } from '@changetracks/core';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { handleReviewChanges } from '@changetracks/mcp/internals';
-import { handleGetChange } from '@changetracks/mcp/internals';
-import { handleAmendChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { initHashline } from '@changedown/core';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { handleReviewChanges } from '@changedown/mcp/internals';
+import { handleGetChange } from '@changedown/mcp/internals';
+import { handleAmendChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import { createTestResolver } from '../test-resolver.js';
-import { type ConfigResolver } from '@changetracks/mcp/internals';
+import { type ConfigResolver } from '@changedown/mcp/internals';
 
 /**
  * Default config for BDD scenario tests. Differs from the package DEFAULT_CONFIG
@@ -20,7 +20,7 @@ import { type ConfigResolver } from '@changetracks/mcp/internals';
  * - reasoning optional (reduces boilerplate in simple scenarios)
  * - author set to 'ai:test-agent' (stable identity for assertions)
  */
-export const DEFAULT_CONFIG: ChangeTracksConfig = {
+export const DEFAULT_CONFIG: ChangeDownConfig = {
   tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: false },
   author: { default: 'ai:test-agent', enforcement: 'optional' },
   hooks: { enforcement: 'warn', exclude: [] },
@@ -53,15 +53,15 @@ export class ScenarioContext {
   tmpDir!: string;
   state!: SessionState;
   resolver!: ConfigResolver;
-  private config: ChangeTracksConfig;
+  private config: ChangeDownConfig;
   private prefix: string;
 
   private showGuide: boolean;
 
-  constructor(config?: Partial<ChangeTracksConfig>, opts?: { prefix?: string; showGuide?: boolean }) {
-    const prefix = opts?.prefix ?? 'ct-bdd-';
+  constructor(config?: Partial<ChangeDownConfig>, opts?: { prefix?: string; showGuide?: boolean }) {
+    const prefix = opts?.prefix ?? 'cn-bdd-';
     this.showGuide = opts?.showGuide ?? false;
-    this.config = { ...DEFAULT_CONFIG, ...config } as ChangeTracksConfig;
+    this.config = { ...DEFAULT_CONFIG, ...config } as ChangeDownConfig;
     if (config?.tracking) this.config.tracking = { ...DEFAULT_CONFIG.tracking, ...config.tracking };
     if (config?.author) this.config.author = { ...DEFAULT_CONFIG.author, ...config.author };
     if (config?.hooks) this.config.hooks = { ...DEFAULT_CONFIG.hooks, ...config.hooks };
@@ -87,7 +87,7 @@ export class ScenarioContext {
    * the temp directory or files. Useful when a Cucumber scenario needs to
    * change config after Background steps have already created files.
    */
-  async reconfigure(overrides: Partial<ChangeTracksConfig>): Promise<void> {
+  async reconfigure(overrides: Partial<ChangeDownConfig>): Promise<void> {
     // Apply overrides on top of existing config
     if (overrides.tracking) this.config.tracking = { ...this.config.tracking, ...overrides.tracking };
     if (overrides.author) this.config.author = { ...this.config.author, ...overrides.author };
@@ -228,7 +228,7 @@ export class ScenarioContext {
     if (footnoteIdx === -1) throw new Error(`Footnote ${footnoteRef} not found in file`);
     const afterRef = content.slice(footnoteIdx);
     const firstLine = afterRef.split('\n')[0];
-    // Footnote format: [^ct-N]: @author | date | type | status
+    // Footnote format: [^cn-N]: @author | date | type | status
     // Parse the pipe-delimited 4th field for exact status match
     const parts = firstLine.split('|');
     if (parts.length < 4) {
@@ -243,7 +243,7 @@ export class ScenarioContext {
   /** Assert no CriticMarkup delimiters in the document body (before footnotes) */
   async assertNoMarkupInBody(filePath: string): Promise<void> {
     const content = await this.readDisk(filePath);
-    const footnoteStart = content.indexOf('\n[^ct-');
+    const footnoteStart = content.indexOf('\n[^cn-');
     const body = footnoteStart >= 0 ? content.slice(0, footnoteStart) : content;
     const delimiters = ['{++', '++}', '{--', '--}', '{~~', '~~}', '{==', '==}', '{>>', '<<}'];
     for (const d of delimiters) {

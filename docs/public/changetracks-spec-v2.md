@@ -1,8 +1,8 @@
-# ChangeTracks Specification v2
+# ChangeDown Specification v2
 
 ## §1 Introduction
 
-ChangeTracks encodes change tracking and deliberation directly into text files. Changes, discussion, approvals, and revision history live in the file itself — readable by any text editor, parseable by any tool. No external database. No proprietary format. No server state.
+ChangeDown encodes change tracking and deliberation directly into text files. Changes, discussion, approvals, and revision history live in the file itself — readable by any text editor, parseable by any tool. No external database. No proprietary format. No server state.
 
 ### The durable object
 
@@ -12,7 +12,7 @@ Everything in this specification is evaluated against that sentence. Character-l
 
 ### Scope
 
-ChangeTracks is designed for reviewed text workflows:
+ChangeDown is designed for reviewed text workflows:
 
 - Tracked prose and documentation
 - Review-heavy collaboration
@@ -23,7 +23,7 @@ It is explicitly not a real-time character-level co-editing system. Real-time co
 
 ### CriticMarkup
 
-The inline change syntax is [CriticMarkup](http://criticmarkup.com), created by Gabe Weatherhead and Erik Hess in 2013. ChangeTracks extends CriticMarkup with identity, lifecycle metadata, threaded deliberation, and an operational semantics that treats the markup as an edit-op DSL — a language for expressing logical editorial operations, not merely visual formatting.
+The inline change syntax is [CriticMarkup](http://criticmarkup.com), created by Gabe Weatherhead and Erik Hess in 2013. ChangeDown extends CriticMarkup with identity, lifecycle metadata, threaded deliberation, and an operational semantics that treats the markup as an edit-op DSL — a language for expressing logical editorial operations, not merely visual formatting.
 
 ### Reading guide
 
@@ -34,7 +34,7 @@ The inline change syntax is [CriticMarkup](http://criticmarkup.com), created by 
 
 ### Design principles
 
-**The file is self-sufficient.** A ChangeTracks file never depends on an external system for correctness. Email it, attach it to a pull request, open it in any text editor. It works. No binary sidecars, no external databases, no server state that outlives the process.
+**The file is self-sufficient.** A ChangeDown file never depends on an external system for correctness. Email it, attach it to a pull request, open it in any text editor. It works. No binary sidecars, no external databases, no server state that outlives the process.
 
 **Structural rigidity and policy flexibility are distinct.** Parser constraints — valid syntax, valid nesting, honest resolution state — are structural and non-negotiable. Governance choices — who may approve, when to compact, whether reasoning is required — are policy and configurable per project.
 
@@ -44,22 +44,22 @@ The inline change syntax is [CriticMarkup](http://criticmarkup.com), created by 
 
 ### Quick start
 
-A minimal ChangeTracks file with one tracked change (L2):
+A minimal ChangeDown file with one tracked change (L2):
 
 ```markdown
-<!-- ctrcks.com/v2: tracked -->
+<!-- changedown.com/v2: tracked -->
 # API Design
 
 The API should use GraphQL for the public interface.
 
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
     @alice 2024-01-15: GraphQL reduces over-fetching. See PR #42.
 ```
 
 To accept the change, a reviewer adds an `approved:` line and the status changes:
 
 ```markdown
-[^ct-1]: @alice | 2024-01-15 | sub | accepted
+[^cn-1]: @alice | 2024-01-15 | sub | accepted
     @alice 2024-01-15: GraphQL reduces over-fetching. See PR #42.
     approved: @bob 2024-01-20 "Benchmarks look good"
 ```
@@ -70,7 +70,7 @@ To propose a new change, add CriticMarkup in the body and a new footnote:
 The API should use GraphQL for the public interface
 and gRPC for internal service communication.
 
-[^ct-2]: @alice | 2024-01-15 | ins | proposed
+[^cn-2]: @alice | 2024-01-15 | ins | proposed
 ```
 
 That's it. The file is the entire collaboration surface — no server, no database.
@@ -79,7 +79,7 @@ That's it. The file is the entire collaboration surface — no server, no databa
 
 ## §2 System Architecture
 
-ChangeTracks is a four-layer system. Each layer has clear responsibilities and boundaries. New features must not silently shift responsibilities across layers.
+ChangeDown is a four-layer system. Each layer has clear responsibilities and boundaries. New features must not silently shift responsibilities across layers.
 
 ### The four layers
 
@@ -122,7 +122,7 @@ The membrane does NOT define: how keystrokes become operations internally, what 
 
 ### Tooling obligations
 
-Any tool that writes a ChangeTracks file — editor, CLI, MCP handler, import/export pipeline, merge tool — has obligations to the file format. These apply in order of priority:
+Any tool that writes a ChangeDown file — editor, CLI, MCP handler, import/export pipeline, merge tool — has obligations to the file format. These apply in order of priority:
 
 1. **Never silently lose editorial state.** A tool crash, a failed write, an interrupted operation — none of these should silently drop footnotes, strip references, or flatten attribution.
 2. **Keep the log honest.** The footnote log must reflect what actually happened, not what the tool wished had happened.
@@ -139,13 +139,13 @@ L2 and L3 are not different formats. They are two serializations of the same edi
 
 **L2** (default on-disk representation) shows edits inline with CriticMarkup delimiters: `The team new prototype`. Any markdown reader can see what changed. The intent lives in the byte stream. Anchoring is positional — operations live directly in the body text at their location. L2 is the default because it is more instantly readable and more resistant to silent ignoring of editorial state by tooling that does not understand CriticMarkup — such tooling will still show the delimiters rather than presenting clean text as if no changes exist.
 
-**L3** (editor projection) presents a clean body with anchored edit-ops in the footnote log: `The team new prototype` with `1:a3 new ` in the footnote. Editors work without cursor corruption, selection errors, or line-wrapping artifacts. Anchoring is content-addressed — LINE:HASH plus contextual embedding. L3 is the working format for editors that understand ChangeTracks. A tool that opens an L3 file without understanding the footnote section sees clean text but misses the editorial state — this is why L2 is the default for interchange.
+**L3** (editor projection) presents a clean body with anchored edit-ops in the footnote log: `The team new prototype` with `1:a3 new ` in the footnote. Editors work without cursor corruption, selection errors, or line-wrapping artifacts. Anchoring is content-addressed — LINE:HASH plus contextual embedding. L3 is the working format for editors that understand ChangeDown. A tool that opens an L3 file without understanding the footnote section sees clean text but misses the editorial state — this is why L2 is the default for interchange.
 
 The conversion between them is lossless. L2 → L3 → L2 round-trips preserve all editorial state. The laws governing editorial state apply to both serializations because they ARE the same state. All editorial operations, projections, review decisions, and compaction apply regardless of serialization. The anchoring mechanisms differ (L2 positional, L3 content-addressed), and L3's maintenance cascade (§5) is specific to content-addressed anchoring, but the editorial semantics are identical.
 
 **L2 and L3 are serialization choices, not capability tiers.** Neither serialization may silently gain or lose capabilities relative to the other (Law 4). Implementation may use transparent promotion (L2 → L3 internally for scrubbing or projection computation, L3 → L2 on persist) but that is mechanism, not architecture.
 
-The machinery that keeps L2 and L3 in sync — lossless bidirectional conversion, shared editorial semantics, the append-only footnote log, content-addressed anchoring, contextual embedding — is a core architectural contribution of ChangeTracks. L2 and L3 are two views of this machinery. The machinery is what this specification defines.
+The machinery that keeps L2 and L3 in sync — lossless bidirectional conversion, shared editorial semantics, the append-only footnote log, content-addressed anchoring, contextual embedding — is a core architectural contribution of ChangeDown. L2 and L3 are two views of this machinery. The machinery is what this specification defines.
 
 ### Three projections
 
@@ -170,7 +170,7 @@ The body text is not "the text." It is a projection — a materialized view of t
 The cascade proceeds through progressively fuzzier matching. The level numbering follows the implementation (code is the source of truth for cascade order):
 
 1. **Exact** — byte-for-byte match with uniqueness check
-1.5. **Ref-transparent** — strips `[^ct-N]` footnote references from both sides (promoted early because refs are common in tracked files)
+1.5. **Ref-transparent** — strips `[^cn-N]` footnote references from both sides (promoted early because refs are common in tracked files)
 2. **NFKC** — Unicode normalization
 3. **Whitespace-collapsed** — all whitespace runs collapsed to single space
 5. **Committed-text** — strips proposed and rejected CriticMarkup, matches against text with only accepted changes visible
@@ -192,7 +192,7 @@ The file never depends on an external system for correctness. The outer history 
 
 The file format is VCS-agnostic:
 
-- **Plain text** — any VCS that handles text files handles ChangeTracks files
+- **Plain text** — any VCS that handles text files handles ChangeDown files
 - **Merge-friendly** — the append-only footnote log means body changes and footnote additions are in separate regions
 - **Footnote ID renumbering** — when two branches both add footnotes, duplicate `ct-N` numbering is resolved by mechanical renumbering (IDs are document-unique integers)
 - **Conflict model compatibility** — the editorial model (proposals, supersede, accept/reject) is designed to be mappable onto VCS-native conflict models without specifying the mapping
@@ -231,14 +231,14 @@ Each change has a footnote reference linking it to structured metadata:
 The API should use GraphQL for the public interface.
 ```
 
-`[^ct-1]` is a standard markdown footnote reference. All IDs use the `ct-` prefix. IDs are document-unique and monotonically increasing — new changes always use the next integer after the highest existing ID, even if earlier IDs have been removed by compaction.
+`[^cn-1]` is a standard markdown footnote reference. All IDs use the `ct-` prefix. IDs are document-unique and monotonically increasing — new changes always use the next integer after the highest existing ID, even if earlier IDs have been removed by compaction.
 
 ### Footnote header
 
 The footnote definition carries author, date, type, and status:
 
 ```
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
 ```
 
 | Field | Values | Notes |
@@ -326,9 +326,9 @@ moved text
 ```
 
 ```
-[^ct-17]: @alice | 2024-02-10 | move | proposed
-[^ct-17.1]: @alice | 2024-02-10 | del | proposed
-[^ct-17.2]: @alice | 2024-02-10 | ins | proposed
+[^cn-17]: @alice | 2024-02-10 | move | proposed
+[^cn-17.1]: @alice | 2024-02-10 | del | proposed
+[^cn-17.2]: @alice | 2024-02-10 | ins | proposed
 ```
 
 Parent `ct-17` is the logical operation. Children `ct-17.1` and `ct-17.2` are its components. One level of nesting only — `ct-17.1.1` is never valid.
@@ -340,10 +340,10 @@ Accept/reject works at both levels: accept `ct-17` cascades to all proposed chil
 Supersede is the single primitive for creating a new operation that replaces an existing one (§4). The relationship is declared with cross-references:
 
 ```
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
     superseded-by: ct-4
 
-[^ct-4]: @bob | 2024-01-17 | sub | proposed
+[^cn-4]: @bob | 2024-01-17 | sub | proposed
     supersedes: ct-1
     @bob 2024-01-17: gRPC is better suited for internal services.
 ```
@@ -355,18 +355,18 @@ The consumed operation (`ct-1`) stays in the log with its full governance record
 An HTML comment on the first line declares tracking status:
 
 ```
-<!-- ctrcks.com/v2: tracked -->
+<!-- changedown.com/v2: tracked -->
 ```
 
-The version number (`v2`) indicates conformance with this specification. Files created under the v1 specification use `<!-- ctrcks.com/v1: tracked -->` and remain valid — v2 is a superset. Tools auto-insert this header on the first tracked edit. If the file has YAML frontmatter, the header goes after the closing `---`.
+The version number (`v2`) indicates conformance with this specification. Files created under the v1 specification use `<!-- changedown.com/v1: tracked -->` and remain valid — v2 is a superset. Tools auto-insert this header on the first tracked edit. If the file has YAML frontmatter, the header goes after the closing `---`.
 
 ### Compaction boundary marker
 
 A compaction boundary is a footnote marking where the current slice begins:
 
 ```
-[^ct-compact]: @alice | 2024-03-20 | compaction-boundary
-    compacted-by: changetracks v0.1.0
+[^cn-compact]: @alice | 2024-03-20 | compaction-boundary
+    compacted-by: changedown v0.1.0
 ```
 
 Attribution and timestamp in the header are required. Additional metadata — a boundary hash, a count of prior changes, a note — is the compactor's choice. The format supports arbitrary continuation lines via the metadata extension surface.
@@ -375,7 +375,7 @@ The boundary says when the slice began and who compacted. It does not mandate di
 
 ### L2 serialization
 
-In L2, operations are inline in the body text with `[^ct-N]` references linking to the footnote section:
+In L2, operations are inline in the body text with `[^cn-N]` references linking to the footnote section:
 
 ```markdown
 The API should use GraphQL for the public interface
@@ -384,15 +384,15 @@ and gRPC for internal service communication.
 Authentication uses OAuth 2.0 with JWT tokens for
 all endpoints.
 
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
     context: "The API should use {REST} for the public interface"
     @dave 2024-01-16: GraphQL increases client complexity.
       @alice 2024-01-16: But reduces over-fetching.
 
-[^ct-2]: @alice | 2024-01-15 | ins | proposed
+[^cn-2]: @alice | 2024-01-15 | ins | proposed
 ```
 
-The `[^ct-N]` references are connective tissue — ligaments between body text and its deliberation history. When body text survives an operation (accepted insertion stays, rejected deletion is restored), the footnote reference survives with it. When body text is removed (accepted deletion, rejected insertion), the reference goes with it, but the footnote definition persists in the log.
+The `[^cn-N]` references are connective tissue — ligaments between body text and its deliberation history. When body text survives an operation (accepted insertion stays, rejected deletion is restored), the footnote reference survives with it. When body text is removed (accepted deletion, rejected insertion), the reference goes with it, but the footnote definition persists in the log.
 
 ### L3 serialization
 
@@ -405,13 +405,13 @@ and gRPC for internal service communication.
 Authentication uses OAuth 2.0 with JWT tokens for
 all endpoints.
 
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
     1:a3 The API should use GraphQL for the public
     context: "The API should use {REST} for the public interface"
     @dave 2024-01-16: GraphQL increases client complexity.
       @alice 2024-01-16: But reduces over-fetching.
 
-[^ct-2]: @alice | 2024-01-15 | ins | proposed
+[^cn-2]: @alice | 2024-01-15 | ins | proposed
     3:b7 Authentication uses OAuth 2.0 with JWT tokens for
 ```
 
@@ -486,13 +486,13 @@ Supersede replaces the older amend/supersede split. It is the single primitive f
 
 **Same-author supersede is revision:**
 ```
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
     superseded-by: ct-2
     5:a3 OAuth2
     approved: @bob 2024-01-16 "Correct direction"
     request-changes: @carol 2024-01-16 "Specify grant type"
 
-[^ct-2]: @alice | 2024-01-17 | sub | proposed
+[^cn-2]: @alice | 2024-01-17 | sub | proposed
     supersedes: ct-1
     5:a3 OAuth2 with Authorization Code flow
     @alice 2024-01-17: Incorporated Carol's feedback on grant type
@@ -500,7 +500,7 @@ Supersede replaces the older amend/supersede split. It is the single primitive f
 
 **Different-author supersede is offering an alternative:**
 ```
-[^ct-3]: @carol | 2024-01-17 | sub | proposed
+[^cn-3]: @carol | 2024-01-17 | sub | proposed
     supersedes: ct-1
     5:a3 mTLS with client certificates
     @carol 2024-01-17: OAuth2 is wrong for service-to-service auth
@@ -528,7 +528,7 @@ When a later operation modifies text created by an earlier operation, the earlie
 4. The system presents the chain with actionable options: which operations would break, where their text could be re-anchored, and what the human needs to decide
 5. The system never auto-resolves consumed-op conflicts — human escalation
 
-This is the human escalation strategy, validated by the literature: Dolan (PODC 2020) proved that no replicated data type beyond simple counters can support general-purpose undo satisfying both commutativity and inverse properties. Yu et al. (DAIS 2015) identified "undesirable undo effects" when undoing operations whose text has been modified. ChangeTracks sidesteps the impossibility by delegating consumed-op conflicts to human judgment.
+This is the human escalation strategy, validated by the literature: Dolan (PODC 2020) proved that no replicated data type beyond simple counters can support general-purpose undo satisfying both commutativity and inverse properties. Yu et al. (DAIS 2015) identified "undesirable undo effects" when undoing operations whose text has been modified. ChangeDown sidesteps the impossibility by delegating consumed-op conflicts to human judgment.
 
 ### Highlights and comments
 
@@ -550,7 +550,7 @@ The matching cascade, anchoring, maintenance cascade, and all editorial operatio
 
 Each footnote's anchor is valid in the body state at the time the footnote was created — its **intermediate body state**, not the final body. The log is an ordered sequence of operations; each operation was applied to a specific body state. The system verifies correctness by reconstructing that state.
 
-This is the same structural operation as Eg-walker's retreat/advance (Gentle & Kleppmann, EuroSys 2025, Section 3.2): the backward pass un-applies operations to reconstruct earlier body states; the forward pass re-applies them with fresh anchors. The key difference: Eg-walker operates on character-level CRDT state; ChangeTracks operates on the body text directly with string splicing. This works because ChangeTracks' log is linear (single-writer sessions produce strictly ordered operations), so there is no interleaving to resolve.
+This is the same structural operation as Eg-walker's retreat/advance (Gentle & Kleppmann, EuroSys 2025, Section 3.2): the backward pass un-applies operations to reconstruct earlier body states; the forward pass re-applies them with fresh anchors. The key difference: Eg-walker operates on character-level CRDT state; ChangeDown operates on the body text directly with string splicing. This works because ChangeDown' log is linear (single-writer sessions produce strictly ordered operations), so there is no interleaving to resolve.
 
 ### The resolution protocol
 
@@ -586,7 +586,7 @@ In L3, the body is the Current projection of the log. The log is authoritative; 
 
 A decided footnote with its full edit-op:
 ```
-[^ct-3]: @alice | 2024-03-15 | sub | accepted
+[^cn-3]: @alice | 2024-03-15 | sub | accepted
     5:a3 Protocol newverview
     approved: @bob 2024-03-16 "Correct terminology"
 ```
@@ -681,7 +681,7 @@ System promises:
 - Your approval is for the specific operation you reviewed. If the author supersedes, your approval stays on the original. The new operation needs its own review.
 - Nobody silently overrides your decision. But another reviewer may subsequently accept what you rejected, or vice versa. Opinions accumulate; they do not overwrite.
 
-**Reader.** Encounters the file cold — as a slice, after compaction, in a tool that may not understand ChangeTracks.
+**Reader.** Encounters the file cold — as a slice, after compaction, in a tool that may not understand ChangeDown.
 
 System promises:
 - What you see is honest within the slice. Body-log coherence (§5) ensures the body correctly projects the log.
@@ -755,7 +755,7 @@ rejected → accepted  (approve — rejection is not terminal)
 @alice:security-reviewer            — human with role
 @ai:claude-opus-4.6                 — agent, model-level
 @ai:claude-opus-4.6:code-reviewer   — agent, model + role
-@ci:changetracks-lint               — automated system
+@ci:changedown-lint               — automated system
 ```
 
 **Principle:** identity must be granular enough that review attribution is meaningful. If two participants are doing different work, they must be distinguishable. Beyond that, granularity is the project's choice.
@@ -769,7 +769,7 @@ Identity answers WHO. The footnote format carries HOW and WHY through the metada
 A footnote's `reason:` field and discussion lines carry free-text context. For tooling that needs structured provenance — generation method, review depth, source attribution — the convention is `key: value` body lines:
 
 ```
-[^ct-5]: @ai:claude-opus-4.6 | 2024-03-20 | ins | proposed
+[^cn-5]: @ai:claude-opus-4.6 | 2024-03-20 | ins | proposed
     12:a3 optimized query
     reason: Reduces N+1 query pattern
     basis: suggested
@@ -863,7 +863,7 @@ These are identified areas requiring further design work. They do not block the 
 A document with five tracked changes demonstrating proposals, acceptance, rejection, supersede, discussion, grouped changes, and a compaction boundary.
 
 ```markdown
-<!-- ctrcks.com/v2: tracked -->
+<!-- changedown.com/v2: tracked -->
 # API Design Document
 
 The API should use GraphQL for the public interface
@@ -872,10 +872,10 @@ and gRPC for internal service communication.
 Authentication uses OAuth 2.0 with PKCE flow for
 all endpoints. Rate limiting is set to 100 req/min.
 
-[^ct-compact]: @alice | 2024-01-20 | compaction-boundary
-    compacted-by: changetracks v0.1.0
+[^cn-compact]: @alice | 2024-01-20 | compaction-boundary
+    compacted-by: changedown v0.1.0
 
-[^ct-3]: @alice | 2024-01-15 | sub | accepted
+[^cn-3]: @alice | 2024-01-15 | sub | accepted
     context: "The API should use {REST} for the public interface"
     @alice 2024-01-15: GraphQL reduces over-fetching. See PR #42 — 3x fewer round trips.
     approved: @bob 2024-01-20 "Benchmarks are convincing"
@@ -884,20 +884,20 @@ all endpoints. Rate limiting is set to 100 req/min.
         @dave 2024-01-17: Fair point. Benchmarks are convincing.
     resolved @dave 2024-01-17
 
-[^ct-4]: @alice | 2024-01-15 | ins | accepted
+[^cn-4]: @alice | 2024-01-15 | ins | accepted
     approved: @bob 2024-01-20
 
-[^ct-5]: @carol | 2024-01-17 | highlight | proposed
+[^cn-5]: @carol | 2024-01-17 | highlight | proposed
     @carol 2024-01-17: 100/min is low. Our traffic averages 80/min with spikes to 200.
       @alice 2024-01-18: Depends on infrastructure costs. @dave can you model this?
       @dave 2024-01-19: I can run load tests next week.
     open -- awaiting load test results from @dave
 
-[^ct-6]: @bob | 2024-01-18 | del | rejected
+[^cn-6]: @bob | 2024-01-18 | del | rejected
     @bob 2024-01-18: Legacy XML endpoint is unused — telemetry shows 0 calls in 30 days.
     rejected: @alice 2024-01-19 "Partner integration still depends on it — check with @carol"
 
-[^ct-7]: @alice | 2024-02-01 | sub | proposed
+[^cn-7]: @alice | 2024-02-01 | sub | proposed
     supersedes: ct-7-original
     context: "Authentication uses {API keys} for all endpoints"
     @alice 2024-02-01: Switched from OAuth2 to PKCE flow per Carol's security review.
@@ -918,7 +918,7 @@ This file demonstrates:
 The same editorial state in L3. The body is clean — no CriticMarkup delimiters, no footnote references:
 
 ```markdown
-<!-- ctrcks.com/v2: tracked -->
+<!-- changedown.com/v2: tracked -->
 # API Design Document
 
 The API should use GraphQL for the public interface
@@ -927,10 +927,10 @@ and gRPC for internal service communication.
 Authentication uses OAuth 2.0 with PKCE flow for
 all endpoints. Rate limiting is set to 100 req/min.
 
-[^ct-compact]: @alice | 2024-01-20 | compaction-boundary
-    compacted-by: changetracks v0.1.0
+[^cn-compact]: @alice | 2024-01-20 | compaction-boundary
+    compacted-by: changedown v0.1.0
 
-[^ct-3]: @alice | 2024-01-15 | sub | accepted
+[^cn-3]: @alice | 2024-01-15 | sub | accepted
     3:a7 The API should use GraphQL for the public
     @alice 2024-01-15: GraphQL reduces over-fetching. See PR #42 — 3x fewer round trips.
     approved: @bob 2024-01-20 "Benchmarks are convincing"
@@ -939,23 +939,23 @@ all endpoints. Rate limiting is set to 100 req/min.
         @dave 2024-01-17: Fair point. Benchmarks are convincing.
     resolved @dave 2024-01-17
 
-[^ct-4]: @alice | 2024-01-15 | ins | accepted
+[^cn-4]: @alice | 2024-01-15 | ins | accepted
     4:c2 and gRPC for internal service communication.
     approved: @bob 2024-01-20
 
-[^ct-5]: @carol | 2024-01-17 | highlight | proposed
+[^cn-5]: @carol | 2024-01-17 | highlight | proposed
     6:e1 Rate limiting is set to 100 req/min
     @carol 2024-01-17: 100/min is low. Our traffic averages 80/min with spikes to 200.
       @alice 2024-01-18: Depends on infrastructure costs. @dave can you model this?
       @dave 2024-01-19: I can run load tests next week.
     open -- awaiting load test results from @dave
 
-[^ct-6]: @bob | 2024-01-18 | del | rejected
+[^cn-6]: @bob | 2024-01-18 | del | rejected
     6:e1 
     @bob 2024-01-18: Legacy XML endpoint is unused — telemetry shows 0 calls in 30 days.
     rejected: @alice 2024-01-19 "Partner integration still depends on it — check with @carol"
 
-[^ct-7]: @alice | 2024-02-01 | sub | proposed
+[^cn-7]: @alice | 2024-02-01 | sub | proposed
     supersedes: ct-7-original
     6:b3 Authentication uses OAuth 2.0 with PKCE flow for
     @alice 2024-02-01: Switched from OAuth2 to PKCE flow per Carol's security review.
@@ -1025,7 +1025,7 @@ This specification draws on and credits the following research:
 
 **AnchoredAI.** "Anchored Feedback." 2025. — Anchoring Context Window validates contextual embedding approach. User study finding: anchored feedback produces greater perceived agency and more targeted revisions than detached commentary.
 
-**Moment.dev.** "Lies I Was Told About Collaborative Editing." 2024–2026. — Collaborative editing is a UI/UX problem where algorithms assist. ChangeTracks arrived at the same conclusion: crystallize character activity into reviewable editorial operations rather than auto-merging.
+**Moment.dev.** "Lies I Was Told About Collaborative Editing." 2024–2026. — Collaborative editing is a UI/UX problem where algorithms assist. ChangeDown arrived at the same conclusion: crystallize character activity into reviewable editorial operations rather than auto-merging.
 
 **Loro.** Shallow snapshots. — Production implementation of self-describing document slices with truncated history. Validates the coherent slice model (§5) and the self-sufficiency test for compacted files.
 
@@ -1035,7 +1035,7 @@ This specification draws on and credits the following research:
 
 **Google.** "Gerrit Code Review." — The patch-set model validates amendment-as-new-version (§4). Review scores reset on new patch set. The Change-Id tracks logical identity across versions, analogous to `supersedes:` references.
 
-**Weatherhead, G. & Hess, E.** "CriticMarkup." 2013. — The inline change syntax that ChangeTracks builds upon.
+**Weatherhead, G. & Hess, E.** "CriticMarkup." 2013. — The inline change syntax that ChangeDown builds upon.
 
 **Foucault, M.** *Discipline and Punish.* 1975. — The panopticon as anti-pattern for governance design (§6).
 

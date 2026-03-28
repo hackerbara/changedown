@@ -1,7 +1,7 @@
 @fast @H6
 Feature: H6 - Claude Code Adapter
   The Claude Code hook adapter translates Claude Code's PreToolUse, PostToolUse,
-  and Stop hook events into ChangeTracks policy evaluation and edit tracking.
+  and Stop hook events into ChangeDown policy evaluation and edit tracking.
   PreToolUse intercepts Edit/Write/Read tool calls; PostToolUse logs edits to
   pending.json; Stop applies batch CriticMarkup wrapping.
 
@@ -89,7 +89,7 @@ Feature: H6 - Claude Code Adapter
     And a Claude Code pending substitution from "# Original heading" to "# Updated heading" in session "ses_cc"
     When I call Claude Code Stop for session "ses_cc"
     Then the batch file "readme.md" includes "{~~# Original heading~># Updated heading~~}"
-    And the batch file "readme.md" includes "[^ct-"
+    And the batch file "readme.md" includes "[^cn-"
 
   Scenario: Stop returns empty and clears edits in strict mode
     And a strict mode config

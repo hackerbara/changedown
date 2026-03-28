@@ -20,9 +20,9 @@ This is the fate of most long-lived software:
 - Fear accumulates ("don't touch that, nobody knows how it works")
 - Velocity drops to zero
 
-### ChangeTracks as Negentropy Engine
+### ChangeDown as Negentropy Engine
 
-ChangeTracks preserves information (reasoning, intent, deliberation) that would otherwise dissipate. The footnotes are **local reductions in entropy**—pockets of order that persist over time.
+ChangeDown preserves information (reasoning, intent, deliberation) that would otherwise dissipate. The footnotes are **local reductions in entropy**—pockets of order that persist over time.
 
 When you write:
 ```python
@@ -35,7 +35,7 @@ You're not just recording a change. You're creating a **negentropy pocket**—a 
 
 Here's the twist: **entropy cannot be destroyed, only managed**.
 
-Eventually, even ChangeTracks files reach heat death:
+Eventually, even ChangeDown files reach heat death:
 - Comments get stale
 - Context drifts
 - Authors referenced no longer exist
@@ -70,7 +70,7 @@ It's: **"Can we manage the rate of entropy increase such that useful work remain
 
 ### Dynamic Equilibrium
 
-A healthy ChangeTracks file has **dynamic equilibrium**:
+A healthy ChangeDown file has **dynamic equilibrium**:
 - New deliberation enters (fresh entropy reduction)
 - Stale deliberation exits (entropy export via compaction)
 - The system remains comprehensible
@@ -113,7 +113,7 @@ Then:
 
 **You have to eat it now.**
 
-ChangeTracks deliberation is similar—it has a **half-life**:
+ChangeDown deliberation is similar—it has a **half-life**:
 - Active threads are crisp and valuable (fresh banh mi)
 - Stale threads are soggy bread (compaction needed)
 - Abandoned threads are mold (abandon file)
@@ -141,20 +141,20 @@ Banh mi transcends sandwichness. It creates its own ontology:
 
 4. **Globally Portable, Locally Specific:** You can get banh mi in Paris, Saigon, or Brooklyn. Each honors the form but adapts ingredients.
 
-**ChangeTracks should aspire to this**—not "a better way to track changes" but "the way intent exists in files."
+**ChangeDown should aspire to this**—not "a better way to track changes" but "the way intent exists in files."
 
 ## The Test
 
 When someone asks:
 - "Do you want to use Git?" (infrastructure question)
-- "Do you want to use ChangeTracks?" (craft question)
+- "Do you want to use ChangeDown?" (craft question)
 
-If ChangeTracks succeeds, those become **different questions entirely**.
+If ChangeDown succeeds, those become **different questions entirely**.
 
 Git is infrastructure. 
-ChangeTracks is **craft**.
+ChangeDown is **craft**.
 
-The banh mi test: Does using ChangeTracks feel like choosing between sandwiches, or like choosing to get banh mi?
+The banh mi test: Does using ChangeDown feel like choosing between sandwiches, or like choosing to get banh mi?
 
 If it's the latter, you've achieved escape velocity from the taxonomy.
 
@@ -162,7 +162,7 @@ If it's the latter, you've achieved escape velocity from the taxonomy.
 
 Collaboration systems don't prevent entropy—they **surf it**.
 
-ChangeTracks creates temporary negentropy pockets (fresh deliberation), exports stale entropy (VCS compaction), and lets teams find their equilibrium.
+ChangeDown creates temporary negentropy pockets (fresh deliberation), exports stale entropy (VCS compaction), and lets teams find their equilibrium.
 
 The half-life of deliberation is real. The soggy bread problem is real. Heat death is inevitable.
 

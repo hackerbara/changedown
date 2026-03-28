@@ -4,7 +4,7 @@ Feature: C24 — Sidecar Annotator
 
   It uses diffLines for line-level diffs, then emits deletion markers and
   insertion tags using the language's line-comment syntax. Adjacent remove+add
-  produce substitution pairs sharing the same ct-N tag.
+  produce substitution pairs sharing the same cn-N tag.
 
   A sidecar metadata block is appended at the bottom of the file.
 
@@ -42,8 +42,8 @@ Feature: C24 — Sidecar Annotator
       z = 3
       y = 2
       """
-    Then the sidecar result contains "z = 3  # ct-1"
-    And the sidecar result contains "# [^ct-1]: ins | pending"
+    Then the sidecar result contains "z = 3  # cn-1"
+    And the sidecar result contains "# [^cn-1]: ins | pending"
 
   Scenario: Single line deletion in Python
     Given the original sidecar text:
@@ -58,8 +58,8 @@ Feature: C24 — Sidecar Annotator
       x = 1
       z = 3
       """
-    Then the sidecar result contains "# - y = 2  # ct-1"
-    And the sidecar result contains "# [^ct-1]: del | pending"
+    Then the sidecar result contains "# - y = 2  # cn-1"
+    And the sidecar result contains "# [^cn-1]: del | pending"
 
   Scenario: Single line substitution in Python
     Given the original sidecar text:
@@ -75,9 +75,9 @@ Feature: C24 — Sidecar Annotator
       results = {}
       z = 3
       """
-    Then the sidecar result contains "# - results = []  # ct-1"
-    And the sidecar result contains "results = {}  # ct-1"
-    And the sidecar result contains "# [^ct-1]: sub | pending"
+    Then the sidecar result contains "# - results = []  # cn-1"
+    And the sidecar result contains "results = {}  # cn-1"
+    And the sidecar result contains "# [^cn-1]: sub | pending"
 
   # ── Language-specific comment syntax ──────────────────────────────
 
@@ -94,8 +94,8 @@ Feature: C24 — Sidecar Annotator
       const z = 3;
       const y = 2;
       """
-    Then the sidecar result contains "const z = 3;  // ct-1"
-    And the sidecar result contains "// [^ct-1]: ins | pending"
+    Then the sidecar result contains "const z = 3;  // cn-1"
+    And the sidecar result contains "// [^cn-1]: ins | pending"
 
   Scenario: Ruby uses hash comment syntax
     Given the original sidecar text:
@@ -110,8 +110,8 @@ Feature: C24 — Sidecar Annotator
       x = 1
       z = 3
       """
-    Then the sidecar result contains "# - y = 2  # ct-1"
-    And the sidecar result contains "# [^ct-1]: del | pending"
+    Then the sidecar result contains "# - y = 2  # cn-1"
+    And the sidecar result contains "# [^cn-1]: del | pending"
 
   # ── Multi-line changes ────────────────────────────────────────────
 
@@ -129,11 +129,11 @@ Feature: C24 — Sidecar Annotator
       a = 1
       d = 4
       """
-    Then the sidecar result contains "# - b = 2  # ct-1"
-    And the sidecar result contains "# - c = 3  # ct-1"
+    Then the sidecar result contains "# - b = 2  # cn-1"
+    And the sidecar result contains "# - c = 3  # cn-1"
     And the sidecar result contains "+1 more lines"
 
-  Scenario: Multi-line insertion tags each line with same ct-N
+  Scenario: Multi-line insertion tags each line with same cn-N
     Given the original sidecar text:
       """
       a = 1
@@ -147,13 +147,13 @@ Feature: C24 — Sidecar Annotator
       c = 3
       d = 4
       """
-    Then the sidecar result contains "b = 2  # ct-1"
-    And the sidecar result contains "c = 3  # ct-1"
-    And the sidecar result contains "# [^ct-1]: ins | pending"
+    Then the sidecar result contains "b = 2  # cn-1"
+    And the sidecar result contains "c = 3  # cn-1"
+    And the sidecar result contains "# [^cn-1]: ins | pending"
 
   # ── Sequential numbering ──────────────────────────────────────────
 
-  Scenario: Multiple changes produce sequential ct-N tags
+  Scenario: Multiple changes produce sequential cn-N tags
     Given the original sidecar text:
       """
       a = 1
@@ -168,10 +168,10 @@ Feature: C24 — Sidecar Annotator
       c = 3
       e = 5
       """
-    Then the sidecar result contains "ct-1"
-    And the sidecar result contains "ct-2"
-    And the sidecar result contains "# [^ct-1]:"
-    And the sidecar result contains "# [^ct-2]:"
+    Then the sidecar result contains "cn-1"
+    And the sidecar result contains "cn-2"
+    And the sidecar result contains "# [^cn-1]:"
+    And the sidecar result contains "# [^cn-2]:"
 
   # ── Sidecar block structure ───────────────────────────────────────
 
@@ -185,7 +185,7 @@ Feature: C24 — Sidecar Annotator
       """
       y = 2
       """
-    Then the sidecar result contains "# -- ChangeTracks"
+    Then the sidecar result contains "# -- ChangeDown"
 
   # ── Metadata ──────────────────────────────────────────────────────
 

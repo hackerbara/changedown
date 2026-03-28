@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { initHashline } from '@changetracks/core';
-import { runCommand } from 'changetracks/cli-runner';
+import { initHashline } from '@changedown/core';
+import { runCommand } from 'changedown/cli-runner';
 
 describe('sc files / sc ls', () => {
   let tmpDir: string;
@@ -13,8 +13,8 @@ describe('sc files / sc ls', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-files-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-files-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),

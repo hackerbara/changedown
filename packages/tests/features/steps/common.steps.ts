@@ -1,6 +1,6 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 
 // =============================================================================
 // Setup steps
@@ -8,7 +8,7 @@ import { ChangeTracksWorld } from './world.js';
 
 Given(
   'a tracked markdown file {string} with content:',
-  async function (this: ChangeTracksWorld, name: string, content: string) {
+  async function (this: ChangeDownWorld, name: string, content: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = await this.ctx.createFile(name, content);
     this.files.set(name, filePath);
@@ -17,7 +17,7 @@ Given(
 
 Given(
   'a tracked file {string} with content:',
-  async function (this: ChangeTracksWorld, name: string, content: string) {
+  async function (this: ChangeDownWorld, name: string, content: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = await this.ctx.createFile(name, content);
     this.files.set(name, filePath);
@@ -27,7 +27,7 @@ Given(
 // Handles unquoted boolean/numeric config values like: the config has hashline.enabled = true
 Given(
   /^the config has (\w+)\.(\w+) = (true|false|\d+)$/,
-  async function (this: ChangeTracksWorld, section: string, key: string, rawValue: string) {
+  async function (this: ChangeDownWorld, section: string, key: string, rawValue: string) {
     if (!this.configOverrides[section]) this.configOverrides[section] = {};
     let coerced: unknown;
     if (rawValue === 'true') coerced = true;
@@ -43,7 +43,7 @@ Given(
 // Handles config value set to empty string: the config has author.default = "" (empty)
 Given(
   'the config has {word}.{word} = {string} \\(empty)',
-  async function (this: ChangeTracksWorld, section: string, key: string, _value: string) {
+  async function (this: ChangeDownWorld, section: string, key: string, _value: string) {
     if (!this.configOverrides[section]) this.configOverrides[section] = {};
     this.configOverrides[section][key] = '';
     if (this.ctx) {
@@ -55,7 +55,7 @@ Given(
 // Handles quoted string config values like: the config has protocol.mode = "classic"
 Given(
   'the config has {word}.{word} = {string}',
-  async function (this: ChangeTracksWorld, section: string, key: string, value: string) {
+  async function (this: ChangeDownWorld, section: string, key: string, value: string) {
     if (!this.configOverrides[section]) this.configOverrides[section] = {};
     // Coerce to proper types
     let coerced: unknown;
@@ -78,7 +78,7 @@ Given(
 
 When(
   'I call propose_change with:',
-  async function (this: ChangeTracksWorld, table: any) {
+  async function (this: ChangeDownWorld, table: any) {
     if (!this.ctx) await this.setupContext();
     const rows: string[][] = table.rawTable;
     const params = Object.fromEntries(rows.map((r: string[]) => [r[0].trim(), r[1].trim()]));
@@ -156,7 +156,7 @@ When(
 
 When(
   'I call read_tracked_file with view = {string}',
-  async function (this: ChangeTracksWorld, view: string) {
+  async function (this: ChangeDownWorld, view: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -174,7 +174,7 @@ When(
 
 When(
   'I call review_changes approving {string}',
-  async function (this: ChangeTracksWorld, changeId: string) {
+  async function (this: ChangeDownWorld, changeId: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -190,7 +190,7 @@ When(
 
 When(
   'I call review_changes rejecting {string}',
-  async function (this: ChangeTracksWorld, changeId: string) {
+  async function (this: ChangeDownWorld, changeId: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -210,7 +210,7 @@ When(
 
 When(
   'I call get_change for {string}',
-  async function (this: ChangeTracksWorld, changeId: string) {
+  async function (this: ChangeDownWorld, changeId: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -228,7 +228,7 @@ When(
 
 When(
   'I call amend_change for {string} with new_text {string}',
-  async function (this: ChangeTracksWorld, changeId: string, newText: string) {
+  async function (this: ChangeDownWorld, changeId: string, newText: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
@@ -249,7 +249,7 @@ When(
 
 Then(
   'the response contains change_id {string}',
-  function (this: ChangeTracksWorld, expectedId: string) {
+  function (this: ChangeDownWorld, expectedId: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
     assert.equal(data.change_id, expectedId);
@@ -258,7 +258,7 @@ Then(
 
 Then(
   'the response type is {string}',
-  function (this: ChangeTracksWorld, expectedType: string) {
+  function (this: ChangeDownWorld, expectedType: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
     assert.equal(data.type, expectedType);
@@ -267,7 +267,7 @@ Then(
 
 Then(
   'the response is an error',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.equal(this.lastResult.isError, true, 'Expected an error response');
   },
@@ -275,7 +275,7 @@ Then(
 
 Then(
   'the response is not an error',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true, 'Expected a success response');
   },
@@ -287,7 +287,7 @@ Then(
 
 Then(
   'the file contains {string}',
-  async function (this: ChangeTracksWorld, expected: string) {
+  async function (this: ChangeDownWorld, expected: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -300,7 +300,7 @@ Then(
 
 Then(
   'the file does not contain {string}',
-  async function (this: ChangeTracksWorld, unexpected: string) {
+  async function (this: ChangeDownWorld, unexpected: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -313,7 +313,7 @@ Then(
 
 Then(
   'the file {string} contains {string}',
-  async function (this: ChangeTracksWorld, name: string, expected: string) {
+  async function (this: ChangeDownWorld, name: string, expected: string) {
     const filePath = this.files.get(name);
     assert.ok(filePath, `No file named "${name}" in this scenario`);
     const disk = await this.ctx.readDisk(filePath);
@@ -326,7 +326,7 @@ Then(
 
 Then(
   'the file contains a footnote {string} with status {string}',
-  async function (this: ChangeTracksWorld, ref: string, status: string) {
+  async function (this: ChangeDownWorld, ref: string, status: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
     const id = ref.replace('[^', '').replace(']', '');
@@ -337,7 +337,7 @@ Then(
 
 Then(
   'the footnote contains the reasoning {string}',
-  async function (this: ChangeTracksWorld, expected: string) {
+  async function (this: ChangeDownWorld, expected: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file has been created in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -354,7 +354,7 @@ Then(
 
 Then(
   'the output contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(
@@ -366,7 +366,7 @@ Then(
 
 Then(
   'the output does not contain {string}',
-  function (this: ChangeTracksWorld, unexpected: string) {
+  function (this: ChangeDownWorld, unexpected: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(

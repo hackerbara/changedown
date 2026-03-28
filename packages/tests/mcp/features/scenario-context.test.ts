@@ -34,7 +34,7 @@ describe('ScenarioContext helper', () => {
     });
     expect(proposeResult.isError).toBeUndefined();
     const data = ctx.parseResult(proposeResult);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
 
     const diskContent = await ctx.readDisk(filePath);
     expect(diskContent).toContain('{~~hello~>goodbye~~}');
@@ -47,7 +47,7 @@ describe('ScenarioContext helper', () => {
       new_text: 'goodbye',
       reason: 'test',
     });
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'proposed');
   });
 
   it('assertNoMarkupInBody detects delimiters', async () => {

@@ -10,7 +10,7 @@ import { FOOTNOTE_DEF_START, FOOTNOTE_CONTINUATION } from './footnote-patterns.j
 
 /**
  * Counts footnote definition lines that have the given status.
- * Only lines that are footnote headers (e.g. `[^ct-1]: @a | date | type | proposed`) are counted,
+ * Only lines that are footnote headers (e.g. `[^cn-1]: @a | date | type | proposed`) are counted,
  * not body text that might contain "| proposed" or similar.
  */
 export function countFootnoteHeadersWithStatus(
@@ -43,7 +43,7 @@ export function findFootnoteBlock(lines: string[], changeId: string): FootnoteBl
       let j = i + 1;
       while (j < lines.length) {
         // Stop at next footnote definition
-        if (lines[j].startsWith('[^ct-')) break;
+        if (lines[j].startsWith('[^cn-')) break;
         // Accept indented lines (content)
         if (lines[j].startsWith('    ')) {
           end = j;
@@ -55,7 +55,7 @@ export function findFootnoteBlock(lines: string[], changeId: string): FootnoteBl
           // Look ahead for more indented content before next footnote
           let k = j + 1;
           let hasMore = false;
-          while (k < lines.length && !lines[k].startsWith('[^ct-')) {
+          while (k < lines.length && !lines[k].startsWith('[^cn-')) {
             if (lines[k].startsWith('    ')) { hasMore = true; break; }
             if (lines[k].trim() !== '') break; // non-indented, non-empty = end of block
             k++;
@@ -76,7 +76,7 @@ export function findFootnoteBlock(lines: string[], changeId: string): FootnoteBl
 
 /**
  * Parses a footnote header line into structured fields.
- * Format: `[^ct-N]: @author | date | type | status`
+ * Format: `[^cn-N]: @author | date | type | status`
  * Returns null if the header is malformed (fewer than 4 pipe-separated parts).
  */
 export interface FootnoteHeader {
@@ -148,7 +148,7 @@ export function findReviewInsertionIndex(lines: string[], headerLine: number, bl
 /**
  * Finds all child footnote IDs for a group parent.
  * A child is any footnote whose ID starts with `{parentId}.` (dotted notation).
- * Returns an array of child IDs, e.g. ['ct-1.1', 'ct-1.2', 'ct-1.3'].
+ * Returns an array of child IDs, e.g. ['cn-1.1', 'cn-1.2', 'cn-1.3'].
  */
 export function findChildFootnoteIds(lines: string[], parentId: string): string[] {
   const prefix = `[^${parentId}.`;
@@ -177,7 +177,7 @@ export function findChildFootnoteIds(lines: string[], parentId: string): string[
  * Distinguishes inline refs from footnote definitions by checking whether the
  * character immediately after `[^changeId]` is `:` (which would indicate a definition).
  *
- * Works for both simple IDs (e.g. `ct-1`) and dotted group members (e.g. `ct-3.2`).
+ * Works for both simple IDs (e.g. `cn-1`) and dotted group members (e.g. `cn-3.2`).
  */
 export function resolveChangeById(
   fileContent: string,
@@ -212,10 +212,10 @@ export function resolveChangeById(
  *
  * Uses a backward scan from end-of-file, exploiting the structural invariant
  * that real footnotes are always a contiguous block at the end. This avoids
- * false positives from [^ct- patterns inside code blocks, CriticMarkup, or
+ * false positives from [^cn- patterns inside code blocks, CriticMarkup, or
  * literal body text.
  *
- * Uses FOOTNOTE_DEF_START (matches `[^ct-N]:` at column 0) rather than
+ * Uses FOOTNOTE_DEF_START (matches `[^cn-N]:` at column 0) rather than
  * FOOTNOTE_DEF_LENIENT for resilience against malformed trailing footnotes.
  */
 export function findFootnoteBlockStart(lines: string[]): number {
@@ -325,7 +325,7 @@ function isResolutionLine(trimmed: string): boolean {
  * Returns Map<changeId, statusString> where statusString is lowercase
  * (e.g. "proposed", "accepted", "rejected").
  */
-const FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(ct-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
+const FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(cn-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
 
 export function extractFootnoteStatuses(text: string): Map<string, string> {
   const statuses = new Map<string, string>();

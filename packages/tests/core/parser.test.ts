@@ -6,7 +6,7 @@ import {
   ChangeNode,
   parseTimestamp,
   VirtualDocument,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 describe('CriticMarkupParser', () => {
   let parser: CriticMarkupParser;
@@ -223,9 +223,9 @@ describe('CriticMarkupParser', () => {
       const text = '{++a++}{--b--}{~~c~>d~~}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      expect(changes[0].id).toBe('ct-1');
-      expect(changes[1].id).toBe('ct-2');
-      expect(changes[2].id).toBe('ct-3');
+      expect(changes[0].id).toBe('cn-1');
+      expect(changes[1].id).toBe('cn-2');
+      expect(changes[2].id).toBe('cn-3');
     });
   });
 
@@ -527,20 +527,20 @@ describe('CriticMarkupParser', () => {
   // ─── 10. IDs and status ────────────────────────────────────────────
 
   describe('IDs and status', () => {
-    it('generates unique IDs with ct-N format for each type', () => {
+    it('generates unique IDs with cn-N format for each type', () => {
       const text = '{++ins++}{--del--}{~~sub~>stitution~~}{==hig==}{>>com<<}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(4); // highlight absorbs the comment
 
-      // ct-1
-      expect(changes[0].id).toBe('ct-1');
-      // ct-2
-      expect(changes[1].id).toBe('ct-2');
-      // ct-3
-      expect(changes[2].id).toBe('ct-3');
-      // ct-4 (highlight that absorbed comment)
-      expect(changes[3].id).toBe('ct-4');
+      // cn-1
+      expect(changes[0].id).toBe('cn-1');
+      // cn-2
+      expect(changes[1].id).toBe('cn-2');
+      // cn-3
+      expect(changes[2].id).toBe('cn-3');
+      // cn-4 (highlight that absorbed comment)
+      expect(changes[3].id).toBe('cn-4');
     });
 
     it('all changes have Pending status', () => {
@@ -556,19 +556,19 @@ describe('CriticMarkupParser', () => {
       const text = '{--x--}{--y--}{--z--}';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      expect(changes[0].id).toBe('ct-1');
-      expect(changes[1].id).toBe('ct-2');
-      expect(changes[2].id).toBe('ct-3');
+      expect(changes[0].id).toBe('cn-1');
+      expect(changes[1].id).toBe('cn-2');
+      expect(changes[2].id).toBe('cn-3');
     });
 
-    it('generates correct ct-N ID for comment type', () => {
+    it('generates correct cn-N ID for comment type', () => {
       const doc = parser.parse('{>>note<<}');
-      expect(doc.getChanges()[0].id).toBe('ct-1');
+      expect(doc.getChanges()[0].id).toBe('cn-1');
     });
 
-    it('generates correct ct-N ID for highlight type', () => {
+    it('generates correct cn-N ID for highlight type', () => {
       const doc = parser.parse('{==note==}');
-      expect(doc.getChanges()[0].id).toBe('ct-1');
+      expect(doc.getChanges()[0].id).toBe('cn-1');
     });
   });
 
@@ -678,45 +678,45 @@ describe('CriticMarkupParser', () => {
   // ─── 11. Footnote references ──────────────────────────────────────
 
   describe('footnote references', () => {
-    it('parses insertion with footnote ref [^ct-1]', () => {
-      // '{++added++}[^ct-1]'
+    it('parses insertion with footnote ref [^cn-1]', () => {
+      // '{++added++}[^cn-1]'
       //  0123456789012345678
-      //  {++ = 0..3, 'added' = 3..8, ++} = 8..11, [^ct-1] = 11..18
-      const doc = parser.parse('{++added++}[^ct-1]');
+      //  {++ = 0..3, 'added' = 3..8, ++} = 8..11, [^cn-1] = 11..18
+      const doc = parser.parse('{++added++}[^cn-1]');
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.type).toBe(ChangeType.Insertion);
       expect(c.range).toStrictEqual({ start: 0, end: 18 });
       expect(c.contentRange).toStrictEqual({ start: 3, end: 8 });
       expect(c.modifiedText).toBe('added');
     });
 
-    it('parses deletion with footnote ref [^ct-2]', () => {
-      // '{--removed--}[^ct-2]'
+    it('parses deletion with footnote ref [^cn-2]', () => {
+      // '{--removed--}[^cn-2]'
       //  01234567890123456789
-      //  {-- = 0..3, 'removed' = 3..10, --} = 10..13, [^ct-2] = 13..20
-      const doc = parser.parse('{--removed--}[^ct-2]');
+      //  {-- = 0..3, 'removed' = 3..10, --} = 10..13, [^cn-2] = 13..20
+      const doc = parser.parse('{--removed--}[^cn-2]');
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-2');
+      expect(c.id).toBe('cn-2');
       expect(c.type).toBe(ChangeType.Deletion);
       expect(c.range).toStrictEqual({ start: 0, end: 20 });
       expect(c.contentRange).toStrictEqual({ start: 3, end: 10 });
       expect(c.originalText).toBe('removed');
     });
 
-    it('parses substitution with footnote ref [^ct-3]', () => {
-      // '{~~old~>new~~}[^ct-3]'
+    it('parses substitution with footnote ref [^cn-3]', () => {
+      // '{~~old~>new~~}[^cn-3]'
       //  012345678901234567890
-      //  {~~ = 0..3, 'old' = 3..6, ~> = 6..8, 'new' = 8..11, ~~} = 11..14, [^ct-3] = 14..21
-      const doc = parser.parse('{~~old~>new~~}[^ct-3]');
+      //  {~~ = 0..3, 'old' = 3..6, ~> = 6..8, 'new' = 8..11, ~~} = 11..14, [^cn-3] = 14..21
+      const doc = parser.parse('{~~old~>new~~}[^cn-3]');
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-3');
+      expect(c.id).toBe('cn-3');
       expect(c.type).toBe(ChangeType.Substitution);
       expect(c.range).toStrictEqual({ start: 0, end: 21 });
       expect(c.contentRange).toStrictEqual({ start: 3, end: 11 });
@@ -724,32 +724,32 @@ describe('CriticMarkupParser', () => {
       expect(c.modifiedText).toBe('new');
     });
 
-    it('parses highlight with footnote ref [^ct-4]', () => {
-      // '{==text==}[^ct-4]'
+    it('parses highlight with footnote ref [^cn-4]', () => {
+      // '{==text==}[^cn-4]'
       //  01234567890123456
-      //  {== = 0..3, 'text' = 3..7, ==} = 7..10, [^ct-4] = 10..17
-      const doc = parser.parse('{==text==}[^ct-4]');
+      //  {== = 0..3, 'text' = 3..7, ==} = 7..10, [^cn-4] = 10..17
+      const doc = parser.parse('{==text==}[^cn-4]');
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-4');
+      expect(c.id).toBe('cn-4');
       expect(c.type).toBe(ChangeType.Highlight);
       expect(c.range).toStrictEqual({ start: 0, end: 17 });
       expect(c.contentRange).toStrictEqual({ start: 3, end: 7 });
       expect(c.originalText).toBe('text');
     });
 
-    it('parses highlight+comment with footnote ref [^ct-5]', () => {
-      // '{==text==}{>>note<<}[^ct-5]'
+    it('parses highlight+comment with footnote ref [^cn-5]', () => {
+      // '{==text==}{>>note<<}[^cn-5]'
       //  012345678901234567890123456
       //  {== = 0..3, 'text' = 3..7, ==} = 7..10
       //  {>> = 10..13, 'note' = 13..17, <<} = 17..20
-      //  [^ct-5] = 20..27
-      const doc = parser.parse('{==text==}{>>note<<}[^ct-5]');
+      //  [^cn-5] = 20..27
+      const doc = parser.parse('{==text==}{>>note<<}[^cn-5]');
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-5');
+      expect(c.id).toBe('cn-5');
       expect(c.type).toBe(ChangeType.Highlight);
       expect(c.range).toStrictEqual({ start: 0, end: 27 });
       expect(c.contentRange).toStrictEqual({ start: 3, end: 7 });
@@ -758,49 +758,49 @@ describe('CriticMarkupParser', () => {
     });
 
     it('attaches footnote ref to Level 1 nodes (inline comment + footnote)', () => {
-      const text = '{~~old~>new~~}{>>reason<<}[^ct-3]\n\n[^ct-3]: @alice | 2026-03-04 | sub | proposed';
+      const text = '{~~old~>new~~}{>>reason<<}[^cn-3]\n\n[^cn-3]: @alice | 2026-03-04 | sub | proposed';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
-      const change = changes.find(c => c.id === 'ct-3');
-      expect(change, 'should find change with ct-3 ID from footnote ref').toBeTruthy();
+      const change = changes.find(c => c.id === 'cn-3');
+      expect(change, 'should find change with cn-3 ID from footnote ref').toBeTruthy();
       expect(change!.level).toBe(2);
       expect(change!.anchored).toBe(true);
     });
 
-    it('parses dotted ID [^ct-17.2]', () => {
-      // '{++text++}[^ct-17.2]'
+    it('parses dotted ID [^cn-17.2]', () => {
+      // '{++text++}[^cn-17.2]'
       //  01234567890123456789
-      //  {++ = 0..3, 'text' = 3..7, ++} = 7..10, [^ct-17.2] = 10..20
-      const doc = parser.parse('{++text++}[^ct-17.2]');
+      //  {++ = 0..3, 'text' = 3..7, ++} = 7..10, [^cn-17.2] = 10..20
+      const doc = parser.parse('{++text++}[^cn-17.2]');
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-17.2');
+      expect(c.id).toBe('cn-17.2');
       expect(c.type).toBe(ChangeType.Insertion);
       expect(c.range).toStrictEqual({ start: 0, end: 20 });
       expect(c.contentRange).toStrictEqual({ start: 3, end: 7 });
       expect(c.modifiedText).toBe('text');
     });
 
-    it('assigns ct-1 ID when no footnote ref present', () => {
+    it('assigns cn-1 ID when no footnote ref present', () => {
       const doc = parser.parse('{++text++}');
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
-      expect(changes[0].id).toBe('ct-1');
+      expect(changes[0].id).toBe('cn-1');
     });
 
     it('computes correct ranges with surrounding text', () => {
-      // 'Hello {++world++}[^ct-1] there'
+      // 'Hello {++world++}[^cn-1] there'
       //  0123456789012345678901234567890
       //  'Hello ' = 0..6
       //  {++ = 6..9, 'world' = 9..14, ++} = 14..17
-      //  [^ct-1] = 17..24
+      //  [^cn-1] = 17..24
       //  ' there' = 24..30
-      const doc = parser.parse('Hello {++world++}[^ct-1] there');
+      const doc = parser.parse('Hello {++world++}[^cn-1] there');
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.range).toStrictEqual({ start: 6, end: 24 });
       expect(c.contentRange).toStrictEqual({ start: 9, end: 14 });
       expect(c.modifiedText).toBe('world');
@@ -812,24 +812,24 @@ describe('CriticMarkupParser', () => {
   describe('footnote definitions', () => {
     it('merges author and date from footnote definition into metadata', () => {
       const text = [
-        '{++added text++}[^ct-1]',
+        '{++added text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | pending',
+        '[^cn-1]: @alice | 2026-02-10 | ins | pending',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.metadata?.author).toBe('@alice');
       expect(c.metadata?.date).toBe('2026-02-10');
     });
 
     it('maps reason: to discussion comment (backward compat)', () => {
       const text = [
-        '{--removed paragraph--}[^ct-2]',
+        '{--removed paragraph--}[^cn-2]',
         '',
-        '[^ct-2]: @bob | 2026-02-09 | del | proposed',
+        '[^cn-2]: @bob | 2026-02-09 | del | proposed',
         '    reason: Redundant paragraph',
       ].join('\n');
       const doc = parser.parse(text);
@@ -841,9 +841,9 @@ describe('CriticMarkupParser', () => {
 
     it('maps status from footnote definition', () => {
       const text = [
-        '{++accepted text++}[^ct-1]',
+        '{++accepted text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | accepted',
+        '[^cn-1]: @alice | 2026-02-10 | ins | accepted',
       ].join('\n');
       const doc = parser.parse(text);
       expect(doc.getChanges()[0].status).toBe(ChangeStatus.Accepted);
@@ -851,9 +851,9 @@ describe('CriticMarkupParser', () => {
 
     it('maps rejected status from footnote definition', () => {
       const text = [
-        '{--rejected text--}[^ct-1]',
+        '{--rejected text--}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | del | rejected',
+        '[^cn-1]: @alice | 2026-02-10 | del | rejected',
       ].join('\n');
       const doc = parser.parse(text);
       expect(doc.getChanges()[0].status).toBe(ChangeStatus.Rejected);
@@ -861,10 +861,10 @@ describe('CriticMarkupParser', () => {
 
     it('parses multiple footnote definitions', () => {
       const text = [
-        '{++first++}[^ct-1] and {--second--}[^ct-2]',
+        '{++first++}[^cn-1] and {--second--}[^cn-2]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | pending',
-        '[^ct-2]: @bob | 2026-02-09 | del | accepted',
+        '[^cn-1]: @alice | 2026-02-10 | ins | pending',
+        '[^cn-2]: @bob | 2026-02-09 | del | accepted',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
@@ -876,70 +876,70 @@ describe('CriticMarkupParser', () => {
 
     it('handles dotted IDs in footnote definitions', () => {
       const text = [
-        '{++first++}[^ct-17.1] and {++second++}[^ct-17.2]',
+        '{++first++}[^cn-17.1] and {++second++}[^cn-17.2]',
         '',
-        '[^ct-17.1]: @alice | 2026-02-10 | ins | pending',
-        '[^ct-17.2]: @alice | 2026-02-10 | ins | pending',
+        '[^cn-17.1]: @alice | 2026-02-10 | ins | pending',
+        '[^cn-17.2]: @alice | 2026-02-10 | ins | pending',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(2);
-      expect(changes[0].id).toBe('ct-17.1');
-      expect(changes[1].id).toBe('ct-17.2');
+      expect(changes[0].id).toBe('cn-17.1');
+      expect(changes[1].id).toBe('cn-17.2');
       expect(changes[0].metadata?.author).toBe('@alice');
       expect(changes[1].metadata?.author).toBe('@alice');
     });
 
     it('works when inline markup has no matching footnote definition', () => {
-      const text = '{++orphan++}[^ct-99]';
+      const text = '{++orphan++}[^cn-99]';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
-      expect(changes[0].id).toBe('ct-99');
+      expect(changes[0].id).toBe('cn-99');
       expect(changes[0].status).toBe(ChangeStatus.Proposed);
       // No metadata merged — should be undefined or only have pre-existing metadata
     });
 
     it('ignores orphan footnote definitions with no matching inline markup', () => {
       const text = [
-        '{++text++}[^ct-1]',
+        '{++text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | pending',
-        '[^ct-999]: @ghost | 2026-02-10 | ins | pending',
+        '[^cn-1]: @alice | 2026-02-10 | ins | pending',
+        '[^cn-999]: @ghost | 2026-02-10 | ins | pending',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
-      expect(changes[0].id).toBe('ct-1');
+      expect(changes[0].id).toBe('cn-1');
       expect(changes[0].metadata?.author).toBe('@alice');
     });
 
     it('synthesizes ChangeNodes from settled footnote refs (post-Layer-1 settlement)', () => {
-      // After Layer 1 settlement: inline CriticMarkup removed, [^ct-N] refs and footnotes remain
+      // After Layer 1 settlement: inline CriticMarkup removed, [^cn-N] refs and footnotes remain
       const text = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'The API uses GraphQL[^ct-1] for the public interface.',
-        'We added rate limiting[^ct-2] to all endpoints.',
+        '<!-- changedown.com/v1: tracked -->',
+        'The API uses GraphQL[^cn-1] for the public interface.',
+        'We added rate limiting[^cn-2] to all endpoints.',
         '',
-        '[^ct-1]: @ai:claude | 2026-02-25 | sub | accepted',
+        '[^cn-1]: @ai:claude | 2026-02-25 | sub | accepted',
         '    @ai:claude 2026-02-25: Changed from REST to GraphQL',
-        '[^ct-2]: @ai:claude | 2026-02-25 | ins | accepted',
+        '[^cn-2]: @ai:claude | 2026-02-25 | ins | accepted',
         '    @ai:claude 2026-02-25: Added rate limiting',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(2);
 
-      // ct-1: settled substitution
-      expect(changes[0].id).toBe('ct-1');
+      // cn-1: settled substitution
+      expect(changes[0].id).toBe('cn-1');
       expect(changes[0].type).toBe(ChangeType.Substitution);
       expect(changes[0].status).toBe(ChangeStatus.Accepted);
       expect(changes[0].settled).toBe(true);
       expect(changes[0].level).toBe(2);
       expect(changes[0].metadata?.author).toBe('@ai:claude');
 
-      // ct-2: settled insertion
-      expect(changes[1].id).toBe('ct-2');
+      // cn-2: settled insertion
+      expect(changes[1].id).toBe('cn-2');
       expect(changes[1].type).toBe(ChangeType.Insertion);
       expect(changes[1].status).toBe(ChangeStatus.Accepted);
       expect(changes[1].settled).toBe(true);
@@ -948,9 +948,9 @@ describe('CriticMarkupParser', () => {
     it('does not double-count changes that have both inline markup and footnote refs', () => {
       // Normal case: inline CriticMarkup with footnote ref — should NOT create settled node
       const text = [
-        '{++added text++}[^ct-1]',
+        '{++added text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
@@ -960,34 +960,34 @@ describe('CriticMarkupParser', () => {
 
     it('handles mixed settled and active changes in the same file', () => {
       const text = [
-        'Settled change here[^ct-1] and {++active insertion++}[^ct-2].',
+        'Settled change here[^cn-1] and {++active insertion++}[^cn-2].',
         '',
-        '[^ct-1]: @ai:claude | 2026-02-25 | del | accepted',
-        '[^ct-2]: @ai:claude | 2026-02-25 | ins | proposed',
+        '[^cn-1]: @ai:claude | 2026-02-25 | del | accepted',
+        '[^cn-2]: @ai:claude | 2026-02-25 | ins | proposed',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(2);
 
-      // ct-1 is settled (no inline markup)
-      const settled = changes.find(c => c.id === 'ct-1');
+      // cn-1 is settled (no inline markup)
+      const settled = changes.find(c => c.id === 'cn-1');
       expect(settled).toBeTruthy();
       expect(settled!.settled).toBe(true);
       expect(settled!.type).toBe(ChangeType.Deletion);
 
-      // ct-2 is active (has inline markup)
-      const active = changes.find(c => c.id === 'ct-2');
+      // cn-2 is active (has inline markup)
+      const active = changes.find(c => c.id === 'cn-2');
       expect(active).toBeTruthy();
       expect(active!.settled).toBeUndefined();
       expect(active!.type).toBe(ChangeType.Insertion);
     });
 
     it('does not treat footnote definition lines as CriticMarkup', () => {
-      // The [^ct-N]: line should not be parsed as inline markup
+      // The [^cn-N]: line should not be parsed as inline markup
       const text = [
-        '{++text++}[^ct-1]',
+        '{++text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | pending',
+        '[^cn-1]: @alice | 2026-02-10 | ins | pending',
       ].join('\n');
       const doc = parser.parse(text);
       expect(doc.getChanges()).toHaveLength(1);
@@ -995,9 +995,9 @@ describe('CriticMarkupParser', () => {
 
     it('accepts 2-space indented field lines', () => {
       const text = [
-        '{++text++}[^ct-1]',
+        '{++text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
         '  reason: Two-space indent',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1006,9 +1006,9 @@ describe('CriticMarkupParser', () => {
 
     it('accepts tab-indented field lines', () => {
       const text = [
-        '{++text++}[^ct-1]',
+        '{++text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
         '\treason: Tab indent',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1017,9 +1017,9 @@ describe('CriticMarkupParser', () => {
 
     it('accepts 8-space indented field lines', () => {
       const text = [
-        '{++text++}[^ct-1]',
+        '{++text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
         '        reason: Deep indent',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1028,22 +1028,22 @@ describe('CriticMarkupParser', () => {
 
     it('parses footnote definition without author', () => {
       const text = [
-        '{++added text++}[^ct-1]',
+        '{++added text++}[^cn-1]',
         '',
-        '[^ct-1]: 2026-02-10 | ins | pending',
+        '[^cn-1]: 2026-02-10 | ins | pending',
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.metadata?.author).toBeUndefined();
       expect(c.metadata?.date).toBe('2026-02-10');
     });
 
     it('preserves inline comment and maps reason to discussion', () => {
       const text = [
-        '{==highlighted==}{>>inline note<<}[^ct-1]',
+        '{==highlighted==}{>>inline note<<}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | hig | proposed',
+        '[^cn-1]: @alice | 2026-02-10 | hig | proposed',
         '    reason: Important section',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1062,9 +1062,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses approved: lines into metadata.approvals', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    approved: @eve 2024-01-20',
         '    approved: @carol 2024-01-19 "Benchmarks look good"',
       ].join('\n');
@@ -1077,9 +1077,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses rejected: lines into metadata.rejections', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    rejected: @carol 2024-01-19 "Needs more benchmarking"',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1090,9 +1090,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses request-changes: lines into metadata.requestChanges', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    request-changes: @eve 2024-01-18 "Pick one protocol"',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1105,9 +1105,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses context: into metadata.context', () => {
       const text = [
-        '{~~REST~>GraphQL~~}[^ct-1]',
+        '{~~REST~>GraphQL~~}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | sub | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | sub | proposed',
         '    context: "The API should use {REST} for the public interface"',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1119,9 +1119,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses revisions: block into metadata.revisions', () => {
       const text = [
-        '{~~REST~>GraphQL~~}[^ct-1]',
+        '{~~REST~>GraphQL~~}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | sub | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | sub | proposed',
         '    revisions:',
         '      r1 @bob 2024-01-16: "OAuth 2.0"',
         '      r2 @bob 2024-01-18: "OAuth 2.0 with JWT tokens"',
@@ -1141,9 +1141,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses discussion comments with threading depth', () => {
       const text = [
-        '{~~REST~>GraphQL~~}[^ct-1]',
+        '{~~REST~>GraphQL~~}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | sub | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | sub | proposed',
         '    @carol 2024-01-17: Why robust? Simple was intentional.',
         '      @alice 2024-01-17: Simple undersells our capabilities.',
         '        @dave 2024-01-18: Agreed with Alice on this.',
@@ -1165,9 +1165,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses comment labels like [question] and [issue/blocking]', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    @bob 2024-01-16 [question]: What about latency requirements for gRPC?',
         '    @carol 2024-01-17 [issue/blocking]: 100/min feels low for production.',
       ].join('\n');
@@ -1184,9 +1184,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses multi-line discussion comments (continuation lines)', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    @carol 2024-01-17: This needs more thought. The current rate limit',
         '    is based on our staging environment, not production. We need to',
         '    model this against actual traffic patterns before committing.',
@@ -1202,9 +1202,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses resolved @author date', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    resolved @dave 2024-01-17',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1216,9 +1216,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses resolved @author date: reason', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    resolved @carol 2024-01-18: Addressed by r2',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1232,9 +1232,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses open -- reason', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    open -- awaiting load test results from @dave',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1246,9 +1246,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses bare open', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    open',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1262,9 +1262,9 @@ describe('CriticMarkupParser', () => {
 
     it('maps reason: to discussion comment by footnote author', () => {
       const text = [
-        '{--removed--}[^ct-1]',
+        '{--removed--}[^cn-1]',
         '',
-        '[^ct-1]: @bob | 2024-01-15 | del | proposed',
+        '[^cn-1]: @bob | 2024-01-15 | del | proposed',
         '    reason: This paragraph was redundant',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1282,9 +1282,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses the complete Level 2 spec example', () => {
       const text = [
-        'The API should use {~~REST~>GraphQL~~}[^ct-1] for the public interface.',
+        'The API should use {~~REST~>GraphQL~~}[^cn-1] for the public interface.',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | sub | accepted',
+        '[^cn-1]: @alice | 2024-01-15 | sub | accepted',
         '    approved: @eve 2024-01-20',
         '    context: "The API should use {REST} for the public interface"',
         '    @alice 2024-01-15: GraphQL reduces over-fetching for dashboard clients.',
@@ -1295,7 +1295,7 @@ describe('CriticMarkupParser', () => {
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
 
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.status).toBe(ChangeStatus.Accepted);
       expect(c.metadata?.author).toBe('@alice');
       expect(c.metadata?.date).toBe('2024-01-15');
@@ -1329,9 +1329,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses AI authors in discussion (e.g., @ai:claude-opus-4.6)', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @ai:claude-opus-4.6 | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @ai:claude-opus-4.6 | 2024-01-15 | ins | proposed',
         '    @ai:claude-opus-4.6 2024-01-15: I suggest this change for clarity.',
         '      @alice 2024-01-16: Agreed, good suggestion.',
       ].join('\n');
@@ -1349,9 +1349,9 @@ describe('CriticMarkupParser', () => {
 
     it('leaves discussion/approvals/resolution undefined for header-only footnote', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
@@ -1367,9 +1367,9 @@ describe('CriticMarkupParser', () => {
 
     it('tolerates blank lines within footnote body', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    approved: @eve 2024-01-20',
         '',
         '    @carol 2024-01-17: First comment.',
@@ -1392,9 +1392,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses approval without quoted reason', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    approved: @eve 2024-01-20',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1406,9 +1406,9 @@ describe('CriticMarkupParser', () => {
 
     it('handles discussion comment with empty text after colon', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    @bob 2024-01-16:',
       ].join('\n');
       const doc = parser.parse(text);
@@ -1421,9 +1421,9 @@ describe('CriticMarkupParser', () => {
 
     it('parses metadata and discussion interleaved correctly', () => {
       const text = [
-        '{++added++}[^ct-1]',
+        '{++added++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2024-01-15 | ins | proposed',
+        '[^cn-1]: @alice | 2024-01-15 | ins | proposed',
         '    context: "Some {context} here"',
         '    approved: @eve 2024-01-20',
         '    rejected: @frank 2024-01-19 "Not convinced"',
@@ -1460,24 +1460,24 @@ describe('CriticMarkupParser', () => {
   describe('move fields on ChangeNode', () => {
     it('ChangeNode supports moveRole and groupId fields', () => {
       const node: ChangeNode = {
-        id: 'ct-1.1',
+        id: 'cn-1.1',
         type: ChangeType.Deletion,
         status: ChangeStatus.Proposed,
         range: { start: 0, end: 10 },
         contentRange: { start: 3, end: 7 },
         originalText: 'moved',
         moveRole: 'from',
-        groupId: 'ct-1',
+        groupId: 'cn-1',
         level: 0,
         anchored: false,
       };
       expect(node.moveRole).toBe('from');
-      expect(node.groupId).toBe('ct-1');
+      expect(node.groupId).toBe('cn-1');
     });
 
     it('ChangeNode moveRole and groupId are optional (backward compat)', () => {
       const node: ChangeNode = {
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Insertion,
         status: ChangeStatus.Proposed,
         range: { start: 0, end: 10 },
@@ -1495,30 +1495,30 @@ describe('CriticMarkupParser', () => {
   describe('move resolution', () => {
     it('sets moveRole and groupId on move group members', () => {
       const text = [
-        '{--moved text--}[^ct-5.1] and {++moved text++}[^ct-5.2]',
+        '{--moved text--}[^cn-5.1] and {++moved text++}[^cn-5.2]',
         '',
-        '[^ct-5]: @alice | 2026-02-10 | move | proposed',
-        '[^ct-5.1]: @alice | 2026-02-10 | del | proposed',
-        '[^ct-5.2]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-5]: @alice | 2026-02-10 | move | proposed',
+        '[^cn-5.1]: @alice | 2026-02-10 | del | proposed',
+        '[^cn-5.2]: @alice | 2026-02-10 | ins | proposed',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(2);
 
-      const del = changes.find(c => c.id === 'ct-5.1')!;
-      expect(del.groupId).toBe('ct-5');
+      const del = changes.find(c => c.id === 'cn-5.1')!;
+      expect(del.groupId).toBe('cn-5');
       expect(del.moveRole).toBe('from');
 
-      const ins = changes.find(c => c.id === 'ct-5.2')!;
-      expect(ins.groupId).toBe('ct-5');
+      const ins = changes.find(c => c.id === 'cn-5.2')!;
+      expect(ins.groupId).toBe('cn-5');
       expect(ins.moveRole).toBe('to');
     });
 
     it('does not set moveRole/groupId on non-move changes', () => {
       const text = [
-        '{++added text++}[^ct-1]',
+        '{++added text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
@@ -1528,33 +1528,33 @@ describe('CriticMarkupParser', () => {
 
     it('handles multiple move groups independently', () => {
       const text = [
-        '{--first--}[^ct-3.1] {++first++}[^ct-3.2] {--second--}[^ct-4.1] {++second++}[^ct-4.2]',
+        '{--first--}[^cn-3.1] {++first++}[^cn-3.2] {--second--}[^cn-4.1] {++second++}[^cn-4.2]',
         '',
-        '[^ct-3]: @alice | 2026-02-10 | move | proposed',
-        '[^ct-3.1]: @alice | 2026-02-10 | del | proposed',
-        '[^ct-3.2]: @alice | 2026-02-10 | ins | proposed',
-        '[^ct-4]: @bob | 2026-02-10 | move | proposed',
-        '[^ct-4.1]: @bob | 2026-02-10 | del | proposed',
-        '[^ct-4.2]: @bob | 2026-02-10 | ins | proposed',
+        '[^cn-3]: @alice | 2026-02-10 | move | proposed',
+        '[^cn-3.1]: @alice | 2026-02-10 | del | proposed',
+        '[^cn-3.2]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-4]: @bob | 2026-02-10 | move | proposed',
+        '[^cn-4.1]: @bob | 2026-02-10 | del | proposed',
+        '[^cn-4.2]: @bob | 2026-02-10 | ins | proposed',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
 
-      const g3del = changes.find(c => c.id === 'ct-3.1')!;
-      expect(g3del.groupId).toBe('ct-3');
+      const g3del = changes.find(c => c.id === 'cn-3.1')!;
+      expect(g3del.groupId).toBe('cn-3');
       expect(g3del.moveRole).toBe('from');
 
-      const g4ins = changes.find(c => c.id === 'ct-4.2')!;
-      expect(g4ins.groupId).toBe('ct-4');
+      const g4ins = changes.find(c => c.id === 'cn-4.2')!;
+      expect(g4ins.groupId).toBe('cn-4');
       expect(g4ins.moveRole).toBe('to');
     });
 
     it('handles orphan move parent (no matching children)', () => {
       const text = [
-        '{++normal text++}[^ct-1]',
+        '{++normal text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | proposed',
-        '[^ct-99]: @alice | 2026-02-10 | move | proposed',
+        '[^cn-1]: @alice | 2026-02-10 | ins | proposed',
+        '[^cn-99]: @alice | 2026-02-10 | move | proposed',
       ].join('\n');
       const doc = parser.parse(text);
       const c = doc.getChanges()[0];
@@ -1581,7 +1581,7 @@ describe('CriticMarkupParser', () => {
       expect(changes[0].contentRange.start).toBe(0);
       expect(changes[0].contentRange.end).toBe(5);
       expect(changes[0].level).toBe(1);
-      expect(changes[0].id).toBe('ct-pending-0');
+      expect(changes[0].id).toBe('cn-pending-0');
     });
 
     it('uses scId when provided', () => {
@@ -1589,11 +1589,11 @@ describe('CriticMarkupParser', () => {
         range: { start: 10, end: 20 },
         text: 'inserted',
         type: 'insertion',
-        scId: 'ct-17',
+        scId: 'cn-17',
       });
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
-      expect(changes[0].id).toBe('ct-17');
+      expect(changes[0].id).toBe('cn-17');
     });
 
     it('changeAtOffset finds overlay change', () => {
@@ -1676,7 +1676,7 @@ describe('CriticMarkupParser', () => {
     });
 
     it('distinguishes Level 2 (footnote ref)', () => {
-      const text = '{~~REST~>GraphQL~~}[^ct-1]\n\n[^ct-1]: @alice | 2026-02-13 | sub | proposed';
+      const text = '{~~REST~>GraphQL~~}[^cn-1]\n\n[^cn-1]: @alice | 2026-02-13 | sub | proposed';
       const doc = parser.parse(text);
       const change = doc.getChanges()[0];
       expect(change.level).toBe(2);
@@ -1911,18 +1911,18 @@ describe('CriticMarkupParser', () => {
 
     it('footnote definitions NOT inside code blocks still parse correctly', () => {
       const text = [
-        '{++added text++}[^ct-1]',
+        '{++added text++}[^cn-1]',
         '',
         '```',
         '{++not a change++}',
         '```',
         '',
-        '[^ct-1]: @alice | 2026-02-10 | ins | pending',
+        '[^cn-1]: @alice | 2026-02-10 | ins | pending',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
-      expect(changes[0].id).toBe('ct-1');
+      expect(changes[0].id).toBe('cn-1');
       expect(changes[0].metadata?.author).toBe('@alice');
     });
 
@@ -1983,75 +1983,75 @@ describe('CriticMarkupParser', () => {
   // ─── Settled ref detection (post-Layer-1 settlement) ────────────────
 
   describe('settled ref detection', () => {
-    it('synthesizes a ChangeNode from a standalone [^ct-N] ref with footnote', () => {
+    it('synthesizes a ChangeNode from a standalone [^cn-N] ref with footnote', () => {
       const text = [
-        'The API uses REST[^ct-1] for all endpoints.',
+        'The API uses REST[^cn-1] for all endpoints.',
         '',
-        '[^ct-1]: @ai:claude-opus-4.6 | 2026-02-20 | sub | accepted',
+        '[^cn-1]: @ai:claude-opus-4.6 | 2026-02-20 | sub | accepted',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.type).toBe(ChangeType.Substitution);
       expect(c.status).toBe(ChangeStatus.Accepted);
       expect(c.settled).toBe(true);
       expect(c.level).toBe(2);
       expect(c.metadata?.author).toBe('@ai:claude-opus-4.6');
       expect(c.metadata?.status).toBe('accepted');
-      // Range covers exactly the [^ct-1] ref
-      const ref = '[^ct-1]';
+      // Range covers exactly the [^cn-1] ref
+      const ref = '[^cn-1]';
       expect(c.range.end - c.range.start).toBe(ref.length);
-      // contentRange covers the [^ct-N] ref (same as range for settled refs)
+      // contentRange covers the [^cn-N] ref (same as range for settled refs)
       expect(c.contentRange.start).toBe(c.range.start);
       expect(c.contentRange.end).toBe(c.range.end);
     });
 
-    it('does not synthesize when [^ct-N] is attached to CriticMarkup', () => {
+    it('does not synthesize when [^cn-N] is attached to CriticMarkup', () => {
       const text = [
-        '{++new text++}[^ct-1]',
+        '{++new text++}[^cn-1]',
         '',
-        '[^ct-1]: @alice | 2026-02-20 | ins | proposed',
+        '[^cn-1]: @alice | 2026-02-20 | ins | proposed',
       ].join('\n');
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.type).toBe(ChangeType.Insertion);
       expect(c.settled).toBeUndefined(); // NOT a settled ref
     });
 
-    it('ignores standalone [^ct-N] refs with no matching footnote definition', () => {
-      const text = 'Some text[^ct-99] with an orphan ref.';
+    it('ignores standalone [^cn-N] refs with no matching footnote definition', () => {
+      const text = 'Some text[^cn-99] with an orphan ref.';
       const doc = parser.parse(text);
       const changes = doc.getChanges();
       expect(changes).toHaveLength(0);
     });
   });
 
-  // ─── Unified ct-N IDs ──────────────────────────────────────────────
+  // ─── Unified cn-N IDs ──────────────────────────────────────────────
 
   describe('unified change IDs', () => {
-    it('assigns ct-N IDs to Level 0 changes', () => {
+    it('assigns cn-N IDs to Level 0 changes', () => {
       const parser2 = new CriticMarkupParser();
       const doc = parser2.parse('{++added++} and {--removed--}');
       const changes = doc.getChanges();
-      expect(changes[0].id).toBe('ct-1');
-      expect(changes[1].id).toBe('ct-2');
+      expect(changes[0].id).toBe('cn-1');
+      expect(changes[1].id).toBe('cn-2');
       expect(changes[0].anchored).toBe(false);
       expect(changes[1].anchored).toBe(false);
     });
 
-    it('assigns ct-N IDs starting after max existing ct-N in file', () => {
+    it('assigns cn-N IDs starting after max existing cn-N in file', () => {
       const parser2 = new CriticMarkupParser();
-      const text = '{++first++}[^ct-5]\n\n[^ct-5]: @alice | 2026-03-04 | ins | proposed\n\n{++second++}';
+      const text = '{++first++}[^cn-5]\n\n[^cn-5]: @alice | 2026-03-04 | ins | proposed\n\n{++second++}';
       const doc = parser2.parse(text);
       const changes = doc.getChanges();
-      const anchored = changes.find(c => c.id === 'ct-5');
-      const unanchored = changes.find(c => c.id === 'ct-6');
-      expect(anchored, 'should find ct-5').toBeTruthy();
+      const anchored = changes.find(c => c.id === 'cn-5');
+      const unanchored = changes.find(c => c.id === 'cn-6');
+      expect(anchored, 'should find cn-5').toBeTruthy();
       expect(unanchored).toBeTruthy();
       expect(anchored!.anchored).toBe(true);
       expect(unanchored!.anchored).toBe(false);
@@ -2061,7 +2061,7 @@ describe('CriticMarkupParser', () => {
       const parser2 = new CriticMarkupParser();
       const doc = parser2.parse('{++a++} {--b--} {~~c~>d~~}');
       for (const c of doc.getChanges()) {
-        expect(c.id.startsWith('ct-')).toBeTruthy();
+        expect(c.id.startsWith('cn-')).toBeTruthy();
       }
     });
   });

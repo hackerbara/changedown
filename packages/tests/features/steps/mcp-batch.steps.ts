@@ -6,7 +6,7 @@
  */
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 
 const MULTI_PARA = `# Specification
 
@@ -20,7 +20,7 @@ All outputs pass through gamma filtering.`;
 
 Given(
   'a tracked file {string} with several paragraphs',
-  async function (this: ChangeTracksWorld, name: string) {
+  async function (this: ChangeDownWorld, name: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = await this.ctx.createFile(name, MULTI_PARA);
     this.files.set(name, filePath);
@@ -33,7 +33,7 @@ Given(
 
 When(
   'I call propose_change with a changes array of {int} items',
-  async function (this: ChangeTracksWorld, count: number) {
+  async function (this: ChangeDownWorld, count: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -57,7 +57,7 @@ When(
 
 When(
   'I call propose_change with changes array where each has reasoning',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -77,7 +77,7 @@ When(
 
 When(
   'I call propose_change with top-level reasoning and changes array',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -97,7 +97,7 @@ When(
 
 When(
   'I call propose_change with a changes array where item 1 shifts line numbers',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     // Use content where the first change adds lines
     const content = `# Doc\n\nFirst paragraph here.\n\nSecond paragraph here.\n\nThird paragraph here.`;
@@ -121,16 +121,16 @@ When(
 
 When(
   'I call review_changes approving all three',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
       this.lastResult = await this.ctx.review(filePath, {
         reviews: [
-          { change_id: 'ct-1.1', decision: 'approve', reason: 'looks good' },
-          { change_id: 'ct-1.2', decision: 'approve', reason: 'looks good' },
-          { change_id: 'ct-1.3', decision: 'approve', reason: 'looks good' },
+          { change_id: 'cn-1.1', decision: 'approve', reason: 'looks good' },
+          { change_id: 'cn-1.2', decision: 'approve', reason: 'looks good' },
+          { change_id: 'cn-1.3', decision: 'approve', reason: 'looks good' },
         ],
       });
     } catch (err) {
@@ -140,17 +140,17 @@ When(
 );
 
 When(
-  'I approve ct-1.1 and reject ct-1.2 and request_changes on ct-1.3',
-  async function (this: ChangeTracksWorld) {
+  'I approve cn-1.1 and reject cn-1.2 and request_changes on cn-1.3',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
       this.lastResult = await this.ctx.review(filePath, {
         reviews: [
-          { change_id: 'ct-1.1', decision: 'approve', reason: 'alpha change is correct' },
-          { change_id: 'ct-1.2', decision: 'reject', reason: 'beta should stay lowercase' },
-          { change_id: 'ct-1.3', decision: 'request_changes', reason: 'gamma needs different casing' },
+          { change_id: 'cn-1.1', decision: 'approve', reason: 'alpha change is correct' },
+          { change_id: 'cn-1.2', decision: 'reject', reason: 'beta should stay lowercase' },
+          { change_id: 'cn-1.3', decision: 'request_changes', reason: 'gamma needs different casing' },
         ],
       });
     } catch (err) {
@@ -161,7 +161,7 @@ When(
 
 When(
   'I call propose_change with a changes array in classic mode \\(no hashlines)',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     // Use the large-doc.md created by "Given a tracked file with 50+ lines"
     const filePath = this.files.get('large-doc.md') ?? this.files.values().next().value;
@@ -195,8 +195,8 @@ When(
 // =============================================================================
 
 Given(
-  'a batch of {int} changes \\(ct-1.1, ct-1.2, ct-1.3)',
-  async function (this: ChangeTracksWorld, _count: number) {
+  'a batch of {int} changes \\(cn-1.1, cn-1.2, cn-1.3)',
+  async function (this: ChangeDownWorld, _count: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value ?? await this.ctx.createFile('spec.md', MULTI_PARA);
     if (!this.files.has('spec.md')) this.files.set('spec.md', filePath);
@@ -214,7 +214,7 @@ Given(
 
 Given(
   'a batch of {int} changes',
-  async function (this: ChangeTracksWorld, _count: number) {
+  async function (this: ChangeDownWorld, _count: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value ?? await this.ctx.createFile('spec.md', MULTI_PARA);
     if (!this.files.has('spec.md')) this.files.set('spec.md', filePath);
@@ -236,7 +236,7 @@ Given(
 
 Then(
   'the response contains change_ids {string}, {string}, {string}',
-  function (this: ChangeTracksWorld, id1: string, id2: string, id3: string) {
+  function (this: ChangeDownWorld, id1: string, id2: string, id3: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
     const changes = data.applied as Array<{ change_id: string }>;
@@ -250,7 +250,7 @@ Then(
 
 Then(
   'all three footnotes share the group prefix {string}',
-  async function (this: ChangeTracksWorld, prefix: string) {
+  async function (this: ChangeDownWorld, prefix: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -263,7 +263,7 @@ Then(
 
 Then(
   'each footnote contains its respective reasoning',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -274,19 +274,19 @@ Then(
 
 Then(
   'each footnote contains the shared reasoning',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    // Shared reasoning goes into the group footnote [^ct-1]
-    const groupSection = extractFootnoteSection(disk, 'ct-1');
+    // Shared reasoning goes into the group footnote [^cn-1]
+    const groupSection = extractFootnoteSection(disk, 'cn-1');
     assert.ok(groupSection.includes('capitalize for emphasis'), 'Expected shared reasoning in group footnote');
   },
 );
 
 Then(
   'item 2 and 3 are still applied correctly \\(auto-adjusted)',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
     const changes = data.applied as Array<{ change_id: string }>;
@@ -303,24 +303,24 @@ Then(
 
 Then(
   'all three footnotes show {string}',
-  async function (this: ChangeTracksWorld, status: string) {
+  async function (this: ChangeDownWorld, status: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-1.1', status);
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-1.2', status);
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-1.3', status);
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-1.1', status);
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-1.2', status);
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-1.3', status);
   },
 );
 
 Then(
   'each footnote reflects its individual decision',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-1.1', 'accepted');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-1.2', 'rejected');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-1.1', 'accepted');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-1.2', 'rejected');
     // request_changes does not change status from proposed
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-1.3', 'proposed');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-1.3', 'proposed');
   },
 );
 

@@ -2,7 +2,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { optionalStrArg } from '../args.js';
 import { ConfigResolver } from '../config-resolver.js';
-import { countFootnoteHeadersWithStatus } from '@changetracks/core';
+import { countFootnoteHeadersWithStatus } from '@changedown/core';
 import { resolveTrackingStatus } from '../scope.js';
 import { SessionState } from '../state.js';
 import { rerecordState } from '../state-utils.js';
@@ -16,7 +16,7 @@ import picomatch from 'picomatch';
 export const getTrackingStatusTool = {
   name: 'get_tracking_status',
   description:
-    'Check whether a file is tracked by ChangeTracks and why. ' +
+    'Check whether a file is tracked by ChangeDown and why. ' +
     'Returns tracking status, which layer determined it (file header, project config, or global default), ' +
     'and whether auto-header insertion is enabled. ' +
     'If file is omitted, returns a project-wide config summary.',

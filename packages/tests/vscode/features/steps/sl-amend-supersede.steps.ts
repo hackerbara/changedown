@@ -9,7 +9,7 @@
 
 import { When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import {
     getDocumentText,
 } from '../../journeys/playwrightHarness';
@@ -24,7 +24,7 @@ import {
 Then(
     'an error message appears saying {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, substring: string) {
+    async function (this: ChangeDownWorld, substring: string) {
         assert.ok(this.page, 'Page not available');
 
         const deadline = Date.now() + 8000;
@@ -73,7 +73,7 @@ Then(
 Then(
     'an InputBox appears pre-populated with {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, expectedValue: string) {
+    async function (this: ChangeDownWorld, expectedValue: string) {
         assert.ok(this.page, 'Page not available');
 
         await this.page.waitForSelector(
@@ -101,7 +101,7 @@ Then(
 When(
     'I clear and type {string} in the InputBox',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, text: string) {
+    async function (this: ChangeDownWorld, text: string) {
         assert.ok(this.page, 'Page not available');
 
         const input = await this.page.waitForSelector(
@@ -129,7 +129,7 @@ When(
 Then(
     'a second InputBox appears for reason',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
 
         await this.page.waitForSelector(
@@ -149,7 +149,7 @@ Then(
 Then(
     'an InputBox appears for new text',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
 
         await this.page.waitForSelector(
@@ -168,7 +168,7 @@ Then(
 Then(
     'the live document contains {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, expected: string) {
+    async function (this: ChangeDownWorld, expected: string) {
         assert.ok(this.page, 'Page not available');
 
         const deadline = Date.now() + 8000;
@@ -202,7 +202,7 @@ Then(
 Then(
     'a new change exists with text {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, expectedText: string) {
+    async function (this: ChangeDownWorld, expectedText: string) {
         assert.ok(this.page, 'Page not available');
 
         const deadline = Date.now() + 8000;

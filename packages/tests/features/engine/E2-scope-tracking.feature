@@ -4,7 +4,7 @@ Feature: E2 - Scope Tracking
   Scenario: File with tracking header is tracked
     Given a tracked markdown file "doc.md" with content:
       """
-      <!-- ctrcks.com/v1: tracked -->
+      <!-- changedown.com/v1: tracked -->
       # Hello
       Some content.
       """
@@ -16,7 +16,7 @@ Feature: E2 - Scope Tracking
   Scenario: File with untracked header is untracked
     Given a tracked markdown file "doc.md" with content:
       """
-      <!-- ctrcks.com/v1: untracked -->
+      <!-- changedown.com/v1: untracked -->
       # Hello
       Some content.
       """
@@ -49,7 +49,7 @@ Feature: E2 - Scope Tracking
     Given the config has tracking.default = "untracked"
     And a tracked markdown file "doc.md" with content:
       """
-      <!-- ctrcks.com/v1: tracked -->
+      <!-- changedown.com/v1: tracked -->
       # Hello
       """
     When I resolve tracking status for "doc.md"
@@ -71,7 +71,7 @@ Feature: E2 - Scope Tracking
       ---
       title: My Doc
       ---
-      <!-- ctrcks.com/v1: tracked -->
+      <!-- changedown.com/v1: tracked -->
       # Content
       """
     When I resolve tracking status for "doc.md"

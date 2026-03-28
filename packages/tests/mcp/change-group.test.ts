@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { SessionState } from '@changetracks/mcp/internals';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { handleBeginChangeGroup } from '@changetracks/mcp/internals';
-import { handleEndChangeGroup } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { handleBeginChangeGroup } from '@changedown/mcp/internals';
+import { handleEndChangeGroup } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { createTestResolver } from './test-resolver.js';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const TS_RE = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z';
@@ -22,36 +22,36 @@ describe('SessionState group tracking', () => {
     state = new SessionState();
   });
 
-  it('beginGroup returns a group ID in ct-N format', () => {
+  it('beginGroup returns a group ID in cn-N format', () => {
     const groupId = state.beginGroup('Refactor introduction paragraph');
-    expect(groupId).toBe('ct-1');
+    expect(groupId).toBe('cn-1');
   });
 
   it('beginGroup is independent of per-file counters (file-local numbering)', () => {
-    // Simulate prior usage: file A has used ct-1..ct-5
-    const textA = 'File A [^ct-5] content.';
-    state.getNextId('/tmp/a.md', textA); // returns ct-6
-    // File B has used ct-1..ct-2
-    const textB = 'File B [^ct-2] content.';
-    state.getNextId('/tmp/b.md', textB); // returns ct-3
+    // Simulate prior usage: file A has used cn-1..cn-5
+    const textA = 'File A [^cn-5] content.';
+    state.getNextId('/tmp/a.md', textA); // returns cn-6
+    // File B has used cn-1..cn-2
+    const textB = 'File B [^cn-2] content.';
+    state.getNextId('/tmp/b.md', textB); // returns cn-3
 
-    // beginGroup starts from ct-1 (independent of other files)
+    // beginGroup starts from cn-1 (independent of other files)
     const groupId = state.beginGroup('Cross-file refactor');
-    expect(groupId).toBe('ct-1');
+    expect(groupId).toBe('cn-1');
   });
 
   it('getNextId returns dotted IDs during active group', () => {
     const groupId = state.beginGroup('Test group');
-    expect(groupId).toBe('ct-1');
+    expect(groupId).toBe('cn-1');
 
     const id1 = state.getNextId('/tmp/file.md', 'plain text');
-    expect(id1).toBe('ct-1.1');
+    expect(id1).toBe('cn-1.1');
 
     const id2 = state.getNextId('/tmp/file.md', 'plain text');
-    expect(id2).toBe('ct-1.2');
+    expect(id2).toBe('cn-1.2');
 
     const id3 = state.getNextId('/tmp/other.md', 'other text');
-    expect(id3).toBe('ct-1.3');
+    expect(id3).toBe('cn-1.3');
   });
 
   it('endGroup returns group info with children and files', () => {
@@ -61,8 +61,8 @@ describe('SessionState group tracking', () => {
     state.getNextId('/tmp/a.md', 'text');
 
     const result = state.endGroup();
-    expect(result.id).toBe('ct-1');
-    expect(result.childIds).toEqual(['ct-1.1', 'ct-1.2', 'ct-1.3']);
+    expect(result.id).toBe('cn-1');
+    expect(result.childIds).toEqual(['cn-1.1', 'cn-1.2', 'cn-1.3']);
     expect(result.files.some((f: string) => f.endsWith('/a.md'))).toBe(true);
     expect(result.files.some((f: string) => f.endsWith('/b.md'))).toBe(true);
     expect(result.files).toHaveLength(2);
@@ -90,63 +90,63 @@ describe('SessionState group tracking', () => {
     state.beginGroup('My description', 'My reasoning');
     const group = state.getActiveGroup();
     expect(group).not.toBeNull();
-    expect(group!.id).toBe('ct-1');
+    expect(group!.id).toBe('cn-1');
     expect(group!.description).toBe('My description');
     expect(group!.reasoning).toBe('My reasoning');
   });
 
   it('after endGroup, getNextId returns normal IDs (not dotted)', () => {
     state.beginGroup('Temporary group');
-    state.getNextId('/tmp/file.md', 'text'); // ct-1.1
+    state.getNextId('/tmp/file.md', 'text'); // cn-1.1
     state.endGroup();
 
-    // Next ID should be ct-2 (the group consumed ct-1)
+    // Next ID should be cn-2 (the group consumed cn-1)
     const nextId = state.getNextId('/tmp/file.md', 'text');
-    expect(nextId).toBe('ct-2');
+    expect(nextId).toBe('cn-2');
   });
 
   it('after endGroup, a new group starts from 1 (file-local numbering)', () => {
     // File-local numbering means groups don't coordinate across files
     state.beginGroup('Group A');
-    expect(state.getActiveGroup()!.id).toBe('ct-1');
-    state.getNextId('/tmp/file.md', 'text'); // ct-1.1
+    expect(state.getActiveGroup()!.id).toBe('cn-1');
+    state.getNextId('/tmp/file.md', 'text'); // cn-1.1
     state.endGroup();
 
     // Next group also starts from 1 unless knownMaxId is provided
     state.beginGroup('Group B');
-    expect(state.getActiveGroup()!.id).toBe('ct-1');
+    expect(state.getActiveGroup()!.id).toBe('cn-1');
     state.endGroup();
 
     // To avoid collision, pass knownMaxId from the files you'll edit:
-    const fileText = 'Text [^ct-1] here.'; // File already has ct-1 from Group A
+    const fileText = 'Text [^cn-1] here.'; // File already has cn-1 from Group A
     const knownMax = 1; // Scanned from files to be edited
     const groupId = state.beginGroup('Group C', undefined, knownMax);
-    expect(groupId).toBe('ct-2'); // Starts after knownMax
+    expect(groupId).toBe('cn-2'); // Starts after knownMax
   });
 
   it('group IDs use knownMaxId to avoid collision with file IDs', () => {
-    // File has ct-10 already in text
-    const text = 'Text [^ct-10] and [^ct-3] here.';
+    // File has cn-10 already in text
+    const text = 'Text [^cn-10] and [^cn-3] here.';
 
     // Pass knownMaxId=10 (scanned from the file we're about to edit)
     const groupId = state.beginGroup('Group', undefined, 10);
-    expect(groupId).toBe('ct-11'); // knownMaxId + 1
+    expect(groupId).toBe('cn-11'); // knownMaxId + 1
 
     const childId = state.getNextId('/tmp/file.md', text);
-    expect(childId).toBe('ct-11.1');
+    expect(childId).toBe('cn-11.1');
   });
 
   it('per-file counter is updated to at least the group parent ID', () => {
     // Start a group
     state.beginGroup('Group');
     // Get a child ID for a fresh file
-    state.getNextId('/tmp/fresh.md', 'no ids here'); // ct-1.1
+    state.getNextId('/tmp/fresh.md', 'no ids here'); // cn-1.1
     state.endGroup();
 
     // Now, the file's counter should be at least 1 (the group ID)
-    // So next non-group ID for this file should be ct-2, not ct-1
+    // So next non-group ID for this file should be cn-2, not cn-1
     const nextId = state.getNextId('/tmp/fresh.md', 'no ids here');
-    expect(nextId).toBe('ct-2');
+    expect(nextId).toBe('cn-2');
   });
 });
 
@@ -155,11 +155,11 @@ describe('SessionState group tracking', () => {
 describe('handleBeginChangeGroup', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-begin-group-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-begin-group-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -202,7 +202,7 @@ describe('handleBeginChangeGroup', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.group_id).toBe('ct-1');
+    expect(data.group_id).toBe('cn-1');
   });
 
   it('returns group_id with reasoning', async () => {
@@ -214,17 +214,17 @@ describe('handleBeginChangeGroup', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.group_id).toBe('ct-1');
+    expect(data.group_id).toBe('cn-1');
   });
 
   it('scans existing files to avoid ID collisions', async () => {
-    // Create a file with existing ct-5 and ct-5.1 footnotes
+    // Create a file with existing cn-5 and cn-5.1 footnotes
     const filePath = path.join(tmpDir, 'existing.md');
     await fs.writeFile(filePath, [
-      'Some text {~~old~>new~~}[^ct-5.1]',
+      'Some text {~~old~>new~~}[^cn-5.1]',
       '',
-      '[^ct-5]: @author | 2026-01-01 | group | proposed',
-      '[^ct-5.1]: @author | 2026-01-01 | sub | proposed',
+      '[^cn-5]: @author | 2026-01-01 | group | proposed',
+      '[^cn-5.1]: @author | 2026-01-01 | sub | proposed',
     ].join('\n'));
 
     const result = await handleBeginChangeGroup(
@@ -235,14 +235,14 @@ describe('handleBeginChangeGroup', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    // Scans project files for max ID (ct-5) and starts after it
-    expect(data.group_id).toBe('ct-6');
+    // Scans project files for max ID (cn-5) and starts after it
+    expect(data.group_id).toBe('cn-6');
   });
 
   it('scans all tracked files to find max ID across project', async () => {
-    await fs.writeFile(path.join(tmpDir, 'a.md'), 'Text [^ct-3] here.');
-    await fs.writeFile(path.join(tmpDir, 'b.md'), 'Text [^ct-8] here.');
-    await fs.writeFile(path.join(tmpDir, 'c.md'), 'Text [^ct-2] here.');
+    await fs.writeFile(path.join(tmpDir, 'a.md'), 'Text [^cn-3] here.');
+    await fs.writeFile(path.join(tmpDir, 'b.md'), 'Text [^cn-8] here.');
+    await fs.writeFile(path.join(tmpDir, 'c.md'), 'Text [^cn-2] here.');
 
     const result = await handleBeginChangeGroup(
       { description: 'Cross-file group' },
@@ -251,14 +251,14 @@ describe('handleBeginChangeGroup', () => {
     );
 
     const data = JSON.parse(result.content[0].text);
-    // Scans all tracked files; max ID is ct-8 from b.md, so group starts at ct-9
-    expect(data.group_id).toBe('ct-9');
+    // Scans all tracked files; max ID is cn-8 from b.md, so group starts at cn-9
+    expect(data.group_id).toBe('cn-9');
   });
 
   it('scans only in-scope files (ignores out-of-scope extensions)', async () => {
     // Create files with existing IDs — notes.txt is NOT in scope (only **/*.md)
-    await fs.writeFile(path.join(tmpDir, 'notes.txt'), 'Text [^ct-100] here.');
-    await fs.writeFile(path.join(tmpDir, 'doc.md'), 'Text [^ct-3] here.');
+    await fs.writeFile(path.join(tmpDir, 'notes.txt'), 'Text [^cn-100] here.');
+    await fs.writeFile(path.join(tmpDir, 'doc.md'), 'Text [^cn-3] here.');
 
     const result = await handleBeginChangeGroup(
       { description: 'Scoped scanning' },
@@ -267,8 +267,8 @@ describe('handleBeginChangeGroup', () => {
     );
 
     const data = JSON.parse(result.content[0].text);
-    // Scans only .md files; doc.md has ct-3, so group starts at ct-4
-    expect(data.group_id).toBe('ct-4');
+    // Scans only .md files; doc.md has cn-3, so group starts at cn-4
+    expect(data.group_id).toBe('cn-4');
   });
 
   it('returns error when description is missing', async () => {
@@ -303,11 +303,11 @@ describe('handleBeginChangeGroup', () => {
 describe('handleEndChangeGroup', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-group-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-group-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -379,13 +379,13 @@ describe('handleEndChangeGroup', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.group_id).toBe('ct-1');
-    expect(data.children).toEqual(['ct-1.1']);
+    expect(data.group_id).toBe('cn-1');
+    expect(data.children).toEqual(['cn-1.1']);
     expect(data.files).toHaveLength(1);
 
     // Verify parent footnote was written to disk
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | group | proposed`);
+    expect(modified).toContain(`[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | group | proposed`);
     expect(modified).toMatch(new RegExp(`@ai:claude-opus-4.6 ${TS_RE}: Fix greeting`));
   });
 
@@ -434,7 +434,7 @@ describe('handleEndChangeGroup', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.group_id).toBe('ct-1');
+    expect(data.group_id).toBe('cn-1');
     expect(data.children).toEqual([]);
     expect(data.files).toEqual([]);
     // No parent footnote written (no files to write to)
@@ -466,10 +466,10 @@ describe('handleEndChangeGroup', () => {
 
     const modified = await fs.readFile(filePath, 'utf-8');
     // Parent footnote should use explicit author, not config default
-    expect(modified).toContain(`[^ct-1]: @ai:claude-sonnet-4.5 | ${TODAY} | group | proposed`);
+    expect(modified).toContain(`[^cn-1]: @ai:claude-sonnet-4.5 | ${TODAY} | group | proposed`);
     // The child footnote will still have the default author from propose_change
     const lines = modified.split('\n');
-    const parentFootnote = lines.find(l => l.startsWith('[^ct-1]:'));
+    const parentFootnote = lines.find(l => l.startsWith('[^cn-1]:'));
     expect(parentFootnote).toContain('@ai:claude-sonnet-4.5');
   });
 
@@ -499,7 +499,7 @@ describe('handleEndChangeGroup', () => {
 
     const modified = await fs.readFile(filePath, 'utf-8');
     // Should use config default
-    expect(modified).toContain(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | group | proposed`);
+    expect(modified).toContain(`[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | group | proposed`);
   });
 
   it('appends group footnote after existing footnote without corrupting summary (appendFootnote separator bug)', async () => {
@@ -507,9 +507,9 @@ describe('handleEndChangeGroup', () => {
     // Bug: new footnote summary was merged into last line of previous (e.g. "trialaks for plugin trial").
     const filePath = path.join(tmpDir, 'doc.md');
     const existingContent = [
-      'Some text {++added++}[^ct-5] here.',
+      'Some text {++added++}[^cn-5] here.',
       '',
-      '[^ct-5]: @alice | 2026-02-10 | ins | proposed',
+      '[^cn-5]: @alice | 2026-02-10 | ins | proposed',
       '    summary: Plugin trial',
     ].join('\n');
     await fs.writeFile(filePath, existingContent);
@@ -540,8 +540,8 @@ describe('handleEndChangeGroup', () => {
     const idx = modified.indexOf(lastLineOfFirst);
     expect(idx).not.toBe(-1);
     const afterFirstFootnote = modified.slice(idx + lastLineOfFirst.length);
-    // Must have blank line(s) then a footnote definition (ct-1.1 child or ct-1 group), not "aks" from "tweaks"
-    expect(afterFirstFootnote).toMatch(/^\s*\n+\s*\[\^ct-/);
+    // Must have blank line(s) then a footnote definition (cn-1.1 child or cn-1 group), not "aks" from "tweaks"
+    expect(afterFirstFootnote).toMatch(/^\s*\n+\s*\[\^cn-/);
     // New group footnote summary must be intact (not "trialaks for plugin trial").
     expect(modified).toContain('summary: Two table header tweaks for plugin trial');
     expect(modified).not.toContain('trialaks');
@@ -565,7 +565,7 @@ describe('handleEndChangeGroup', () => {
       state
     );
 
-    const requiredConfig: ChangeTracksConfig = {
+    const requiredConfig: ChangeDownConfig = {
       ...config,
       author: { default: 'ai:claude-opus-4.6', enforcement: 'required' },
     };
@@ -595,7 +595,7 @@ describe('handleEndChangeGroup', () => {
     );
     expect(retryResult.isError).toBeUndefined();
     const retryContent = await fs.readFile(filePath, 'utf-8');
-    expect(retryContent).toContain('[^ct-1]:');
+    expect(retryContent).toContain('[^cn-1]:');
   });
 
   it('enforcement=required with author succeeds', async () => {
@@ -614,7 +614,7 @@ describe('handleEndChangeGroup', () => {
       state
     );
 
-    const requiredConfig: ChangeTracksConfig = {
+    const requiredConfig: ChangeDownConfig = {
       ...config,
       author: { default: 'ai:claude-opus-4.6', enforcement: 'required' },
     };
@@ -629,7 +629,7 @@ describe('handleEndChangeGroup', () => {
     expect(result.isError).toBeUndefined();
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain(`[^ct-1]: @ai:claude-sonnet-4.5 | ${TODAY} | group | proposed`);
+    expect(modified).toContain(`[^cn-1]: @ai:claude-sonnet-4.5 | ${TODAY} | group | proposed`);
   });
 });
 
@@ -638,11 +638,11 @@ describe('handleEndChangeGroup', () => {
 describe('full change group integration', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-full-group-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-full-group-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -687,7 +687,7 @@ describe('full change group integration', () => {
       state
     );
     const beginData = JSON.parse(beginResult.content[0].text);
-    expect(beginData.group_id).toBe('ct-1');
+    expect(beginData.group_id).toBe('cn-1');
 
     // First change: substitution
     const change1 = await handleProposeChange(
@@ -696,7 +696,7 @@ describe('full change group integration', () => {
       state
     );
     const data1 = JSON.parse(change1.content[0].text);
-    expect(data1.change_id).toBe('ct-1.1');
+    expect(data1.change_id).toBe('cn-1.1');
 
     // Second change: substitution
     const change2 = await handleProposeChange(
@@ -705,7 +705,7 @@ describe('full change group integration', () => {
       state
     );
     const data2 = JSON.parse(change2.content[0].text);
-    expect(data2.change_id).toBe('ct-1.2');
+    expect(data2.change_id).toBe('cn-1.2');
 
     // End group
     const endResult = await handleEndChangeGroup(
@@ -714,22 +714,22 @@ describe('full change group integration', () => {
       state
     );
     const endData = JSON.parse(endResult.content[0].text);
-    expect(endData.group_id).toBe('ct-1');
-    expect(endData.children).toEqual(['ct-1.1', 'ct-1.2']);
+    expect(endData.group_id).toBe('cn-1');
+    expect(endData.children).toEqual(['cn-1.1', 'cn-1.2']);
 
     // Verify file content
     const modified = await fs.readFile(filePath, 'utf-8');
 
     // Inline markup uses dotted IDs
-    expect(modified).toContain('{~~quick brown~>slow red~~}[^ct-1.1]');
-    expect(modified).toContain('{~~lazy~>energetic~~}[^ct-1.2]');
+    expect(modified).toContain('{~~quick brown~>slow red~~}[^cn-1.1]');
+    expect(modified).toContain('{~~lazy~>energetic~~}[^cn-1.2]');
 
     // Child footnotes use dotted IDs
-    expect(modified).toContain(`[^ct-1.1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`);
-    expect(modified).toContain(`[^ct-1.2]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`);
+    expect(modified).toContain(`[^cn-1.1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`);
+    expect(modified).toContain(`[^cn-1.2]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`);
 
     // Parent footnote exists
-    expect(modified).toContain(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | group | proposed`);
+    expect(modified).toContain(`[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | group | proposed`);
     expect(modified).toMatch(new RegExp(`@ai:claude-opus-4.6 ${TS_RE}: Improve animal descriptions`));
     expect(modified).toContain('summary: Changed 2 animal adjectives');
   });
@@ -761,9 +761,9 @@ describe('full change group integration', () => {
       state
     );
     const data = JSON.parse(change.content[0].text);
-    // Group consumed ct-1 (parent), child was ct-1.1.
-    // After group, next normal ID should be ct-2
-    expect(data.change_id).toBe('ct-2');
+    // Group consumed cn-1 (parent), child was cn-1.1.
+    // After group, next normal ID should be cn-2
+    expect(data.change_id).toBe('cn-2');
   });
 
   it('multi-file group: changes across files share the same group parent', async () => {
@@ -783,14 +783,14 @@ describe('full change group integration', () => {
       resolver,
       state
     );
-    expect(JSON.parse(changeA.content[0].text).change_id).toBe('ct-1.1');
+    expect(JSON.parse(changeA.content[0].text).change_id).toBe('cn-1.1');
 
     const changeB = await handleProposeChange(
       { file: fileB, old_text: 'Content', new_text: 'Updated content', reason: 'test' },
       resolver,
       state
     );
-    expect(JSON.parse(changeB.content[0].text).change_id).toBe('ct-1.2');
+    expect(JSON.parse(changeB.content[0].text).change_id).toBe('cn-1.2');
 
     const endResult = await handleEndChangeGroup({}, resolver, state);
     const endData = JSON.parse(endResult.content[0].text);
@@ -802,6 +802,6 @@ describe('full change group integration', () => {
 
     // Parent footnote should be written to the first file in the group
     const modifiedA = await fs.readFile(fileA, 'utf-8');
-    expect(modifiedA).toContain(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | group | proposed`);
+    expect(modifiedA).toContain(`[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | group | proposed`);
   });
 });

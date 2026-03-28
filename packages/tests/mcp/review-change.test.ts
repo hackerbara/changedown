@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleReviewChange } from '@changetracks/mcp/internals';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleReviewChange } from '@changedown/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -15,11 +15,11 @@ const TS_RE = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z';
 describe('handleReviewChange', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-review-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-review-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -74,21 +74,21 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Looks good' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Looks good' },
       resolver,
       state
     );
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.decision).toBe('approve');
     expect(data.status_updated).toBe(true);
 
     const modified = await fs.readFile(filePath, 'utf-8');
 
     // Header status changed from proposed to accepted
-    expect(modified).toContain(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | accepted`);
+    expect(modified).toContain(`[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | accepted`);
     expect(modified).not.toContain('| proposed');
 
     // Approved line added with correct format
@@ -101,21 +101,21 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'reject', reason: 'Not needed' },
+      { file: filePath, change_id: 'cn-1', decision: 'reject', reason: 'Not needed' },
       resolver,
       state
     );
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.decision).toBe('reject');
     expect(data.status_updated).toBe(true);
 
     const modified = await fs.readFile(filePath, 'utf-8');
 
     // Header status changed from proposed to rejected
-    expect(modified).toContain(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | rejected`);
+    expect(modified).toContain(`[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | rejected`);
     expect(modified).not.toContain('| proposed');
 
     // Rejected line added
@@ -128,14 +128,14 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'request_changes', reason: 'Need more context' },
+      { file: filePath, change_id: 'cn-1', decision: 'request_changes', reason: 'Need more context' },
       resolver,
       state
     );
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.decision).toBe('request_changes');
     expect(data.status_updated).toBe(false);
 
@@ -156,7 +156,7 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Improved clarity and tone' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Improved clarity and tone' },
       resolver,
       state
     );
@@ -169,7 +169,7 @@ describe('handleReviewChange', () => {
 
   it('error when file is missing', async () => {
     const result = await handleReviewChange(
-      { change_id: 'ct-1', decision: 'approve', reason: 'ok' },
+      { change_id: 'cn-1', decision: 'approve', reason: 'ok' },
       resolver,
       state
     );
@@ -195,7 +195,7 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', reason: 'ok' },
+      { file: filePath, change_id: 'cn-1', reason: 'ok' },
       resolver,
       state
     );
@@ -208,7 +208,7 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve' },
       resolver,
       state
     );
@@ -223,13 +223,13 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-99', decision: 'approve', reason: 'ok' },
+      { file: filePath, change_id: 'cn-99', decision: 'approve', reason: 'ok' },
       resolver,
       state
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toMatch(/ct-99|not found/i);
+    expect(result.content[0].text).toMatch(/cn-99|not found/i);
   });
 
   // ─── 7. Error: file not in scope ─────────────────────────────────────
@@ -239,7 +239,7 @@ describe('handleReviewChange', () => {
     await fs.writeFile(filePath, 'const x = 1;');
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'ok' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'ok' },
       resolver,
       state
     );
@@ -254,7 +254,7 @@ describe('handleReviewChange', () => {
     const filePath = path.join(tmpDir, 'nonexistent.md');
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'ok' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'ok' },
       resolver,
       state
     );
@@ -270,14 +270,14 @@ describe('handleReviewChange', () => {
 
     // First review: approve
     await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Looks good' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Looks good' },
       resolver,
       state
     );
 
     // Second review: request_changes
     await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'request_changes', reason: 'Actually needs work' },
+      { file: filePath, change_id: 'cn-1', decision: 'request_changes', reason: 'Actually needs work' },
       resolver,
       state
     );
@@ -296,16 +296,16 @@ describe('handleReviewChange', () => {
 
     // Manually create a file with a footnote that already has discussion content
     const content = [
-      'The {~~quick brown~>slow red~~}[^ct-1] fox.',
+      'The {~~quick brown~>slow red~~}[^cn-1] fox.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Better color`,
       '    @human:alice 2026-02-10: I think this is good',
     ].join('\n');
     await fs.writeFile(filePath, content);
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Agreed with Alice' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Agreed with Alice' },
       resolver,
       state
     );
@@ -334,15 +334,15 @@ describe('handleReviewChange', () => {
 
     // Create a file with a proposed change manually
     const content = [
-      'Hello {~~world~>earth~~}[^ct-1] end.',
+      'Hello {~~world~>earth~~}[^cn-1] end.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: More specific term`,
     ].join('\n');
     await fs.writeFile(filePath, content);
 
     const result = await handleReviewChange(
-      { file: 'docs/notes.md', change_id: 'ct-1', decision: 'approve', reason: 'Good change' },
+      { file: 'docs/notes.md', change_id: 'cn-1', decision: 'approve', reason: 'Good change' },
       resolver,
       state
     );
@@ -360,19 +360,19 @@ describe('handleReviewChange', () => {
     const filePath = path.join(tmpDir, 'multi.md');
 
     const content = [
-      'First {~~old~>new~~}[^ct-1] sentence.',
-      'Second {--removed--}[^ct-2] sentence.',
+      'First {~~old~>new~~}[^cn-1] sentence.',
+      'Second {--removed--}[^cn-2] sentence.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Improvement`,
       '',
-      `[^ct-2]: @ai:claude-opus-4.6 | ${TODAY} | del | proposed`,
+      `[^cn-2]: @ai:claude-opus-4.6 | ${TODAY} | del | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Cleanup`,
     ].join('\n');
     await fs.writeFile(filePath, content);
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Good' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Good' },
       resolver,
       state
     );
@@ -381,16 +381,16 @@ describe('handleReviewChange', () => {
 
     const modified = await fs.readFile(filePath, 'utf-8');
 
-    // ct-1 updated
-    expect(modified).toContain(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | accepted`);
+    // cn-1 updated
+    expect(modified).toContain(`[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | accepted`);
     expect(modified).toMatch(new RegExp(`    approved: @ai:claude-opus-4.6 ${TS_RE} "Good"`));
 
-    // ct-2 untouched
-    expect(modified).toContain(`[^ct-2]: @ai:claude-opus-4.6 | ${TODAY} | del | proposed`);
+    // cn-2 untouched
+    expect(modified).toContain(`[^cn-2]: @ai:claude-opus-4.6 | ${TODAY} | del | proposed`);
 
     // Inline content preserved
-    expect(modified).toContain('First {~~old~>new~~}[^ct-1] sentence.');
-    expect(modified).toContain('Second {--removed--}[^ct-2] sentence.');
+    expect(modified).toContain('First {~~old~>new~~}[^cn-1] sentence.');
+    expect(modified).toContain('Second {--removed--}[^cn-2] sentence.');
   });
 
   // ─── 13. Review line inserted before resolved/open lines ─────────────
@@ -399,16 +399,16 @@ describe('handleReviewChange', () => {
     const filePath = path.join(tmpDir, 'doc.md');
 
     const content = [
-      'The {~~quick~>slow~~}[^ct-1] fox.',
+      'The {~~quick~>slow~~}[^cn-1] fox.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Slower is better`,
       '    resolved @human:alice 2026-02-10: Done',
     ].join('\n');
     await fs.writeFile(filePath, content);
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Agreed' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Agreed' },
       resolver,
       state
     );
@@ -434,16 +434,16 @@ describe('handleReviewChange', () => {
     const filePath = path.join(tmpDir, 'doc.md');
 
     const content = [
-      'The {~~quick~>slow~~}[^ct-1] fox.',
+      'The {~~quick~>slow~~}[^cn-1] fox.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`,
       `    @ai:claude-opus-4.6 ${TODAY}: Slower is better`,
       '    open',
     ].join('\n');
     await fs.writeFile(filePath, content);
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Agreed' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Agreed' },
       resolver,
       state
     );
@@ -466,14 +466,14 @@ describe('handleReviewChange', () => {
   it('error when footnote header is malformed (fewer than 4 pipe-separated parts)', async () => {
     const filePath = path.join(tmpDir, 'bad.md');
     await fs.writeFile(filePath, [
-      'The {~~quick~>slow~~}[^ct-1] fox.',
+      'The {~~quick~>slow~~}[^cn-1] fox.',
       '',
-      '[^ct-1]: just some text without pipes',
+      '[^cn-1]: just some text without pipes',
       `    @ai:claude-opus-4.6 ${TODAY}: Malformed header`,
     ].join('\n'));
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'ok' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'ok' },
       resolver,
       state
     );
@@ -488,7 +488,7 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Looks good', author: 'ai:claude-sonnet-4.5' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Looks good', author: 'ai:claude-sonnet-4.5' },
       resolver,
       state
     );
@@ -510,14 +510,14 @@ describe('handleReviewChange', () => {
   it('enforcement=required without author returns error', async () => {
     const filePath = await createFileWithProposedChange();
 
-    const requiredConfig: ChangeTracksConfig = {
+    const requiredConfig: ChangeDownConfig = {
       ...config,
       author: { default: 'ai:claude-opus-4.6', enforcement: 'required' },
     };
     const requiredResolver = await createTestResolver(tmpDir, requiredConfig);
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Looks good' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Looks good' },
       requiredResolver,
       state
     );
@@ -533,14 +533,14 @@ describe('handleReviewChange', () => {
   it('enforcement=required with author succeeds', async () => {
     const filePath = await createFileWithProposedChange();
 
-    const requiredConfig: ChangeTracksConfig = {
+    const requiredConfig: ChangeDownConfig = {
       ...config,
       author: { default: 'ai:claude-opus-4.6', enforcement: 'required' },
     };
     const requiredResolver = await createTestResolver(tmpDir, requiredConfig);
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Looks good', author: 'ai:claude-sonnet-4.5' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Looks good', author: 'ai:claude-sonnet-4.5' },
       requiredResolver,
       state
     );
@@ -555,7 +555,7 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Looks good' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Looks good' },
       resolver,
       state
     );
@@ -574,7 +574,7 @@ describe('handleReviewChange', () => {
 
     // First approval
     await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Looks good', author: 'ai:test' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Looks good', author: 'ai:test' },
       resolver,
       state,
     );
@@ -583,7 +583,7 @@ describe('handleReviewChange', () => {
     const statBefore = (await fs.stat(filePath)).mtimeMs;
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Already accepted', author: 'ai:test' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Already accepted', author: 'ai:test' },
       resolver,
       state,
     );
@@ -605,14 +605,14 @@ describe('handleReviewChange', () => {
 
     // First approval
     await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'LGTM', author: 'ai:test' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'LGTM', author: 'ai:test' },
       resolver,
       state,
     );
 
     // Second approval — should be idempotent with reason
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Still LGTM', author: 'ai:test' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Still LGTM', author: 'ai:test' },
       resolver,
       state,
     );
@@ -627,7 +627,7 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'reject', reason: 'No', author: 'ai:test' },
+      { file: filePath, change_id: 'cn-1', decision: 'reject', reason: 'No', author: 'ai:test' },
       resolver,
       state,
     );
@@ -635,7 +635,7 @@ describe('handleReviewChange', () => {
     const statBefore = (await fs.stat(filePath)).mtimeMs;
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'reject', reason: 'Still no', author: 'ai:test' },
+      { file: filePath, change_id: 'cn-1', decision: 'reject', reason: 'Still no', author: 'ai:test' },
       resolver,
       state,
     );
@@ -657,14 +657,14 @@ describe('handleReviewChange', () => {
 
     // First rejection
     await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'reject', reason: 'No', author: 'ai:test' },
+      { file: filePath, change_id: 'cn-1', decision: 'reject', reason: 'No', author: 'ai:test' },
       resolver,
       state,
     );
 
     // Second rejection — should be idempotent with reason
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'reject', reason: 'Still no', author: 'ai:test' },
+      { file: filePath, change_id: 'cn-1', decision: 'reject', reason: 'Still no', author: 'ai:test' },
       resolver,
       state,
     );
@@ -679,7 +679,7 @@ describe('handleReviewChange', () => {
     const filePath = await createFileWithProposedChange();
 
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'request_changes', reason: 'Need more context', author: 'ai:test' },
+      { file: filePath, change_id: 'cn-1', decision: 'request_changes', reason: 'Need more context', author: 'ai:test' },
       resolver,
       state,
     );
@@ -694,7 +694,7 @@ describe('handleReviewChange', () => {
 
   it('auto_on_approve removes inline markup but preserves footnote definition and reference', async () => {
     // Create a new resolver with auto_on_approve enabled
-    const settlementConfig: ChangeTracksConfig = {
+    const settlementConfig: ChangeDownConfig = {
       ...config,
       settlement: { auto_on_approve: true, auto_on_reject: true },
     };
@@ -711,27 +711,27 @@ describe('handleReviewChange', () => {
     );
 
     let content = await fs.readFile(filePath, 'utf-8');
-    expect(content).toContain('{~~quick brown~>slow red~~}[^ct-1]');
-    expect(content).toContain(`[^ct-1]: @ai:test-author | ${TODAY} | sub | proposed`);
+    expect(content).toContain('{~~quick brown~>slow red~~}[^cn-1]');
+    expect(content).toContain(`[^cn-1]: @ai:test-author | ${TODAY} | sub | proposed`);
 
     // Approve the change with settlement enabled
     const result = await handleReviewChange(
-      { file: filePath, change_id: 'ct-1', decision: 'approve', reason: 'Good change', author: 'ai:reviewer' },
+      { file: filePath, change_id: 'cn-1', decision: 'approve', reason: 'Good change', author: 'ai:reviewer' },
       settlementResolver,
       state
     );
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.settled).toEqual(['ct-1']);
+    expect(data.settled).toEqual(['cn-1']);
 
     content = await fs.readFile(filePath, 'utf-8');
 
     // BUG-001 FIX: Inline markup should be removed but footnote ref and definition should remain
     expect(content).not.toContain('{~~');  // Markup removed
     expect(content).not.toContain('~~}');
-    expect(content).toContain('slow red[^ct-1]');  // Content + footnote ref preserved
-    expect(content).toContain(`[^ct-1]: @ai:test-author | ${TODAY} | sub | accepted`);  // Footnote definition preserved with accepted status
+    expect(content).toContain('slow red[^cn-1]');  // Content + footnote ref preserved
+    expect(content).toContain(`[^cn-1]: @ai:test-author | ${TODAY} | sub | accepted`);  // Footnote definition preserved with accepted status
     expect(content).toMatch(new RegExp(`    approved: @ai:reviewer ${TS_RE} "Good change"`));  // Review line preserved
   });
 });

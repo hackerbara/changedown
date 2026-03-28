@@ -1,6 +1,6 @@
 export {
   parseProjectConfig, DEFAULT_CONFIG,
-  type ChangeTracksConfig, type HumanAgentSplit, type PolicyMode, type CreationTracking,
+  type ChangeDownConfig, type HumanAgentSplit, type PolicyMode, type CreationTracking,
   type CoherenceConfig,
   // Backward compat aliases (deprecated)
   type ProjectReviewConfig, type ReasonRequirement,
@@ -18,7 +18,7 @@ export { computeReplyEdit, type ReplyOptions, type ReplyResult } from './operati
 export { nextChange, previousChange } from './operations/navigation.js';
 export { wrapInsertion, wrapDeletion, wrapSubstitution } from './operations/tracking.js';
 export { insertComment } from './operations/comment.js';
-export { generateFootnoteDefinition, scanMaxCtId, buildEditOpFromParts, formatL3EditOpLine, buildContextualL3EditOp, type ContextualEditOpParams } from './operations/footnote-generator.js';
+export { generateFootnoteDefinition, scanMaxCnId, buildEditOpFromParts, formatL3EditOpLine, buildContextualL3EditOp, type ContextualEditOpParams } from './operations/footnote-generator.js';
 export { ensureL2, type EnsureL2Options, type EnsureL2Result } from './operations/ensure-l2.js';
 export { applyReview, VALID_DECISIONS, type Decision, type ApplyReviewSuccess, type ApplyReviewError } from './operations/apply-review.js';
 export { computeAmendEdits, type AmendOptions, type AmendResult, type AmendSuccess, type AmendError } from './operations/amend.js';
@@ -122,6 +122,7 @@ export {
   type EditBoundaryState, type EditBoundaryConfig,
   type Effect as EditBoundaryEffect, type EditPendingOverlay,
   type SignalType, DEFAULT_EDIT_BOUNDARY_CONFIG,
+  type L2CrystallizeResult, type L3CrystallizeResult, type FullCrystallizeEffect,
   isEmpty as isBufferEmpty, bufferEnd, containsOffset as bufferContainsOffset,
   extend as extendBuffer, prependOriginal, appendOriginal,
   spliceInsert, spliceDelete, createBuffer,

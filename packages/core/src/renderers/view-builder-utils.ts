@@ -2,7 +2,7 @@ import { parseForFormat } from '../format-aware-parse.js';
 import { nodeStatus, type ChangeNode } from '../model/types.js';
 import type { DeliberationHeader, ViewName } from './three-zone-types.js';
 
-const REF_EXTRACT_RE = /\[\^(ct-\d+(?:\.\d+)?)\]/g;
+const REF_EXTRACT_RE = /\[\^(cn-\d+(?:\.\d+)?)\]/g;
 
 export interface BuildHeaderOptions {
   filePath: string;
@@ -44,7 +44,7 @@ export function buildDeliberationHeader(options: BuildHeaderOptions): Deliberati
 
 /**
  * Map line index (0-based) to Set of footnote IDs referenced on that line.
- * Scans raw lines for [^ct-N] patterns.
+ * Scans raw lines for [^cn-N] patterns.
  */
 export function buildLineRefMap(lines: string[]): Map<number, Set<string>> {
   const map = new Map<number, Set<string>>();

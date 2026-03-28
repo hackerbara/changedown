@@ -49,7 +49,7 @@ export async function toolExecuteBeforeHook(
   if (config.hooks.patch_wrap_experimental) {
     if (tool !== 'patch' && tool !== 'apply_patch') {
       throw new Error(
-        `[ChangeTracks] This workspace requires using the OpenCode built-in tool "apply_patch" (or "patch") for file edits. ` +
+        `[ChangeDown] This workspace requires using the OpenCode built-in tool "apply_patch" (or "patch") for file edits. ` +
           `Do not use edit, write, or multiedit. Call apply_patch with patchText (unified diff or *** Begin Patch format). ` +
           `File: "${filePath}".`
       );
@@ -61,7 +61,7 @@ export async function toolExecuteBeforeHook(
   // Apply enforcement policy
   if (config.hooks.enforcement === 'block') {
     throw new Error(
-      `[ChangeTracks] Direct edits to tracked files are blocked. ` +
+      `[ChangeDown] Direct edits to tracked files are blocked. ` +
       `File "${filePath}" is under change tracking. ` +
       `Please use the propose_change MCP tool to submit changes as CriticMarkup. ` +
       `This ensures all modifications are tracked and can be reviewed.`
@@ -69,7 +69,7 @@ export async function toolExecuteBeforeHook(
   } else if (config.hooks.enforcement === 'warn') {
     // Add context to the output (this will be visible to the agent)
     console.warn(
-      `[ChangeTracks] Warning: Editing tracked file "${filePath}". ` +
+      `[ChangeDown] Warning: Editing tracked file "${filePath}". ` +
       `Consider using propose_change MCP tool for better tracking and review.`
     );
   }

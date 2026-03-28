@@ -2,7 +2,7 @@
 
 ## What This Package Is
 
-`packages/cli` is the `changetracks` npm package — the central agent-facing and
+`packages/cli` is the `changedown` npm package — the central agent-facing and
 user-facing CLI. It exposes two bin entries and a shared engine layer that the
 MCP server and LSP server consume.
 
@@ -10,21 +10,21 @@ MCP server and LSP server consume.
 
 | Command | Entry | Purpose |
 |---------|-------|---------|
-| `ctrk` | `dist/index.js` | Main CLI: agent commands, user commands, git diff driver |
-| `changetracks` | `dist/cli-init.js` | Setup wizard only (`changetracks init`) |
+| `cdown` | `dist/index.js` | Main CLI: agent commands, user commands, git diff driver |
+| `changedown` | `dist/cli-init.js` | Setup wizard only (`changedown init`) |
 
-The `ctrk` entry routes at startup:
+The `cdown` entry routes at startup:
 1. **Git diff driver** — 7-arg invocation with 40-char hash at position 2; renders colored diff for `git diff --ext-diff`
 2. **User commands** — first arg is one of `status | list | diff | settle | publish | import | export | --help | --version`; human-facing, prints to stdout
 3. **Agent commands** — all other first args; routes through `runAgentCommands()` → `runCommand()` in `cli-runner.ts`
 
 ## Engine Layer (`src/engine/`)
 
-Exported as `changetracks/engine`. Consumed by: MCP server (`changetracks-plugin/mcp-server/`), LSP server (config only via `changetracks/config`).
+Exported as `changedown/engine`. Consumed by: MCP server (`changedown-plugin/mcp-server/`), LSP server (config only via `changedown/config`).
 
 ### Key components
 
-**`ConfigResolver`** (`engine/config-resolver.ts`) — Session-scoped, lazy per-file config loader. Walks up from each file path to find `.changetracks/config.toml`, caches by project root, file-watches for live reload. In MCP: one instance per stdio session. In `ctrk` CLI: one instance per command invocation, disposed after via `resolver.dispose()`.
+**`ConfigResolver`** (`engine/config-resolver.ts`) — Session-scoped, lazy per-file config loader. Walks up from each file path to find `.changedown/config.toml`, caches by project root, file-watches for live reload. In MCP: one instance per stdio session. In `cdown` CLI: one instance per command invocation, disposed after via `resolver.dispose()`.
 
 **`SessionState`** (`engine/state.ts`) — Per-session ID counter and hash registry. Tracks `ct-N` ID allocation per file, manages change groups (`ct-N.M`), records per-line hashes for staleness detection, tracks last-read view for coordinate validation. Note: a stripped-down fork lives at `packages/opencode-plugin/src/state.ts`; a comment in `state.ts` explains the divergence.
 
@@ -37,7 +37,7 @@ Exported as `changetracks/engine`. Consumed by: MCP server (`changetracks-plugin
 
 This is the MCP tool result format. The CLI wraps results via `handlerToCliResult()` in `cli-output.ts`.
 
-**Tool schemas** (`engine/tool-schemas.ts`) — Two `propose_change` schemas, selected based on protocol mode from `.changetracks/config.toml`:
+**Tool schemas** (`engine/tool-schemas.ts`) — Two `propose_change` schemas, selected based on protocol mode from `.changedown/config.toml`:
 - `classicProposeChangeSchema` — `old_text`/`new_text` text matching
 - `compactProposeChangeSchema` — `at` (LINE:HASH coordinate) + `op` (CriticMarkup expression)
 
@@ -58,8 +58,8 @@ Additional handlers exist for backward compatibility but are not in the listed s
 
 1. Write handler in `src/engine/handlers/my-operation.ts` with the signature above
 2. Export from `src/engine/index.ts`
-3. Add entry in `src/agent-command-registry.ts` to expose via `ctrk my-operation`
-4. Add to `CallToolRequestSchema` handler in `changetracks-plugin/mcp-server/src/index.ts`
+3. Add entry in `src/agent-command-registry.ts` to expose via `cdown my-operation`
+4. Add to `CallToolRequestSchema` handler in `changedown-plugin/mcp-server/src/index.ts`
 
 The `schema-executor.ts` layer builds Commander commands at runtime from declarative `CommandDef` objects — use it rather than writing Commander boilerplate directly.
 
@@ -67,10 +67,10 @@ The `schema-executor.ts` layer builds Commander commands at runtime from declara
 
 | File | Role |
 |------|------|
-| `src/index.ts` | `ctrk` bin entry; 3-path routing |
-| `src/cli-init.ts` | `changetracks` bin entry; init-only |
+| `src/index.ts` | `cdown` bin entry; 3-path routing |
+| `src/cli-init.ts` | `changedown` bin entry; init-only |
 | `src/cli-runner.ts` | Agent command bootstrap: ConfigResolver + SessionState setup |
-| `src/agent-command-registry.ts` | Maps `ctrk <cmd>` names to handlers |
+| `src/agent-command-registry.ts` | Maps `cdown <cmd>` names to handlers |
 | `src/schema-executor.ts` | Generic Commander-based execution layer |
 | `src/engine/index.ts` | Engine barrel export |
 | `src/engine/config-resolver.ts` | ConfigResolver |
@@ -78,12 +78,12 @@ The `schema-executor.ts` layer builds Commander commands at runtime from declara
 | `src/engine/listed-tools.ts` | 6-tool MCP surface; protocol-mode schema selection |
 | `src/engine/tool-schemas.ts` | classic + compact propose_change schemas |
 | `src/engine/handlers/` | 16 handler functions + 4 utilities |
-| `src/config/` | Config TOML parsing (`changetracks/config` export) |
-| `src/init/` | Setup wizard logic (`changetracks init`) |
+| `src/config/` | Config TOML parsing (`changedown/config` export) |
+| `src/init/` | Setup wizard logic (`changedown init`) |
 
 ## Config System (`src/config/`)
 
-Reads `.changetracks/config.toml`. Exported as `changetracks/config`. The LSP server imports only `parseConfigToml` and `DEFAULT_CONFIG` from this path — it does not use the engine handlers.
+Reads `.changedown/config.toml`. Exported as `changedown/config`. The LSP server imports only `parseConfigToml` and `DEFAULT_CONFIG` from this path — it does not use the engine handlers.
 
 ## Init System (`src/init/`)
 
@@ -104,7 +104,7 @@ Build order: `core → docx → cli → lsp-server → vscode-extension`
 
 ## Dependencies
 
-- `@changetracks/core` — parser, operations, matching cascade
-- `@changetracks/docx` — DOCX import/export
+- `@changedown/core` — parser, operations, matching cascade
+- `@changedown/docx` — DOCX import/export
 - `commander` — CLI argument parsing
 - `@clack/prompts` — interactive init wizard UI

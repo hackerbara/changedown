@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseProjectConfig } from '@changetracks/core/internals';
+import { parseProjectConfig } from '@changedown/core/internals';
 
 describe('reasonRequired config', () => {
   it('defaults human reason to optional', () => {

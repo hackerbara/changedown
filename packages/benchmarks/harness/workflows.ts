@@ -56,8 +56,8 @@ export function getTaskPromptForSurface(
 
   // For Surface D (CLI-only), inject the sc CLI path at the beginning
   if (surface === "D") {
-    const cliPath = path.join(process.cwd(), "changetracks-plugin", "mcp-server", "dist", "cli.js");
-    const cliInstructions = `You have access to the \`sc\` CLI for ChangeTracks operations.
+    const cliPath = path.join(process.cwd(), "changedown-plugin", "mcp-server", "dist", "cli.js");
+    const cliInstructions = `You have access to the \`sc\` CLI for ChangeDown operations.
 Run: node ${cliPath} <command> [args]
 
 Available commands:

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeBatch } from '@changetracks/mcp/internals';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeBatch } from '@changedown/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -13,7 +13,7 @@ import * as os from 'node:os';
 describe('batch error granularity — operation_index in error responses', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeAll(async () => {
@@ -21,7 +21,7 @@ describe('batch error granularity — operation_index in error responses', () =>
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-batch-error-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-batch-error-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -296,7 +296,7 @@ describe('batch error granularity — operation_index in error responses', () =>
   });
 
   it('propose_change(changes=[...]) reports all validation failures, not just the first', async () => {
-    const content = '<!-- ctrcks.com/v1: tracked -->\nLine one.\nLine two.\nLine three.\n';
+    const content = '<!-- changedown.com/v1: tracked -->\nLine one.\nLine two.\nLine three.\n';
     const filePath = path.join(tmpDir, 'multi-fail.md');
     await fs.writeFile(filePath, content);
 

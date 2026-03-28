@@ -49,7 +49,7 @@ export function computeSettledReplace(change: ChangeNode): TextEdit {
 
 /**
  * Strips all footnote definition blocks from the text.
- * A footnote definition starts with `[^ct-N]:` at column 0 and continues
+ * A footnote definition starts with `[^cn-N]:` at column 0 and continues
  * on subsequent indented lines (or blank lines within the body).
  * Trailing blank lines left behind are also cleaned up.
  */
@@ -98,7 +98,7 @@ function stripFootnoteDefinitions(text: string, zones: CodeZone[]): string {
 }
 
 /**
- * Strips orphaned inline footnote references `[^ct-N]` or `[^ct-N.M]` that
+ * Strips orphaned inline footnote references `[^cn-N]` or `[^cn-N.M]` that
  * remain in the text after CriticMarkup processing (these are not part of any
  * change node's range and appear as bare refs in the settled text).
  */
@@ -203,7 +203,7 @@ function computeOriginalTextL3(text: string): string {
  */
 export function computeSettledText(text: string, options?: SettledTextOptions): string {
   // L3 format: footnote-native body is already the settled state.
-  // Auto-detect: has [^ct-N]: footnote defs, no inline CriticMarkup in body,
+  // Auto-detect: has [^cn-N]: footnote defs, no inline CriticMarkup in body,
   // and at least one L3 footnote body line (LINE:HASH {op}).
   if (isL3Format(text)) {
     return computeSettledTextL3(text);
@@ -386,7 +386,7 @@ function buildSegmentsWithZoneAwareness(
  * substitution text that looks like CriticMarkup is handled correctly.
  *
  * For L2: removes inline CriticMarkup delimiters but keeps footnote references
- * [^ct-N] and footnote definition blocks with their 'accepted' status.
+ * [^cn-N] and footnote definition blocks with their 'accepted' status.
  *
  * For L3: no-op. The body is already the Current projection (accepted text
  * present), and edit-op lines must be preserved per ADR-C §2.

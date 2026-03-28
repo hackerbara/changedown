@@ -1,6 +1,6 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 import {
   nextChange,
   previousChange,
@@ -14,21 +14,21 @@ import {
   type ChangeNode,
   type ParsedOp,
   type StrippedLine,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 // =============================================================================
 // Per-scenario state via WeakMap (avoids polluting the shared World interface)
 // =============================================================================
 
-const navResult = new WeakMap<ChangeTracksWorld, ChangeNode | null>();
-const commentSyntaxResult = new WeakMap<ChangeTracksWorld, CommentSyntax | undefined>();
-const wrappedLineResult = new WeakMap<ChangeTracksWorld, string>();
-const stripResult = new WeakMap<ChangeTracksWorld, StrippedLine | null>();
-const parsedOpResult = new WeakMap<ChangeTracksWorld, ParsedOp>();
-const opError = new WeakMap<ChangeTracksWorld, Error>();
-const settledLineResult = new WeakMap<ChangeTracksWorld, string>();
-const singleLineInput = new WeakMap<ChangeTracksWorld, string>();
-const groupMembersResult = new WeakMap<ChangeTracksWorld, ChangeNode[]>();
+const navResult = new WeakMap<ChangeDownWorld, ChangeNode | null>();
+const commentSyntaxResult = new WeakMap<ChangeDownWorld, CommentSyntax | undefined>();
+const wrappedLineResult = new WeakMap<ChangeDownWorld, string>();
+const stripResult = new WeakMap<ChangeDownWorld, StrippedLine | null>();
+const parsedOpResult = new WeakMap<ChangeDownWorld, ParsedOp>();
+const opError = new WeakMap<ChangeDownWorld, Error>();
+const settledLineResult = new WeakMap<ChangeDownWorld, string>();
+const singleLineInput = new WeakMap<ChangeDownWorld, string>();
+const groupMembersResult = new WeakMap<ChangeDownWorld, ChangeNode[]>();
 
 // =============================================================================
 // C16 — Navigation: Given/When steps
@@ -36,28 +36,28 @@ const groupMembersResult = new WeakMap<ChangeTracksWorld, ChangeNode[]>();
 
 Given(
   'the markup text {string}',
-  function (this: ChangeTracksWorld, text: string) {
+  function (this: ChangeDownWorld, text: string) {
     this.lastText = text.replace(/\\n/g, '\n');
   },
 );
 
 Given(
   'the markup text with footnotes:',
-  function (this: ChangeTracksWorld, docString: string) {
+  function (this: ChangeDownWorld, docString: string) {
     this.lastText = docString;
   },
 );
 
 When(
   'I parse the markup',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     this.lastDoc = this.parser.parse(this.lastText);
   },
 );
 
 When(
   'I navigate to the next change from position {int}',
-  function (this: ChangeTracksWorld, position: number) {
+  function (this: ChangeDownWorld, position: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     navResult.set(this, nextChange(this.lastDoc, position));
   },
@@ -65,7 +65,7 @@ When(
 
 When(
   'I navigate to the previous change from position {int}',
-  function (this: ChangeTracksWorld, position: number) {
+  function (this: ChangeDownWorld, position: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     navResult.set(this, previousChange(this.lastDoc, position));
   },
@@ -75,7 +75,7 @@ When(
 
 Then(
   'the navigated change has modified text {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const change = navResult.get(this);
     assert.ok(change !== null && change !== undefined, 'Expected a non-null change');
     assert.equal(change.modifiedText, expected);
@@ -84,7 +84,7 @@ Then(
 
 Then(
   'the navigated change has original text {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const change = navResult.get(this);
     assert.ok(change !== null && change !== undefined, 'Expected a non-null change');
     assert.equal(change.originalText, expected);
@@ -93,7 +93,7 @@ Then(
 
 Then(
   'the navigated change is null',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const change = navResult.get(this);
     assert.equal(change, null);
   },
@@ -105,14 +105,14 @@ Then(
 
 When(
   'I get comment syntax for {string}',
-  function (this: ChangeTracksWorld, languageId: string) {
+  function (this: ChangeDownWorld, languageId: string) {
     commentSyntaxResult.set(this, getCommentSyntax(languageId));
   },
 );
 
 Then(
   'the comment prefix is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const syntax = commentSyntaxResult.get(this);
     assert.ok(syntax !== undefined, 'Expected defined comment syntax');
     assert.equal(syntax.line, expected);
@@ -121,7 +121,7 @@ Then(
 
 Then(
   'the comment syntax is undefined',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const syntax = commentSyntaxResult.get(this);
     assert.equal(syntax, undefined);
   },
@@ -129,7 +129,7 @@ Then(
 
 When(
   'I wrap {string} as deletion with tag {string} for language {string}',
-  function (this: ChangeTracksWorld, code: string, tag: string, linePrefix: string) {
+  function (this: ChangeDownWorld, code: string, tag: string, linePrefix: string) {
     const unescaped = code.replace(/\\t/g, '\t').replace(/\\n/g, '\n');
     const result = wrapLineComment(unescaped, tag, { line: linePrefix }, true);
     wrappedLineResult.set(this, result);
@@ -138,7 +138,7 @@ When(
 
 When(
   'I wrap {string} as insertion with tag {string} for language {string}',
-  function (this: ChangeTracksWorld, code: string, tag: string, linePrefix: string) {
+  function (this: ChangeDownWorld, code: string, tag: string, linePrefix: string) {
     const unescaped = code.replace(/\\t/g, '\t').replace(/\\n/g, '\n');
     const result = wrapLineComment(unescaped, tag, { line: linePrefix }, false);
     wrappedLineResult.set(this, result);
@@ -147,7 +147,7 @@ When(
 
 Then(
   'the wrapped line is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const result = wrappedLineResult.get(this);
     assert.ok(result !== undefined, 'No wrapped line result');
     const unescaped = expected.replace(/\\t/g, '\t').replace(/\\n/g, '\n');
@@ -157,7 +157,7 @@ Then(
 
 When(
   'I strip {string} with prefix {string}',
-  function (this: ChangeTracksWorld, line: string, prefix: string) {
+  function (this: ChangeDownWorld, line: string, prefix: string) {
     const result = stripLineComment(line, { line: prefix });
     stripResult.set(this, result);
   },
@@ -165,7 +165,7 @@ When(
 
 Then(
   'the stripped code is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const result = stripResult.get(this);
     assert.ok(result !== null, 'Expected non-null strip result');
     assert.equal(result!.code, expected);
@@ -174,7 +174,7 @@ Then(
 
 Then(
   'the stripped tag is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const result = stripResult.get(this);
     assert.ok(result !== null, 'Expected non-null strip result');
     assert.equal(result!.tag, expected);
@@ -183,7 +183,7 @@ Then(
 
 Then(
   'the stripped line is a deletion',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const result = stripResult.get(this);
     assert.ok(result !== null, 'Expected non-null strip result');
     assert.equal(result!.isDeletion, true);
@@ -192,7 +192,7 @@ Then(
 
 Then(
   'the stripped line is not a deletion',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const result = stripResult.get(this);
     assert.ok(result !== null, 'Expected non-null strip result');
     assert.equal(result!.isDeletion, false);
@@ -201,7 +201,7 @@ Then(
 
 Then(
   'the strip result is null',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const result = stripResult.get(this);
     assert.equal(result, null);
   },
@@ -213,14 +213,14 @@ Then(
 
 When(
   'I parse the op {string}',
-  function (this: ChangeTracksWorld, opString: string) {
+  function (this: ChangeDownWorld, opString: string) {
     parsedOpResult.set(this, parseOp(opString));
   },
 );
 
 When(
   'I parse the op {string} expecting an error',
-  function (this: ChangeTracksWorld, opString: string) {
+  function (this: ChangeDownWorld, opString: string) {
     try {
       parseOp(opString);
       assert.fail('Expected parseOp to throw but it did not');
@@ -232,7 +232,7 @@ When(
 
 Then(
   'the op type is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const result = parsedOpResult.get(this);
     assert.ok(result, 'No parsed op result');
     assert.equal(result.type, expected);
@@ -241,7 +241,7 @@ Then(
 
 Then(
   'the op old text is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const result = parsedOpResult.get(this);
     assert.ok(result, 'No parsed op result');
     assert.equal(result.oldText, expected);
@@ -250,7 +250,7 @@ Then(
 
 Then(
   'the op new text is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const result = parsedOpResult.get(this);
     assert.ok(result, 'No parsed op result');
     assert.equal(result.newText, expected);
@@ -259,7 +259,7 @@ Then(
 
 Then(
   'the op reasoning is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const result = parsedOpResult.get(this);
     assert.ok(result, 'No parsed op result');
     assert.equal(result.reasoning, expected);
@@ -268,7 +268,7 @@ Then(
 
 Then(
   'the op has no reasoning',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const result = parsedOpResult.get(this);
     assert.ok(result, 'No parsed op result');
     assert.equal(result.reasoning, undefined);
@@ -277,7 +277,7 @@ Then(
 
 Then(
   'the op error matches {string}',
-  function (this: ChangeTracksWorld, pattern: string) {
+  function (this: ChangeDownWorld, pattern: string) {
     const err = opError.get(this);
     assert.ok(err, 'No error was captured');
     assert.ok(
@@ -296,7 +296,7 @@ Then(
 
 Then(
   'change {int} has move role {string}',
-  function (this: ChangeTracksWorld, index: number, expected: string) {
+  function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const changes = this.lastDoc.getChanges();
     assert.ok(index >= 1 && index <= changes.length, `Change index ${index} out of range`);
@@ -306,7 +306,7 @@ Then(
 
 Then(
   'change {int} has no move role',
-  function (this: ChangeTracksWorld, index: number) {
+  function (this: ChangeDownWorld, index: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const changes = this.lastDoc.getChanges();
     assert.ok(index >= 1 && index <= changes.length, `Change index ${index} out of range`);
@@ -316,7 +316,7 @@ Then(
 
 Then(
   'change {int} has group id {string}',
-  function (this: ChangeTracksWorld, index: number, expected: string) {
+  function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const changes = this.lastDoc.getChanges();
     assert.ok(index >= 1 && index <= changes.length, `Change index ${index} out of range`);
@@ -326,7 +326,7 @@ Then(
 
 Then(
   'change {int} has no group id',
-  function (this: ChangeTracksWorld, index: number) {
+  function (this: ChangeDownWorld, index: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const changes = this.lastDoc.getChanges();
     assert.ok(index >= 1 && index <= changes.length, `Change index ${index} out of range`);
@@ -336,7 +336,7 @@ Then(
 
 When(
   'I get group members for {string}',
-  function (this: ChangeTracksWorld, groupId: string) {
+  function (this: ChangeDownWorld, groupId: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     groupMembersResult.set(this, this.lastDoc.getGroupMembers(groupId));
   },
@@ -344,7 +344,7 @@ When(
 
 Then(
   'the group has {int} members',
-  function (this: ChangeTracksWorld, expected: number) {
+  function (this: ChangeDownWorld, expected: number) {
     const members = groupMembersResult.get(this);
     assert.ok(members !== undefined, 'No group members result');
     assert.equal(members.length, expected);
@@ -359,7 +359,7 @@ Then(
 
 When(
   'I compute the settled text',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     // Store on this.settledText so the existing "the settled text is {string}"
     // step from core-operations.steps.ts can read it.
     (this as any).settledText = computeSettledText(this.lastText);
@@ -368,7 +368,7 @@ When(
 
 Then(
   'the settled text contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const result = (this as any).settledText as string;
     assert.ok(result !== undefined, 'No settled text result');
     assert.ok(
@@ -382,14 +382,14 @@ Then(
 
 Given(
   'the single line {string}',
-  function (this: ChangeTracksWorld, line: string) {
+  function (this: ChangeDownWorld, line: string) {
     singleLineInput.set(this, line);
   },
 );
 
 When(
   'I compute the settled line',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const line = singleLineInput.get(this);
     assert.ok(line !== undefined, 'No single line input');
     settledLineResult.set(this, settledLine(line));
@@ -398,7 +398,7 @@ When(
 
 Then(
   'the settled line is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const result = settledLineResult.get(this);
     assert.ok(result !== undefined, 'No settled line result');
     assert.equal(result, expected);
@@ -411,7 +411,7 @@ Then(
 
 Then(
   'change {int} has level {int}',
-  function (this: ChangeTracksWorld, index: number, expected: number) {
+  function (this: ChangeDownWorld, index: number, expected: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -421,7 +421,7 @@ Then(
 
 Then(
   'change {int} has inline author {string}',
-  function (this: ChangeTracksWorld, index: number, expected: string) {
+  function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -432,7 +432,7 @@ Then(
 
 Then(
   'change {int} has inline date {string}',
-  function (this: ChangeTracksWorld, index: number, expected: string) {
+  function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -443,7 +443,7 @@ Then(
 
 Then(
   'change {int} has inline type {string}',
-  function (this: ChangeTracksWorld, index: number, expected: string) {
+  function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -454,7 +454,7 @@ Then(
 
 Then(
   'change {int} has inline status {string}',
-  function (this: ChangeTracksWorld, index: number, expected: string) {
+  function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -465,7 +465,7 @@ Then(
 
 Then(
   'change {int} has inline free text {string}',
-  function (this: ChangeTracksWorld, index: number, expected: string) {
+  function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -476,7 +476,7 @@ Then(
 
 Then(
   'change {int} has no inline metadata',
-  function (this: ChangeTracksWorld, index: number) {
+  function (this: ChangeDownWorld, index: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -490,7 +490,7 @@ Then(
 
 Then(
   'change {int} is settled',
-  function (this: ChangeTracksWorld, index: number) {
+  function (this: ChangeDownWorld, index: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);
@@ -500,7 +500,7 @@ Then(
 
 Then(
   'change {int} is not settled',
-  function (this: ChangeTracksWorld, index: number) {
+  function (this: ChangeDownWorld, index: number) {
     assert.ok(this.lastDoc, 'No parsed document available');
     const c = this.lastDoc.getChanges()[index - 1];
     assert.ok(c, `No change at index ${index}`);

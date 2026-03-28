@@ -11,7 +11,7 @@
 
 import { When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import {
     getCodeLensCount,
     setCursorPosition,
@@ -23,7 +23,7 @@ import {
 When(
     'I place the cursor on line {int} column {int}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, line: number, column: number) {
+    async function (this: ChangeDownWorld, line: number, column: number) {
         assert.ok(this.page, 'Page not available');
         await setCursorPosition(this.page, line, column);
         // Allow cursor notification to reach LSP and trigger CodeLens refresh
@@ -34,9 +34,9 @@ When(
 When(
     'I set codeLensMode to {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, mode: string) {
+    async function (this: ChangeDownWorld, mode: string) {
         assert.ok(this.page, 'Page not available');
-        await updateSettingDirect(this.page, 'changetracks.codeLensMode', mode);
+        await updateSettingDirect(this.page, 'changedown.codeLensMode', mode);
         // Allow setting change to propagate to LSP and trigger CodeLens refresh
         await this.page.waitForTimeout(2000);
     }
@@ -47,7 +47,7 @@ When(
 Then(
     'CodeLens items are visible',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let count = 0;
@@ -63,7 +63,7 @@ Then(
 Then(
     'no CodeLens items are visible',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Wait for any pending refresh to complete, then assert absence
         await this.page.waitForTimeout(1500);
@@ -75,7 +75,7 @@ Then(
 Then(
     'at least {int} CodeLens items are visible',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, minCount: number) {
+    async function (this: ChangeDownWorld, minCount: number) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 8000;
         let count = 0;

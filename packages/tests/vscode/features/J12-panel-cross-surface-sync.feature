@@ -6,7 +6,7 @@ Feature: Panel stays synchronized with all other surfaces
 
   Background:
     Given I open "journey-accept-status.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   Scenario: Accept updates editor and comments

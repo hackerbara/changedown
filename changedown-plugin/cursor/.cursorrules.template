@@ -1,0 +1,109 @@
+# ChangeDown — Change Tracking for AI Agents
+
+In Cursor, tracked markdown files are protected by hooks:
+- beforeReadFile blocks raw reads on tracked .md files (use read_tracked_file instead)
+- beforeMCPExecution validates MCP tool inputs (author, scope)
+- afterFileEdit + stop log and auto-wrap raw edits in CriticMarkup (safety net)
+
+Best practice: use ChangeDown MCP tools (propose_change, etc.) directly.
+The hooks form a safety net, but direct MCP tool use gives better reasoning capture.
+
+Which files are tracked is controlled by `.changedown/config.toml` (if present)
+or defaults to all `**/*.md` files excluding `node_modules/` and `dist/`.
+
+## Quick Reference
+
+**Making changes:** Use `propose_change` instead of Edit/Write. Your MCP tool schema shows the parameter format.
+- Compact mode: `at="LINE:HASH"`, `op="old~>new"` / `+text` / `-text`
+- Classic mode: `old_text="old"`, `new_text="new"` / `insert_after="anchor"`
+- Add `reasoning: "why"` when the change isn't self-explanatory
+
+**Multi-edit operations:**
+- `propose_change(file, changes=[{old_text, new_text}, ...], reasoning="...")` — batch changes
+- Children auto-group under one parent ID with dotted numbering (sc-1.1, sc-1.2)
+
+**Reviewing existing changes:**
+- `read_tracked_file(file, view="meta")` — see what needs attention
+- `review_changes(file, reviews=[{change_id: "sc-7", decision: "approve", reasoning: "verified X"}])` — reasoning required
+- `review_changes(file, responses=[{change_id: "sc-7", response: "response text"}])` — join discussion
+- Labels available: `suggestion`, `issue`, `question`, `praise`, `todo`, `thought`, `nitpick`
+
+## When to Use What
+
+| Situation | Action |
+|-----------|--------|
+| Editing a tracked .md file | Use `propose_change` |
+| Multiple related edits | Use `propose_change` with `changes` array |
+| File has open threads | Read them before editing. Don't re-raise resolved concerns. |
+| Reviewing someone's changes | Use `review_changes` with substantive reasoning |
+| Simple typo fix | `propose_change` without reasoning is fine |
+| Editing non-tracked files | Normal Edit — no ChangeDown tools needed |
+
+## The Format (Read-Only Understanding)
+
+You don't write this format manually — the MCP tools handle it.
+But you MUST read and understand it when opening files with existing markup.
+
+### Inline Changes
+
+Five CriticMarkup types, each followed by a footnote reference `[^sc-N]`:
+
+```
+The API uses {~~REST~>GraphQL~~}[^sc-1] for the public interface.
+We {--removed this--}[^sc-2] and {++added this++}[^sc-3] instead.
+{==Rate limiting is set to 100 req/min==}{>>needs load testing<<}
+```
+
+| Type | Syntax |
+|------|--------|
+| Substitution | `{~~old~>new~~}[^sc-N]` |
+| Deletion | `{--text--}[^sc-N]` |
+| Insertion | `{++text++}[^sc-N]` |
+| Highlight | `{==text==}` |
+| Comment | `{>>text<<}` |
+
+Grouped changes use dotted IDs: `[^sc-17.1]`, `[^sc-17.2]` under parent `sc-17`.
+
+### Footnote Definitions
+
+Each `[^sc-N]` has a footnote definition block at the bottom of the file:
+
+```
+[^sc-1]: @ai:claude-opus-4.6 | 2026-02-10 | sub | proposed
+    reason: GraphQL gives clients query flexibility
+    context: "Authentication uses {API keys} for all endpoints"
+    @carol 2026-02-10: Why GraphQL? REST was intentional.
+      @alice 2026-02-10: Client team needs flexible queries.
+    @bob 2026-02-10 [question]: What about latency?
+    approved: @carol 2026-02-11 "Benchmarks look good"
+    resolved @carol 2026-02-11: Approved after benchmarks
+```
+
+**Header:** `[^sc-N]: @author | date | type | status`
+- Status is `proposed`, `accepted`, or `rejected`
+- Types: `ins`, `del`, `sub`, `highlight`, `comment`, `group`
+- AI authors: `@ai:model-name`. Humans: `@name`.
+
+**Metadata lines** (4-space indent): `reason:`, `context:`
+
+**Discussion** (4-space indent): `@author date: message` with optional `[label]`
+- Replies indent 2 more spaces per level
+- Labels: `[suggestion]`, `[issue]`, `[question]`, `[praise]`, `[todo]`, `[thought]`, `[nitpick]`
+
+**Approvals** (4-space indent): `approved:`, `rejected:`, `request-changes:`
+
+**Resolution** (4-space indent): `resolved @author date: reason` or `open -- reason`
+
+## Reasoning Model
+
+- **Proposals**: reasoning is optional. Skip it for obvious edits (typos, formatting). Include it when the "why" isn't clear from the "what."
+- **Reviews**: reasoning is required. Every approve/reject/request-changes must explain why.
+- **Pull model**: Don't explain everything upfront. Explain what a reviewer would actually ask about. If the change is self-evident, no reasoning needed.
+
+## Participating in Threads
+
+When a file has existing changes:
+1. Read the footnotes to understand what's been proposed and discussed
+2. Don't re-raise issues that are already resolved
+3. Use `review_changes` with `responses` to join existing discussions — don't create new changes to comment on old ones
+4. Use labels (`[issue]`, `[suggestion]`, etc.) to categorize your feedback

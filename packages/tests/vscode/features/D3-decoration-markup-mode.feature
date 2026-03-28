@@ -462,11 +462,11 @@ Feature: D3 -- Decoration rendering in all-markup mode
   Scenario: Highlight+comment+footnote from full parser pipeline produces Highlight type
     Given markup text:
       """
-      {==highlighted text==}{>>a comment<<}[^ct-1]
-      {++inserted text++}[^ct-2]
+      {==highlighted text==}{>>a comment<<}[^cn-1]
+      {++inserted text++}[^cn-2]
 
-      [^ct-1]: @alice | 2026-02-20 | highlight | proposed
-      [^ct-2]: @bob | 2026-02-20 | ins | proposed
+      [^cn-1]: @alice | 2026-02-20 | highlight | proposed
+      [^cn-2]: @bob | 2026-02-20 | ins | proposed
       """
     When I decorate in markup mode
     Then the parser finds 2 changes in the decoration text
@@ -479,11 +479,11 @@ Feature: D3 -- Decoration rendering in all-markup mode
   Scenario: Highlight with author uses default highlight type, even with multi-author coloring
     Given markup text:
       """
-      {==highlighted text==}{>>a comment<<}[^ct-1]
-      {++inserted text++}[^ct-2]
+      {==highlighted text==}{>>a comment<<}[^cn-1]
+      {++inserted text++}[^cn-2]
 
-      [^ct-1]: @alice | 2026-02-20 | highlight | proposed
-      [^ct-2]: @bob | 2026-02-20 | ins | proposed
+      [^cn-1]: @alice | 2026-02-20 | highlight | proposed
+      [^cn-2]: @bob | 2026-02-20 | ins | proposed
       """
     When I decorate in markup mode
     # Highlight uses default highlights array (yellow background)

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# First-release publish script for ChangeTracks npm packages.
+# First-release publish script for ChangeDown npm packages.
 # Uses pack-then-publish: rewrites file: deps → semver, packs a tarball,
 # restores package.json immediately, then publishes the tarball.
 #
@@ -35,7 +35,7 @@ PACKAGES=(
 )
 
 # ── Preflight checks ───────────────────────────────────────────────────────
-echo -e "\n${BOLD}═══ ChangeTracks npm Publish ═══${RESET}"
+echo -e "\n${BOLD}═══ ChangeDown npm Publish ═══${RESET}"
 $DRY_RUN && echo -e "${YELLOW}MODE: DRY RUN (pack only, no publish)${RESET}"
 echo ""
 
@@ -50,12 +50,12 @@ fi
 ok "npm authenticated as ${BOLD}$NPM_USER${RESET}"
 
 # Check org access
-if ! npm org ls changetracks "$NPM_USER" &>/dev/null; then
-  fail "User '$NPM_USER' is not a member of @changetracks org"
-  info "Create org at https://www.npmjs.com/org/create or run: npm org add changetracks $NPM_USER"
+if ! npm org ls changedown "$NPM_USER" &>/dev/null; then
+  fail "User '$NPM_USER' is not a member of @changedown org"
+  info "Create org at https://www.npmjs.com/org/create or run: npm org add changedown $NPM_USER"
   exit 1
 fi
-ok "@changetracks org access confirmed"
+ok "@changedown org access confirmed"
 
 # Check packages are built
 for pkg in "${PACKAGES[@]}"; do
@@ -225,5 +225,5 @@ else
   done
   echo ""
   echo -e "  Test install:"
-  echo -e "    ${BOLD}npx changetracks init${RESET}"
+  echo -e "    ${BOLD}npx changedown init${RESET}"
 fi

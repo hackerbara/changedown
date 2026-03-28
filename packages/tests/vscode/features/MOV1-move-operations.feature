@@ -6,7 +6,7 @@ Feature: MOV1 — Move operations
 
   Background:
     Given I open "journey-move-ops.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   Scenario: Move operations are rendered with decorations
@@ -16,12 +16,12 @@ Feature: MOV1 — Move operations
     When I navigate to the next change
     And I navigate to the next change
     And I record the cursor line
-    And I execute "ChangeTracks: Go to Linked Change"
+    And I execute "ChangeDown: Go to Linked Change"
     Then the cursor moved to a different line
 
   Scenario: Move fixture contains linked deletion and insertion
-    Then the document contains "[^ct-20.1]"
-    And the document contains "[^ct-20.2]"
+    Then the document contains "[^cn-20.1]"
+    And the document contains "[^cn-20.2]"
 
   Scenario: CodeLens elements are present for move operations
     Then CodeLens elements are present

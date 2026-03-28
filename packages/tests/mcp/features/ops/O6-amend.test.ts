@@ -16,7 +16,7 @@ describe('O6: Amend changes', () => {
   });
 
   it('Scenario: Amend substitution with new text (supersede)', async () => {
-    // Background: tracked file with proposed substitution ct-1
+    // Background: tracked file with proposed substitution cn-1
     const filePath = await ctx.createFile('doc.md', 'The API uses REST for services.');
     await ctx.propose(filePath, {
       old_text: 'REST',
@@ -28,26 +28,26 @@ describe('O6: Amend changes', () => {
     const before = await ctx.readDisk(filePath);
     expect(before).toContain('{~~REST~>GraphQL~~}');
 
-    // Amend with new text — supersedes ct-1
-    const result = await ctx.amend(filePath, 'ct-1', {
+    // Amend with new text — supersedes cn-1
+    const result = await ctx.amend(filePath, 'cn-1', {
       new_text: 'gRPC',
       reason: 'gRPC better for internal services',
     });
     expect(result.isError).toBeUndefined();
 
     const data = ctx.parseResult(result);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.new_change_id).toBeDefined();
     expect(data.amended).toBe(true);
 
     const disk = await ctx.readDisk(filePath);
     // New change proposes the amended text
     expect(disk).toContain('{~~REST~>gRPC~~}');
-    // Original ct-1 is rejected with superseded-by cross-reference
+    // Original cn-1 is rejected with superseded-by cross-reference
     expect(disk).toContain('| rejected');
     expect(disk).toContain(`superseded-by: ${data.new_change_id}`);
     // New change has supersedes cross-reference and the reason
-    expect(disk).toContain('supersedes: ct-1');
+    expect(disk).toContain('supersedes: cn-1');
     expect(disk).toContain('gRPC better for internal services');
   });
 
@@ -63,8 +63,8 @@ describe('O6: Amend changes', () => {
     const before = await ctx.readDisk(filePath);
     expect(before).toContain('{-- brown--}');
 
-    // Amend with empty new_text — supersedes ct-1 and creates new deletion
-    const result = await ctx.amend(filePath, 'ct-1', {
+    // Amend with empty new_text — supersedes cn-1 and creates new deletion
+    const result = await ctx.amend(filePath, 'cn-1', {
       reason: 'Updated rationale: consistency across document',
     });
     expect(result.isError).toBeUndefined();
@@ -74,9 +74,9 @@ describe('O6: Amend changes', () => {
     expect(data.amended).toBe(true);
 
     const disk = await ctx.readDisk(filePath);
-    // Original ct-1 rejected, new deletion proposed
+    // Original cn-1 rejected, new deletion proposed
     expect(disk).toContain('| rejected');
-    expect(disk).toContain('supersedes: ct-1');
+    expect(disk).toContain('supersedes: cn-1');
     expect(disk).toContain('Updated rationale: consistency across document');
   });
 
@@ -89,7 +89,7 @@ describe('O6: Amend changes', () => {
     });
 
     // Different author tries to amend
-    const result = await ctx.amend(filePath, 'ct-1', {
+    const result = await ctx.amend(filePath, 'cn-1', {
       new_text: 'gRPC',
       reason: 'I prefer gRPC',
       author: 'ai:other-agent',
@@ -119,7 +119,7 @@ describe('O6: Amend changes', () => {
     await ctx.createFile('doc.md', accepted);
 
     // Try to amend accepted change
-    const result = await ctx.amend(filePath, 'ct-1', {
+    const result = await ctx.amend(filePath, 'cn-1', {
       new_text: 'gRPC',
       reason: 'changed my mind',
     });
@@ -143,28 +143,28 @@ describe('O6: Amend changes', () => {
 
     // Add a discussion entry via review response
     await ctx.review(filePath, {
-      responses: [{ change_id: 'ct-1', response: 'Have you benchmarked this?', label: 'question' }],
+      responses: [{ change_id: 'cn-1', response: 'Have you benchmarked this?', label: 'question' }],
       author: 'ai:reviewer',
     });
 
     const beforeAmend = await ctx.readDisk(filePath);
-    expect(beforeAmend).toContain('[^ct-1]');
+    expect(beforeAmend).toContain('[^cn-1]');
     expect(beforeAmend).toContain('Have you benchmarked this?');
 
-    // Amend the change — supersedes ct-1
-    const result = await ctx.amend(filePath, 'ct-1', {
+    // Amend the change — supersedes cn-1
+    const result = await ctx.amend(filePath, 'cn-1', {
       new_text: 'gRPC',
       reason: 'benchmarks show gRPC is 3x faster',
     });
     expect(result.isError).toBeUndefined();
 
     const data = ctx.parseResult(result);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.new_change_id).toBeDefined();
 
     const disk = await ctx.readDisk(filePath);
-    // Original ct-1 footnote preserved (rejected) with discussion
-    expect(disk).toContain('[^ct-1]:');
+    // Original cn-1 footnote preserved (rejected) with discussion
+    expect(disk).toContain('[^cn-1]:');
     expect(disk).toContain('Have you benchmarked this?');
     expect(disk).toContain('original reasoning about flexibility');
     // New change proposes gRPC
@@ -172,7 +172,7 @@ describe('O6: Amend changes', () => {
     expect(disk).toContain(`[^${data.new_change_id}]`);
     // Cross-references link old and new
     expect(disk).toContain(`superseded-by: ${data.new_change_id}`);
-    expect(disk).toContain('supersedes: ct-1');
+    expect(disk).toContain('supersedes: cn-1');
     expect(disk).toContain('benchmarks show gRPC is 3x faster');
   });
 });

@@ -1,8 +1,8 @@
-# @changetracks/core
+# @changedown/core
 
-Single-pass CriticMarkup parser and operations library for ChangeTracks.
+Single-pass CriticMarkup parser and operations library for ChangeDown.
 
-See [ChangeTracks](https://github.com/hackerbara/changetracks) for full documentation.
+See [ChangeDown](https://github.com/hackerbara/changedown) for full documentation.
 
 ## License
 

@@ -1,5 +1,5 @@
 import * as fs from 'node:fs/promises';
-import { computeSupersedeResult, parseForFormat } from '@changetracks/core';
+import { computeSupersedeResult, parseForFormat } from '@changedown/core';
 import { errorResult } from '../shared/error-result.js';
 import { strArg, optionalStrArg } from '../args.js';
 import { resolveAuthor } from '../author.js';
@@ -23,7 +23,7 @@ export const amendChangeTool = {
       },
       change_id: {
         type: 'string',
-        description: "The change ID to amend (e.g., 'ct-7' or 'ct-7.2')",
+        description: "The change ID to amend (e.g., 'cn-7' or 'cn-7.2')",
       },
       new_text: {
         type: 'string',
@@ -81,7 +81,7 @@ export async function handleAmendChange(
 
     if (!isFileInScope(filePath, config, projectDir)) {
       return errorResult(
-        `File is not in scope for tracking: "${filePath}". Check .changetracks/config.toml include/exclude patterns.`
+        `File is not in scope for tracking: "${filePath}". Check .changedown/config.toml include/exclude patterns.`
       );
     }
 

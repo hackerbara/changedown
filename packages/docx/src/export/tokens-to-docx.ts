@@ -2,7 +2,7 @@
  * Tokens-to-Docx converter.
  *
  * Takes CriticMarkup markdown text and produces docx Paragraph[] using
- * @changetracks/core's parser and the docx npm library.
+ * @changedown/core's parser and the docx npm library.
  */
 
 import {
@@ -19,12 +19,12 @@ import {
   ImageRun,
   BookmarkStart,
   BookmarkEnd,
+  UnderlineType,
   type ICommentOptions,
   type ParagraphChild,
 } from 'docx';
 
-import * as fs from 'fs';
-import * as path from 'path';
+import { basename } from '../shared/basename.js';
 
 import {
   parseForFormat,
@@ -34,12 +34,13 @@ import {
   settleAcceptedChangesOnly,
   settleRejectedChangesOnly,
   type ChangeNode,
-} from '@changetracks/core';
+} from '@changedown/core';
 
+import { parseInlineSegments, type InlineSegment, type TextSegment, type LinkSegment } from './inline-segments.js';
 import { buildCommentChain, type CommentReply } from './comment-builder.js';
-import type { CommentPatchInfo } from './word-online-patch.js';
+import type { CommentPatchInfo, ImagePatchInfo, HyperlinkPatchInfo } from '../shared/patch-types.js';
 import { resolveImageDimensions, buildImageRun } from './image-builder.js';
-import { type ImagePatchInfo, type ImageDimensions, type ImagePositionMetadata, detectFormat } from '../shared/image-types.js';
+import { type ImageDimensions, type ImagePositionMetadata, detectFormat } from '../shared/image-types.js';
 import { toDocxAuthor } from '../shared/author-mapper.js';
 import { toIsoString } from '../shared/date-utils.js';
 
@@ -56,6 +57,7 @@ export interface DocxConversionOptions {
   defaultDpi?: number;
   /** Page content width clamp in inches (default: 6.5) */
   maxWidthInches?: number;
+  fileReader?: (path: string) => Uint8Array | null;
 }
 
 export interface DocxConversionResult {
@@ -63,6 +65,7 @@ export interface DocxConversionResult {
   commentDefs: ICommentOptions[];
   commentPatchInfos: CommentPatchInfo[];
   imagePatchInfos: ImagePatchInfo[];
+  hyperlinkPatchInfos: HyperlinkPatchInfo[];
   stats: {
     insertions: number;
     deletions: number;
@@ -91,9 +94,6 @@ function createCounters() {
 // ============================================================================
 // Inline markdown formatting helpers
 // ============================================================================
-
-/** Matches ![alt](path) image references */
-const IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g;
 
 /** Matches a standalone image reference (entire content is one image) */
 const STANDALONE_IMAGE_REGEX = /^!\[([^\]]*)\]\(([^)]+)\)$/;
@@ -128,11 +128,27 @@ function parseImagePosition(meta: Record<string, string>): ImagePositionMetadata
  * Handles absolute paths, relative paths, and pandoc's "media/" prefix fallback.
  */
 function resolveImagePath(imgPath: string, mediaDir?: string): string {
-  if (path.isAbsolute(imgPath) && fs.existsSync(imgPath)) return imgPath;
+  if (imgPath.startsWith('/')) return imgPath;
   if (!mediaDir) return imgPath;
-  const candidate = path.resolve(mediaDir, imgPath);
-  if (fs.existsSync(candidate)) return candidate;
-  return path.resolve(mediaDir, path.basename(imgPath));
+  return mediaDir + '/' + imgPath;
+}
+
+function resolveImageWithFallback(
+  imgPath: string,
+  mediaDir: string | undefined,
+  fileReader?: (path: string) => Uint8Array | null,
+): Uint8Array | null {
+  if (!fileReader) return null;
+  const primary = resolveImagePath(imgPath, mediaDir);
+  const data = fileReader(primary);
+  if (data) return data;
+  // Basename fallback — handles "media/hash.png" vs "{basename}_media/hash.png"
+  const name = basename(imgPath);
+  const fallback = mediaDir ? mediaDir + '/' + name : name;
+  if (fallback !== primary) {
+    return fileReader(fallback);
+  }
+  return null;
 }
 
 /**
@@ -142,6 +158,7 @@ function resolveImagePath(imgPath: string, mediaDir?: string): string {
 function tryBuildImageRun(
   imgPath: string,
   mediaDir?: string,
+  fileReader?: (path: string) => Uint8Array | null,
   footnoteDimensions?: ImageDimensions,
   dpi?: number,
   maxWidthInches?: number,
@@ -149,12 +166,13 @@ function tryBuildImageRun(
   position?: ImagePositionMetadata,
 ): ImageRun | null {
   try {
+    const data = resolveImageWithFallback(imgPath, mediaDir, fileReader);
+    if (!data) return null;
     const resolvedPath = resolveImagePath(imgPath, mediaDir);
-    const data = fs.readFileSync(resolvedPath);
     const format = detectFormat(resolvedPath);
     if (!format || !SUPPORTED_IMAGE_FORMATS.has(format)) return null;
 
-    const dims = resolveImageDimensions({ footnoteDimensions, imageBuffer: data, dpi, maxWidthInches });
+    const dims = resolveImageDimensions({ footnoteDimensions, dpi, maxWidthInches });
     return buildImageRun(
       data,
       format as 'png' | 'jpg' | 'gif' | 'bmp',
@@ -171,122 +189,82 @@ function tryBuildImageRun(
 /**
  * Parse inline markdown formatting: **bold**, *italic*, `code`, [link](url), ![alt](path).
  */
-function parseInlineMarkdown(text: string, mediaDir?: string): ParagraphChild[] {
+function parseInlineMarkdown(text: string, mediaDir?: string, fileReader?: (path: string) => Uint8Array | null): ParagraphChild[] {
   if (!text) return [];
-
-  const children: ParagraphChild[] = [];
-
-  // First pass: split on images, emit ImageRun or fallback text for each segment
-  const imageSegments: Array<{ start: number; end: number; imgPath: string; altText: string }> = [];
-  IMAGE_REGEX.lastIndex = 0;
-  let imgMatch: RegExpExecArray | null;
-  while ((imgMatch = IMAGE_REGEX.exec(text)) !== null) {
-    imageSegments.push({
-      start: imgMatch.index,
-      end: imgMatch.index + imgMatch[0].length,
-      altText: imgMatch[1],
-      imgPath: imgMatch[2],
-    });
-  }
-
-  if (imageSegments.length > 0) {
-    let pos = 0;
-    for (const seg of imageSegments) {
-      // Emit text before the image
-      if (seg.start > pos) {
-        const before = text.slice(pos, seg.start);
-        children.push(...parseInlineMarkdown(before, mediaDir));
-      }
-      // Attempt to build an ImageRun; fall back to alt text on failure
-      const imageRun = tryBuildImageRun(seg.imgPath, mediaDir);
-      if (imageRun) {
-        children.push(imageRun);
-      } else if (seg.altText) {
-        children.push(new TextRun({ text: seg.altText }));
-      }
-      pos = seg.end;
-    }
-    // Emit remaining text after last image
-    if (pos < text.length) {
-      children.push(...parseInlineMarkdown(text.slice(pos), mediaDir));
-    }
-    return children;
-  }
-
-  // No images — proceed with original inline formatting logic
-  const pattern = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|\[([^\]]+)\]\(([^)]+)\))/g;
-
-  let lastIndex = 0;
-  let m: RegExpExecArray | null;
-
-  while ((m = pattern.exec(text)) !== null) {
-    if (m.index > lastIndex) {
-      const plain = text.slice(lastIndex, m.index);
-      if (plain) children.push(new TextRun({ text: plain }));
-    }
-
-    if (m[2] !== undefined) {
-      children.push(new TextRun({ text: m[2], bold: true }));
-    } else if (m[3] !== undefined) {
-      children.push(new TextRun({ text: m[3], italics: true }));
-    } else if (m[4] !== undefined) {
-      children.push(new TextRun({ text: m[4], font: { name: 'Courier New' } }));
-    } else if (m[5] !== undefined && m[6] !== undefined) {
-      children.push(
-        new ExternalHyperlink({
-          link: m[6],
-          children: [new TextRun({ text: m[5], style: 'Hyperlink' })],
-        })
-      );
-    }
-
-    lastIndex = m.index + m[0].length;
-  }
-
-  if (lastIndex < text.length) {
-    const remaining = text.slice(lastIndex);
-    if (remaining) children.push(new TextRun({ text: remaining }));
-  }
-
-  if (children.length === 0 && text) {
-    children.push(new TextRun({ text }));
-  }
-
-  return children;
+  const segments = parseInlineSegments(text);
+  return segments.flatMap((seg) => segmentToParagraphChild(seg, mediaDir, fileReader));
 }
 
-/**
- * Extract formatting from text that wraps the entire content.
- * Handles: ***bold+italic***, **bold**, *italic*.
- */
-function extractFormatting(text: string): {
-  text: string;
-  bold?: boolean;
-  italics?: boolean;
-} {
-  let t = text;
-  let bold = false;
-  let italics = false;
+/** Apply formatting flags from a text or link segment onto a run options object. */
+function applySegmentFormatting(seg: TextSegment | LinkSegment, opts: Record<string, unknown>): void {
+  if (seg.bold) opts.bold = true;
+  if (seg.italics) opts.italics = true;
+  if (seg.strikethrough) opts.strike = true;
+  if (seg.underline) opts.underline = { type: UnderlineType.SINGLE };
+  if ('code' in seg && seg.code) opts.font = { name: 'Courier New' };
+}
 
-  if (t.startsWith('***') && t.endsWith('***') && t.length > 6) {
-    t = t.slice(3, -3);
-    bold = true;
-    italics = true;
-  } else if (t.startsWith('**') && t.endsWith('**') && t.length > 4) {
-    t = t.slice(2, -2);
-    bold = true;
-  } else if (t.startsWith('*') && t.endsWith('*') && t.length > 2 && !t.startsWith('**')) {
-    t = t.slice(1, -1);
-    italics = true;
-  } else {
-    t = t
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/\*([^*]+)\*/g, '$1')
-      .replace(/`([^`]+)`/g, '$1')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+function segmentToParagraphChild(seg: InlineSegment, mediaDir?: string, fileReader?: (path: string) => Uint8Array | null): ParagraphChild[] {
+  switch (seg.kind) {
+    case 'text': {
+      const opts: Record<string, unknown> = { text: seg.text };
+      applySegmentFormatting(seg, opts);
+      return [new TextRun(opts as any)];
+    }
+    case 'link': {
+      const linkOpts: Record<string, unknown> = { text: seg.text, style: 'Hyperlink' };
+      applySegmentFormatting(seg, linkOpts);
+      return [new ExternalHyperlink({ link: seg.url, children: [new TextRun(linkOpts as any)] })];
+    }
+    case 'image': {
+      const imageRun = tryBuildImageRun(seg.path, mediaDir, fileReader);
+      return imageRun ? [imageRun] : seg.altText ? [new TextRun({ text: seg.altText })] : [];
+    }
+  }
+}
+
+function segmentToTrackedRun(
+  seg: InlineSegment,
+  changeType: 'ins' | 'del',
+  ctx: ConversionContext,
+  author: string,
+  date: string,
+): ParagraphChild[] {
+  const isoDate = toIsoString(date);
+
+  if (seg.kind === 'image') {
+    if (!seg.altText) return [];
+    return segmentToTrackedRun(
+      { kind: 'text', text: seg.altText },
+      changeType, ctx, author, date,
+    );
   }
 
-  return { text: t, ...(bold && { bold }), ...(italics && { italics }) };
+  if (seg.kind === 'link') {
+    const revId = ctx.nextRevId();
+    const sentinelUrl = `https://_ct_link_${revId}_${changeType}.invalid/`;
+    ctx.hyperlinkPatchInfos.push({
+      sentinelUrl,
+      realUrl: seg.url,
+      changeType,
+      author,
+      date: isoDate,
+      revisionId: revId,
+    });
+    const linkOpts: Record<string, unknown> = { text: seg.text, style: 'Hyperlink' };
+    applySegmentFormatting(seg, linkOpts);
+    return [new ExternalHyperlink({ link: sentinelUrl, children: [new TextRun(linkOpts as any)] })];
+  }
+
+  const RunClass = changeType === 'ins' ? InsertedTextRun : DeletedTextRun;
+  const opts: Record<string, unknown> = {
+    text: seg.text,
+    id: ctx.nextRevId(),
+    author,
+    date: isoDate,
+  };
+  applySegmentFormatting(seg, opts);
+  return [new RunClass(opts as any)];
 }
 
 // ============================================================================
@@ -299,7 +277,9 @@ interface ConversionContext {
   commentDefs: ICommentOptions[];
   commentPatchInfos: CommentPatchInfo[];
   imagePatchInfos: ImagePatchInfo[];
+  hyperlinkPatchInfos: HyperlinkPatchInfo[];
   mediaDir?: string;
+  fileReader?: (path: string) => Uint8Array | null;
   defaultDpi?: number;
   maxWidthInches?: number;
   stats: {
@@ -344,13 +324,15 @@ function buildRepliesFromDiscussion(node: ChangeNode): CommentReply[] {
 }
 
 /**
- * Shared image detection + dimension resolution from a ChangeNode.
- * Used by both tracked images (ins/del sentinel path) and highlight images (direct emit).
+ * Try to build an ImageRun from a ChangeNode's content.
+ * When `tracked` is provided, assigns a sentinel name and pushes an ImagePatchInfo
+ * for post-processing (same pattern as hyperlink sentinels).
  */
 function tryBuildImageFromNode(
   content: string,
   node: ChangeNode,
   ctx: ConversionContext,
+  tracked?: { changeType: 'ins' | 'del'; author: string; date: string },
 ): ImageRun | null {
   const imgMatch = content.match(STANDALONE_IMAGE_REGEX);
   if (!imgMatch) return null;
@@ -360,46 +342,27 @@ function tryBuildImageFromNode(
   const imageMetaBag = node.metadata?.imageMetadata;
   const position = imageMetaBag ? parseImagePosition(imageMetaBag) : undefined;
 
-  return tryBuildImageRun(
-    imgPath, ctx.mediaDir, footnoteDims, ctx.defaultDpi, ctx.maxWidthInches,
-    undefined,
-    position,
-  );
-}
+  const sentinelName = tracked
+    ? `_ct_tracked_img_${ctx.imagePatchInfos.length}_${tracked.changeType}`
+    : undefined;
 
-/**
- * Try to handle image content inside a tracked change node.
- * Returns the ImageRun if successful, null if content is not an image.
- */
-function tryHandleTrackedImage(
-  content: string,
-  changeType: 'ins' | 'del',
-  ctx: ConversionContext,
-  displayName: string,
-  date: string,
-  node: ChangeNode,
-): ImageRun | null {
-  const imgMatch = content.match(STANDALONE_IMAGE_REGEX);
-  if (!imgMatch) return null;
-
-  const imgPath = imgMatch[2];
-  const sentinelName = `_ct_tracked_img_${ctx.imagePatchInfos.length}_${changeType}`;
-  const metaBag = node.metadata as Record<string, unknown> | undefined;
-  const footnoteDims = metaBag?.imageDimensions as ImageDimensions | undefined;
-  const imageMetaBag = metaBag?.imageMetadata as Record<string, string> | undefined;
-  const position = imageMetaBag ? parseImagePosition(imageMetaBag) : undefined;
   const imageRun = tryBuildImageRun(
-    imgPath, ctx.mediaDir, footnoteDims, ctx.defaultDpi, ctx.maxWidthInches, sentinelName, position
+    imgPath, ctx.mediaDir, ctx.fileReader, footnoteDims, ctx.defaultDpi, ctx.maxWidthInches,
+    sentinelName,
+    position,
   );
   if (!imageRun) return null;
 
-  ctx.imagePatchInfos.push({
-    sentinelName,
-    changeType,
-    author: displayName,
-    date: toIsoString(date),
-    revisionId: ctx.nextRevId(),
-  });
+  if (tracked && sentinelName) {
+    ctx.imagePatchInfos.push({
+      sentinelName,
+      changeType: tracked.changeType,
+      author: tracked.author,
+      date: toIsoString(tracked.date),
+      revisionId: ctx.nextRevId(),
+    });
+  }
+
   return imageRun;
 }
 
@@ -420,7 +383,7 @@ function changeNodeToDocxChildren(
       const content = node.modifiedText || (node.status === ChangeStatus.Proposed ? '\u200B' : '');
       if (!content) break;
 
-      const trackedImg = tryHandleTrackedImage(content, 'ins', ctx, displayName, date, node);
+      const trackedImg = tryBuildImageFromNode(content, node, ctx, { changeType: 'ins', author: displayName, date });
       if (trackedImg) {
         ctx.stats.insertions++;
         ctx.stats.authorSet.add(displayName);
@@ -428,19 +391,12 @@ function changeNodeToDocxChildren(
         break;
       }
 
-      const fmt = extractFormatting(content);
       ctx.stats.insertions++;
       ctx.stats.authorSet.add(displayName);
-      children.push(
-        new InsertedTextRun({
-          text: fmt.text,
-          id: ctx.nextRevId(),
-          author: displayName,
-          date: toIsoString(date),
-          bold: fmt.bold,
-          italics: fmt.italics,
-        })
-      );
+      const segs = parseInlineSegments(content);
+      for (const seg of segs) {
+        children.push(...segmentToTrackedRun(seg, 'ins', ctx, displayName, date));
+      }
       break;
     }
 
@@ -448,7 +404,7 @@ function changeNodeToDocxChildren(
       const content = node.originalText || (node.status === ChangeStatus.Proposed ? '\u200B' : '');
       if (!content) break;
 
-      const trackedImg = tryHandleTrackedImage(content, 'del', ctx, displayName, date, node);
+      const trackedImg = tryBuildImageFromNode(content, node, ctx, { changeType: 'del', author: displayName, date });
       if (trackedImg) {
         ctx.stats.deletions++;
         ctx.stats.authorSet.add(displayName);
@@ -456,19 +412,12 @@ function changeNodeToDocxChildren(
         break;
       }
 
-      const fmt = extractFormatting(content);
       ctx.stats.deletions++;
       ctx.stats.authorSet.add(displayName);
-      children.push(
-        new DeletedTextRun({
-          text: fmt.text,
-          id: ctx.nextRevId(),
-          author: displayName,
-          date: toIsoString(date),
-          bold: fmt.bold,
-          italics: fmt.italics,
-        })
-      );
+      const segs = parseInlineSegments(content);
+      for (const seg of segs) {
+        children.push(...segmentToTrackedRun(seg, 'del', ctx, displayName, date));
+      }
       break;
     }
 
@@ -476,31 +425,15 @@ function changeNodeToDocxChildren(
       const zwsFallback = node.status === ChangeStatus.Proposed ? '\u200B' : '';
       ctx.stats.substitutions++;
       ctx.stats.authorSet.add(displayName);
-      const oldFmt = extractFormatting(node.originalText || zwsFallback);
-      if (oldFmt.text) {
-        children.push(
-          new DeletedTextRun({
-            text: oldFmt.text,
-            id: ctx.nextRevId(),
-            author: displayName,
-            date: toIsoString(date),
-            bold: oldFmt.bold,
-            italics: oldFmt.italics,
-          })
-        );
+
+      const oldSegs = parseInlineSegments(node.originalText || zwsFallback);
+      for (const seg of oldSegs) {
+        children.push(...segmentToTrackedRun(seg, 'del', ctx, displayName, date));
       }
-      const newFmt = extractFormatting(node.modifiedText || zwsFallback);
-      if (newFmt.text) {
-        children.push(
-          new InsertedTextRun({
-            text: newFmt.text,
-            id: ctx.nextRevId(),
-            author: displayName,
-            date: toIsoString(date),
-            bold: newFmt.bold,
-            italics: newFmt.italics,
-          })
-        );
+
+      const newSegs = parseInlineSegments(node.modifiedText || zwsFallback);
+      for (const seg of newSegs) {
+        children.push(...segmentToTrackedRun(seg, 'ins', ctx, displayName, date));
       }
       break;
     }
@@ -699,7 +632,7 @@ function lineToDocxChildren(
   if (lineChanges.length === 0) {
     // No changes on this line — emit as plain text
     const lineText = text.substring(lineStart, lineEnd);
-    children.push(...parseInlineMarkdown(lineText, ctx.mediaDir));
+    children.push(...parseInlineMarkdown(lineText, ctx.mediaDir, ctx.fileReader));
     return children;
   }
 
@@ -725,7 +658,7 @@ function lineToDocxChildren(
       const plainEnd = Math.min(change.range.start, lineEnd);
       if (plainEnd > plainStart) {
         const plain = text.substring(plainStart, plainEnd);
-        children.push(...parseInlineMarkdown(plain, ctx.mediaDir));
+        children.push(...parseInlineMarkdown(plain, ctx.mediaDir, ctx.fileReader));
         lastRunType = null;
         lastRunAuthor = null;
       }
@@ -744,7 +677,7 @@ function lineToDocxChildren(
       displayName === lastRunAuthor
     ) {
       const sepId = ctx.nextBookmarkId();
-      children.push(new BookmarkStart(`ct-sep-${sepId}`, sepId));
+      children.push(new BookmarkStart(`cn-sep-${sepId}`, sepId));
       children.push(new BookmarkEnd(sepId));
     }
 
@@ -770,7 +703,7 @@ function lineToDocxChildren(
   if (pos < lineEnd) {
     const trailing = text.substring(pos, lineEnd);
     if (trailing) {
-      children.push(...parseInlineMarkdown(trailing, ctx.mediaDir));
+      children.push(...parseInlineMarkdown(trailing, ctx.mediaDir, ctx.fileReader));
     }
   }
 
@@ -782,10 +715,10 @@ function lineToDocxChildren(
  */
 function isSkippableLine(line: string): boolean {
   const trimmed = line.trim();
-  if (trimmed === '<!-- ctrcks.com/v1: tracked -->') return true;
-  if (/^\[\^ct-/.test(line)) return true;
+  if (trimmed === '<!-- changedown.com/v1: tracked -->') return true;
+  if (/^\[\^cn-/.test(line)) return true;
   if (/^\[\^sc-/.test(line)) return true;
-  // Skip footnote continuation lines (indented lines following [^ct-N]: definitions)
+  // Skip footnote continuation lines (indented lines following [^cn-N]: definitions)
   if (/^\s{4}@/.test(line)) return true;
   if (/^\s{4}(approved|rejected|revised|previous|image-dimensions|image-[\w-]+|merge-detected):/.test(line)) return true;
   return false;
@@ -854,6 +787,7 @@ export function changesToDocxParagraphs(
   const commentDefs: ICommentOptions[] = [];
   const commentPatchInfos: CommentPatchInfo[] = [];
   const imagePatchInfos: ImagePatchInfo[] = [];
+  const hyperlinkPatchInfos: HyperlinkPatchInfo[] = [];
   const stats = {
     insertions: 0,
     deletions: 0,
@@ -885,7 +819,9 @@ export function changesToDocxParagraphs(
     commentDefs,
     commentPatchInfos,
     imagePatchInfos,
+    hyperlinkPatchInfos,
     mediaDir: options.mediaDir,
+    fileReader: options.fileReader,
     defaultDpi: options.defaultDpi,
     maxWidthInches: options.maxWidthInches,
     stats,
@@ -901,15 +837,44 @@ export function changesToDocxParagraphs(
   const lines = text.split('\n');
   let lineOffset = 0;
   let inFootnoteBlock = false;
+  let inFencedCodeBlock = false;
 
   for (const line of lines) {
     const lineStart = lineOffset;
     const lineEnd = lineOffset + line.length;
     lineOffset = lineEnd + 1; // +1 for the \n
 
-    // Detect footnote block start and stop processing
-    if (!inFootnoteBlock && (/^\[\^ct-/.test(line) || /^\[\^sc-/.test(line))) {
+    // Track fenced code blocks so we don't misinterpret their contents
+    // as footnote definitions, tracking headers, or other metadata.
+    if (/^```/.test(line.trimStart())) {
+      inFencedCodeBlock = !inFencedCodeBlock;
+      // Emit the fence line itself as a paragraph (plain text)
+      if (!inFootnoteBlock) {
+        paragraphs.push(new Paragraph({ children: [new TextRun({ text: line })] }));
+      }
+      continue;
+    }
+
+    // Inside a fenced code block, emit lines verbatim as plain text paragraphs
+    if (inFencedCodeBlock) {
+      if (!inFootnoteBlock) {
+        paragraphs.push(new Paragraph({ children: [new TextRun({ text: line, font: { name: 'Courier New' } })] }));
+      }
+      continue;
+    }
+
+    // Detect footnote block start — only at end-of-document footnote definitions,
+    // never inside code blocks (handled above). Once we enter the footnote block
+    // and then hit a non-footnote, non-continuation, non-empty line, we exit it
+    // so that content after example footnotes isn't swallowed.
+    if (/^\[\^cn-/.test(line) || /^\[\^sc-/.test(line)) {
       inFootnoteBlock = true;
+    } else if (inFootnoteBlock) {
+      // Footnote continuation lines are indented (4 spaces) or empty
+      const isContinuation = /^\s{4}/.test(line) || line.trim() === '';
+      if (!isContinuation) {
+        inFootnoteBlock = false;
+      }
     }
     if (inFootnoteBlock) continue;
 
@@ -949,7 +914,7 @@ export function changesToDocxParagraphs(
 
     // For clean mode, no tracked changes exist — just emit plain paragraphs
     if (options.mode === 'clean') {
-      const inlineChildren = parseInlineMarkdown(content, options.mediaDir);
+      const inlineChildren = parseInlineMarkdown(content, options.mediaDir, options.fileReader);
       paragraphs.push(
         new Paragraph({
           heading,
@@ -981,6 +946,7 @@ export function changesToDocxParagraphs(
     commentDefs,
     commentPatchInfos,
     imagePatchInfos,
+    hyperlinkPatchInfos,
     stats: {
       insertions: stats.insertions,
       deletions: stats.deletions,

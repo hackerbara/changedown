@@ -1,4 +1,4 @@
-<!-- ctrcks.com/v1: tracked -->
+<!-- changedown.com/v1: tracked -->
 # Kubernetes Observibility Guide: From Metrics to Actionable Insights
 
 Modern cloud-native applications depolyed on Kubernetes demand a comprehensive observability strategy. Without proper instrumentation; teams fly blind when incidents strike, leading to prolonged outages and frustrated users. This guide covers the five pillars of kubernetes observability: metrics collection, centralized logging, distributed tracing, alerting, and dashboarding. Whether you are running a handful of microservices or managing a fleet of clusters, the practices described here will help you build a robust monitoring stack that scales with your infrastucture.

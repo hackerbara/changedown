@@ -1,10 +1,10 @@
-# @changetracks/docx
+# @changedown/docx
 
-DOCX export with tracked changes for ChangeTracks.
+DOCX export with tracked changes for ChangeDown.
 
 Converts CriticMarkup markdown to `.docx` files with Word-compatible tracked changes, comments, and threading.
 
-See [ChangeTracks](https://github.com/hackerbara/changetracks) for full documentation.
+See [ChangeDown](https://github.com/hackerbara/changedown) for full documentation.
 
 ## License
 

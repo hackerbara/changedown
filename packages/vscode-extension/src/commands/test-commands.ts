@@ -5,14 +5,14 @@ import * as os from 'os';
 import type { ExtensionController } from '../controller';
 import type { LanguageClient } from 'vscode-languageclient/node';
 import type { ChangeComments } from '../change-comments';
-import { ChangeType } from '@changetracks/core';
+import { ChangeType } from '@changedown/core';
 import { getCachedDecorationData, invalidateDecorationCache } from '../lsp-client';
 import { typeLabel } from '../visual-semantics';
 
 function testDocPath(): string {
-    const id = process.env.CHANGETRACKS_TEST_INSTANCE_ID;
+    const id = process.env.CHANGEDOWN_TEST_INSTANCE_ID;
     const suffix = id ? `-${id}` : '';
-    return path.join(os.tmpdir(), `changetracks-test-doc${suffix}.json`);
+    return path.join(os.tmpdir(), `changedown-test-doc${suffix}.json`);
 }
 
 export function registerTestCommands(
@@ -22,8 +22,8 @@ export function registerTestCommands(
     changeComments?: ChangeComments
 ): void {
     context.subscriptions.push(
-        vscode.commands.registerCommand('changetracks._testReadConfig', () => {
-            const config = vscode.workspace.getConfiguration('changetracks');
+        vscode.commands.registerCommand('changedown._testReadConfig', () => {
+            const config = vscode.workspace.getConfiguration('changedown');
             const allKeys: Record<string, unknown> = {};
             const keys = [
                 'trackingMode', 'defaultViewMode', 'decorationStyle',
@@ -39,11 +39,11 @@ export function registerTestCommands(
             for (const key of keys) {
                 allKeys[key] = config.get(key);
             }
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-config.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-config.json');
             fs.writeFileSync(statePath, JSON.stringify({ ...allKeys, timestamp: Date.now() }));
         }),
-        vscode.commands.registerCommand('changetracks._testExtensionState', async () => {
-            const ext = vscode.extensions.getExtension('hackerbara.changetracks-vscode');
+        vscode.commands.registerCommand('changedown._testExtensionState', async () => {
+            const ext = vscode.extensions.getExtension('hackerbara.changedown-vscode');
             const state: Record<string, unknown> = {
                 found: !!ext,
                 active: ext?.isActive ?? false,
@@ -54,13 +54,13 @@ export function registerTestCommands(
                 timestamp: Date.now(),
             };
             const cmds = await vscode.commands.getCommands(true);
-            const scCmds = cmds.filter((c: string) => c.startsWith('changetracks.'));
+            const scCmds = cmds.filter((c: string) => c.startsWith('changedown.'));
             state.commandCount = scCmds.length;
             state.commands = scCmds.sort();
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-ext-state.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-ext-state.json');
             fs.writeFileSync(statePath, JSON.stringify(state));
         }),
-        vscode.commands.registerCommand('changetracks._testLspClient', () => {
+        vscode.commands.registerCommand('changedown._testLspClient', () => {
             const client = getClient();
             const state: Record<string, unknown> = {
                 clientExists: !!client,
@@ -76,10 +76,10 @@ export function registerTestCommands(
             } catch {
                 // Ignore
             }
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-lsp-state.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-lsp-state.json');
             fs.writeFileSync(statePath, JSON.stringify(state));
         }),
-        vscode.commands.registerCommand('changetracks._testQueryPanelState', () => {
+        vscode.commands.registerCommand('changedown._testQueryPanelState', () => {
             const editor = vscode.window.activeTextEditor
                 ?? vscode.window.visibleTextEditors.find(e => e.document.languageId === 'markdown');
             const doc = editor?.document.languageId === 'markdown' ? editor.document : undefined;
@@ -92,27 +92,27 @@ export function registerTestCommands(
                 hasActiveMarkdownEditor: !!doc,
                 timestamp: Date.now(),
             };
-            const tmpPath = path.join(os.tmpdir(), 'changetracks-test-state.json');
+            const tmpPath = path.join(os.tmpdir(), 'changedown-test-state.json');
             fs.writeFileSync(tmpPath, JSON.stringify(state), 'utf8');
             return state;
         }),
-        vscode.commands.registerCommand('changetracks._testGetDocumentText', () => {
+        vscode.commands.registerCommand('changedown._testGetDocumentText', () => {
             const editor = vscode.window.activeTextEditor;
             const text = editor?.document.getText() ?? '';
             const uri = editor?.document.uri.toString() ?? '';
             fs.writeFileSync(testDocPath(), JSON.stringify({ text, uri, timestamp: Date.now() }));
             return { text, uri };
         }),
-        vscode.commands.registerCommand('changetracks._testGetCursorPosition', () => {
+        vscode.commands.registerCommand('changedown._testGetCursorPosition', () => {
             const editor = vscode.window.activeTextEditor;
             const line = editor?.selection?.active?.line ?? -1;
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-cursor.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-cursor.json');
             fs.writeFileSync(statePath, JSON.stringify({ line: line + 1, timestamp: Date.now() }));
             return { line: line + 1 };
         }),
-        vscode.commands.registerCommand('changetracks._testResetDocument', async () => {
-            const inputPath = path.join(os.tmpdir(), 'changetracks-test-reset-input.json');
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-reset.json');
+        vscode.commands.registerCommand('changedown._testResetDocument', async () => {
+            const inputPath = path.join(os.tmpdir(), 'changedown-test-reset-input.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-reset.json');
             try {
                 const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
                 const editor = vscode.window.activeTextEditor;
@@ -146,7 +146,7 @@ export function registerTestCommands(
                     editSuccess = await editor.edit(eb => eb.replace(fullRange, input.content));
 
                     // Set tracking state and reset shadow/ID counter
-                    const isTracked = input.content.includes('ctrcks.com/v1: tracked');
+                    const isTracked = input.content.includes('changedown.com/v1: tracked');
                     controller.setStateForTest(uri, {
                         tracking: isTracked,
                         shadow: input.content,
@@ -170,32 +170,32 @@ export function registerTestCommands(
                 fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: err.message, timestamp: Date.now() }));
             }
         }),
-        vscode.commands.registerCommand('changetracks._testPasteClipboard', async () => {
-            const inputPath = path.join(os.tmpdir(), 'changetracks-test-paste-input.json');
+        vscode.commands.registerCommand('changedown._testPasteClipboard', async () => {
+            const inputPath = path.join(os.tmpdir(), 'changedown-test-paste-input.json');
             try {
                 const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
                 await vscode.env.clipboard.writeText(input.text);
             } catch (err: any) {
-                const statePath = path.join(os.tmpdir(), 'changetracks-test-paste-result.json');
+                const statePath = path.join(os.tmpdir(), 'changedown-test-paste-result.json');
                 fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: err.message, timestamp: Date.now() }));
             }
         }),
-        vscode.commands.registerCommand('changetracks._testUpdateSetting', async () => {
-            const inputPath = path.join(os.tmpdir(), 'changetracks-test-update-setting-input.json');
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-update-setting.json');
+        vscode.commands.registerCommand('changedown._testUpdateSetting', async () => {
+            const inputPath = path.join(os.tmpdir(), 'changedown-test-update-setting-input.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-update-setting.json');
             try {
                 const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
-                await vscode.workspace.getConfiguration('changetracks').update(input.key, input.value, vscode.ConfigurationTarget.Global);
+                await vscode.workspace.getConfiguration('changedown').update(input.key, input.value, vscode.ConfigurationTarget.Global);
                 fs.writeFileSync(statePath, JSON.stringify({ ok: true, key: input.key, value: input.value, timestamp: Date.now() }));
             } catch (err: any) {
                 fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: err.message, timestamp: Date.now() }));
             }
         }),
         // Section 11: waitForChanges — polls cache until LSP has sent data or timeout
-        vscode.commands.registerCommand('changetracks._testWaitForChanges', async () => {
+        vscode.commands.registerCommand('changedown._testWaitForChanges', async () => {
             const editor = vscode.window.activeTextEditor;
             const uri = editor?.document.uri.toString();
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-wait-changes.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-wait-changes.json');
             if (!uri) {
                 fs.writeFileSync(statePath, JSON.stringify({ ready: false, error: 'no active editor', timestamp: Date.now() }));
                 return;
@@ -213,9 +213,9 @@ export function registerTestCommands(
             }
             fs.writeFileSync(statePath, JSON.stringify({ ready: false, timeout: true, uri, timestamp: Date.now() }));
         }),
-        vscode.commands.registerCommand('changetracks._testPositionCursor', async () => {
-            const inputPath = path.join(os.tmpdir(), 'changetracks-test-position-cursor-input.json');
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-position-cursor.json');
+        vscode.commands.registerCommand('changedown._testPositionCursor', async () => {
+            const inputPath = path.join(os.tmpdir(), 'changedown-test-position-cursor-input.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-position-cursor.json');
             try {
                 const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
                 const editor = vscode.window.activeTextEditor;
@@ -259,9 +259,9 @@ export function registerTestCommands(
                 fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: err.message, timestamp: Date.now() }));
             }
         }),
-        vscode.commands.registerCommand('changetracks._testSelectText', async () => {
-            const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-text-input.json');
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-select-text.json');
+        vscode.commands.registerCommand('changedown._testSelectText', async () => {
+            const inputPath = path.join(os.tmpdir(), 'changedown-test-select-text-input.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-select-text.json');
             try {
                 const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
                 const editor = vscode.window.activeTextEditor;
@@ -284,9 +284,9 @@ export function registerTestCommands(
                 fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: err.message, timestamp: Date.now() }));
             }
         }),
-        vscode.commands.registerCommand('changetracks._testSelectAndReplace', async () => {
-            const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-replace-input.json');
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-select-replace.json');
+        vscode.commands.registerCommand('changedown._testSelectAndReplace', async () => {
+            const inputPath = path.join(os.tmpdir(), 'changedown-test-select-replace-input.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-select-replace.json');
             try {
                 const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
                 const editor = vscode.window.activeTextEditor;
@@ -333,9 +333,9 @@ export function registerTestCommands(
                 fs.writeFileSync(statePath, JSON.stringify({ ok: false, error: err.message, timestamp: Date.now() }));
             }
         }),
-        vscode.commands.registerCommand('changetracks._testExecuteCommand', async () => {
-            const inputPath = path.join(os.tmpdir(), 'changetracks-test-exec-input.json');
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-exec.json');
+        vscode.commands.registerCommand('changedown._testExecuteCommand', async () => {
+            const inputPath = path.join(os.tmpdir(), 'changedown-test-exec-input.json');
+            const statePath = path.join(os.tmpdir(), 'changedown-test-exec.json');
             try {
                 const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
                 const commandId = input.command as string;
@@ -351,8 +351,8 @@ export function registerTestCommands(
             }
         }),
         // Task 0A: Get comment thread metadata
-        vscode.commands.registerCommand('changetracks._testGetCommentThreads', () => {
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-comment-threads.json');
+        vscode.commands.registerCommand('changedown._testGetCommentThreads', () => {
+            const statePath = path.join(os.tmpdir(), 'changedown-test-comment-threads.json');
             try {
                 const threads = changeComments?.getAllThreadData?.() ?? [];
                 fs.writeFileSync(statePath, JSON.stringify({
@@ -365,8 +365,8 @@ export function registerTestCommands(
             }
         }),
         // Task 0B: Get CodeLens items
-        vscode.commands.registerCommand('changetracks._testGetCodeLensItems', async () => {
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-codelens.json');
+        vscode.commands.registerCommand('changedown._testGetCodeLensItems', async () => {
+            const statePath = path.join(os.tmpdir(), 'changedown-test-codelens.json');
             try {
                 const editor = vscode.window.activeTextEditor;
                 if (!editor) {
@@ -391,8 +391,8 @@ export function registerTestCommands(
             }
         }),
         // Task 0C: Get review panel card data
-        vscode.commands.registerCommand('changetracks._testGetReviewPanelCards', () => {
-            const statePath = path.join(os.tmpdir(), 'changetracks-test-review-panel-cards.json');
+        vscode.commands.registerCommand('changedown._testGetReviewPanelCards', () => {
+            const statePath = path.join(os.tmpdir(), 'changedown-test-review-panel-cards.json');
             try {
                 const editor = vscode.window.activeTextEditor;
                 const doc = editor?.document.languageId === 'markdown' ? editor.document : undefined;

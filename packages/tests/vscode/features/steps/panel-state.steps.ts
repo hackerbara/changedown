@@ -20,14 +20,14 @@ import {
     serializeToToml,
     DEFAULT_SETTINGS_CONFIG,
     DEFAULT_EDITOR_PREFS,
-} from 'changetracks-vscode/internals';
-import type { ProjectStatusField, SettingsConfig, EditorPreferencesConfig } from 'changetracks-vscode/internals';
-import type { ChangeTracksWorld } from './world';
+} from 'changedown-vscode/internals';
+import type { ProjectStatusField, SettingsConfig, EditorPreferencesConfig } from 'changedown-vscode/internals';
+import type { ChangeDownWorld } from './world';
 
 // ── Extend World with panel state test fields ────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         statusModel?: ProjectStatusModel;
         changeEventFired?: boolean;
         changeEventCount?: number;
@@ -42,7 +42,7 @@ declare module './world' {
 
 // ── Lifecycle ────────────────────────────────────────────────────────
 
-Before({ tags: '@fast and (@PNL1 or @PNL2)' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and (@PNL1 or @PNL2)' }, function (this: ChangeDownWorld) {
     this.statusModel = undefined;
     this.changeEventFired = undefined;
     this.changeEventCount = undefined;
@@ -56,28 +56,28 @@ Before({ tags: '@fast and (@PNL1 or @PNL2)' }, function (this: ChangeTracksWorld
 
 // ── Given steps: ProjectStatusModel ──────────────────────────────────
 
-Given('a fresh ProjectStatusModel', function (this: ChangeTracksWorld) {
+Given('a fresh ProjectStatusModel', function (this: ChangeDownWorld) {
     this.statusModel = new ProjectStatusModel();
 });
 
-Given('I load TOML config:', function (this: ChangeTracksWorld, docString: string) {
+Given('I load TOML config:', function (this: ChangeDownWorld, docString: string) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     this.statusModel.updateFromToml(docString);
 });
 
-Given('I load TOML config {string}', function (this: ChangeTracksWorld, toml: string) {
+Given('I load TOML config {string}', function (this: ChangeDownWorld, toml: string) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     // Unescape \\n to actual newlines from Gherkin string params
     this.statusModel.updateFromToml(toml.replace(/\\n/g, '\n'));
 });
 
-Given('I am listening for change events', function (this: ChangeTracksWorld) {
+Given('I am listening for change events', function (this: ChangeDownWorld) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     this.changeEventFired = false;
     this.statusModel.onDidChange(() => { this.changeEventFired = true; });
 });
 
-Given('I am counting change events', function (this: ChangeTracksWorld) {
+Given('I am counting change events', function (this: ChangeDownWorld) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     this.changeEventCount = 0;
     this.statusModel.onDidChange(() => { this.changeEventCount!++; });
@@ -86,7 +86,7 @@ Given('I am counting change events', function (this: ChangeTracksWorld) {
 // ── Given steps: SettingsPanel ───────────────────────────────────────
 
 Given('a settings config with tracking default {string} and author enforcement {string}', function (
-    this: ChangeTracksWorld, trackingDefault: string, authorEnforcement: string
+    this: ChangeDownWorld, trackingDefault: string, authorEnforcement: string
 ) {
     this.settingsConfig = {
         tracking: { default: trackingDefault as 'tracked' | 'untracked', auto_header: true, include: ['**/*.md'], exclude: [] },
@@ -101,7 +101,7 @@ Given('a settings config with tracking default {string} and author enforcement {
 });
 
 Given('a settings config with tracking default {string} and author enforcement {string} and hooks enforcement {string} and hashline enabled {word} and include {string} and exclude {string}', function (
-    this: ChangeTracksWorld, trackingDefault: string, authorEnforcement: string,
+    this: ChangeDownWorld, trackingDefault: string, authorEnforcement: string,
     hooksEnforcement: string, hashlineEnabled: string, include: string, exclude: string
 ) {
     this.settingsConfig = {
@@ -116,23 +116,23 @@ Given('a settings config with tracking default {string} and author enforcement {
     };
 });
 
-Given('default settings config', function (this: ChangeTracksWorld) {
+Given('default settings config', function (this: ChangeDownWorld) {
     this.settingsConfig = { ...DEFAULT_SETTINGS_CONFIG };
 });
 
 // ── When steps: ProjectStatusModel ───────────────────────────────────
 
-When('I set file tracking override to {string}', function (this: ChangeTracksWorld, value: string) {
+When('I set file tracking override to {string}', function (this: ChangeDownWorld, value: string) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     this.statusModel.setFileTrackingOverride(value as 'tracked' | 'untracked');
 });
 
-When('I set file tracking override to null', function (this: ChangeTracksWorld) {
+When('I set file tracking override to null', function (this: ChangeDownWorld) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     this.statusModel.setFileTrackingOverride(null);
 });
 
-When('I set session tracking override to {word}', function (this: ChangeTracksWorld, value: string) {
+When('I set session tracking override to {word}', function (this: ChangeDownWorld, value: string) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     if (value === 'null') {
         this.statusModel.setSessionTrackingOverride(null);
@@ -141,7 +141,7 @@ When('I set session tracking override to {word}', function (this: ChangeTracksWo
     }
 });
 
-When('I set visible fields to {string}', function (this: ChangeTracksWorld, fieldsStr: string) {
+When('I set visible fields to {string}', function (this: ChangeDownWorld, fieldsStr: string) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     const fields = fieldsStr.split(',') as ProjectStatusField[];
     this.statusModel.setVisibleFields(fields);
@@ -149,13 +149,13 @@ When('I set visible fields to {string}', function (this: ChangeTracksWorld, fiel
 
 // ── When steps: SettingsPanel ────────────────────────────────────────
 
-When('I generate settings HTML', function (this: ChangeTracksWorld) {
+When('I generate settings HTML', function (this: ChangeDownWorld) {
     const config = this.settingsConfig ?? DEFAULT_SETTINGS_CONFIG;
     this.settingsHtml = generateSettingsHtml(config, DEFAULT_EDITOR_PREFS, 'fake-csp-nonce');
 });
 
 When('I parse form data with tracking {string} and author enforcement {string} and hooks {string}', function (
-    this: ChangeTracksWorld, trackingDefault: string, authorEnforcement: string, hooksEnforcement: string
+    this: ChangeDownWorld, trackingDefault: string, authorEnforcement: string, hooksEnforcement: string
 ) {
     this.parsedConfig = parseFormData({
         'tracking-default': trackingDefault,
@@ -175,7 +175,7 @@ When('I parse form data with tracking {string} and author enforcement {string} a
 });
 
 When('I parse editor preferences with commentsExpanded {word} and format {string} and groupBy {string}', function (
-    this: ChangeTracksWorld, commentsExpanded: string, format: string, groupBy: string
+    this: ChangeDownWorld, commentsExpanded: string, format: string, groupBy: string
 ) {
     this.parsedEditorPrefs = parseEditorPreferences({
         'editor-comments-expanded': commentsExpanded === 'true',
@@ -184,16 +184,16 @@ When('I parse editor preferences with commentsExpanded {word} and format {string
     });
 });
 
-When('I parse editor preferences with empty payload', function (this: ChangeTracksWorld) {
+When('I parse editor preferences with empty payload', function (this: ChangeDownWorld) {
     this.parsedEditorPrefs = parseEditorPreferences({});
 });
 
-When('I serialize to TOML', function (this: ChangeTracksWorld) {
+When('I serialize to TOML', function (this: ChangeDownWorld) {
     assert.ok(this.settingsConfig, 'No settings config created');
     this.tomlOutput = serializeToToml(this.settingsConfig);
 });
 
-When('I serialize to TOML and parse back', function (this: ChangeTracksWorld) {
+When('I serialize to TOML and parse back', function (this: ChangeDownWorld) {
     assert.ok(this.settingsConfig, 'No settings config created');
     this.tomlOutput = serializeToToml(this.settingsConfig);
     const { parse } = require('smol-toml');
@@ -202,51 +202,51 @@ When('I serialize to TOML and parse back', function (this: ChangeTracksWorld) {
 
 // ── Then steps: ProjectStatusModel ───────────────────────────────────
 
-Then('tracking is enabled', function (this: ChangeTracksWorld) {
+Then('tracking is enabled', function (this: ChangeDownWorld) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     const status = this.statusModel.getStatus();
     assert.strictEqual(status.tracking.enabled, true);
 });
 
-Then('tracking is disabled', function (this: ChangeTracksWorld) {
+Then('tracking is disabled', function (this: ChangeDownWorld) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     const status = this.statusModel.getStatus();
     assert.strictEqual(status.tracking.enabled, false);
 });
 
-Then('tracking source is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('tracking source is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     const status = this.statusModel.getStatus();
     assert.strictEqual(status.tracking.source, expected);
 });
 
-Then('required fields list is empty', function (this: ChangeTracksWorld) {
+Then('required fields list is empty', function (this: ChangeDownWorld) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     const status = this.statusModel.getStatus();
     assert.strictEqual(status.required.length, 0);
 });
 
-Then('required fields list contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('required fields list contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     const status = this.statusModel.getStatus();
     assert.ok(status.required.includes(expected), `Expected required to include "${expected}", got ${JSON.stringify(status.required)}`);
 });
 
-Then('amend policy is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('amend policy is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     const status = this.statusModel.getStatus();
     assert.strictEqual(status.amend, expected);
 });
 
-Then('the change event fired', function (this: ChangeTracksWorld) {
+Then('the change event fired', function (this: ChangeDownWorld) {
     assert.strictEqual(this.changeEventFired, true, 'Change event did not fire');
 });
 
-Then('the change event fired {int} times', function (this: ChangeTracksWorld, expected: number) {
+Then('the change event fired {int} times', function (this: ChangeDownWorld, expected: number) {
     assert.strictEqual(this.changeEventCount, expected, `Expected ${expected} change events, got ${this.changeEventCount}`);
 });
 
-Then('visible fields are {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('visible fields are {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.statusModel, 'No ProjectStatusModel created');
     const fields = this.statusModel.getVisibleFields();
     assert.deepStrictEqual(fields, expected.split(','));
@@ -254,7 +254,7 @@ Then('visible fields are {string}', function (this: ChangeTracksWorld, expected:
 
 // ── Then steps: SettingsPanel HTML ────────────────────────────────────
 
-Then('the HTML contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the HTML contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.settingsHtml, 'No settings HTML generated');
     assert.ok(
         this.settingsHtml.includes(expected),
@@ -262,13 +262,13 @@ Then('the HTML contains {string}', function (this: ChangeTracksWorld, expected: 
     );
 });
 
-Then('the identity section has class {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the identity section has class {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.settingsHtml, 'No settings HTML generated');
     const identityMatch = this.settingsHtml.match(/class="accordion open"[^>]*data-section="identity"/);
     assert.ok(identityMatch, 'Identity section should have class "accordion open"');
 });
 
-Then('the tracking section has class {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the tracking section has class {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.settingsHtml, 'No settings HTML generated');
     const trackingMatch = this.settingsHtml.match(/class="accordion open"[^>]*data-section="tracking"/);
     assert.ok(trackingMatch, 'Tracking section should have class "accordion open"');
@@ -276,41 +276,41 @@ Then('the tracking section has class {string}', function (this: ChangeTracksWorl
 
 // ── Then steps: parseFormData ────────────────────────────────────────
 
-Then('parsed tracking default is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('parsed tracking default is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.parsedConfig, 'No parsed config');
     assert.strictEqual(this.parsedConfig.tracking.default, expected);
 });
 
-Then('parsed author enforcement is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('parsed author enforcement is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.parsedConfig, 'No parsed config');
     assert.strictEqual(this.parsedConfig.author.enforcement, expected);
 });
 
-Then('parsed hooks enforcement is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('parsed hooks enforcement is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.parsedConfig, 'No parsed config');
     assert.strictEqual(this.parsedConfig.hooks.enforcement, expected);
 });
 
 // ── Then steps: parseEditorPreferences ───────────────────────────────
 
-Then('parsed clickToShowComments is {word}', function (this: ChangeTracksWorld, expected: string) {
+Then('parsed clickToShowComments is {word}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.parsedEditorPrefs, 'No parsed editor preferences');
     assert.strictEqual(this.parsedEditorPrefs.clickToShowComments, expected === 'true');
 });
 
-Then('parsed commentInsertFormat is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('parsed commentInsertFormat is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.parsedEditorPrefs, 'No parsed editor preferences');
     assert.strictEqual(this.parsedEditorPrefs.commentInsertFormat, expected);
 });
 
-Then('parsed changeExplorerGroupBy is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('parsed changeExplorerGroupBy is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.parsedEditorPrefs, 'No parsed editor preferences');
     assert.strictEqual(this.parsedEditorPrefs.changeExplorerGroupBy, expected);
 });
 
 // ── Then steps: TOML serialization ───────────────────────────────────
 
-Then('the TOML contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the TOML contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.tomlOutput, 'No TOML output');
     // Unescape \" from Gherkin
     const unescaped = expected.replace(/\\"/g, '"');
@@ -322,32 +322,32 @@ Then('the TOML contains {string}', function (this: ChangeTracksWorld, expected: 
 
 // ── Then steps: round-trip ───────────────────────────────────────────
 
-Then('the round-trip tracking default is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the round-trip tracking default is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.roundTripResult, 'No round-trip result');
     assert.strictEqual(this.roundTripResult.tracking.default, expected);
 });
 
-Then('the round-trip author enforcement is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the round-trip author enforcement is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.roundTripResult, 'No round-trip result');
     assert.strictEqual(this.roundTripResult.author.enforcement, expected);
 });
 
-Then('the round-trip hooks enforcement is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the round-trip hooks enforcement is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.roundTripResult, 'No round-trip result');
     assert.strictEqual(this.roundTripResult.hooks.enforcement, expected);
 });
 
-Then('the round-trip hashline enabled is {word}', function (this: ChangeTracksWorld, expected: string) {
+Then('the round-trip hashline enabled is {word}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.roundTripResult, 'No round-trip result');
     assert.strictEqual(this.roundTripResult.hashline.enabled, expected === 'true');
 });
 
-Then('the round-trip tracking include is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the round-trip tracking include is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.roundTripResult, 'No round-trip result');
     assert.deepStrictEqual(this.roundTripResult.tracking.include, [expected]);
 });
 
-Then('the round-trip tracking exclude is {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the round-trip tracking exclude is {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.roundTripResult, 'No round-trip result');
     assert.deepStrictEqual(this.roundTripResult.tracking.exclude, [expected]);
 });

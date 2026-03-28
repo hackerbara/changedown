@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-ChangeTracks is a VS Code extension that brings track-changes functionality to markdown documents using CriticMarkup syntax. It provides inline decorations, smart view mode, change tracking, accept/reject workflows, navigation, and commenting.
+ChangeDown is a VS Code extension that brings track-changes functionality to markdown documents using CriticMarkup syntax. It provides inline decorations, smart view mode, change tracking, accept/reject workflows, navigation, and commenting.
 
 ## Build & Development
 
@@ -18,7 +18,7 @@ npm run install:local  # Install extension + plugin locally
 
 ## Architecture
 
-Monorepo: @changetracks/core (parser) → @changetracks/lsp-server → changetracks-vscode (VS Code extension) + changetracks-plugin/ (Claude Code MCP plugin)
+Monorepo: @changedown/core (parser) → @changedown/lsp-server → changedown-vscode (VS Code extension) + changedown-plugin/ (Claude Code MCP plugin)
 
 See individual package README files for details.
 
@@ -44,8 +44,8 @@ npm run test:visual     # Visual regression
 npm run test:gaps       # @coverage-gap RED phase witnesses
 
 # Filter by tag or name:
-npm run test -w @changetracks/tests-vscode -- --tags '@D1'
-npm run test -w @changetracks/tests-vscode -- --name 'First impressions'
+npm run test -w @changedown/tests-vscode -- --tags '@D1'
+npm run test -w @changedown/tests-vscode -- --name 'First impressions'
 ```
 
 Test fixtures in `packages/tests/vscode/fixtures/`. Feature files in `packages/tests/vscode/features/`.

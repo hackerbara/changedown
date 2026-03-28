@@ -13,16 +13,16 @@ Feature: OVR1 — Accept with adjacent highlight+comment does not produce overla
 
   @slow @OVR1-01
   Scenario: Single accept of highlight with attached comment succeeds
-    When I position cursor inside the ct-2 highlight
-    And I execute "changetracks.acceptChange"
+    When I position cursor inside the cn-2 highlight
+    And I execute "changedown.acceptChange"
     Then no error notification appeared
-    And the document footnote for ct-2 contains "approved:"
+    And the document footnote for cn-2 contains "approved:"
     And I capture evidence screenshot "ovr1-single-accept-highlight"
 
   @slow @OVR1-02 @destructive
   Scenario: Accept All with highlight+comment does not produce overlapping ranges
-    When I execute "changetracks.acceptAll"
+    When I execute "changedown.acceptAll"
     Then no error notification appeared
-    And the document footnote for ct-1 contains "approved:"
-    And the document footnote for ct-3 contains "approved:"
+    And the document footnote for cn-1 contains "approved:"
+    And the document footnote for cn-3 contains "approved:"
     And I capture evidence screenshot "ovr1-accept-all-no-overlap"

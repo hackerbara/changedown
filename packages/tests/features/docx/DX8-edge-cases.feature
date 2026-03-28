@@ -8,9 +8,9 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Very long insertion (>1000 chars)
     Given CriticMarkup markdown:
       """
-      {++Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod.++}[^ct-1]
+      {++Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod.++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -28,9 +28,9 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Nested markup - highlight containing comment
     Given CriticMarkup markdown:
       """
-      This is {==highlighted text==}{>>with a comment<<}[^ct-1].
+      This is {==highlighted text==}{>>with a comment<<}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "all"
     Then the export succeeds
@@ -39,11 +39,11 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Adjacent changes with no space between
     Given CriticMarkup markdown:
       """
-      {++first++}[^ct-1]{++second++}[^ct-2]{--third--}[^ct-3]
+      {++first++}[^cn-1]{++second++}[^cn-2]{--third--}[^cn-3]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @alice | 2026-01-15 | ins | proposed
-      [^ct-3]: @bob | 2026-01-15 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @alice | 2026-01-15 | ins | proposed
+      [^cn-3]: @bob | 2026-01-15 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -54,9 +54,9 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Change at start of document
     Given CriticMarkup markdown:
       """
-      {++Start of document++}[^ct-1] rest of text.
+      {++Start of document++}[^cn-1] rest of text.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -66,9 +66,9 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Change at end of document
     Given CriticMarkup markdown:
       """
-      Text at the start {++end of document++}[^ct-1]
+      Text at the start {++end of document++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -78,10 +78,10 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Only deletions - no insertions
     Given CriticMarkup markdown:
       """
-      {--first deletion--}[^ct-1] middle {--second deletion--}[^ct-2] end.
+      {--first deletion--}[^cn-1] middle {--second deletion--}[^cn-2] end.
 
-      [^ct-1]: @alice | 2026-01-15 | del | proposed
-      [^ct-2]: @bob | 2026-01-15 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | del | proposed
+      [^cn-2]: @bob | 2026-01-15 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -92,10 +92,10 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Only insertions - no deletions
     Given CriticMarkup markdown:
       """
-      {++first++}[^ct-1] middle {++second++}[^ct-2] end.
+      {++first++}[^cn-1] middle {++second++}[^cn-2] end.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -106,10 +106,10 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Document with only highlights and comments
     Given CriticMarkup markdown:
       """
-      Text with {==highlighted==}{>>comment one<<}[^ct-1] and {==more highlighted==}{>>comment two<<}[^ct-2].
+      Text with {==highlighted==}{>>comment one<<}[^cn-1] and {==more highlighted==}{>>comment two<<}[^cn-2].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "all"
     Then the export succeeds
@@ -119,9 +119,9 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Special characters in change text - quotes and ampersands
     Given CriticMarkup markdown:
       """
-      {++Text with "quotes" & <angles> and 'apostrophes'++}[^ct-1]
+      {++Text with "quotes" & <angles> and 'apostrophes'++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -132,9 +132,9 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Invalid export mode is rejected
     Given CriticMarkup markdown:
       """
-      {++hello++}[^ct-1]
+      {++hello++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I try to export to DOCX with mode "bogus"
     Then the export fails with error containing "Invalid export mode"
@@ -143,9 +143,9 @@ Feature: DX8 - Edge Cases and Error Handling
   Scenario: Invalid comment mode is rejected
     Given CriticMarkup markdown:
       """
-      {++hello++}[^ct-1]
+      {++hello++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I try to export to DOCX with mode "tracked" and comments "garbage"
     Then the export fails with error containing "Invalid comment mode"

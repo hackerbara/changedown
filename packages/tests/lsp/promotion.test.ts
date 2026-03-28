@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { createServer, ChangetracksServer } from '@changetracks/lsp-server/internals';
-import type { Connection } from '@changetracks/lsp-server/internals';
-import { initHashline } from '@changetracks/core';
+import { ChangedownServer } from '@changedown/lsp-server/internals';
+import type { Connection } from '@changedown/lsp-server/internals';
+import { initHashline } from '@changedown/core';
 
 /**
  * Create a mock connection with workspace.applyEdit support.
@@ -28,6 +28,7 @@ function createMockConnection(applyEditResult = { applied: true }): Connection &
     onDidSaveTextDocument: (handler: any) => { handlers.didSave = handler; },
     onHover: (handler: any) => { handlers.hover = handler; },
     onCodeLens: (handler: any) => { handlers.codeLens = handler; },
+    onFoldingRanges: (handler: any) => { handlers.foldingRanges = handler; },
     onCodeAction: (handler: any) => { handlers.codeAction = handler; },
     onDocumentLinks: (handler: any) => { handlers.documentLinks = handler; },
     onRequest: (method: string, handler: any) => { handlers[`request:${method}`] = handler; },
@@ -59,12 +60,12 @@ function createMockConnection(applyEditResult = { applied: true }): Connection &
 // L2 document with an inline insertion and a footnote.
 // The body contains a CriticMarkup insertion so workspace.parse() returns changes,
 // triggering the promotion path in handleDocumentOpen.
-const L2_WITH_CHANGES = `<!-- ctrcks.com/v1: tracked -->
+const L2_WITH_CHANGES = `<!-- changedown.com/v1: tracked -->
 # Test Document
 
-This is {++an insertion++}[^ct-1] in the text.
+This is {++an insertion++}[^cn-1] in the text.
 
-[^ct-1]: @user | 2026-03-16 | ins | proposed
+[^cn-1]: @user | 2026-03-16 | ins | proposed
 `;
 
 // Plain markdown with no CriticMarkup — should NOT be promoted
@@ -74,13 +75,13 @@ Just regular text with no changes.
 `;
 
 describe('LSP L3 Promotion', () => {
-  let server: ChangetracksServer;
+  let server: ChangedownServer;
   let mockConnection: ReturnType<typeof createMockConnection>;
 
   beforeEach(async () => {
     await initHashline();
     mockConnection = createMockConnection();
-    server = createServer(mockConnection as any);
+    server = new ChangedownServer(mockConnection as any);
   });
 
   it('promotes L2 document to L3 on didOpen', async () => {
@@ -95,25 +96,25 @@ describe('LSP L3 Promotion', () => {
 
     // The new text should be L3 format (footnote-native: no inline delimiters in body)
     const newText = editCall.edit.changes[uri][0].newText;
-    expect(newText).toContain('[^ct-1]');
+    expect(newText).toContain('[^cn-1]');
 
     // decorationData should have been sent BEFORE applyEdit
     const decorationNotifications = mockConnection._notifications.filter(
-      n => n.method === 'changetracks/decorationData' && n.params.uri === uri
+      n => n.method === 'changedown/decorationData' && n.params.uri === uri
     );
     expect(decorationNotifications.length).toBeGreaterThanOrEqual(1);
     expect(decorationNotifications[0].params.changes.length).toBeGreaterThan(0);
 
     // promotionStarting should have been sent
     const startNotifications = mockConnection._notifications.filter(
-      n => n.method === 'changetracks/promotionStarting'
+      n => n.method === 'changedown/promotionStarting'
     );
     expect(startNotifications.length).toBe(1);
     expect(startNotifications[0].params.uri).toBe(uri);
 
     // promotionComplete should have been sent
     const completeNotifications = mockConnection._notifications.filter(
-      n => n.method === 'changetracks/promotionComplete'
+      n => n.method === 'changedown/promotionComplete'
     );
     expect(completeNotifications.length).toBe(1);
   });
@@ -123,9 +124,9 @@ describe('LSP L3 Promotion', () => {
     // Create an L3 document: clean body (no inline CriticMarkup), footnote with LINE:HASH edit-op line
     const l3Text = `# Test Document
 
-This is an insertion[^ct-1] in the text.
+This is an insertion[^cn-1] in the text.
 
-[^ct-1]: @user | 2026-03-16 | ins | proposed
+[^cn-1]: @user | 2026-03-16 | ins | proposed
     1:abc123 {++an insertion++}
 `;
 
@@ -136,7 +137,7 @@ This is an insertion[^ct-1] in the text.
 
     // decorationData should still be sent (from normal L3 parse)
     const decorationNotifications = mockConnection._notifications.filter(
-      n => n.method === 'changetracks/decorationData' && n.params.uri === uri
+      n => n.method === 'changedown/decorationData' && n.params.uri === uri
     );
     expect(decorationNotifications.length).toBe(1);
   });
@@ -153,7 +154,7 @@ This is an insertion[^ct-1] in the text.
   it('handles applyEdit rejection gracefully', async () => {
     // Create a connection where applyEdit returns { applied: false }
     const rejectConnection = createMockConnection({ applied: false });
-    const rejectServer = createServer(rejectConnection as any);
+    const rejectServer = new ChangedownServer(rejectConnection as any);
     const uri = 'file:///test-reject.md';
 
     await rejectServer.handleDocumentOpen(uri, L2_WITH_CHANGES, 'markdown');
@@ -163,7 +164,7 @@ This is an insertion[^ct-1] in the text.
 
     // Should have sent L2 fallback decorationData (two sends: first L3 attempt, then L2 fallback)
     const decorationNotifications = rejectConnection._notifications.filter(
-      n => n.method === 'changetracks/decorationData' && n.params.uri === uri
+      n => n.method === 'changedown/decorationData' && n.params.uri === uri
     );
     expect(decorationNotifications.length).toBe(2);
     // The second (fallback) should still have changes (from L2 parse)
@@ -185,7 +186,7 @@ This is an insertion[^ct-1] in the text.
     // No additional decorationData should have been sent (echo was suppressed)
     const decorationNotificationsAfterEcho = mockConnection._notifications
       .slice(notificationCountAfterOpen)
-      .filter(n => n.method === 'changetracks/decorationData');
+      .filter(n => n.method === 'changedown/decorationData');
     expect(decorationNotificationsAfterEcho.length).toBe(0);
   });
 
@@ -193,7 +194,7 @@ This is an insertion[^ct-1] in the text.
     const uri = 'file:///test-batch.md';
 
     // Trigger the batchEditStart handler registered in setupHandlers
-    const batchStartHandler = (mockConnection as any)._handlers['notification:changetracks/batchEditStart'];
+    const batchStartHandler = (mockConnection as any)._handlers['notification:changedown/batchEditStart'];
     batchStartHandler({ uri });
 
     // Send didChange with L2 text during batch
@@ -203,7 +204,7 @@ This is an insertion[^ct-1] in the text.
     expect(mockConnection.workspace.applyEdit).not.toHaveBeenCalled();
 
     // Send batchEditEnd
-    const batchEndHandler = (mockConnection as any)._handlers['notification:changetracks/batchEditEnd'];
+    const batchEndHandler = (mockConnection as any)._handlers['notification:changedown/batchEditEnd'];
     batchEndHandler({ uri });
   });
 });

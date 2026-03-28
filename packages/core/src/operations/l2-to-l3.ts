@@ -8,7 +8,7 @@
  *   1. Parse the L2 text with CriticMarkupParser → ChangeNode[]
  *   2. Strip all CriticMarkup from the body in reverse document order
  *      (so offsets remain valid as we splice)
- *   3. Strip all inline [^ct-N] footnote refs from the body
+ *   3. Strip all inline [^cn-N] footnote refs from the body
  *   4. Compute line hashes on the resulting clean body
  *   5. For each change, find which line it lands on in the clean body and build
  *      the edit-op string ({++...++}, {--...--}, etc.)
@@ -118,14 +118,14 @@ export async function convertL2ToL3(text: string): Promise<string> {
   }
 
   // ── Step 2: Split body from footnote section ──────────────────────────────
-  // Do this BEFORE stripping refs so that footnote def lines ([^ct-N]: ...)
+  // Do this BEFORE stripping refs so that footnote def lines ([^cn-N]: ...)
   // are not corrupted by the global ref-stripping regex.
   const split = splitBodyAndFootnotes(body.split('\n'));
   let cleanBodyLines = split.bodyLines;
   const footnoteLines = split.footnoteLines;
 
-  // ── Step 3: Strip inline [^ct-N] refs from body ONLY ─────────────────────
-  // Note: The parser already includes [^ct-N] in change.range for L2 changes,
+  // ── Step 3: Strip inline [^cn-N] refs from body ONLY ─────────────────────
+  // Note: The parser already includes [^cn-N] in change.range for L2 changes,
   // so refs attached to CriticMarkup were already removed in Step 1.
   // This step removes any standalone refs remaining in the body (not footnotes).
   const refRe = footnoteRefGlobal();
@@ -222,7 +222,7 @@ export async function convertL2ToL3(text: string): Promise<string> {
     // Check if this is a footnote definition header
     if (FOOTNOTE_DEF_START.test(line)) {
       // Extract the change ID from the header
-      const idMatch = line.match(/^\[\^(ct-[\w.]+)\]:/);
+      const idMatch = line.match(/^\[\^(cn-[\w.]+)\]:/);
       const changeId = idMatch ? idMatch[1] : null;
 
       rebuiltFootnotes.push(line);

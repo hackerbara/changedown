@@ -5,4 +5,4 @@ Feature: CL2 — CodeLens deduplication
   AcceptRejectCodeLensProvider.
 
   Scenario: CL2-01 AcceptRejectCodeLensProvider is not exported
-    Then the module "changetracks-vscode/internals" does not export "AcceptRejectCodeLensProvider"
+    Then the module "changedown-vscode/internals" does not export "AcceptRejectCodeLensProvider"

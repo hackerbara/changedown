@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initHashline } from '@changetracks/core';
-import { formatRedirect, formatReadRedirect } from 'changetracks-hooks/internals';
+import { initHashline } from '@changedown/core';
+import { formatRedirect, formatReadRedirect } from 'changedown-hooks/internals';
 
 describe('formatRedirect', () => {
   // ─── Classic mode ────────────────────────────────────────────────────────

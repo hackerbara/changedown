@@ -11,7 +11,7 @@
     "declaration": true,
     "esModuleInterop": true,
     "paths": {
-      "changetracks/config": ["../cli/dist/config/index.d.ts"]
+      "changedown/config": ["../cli/dist/config/index.d.ts"]
     },
     // TODO: enable after fixing violations
     // "noUncheckedIndexedAccess": true,
@@ -23,5 +23,5 @@
     { "path": "../core" }
   ],
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "test"]
+  "exclude": ["node_modules", "dist", "test", "src/browser-server.ts"]
 }

@@ -29,6 +29,7 @@ export interface ExportOptions {
   mediaDir?: string;         // directory containing image files
   defaultDpi?: number;       // DPI for images without metadata (default: 96)
   maxWidthInches?: number;   // page content width clamp (default: 6.5)
+  fileReader?: (path: string) => Uint8Array | null;
 }
 
 export interface ExportStats {

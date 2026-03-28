@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -12,14 +12,14 @@ import * as os from 'node:os';
 describe('propose_change with settled hashes', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
 
   beforeAll(async () => {
     await initHashline();
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-propose-settled-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-propose-settled-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -58,12 +58,12 @@ describe('propose_change with settled hashes', () => {
     // text appears as a real line, so settled line numbers shift relative to raw
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(filePath, [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Title',
-      '{++Inserted line.++}[^ct-1]',
+      '{++Inserted line.++}[^cn-1]',
       'Line after.',
       '',
-      '[^ct-1]: @alice | 2026-02-24 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-24 | ins | proposed',
       '    @alice 2026-02-24: adding context',
     ].join('\n'));
 
@@ -118,7 +118,7 @@ describe('propose_change with settled hashes', () => {
   it('returns error for stale settled hash', async () => {
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(filePath, [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Title',
       'Some text.',
     ].join('\n'));
@@ -157,13 +157,13 @@ describe('propose_change with settled hashes', () => {
     // The agent should be able to target lines around the deletion using settled-space coordinates.
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(filePath, [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Title',
       'Line before.',
-      '{--Deleted line.--}[^ct-1]',
+      '{--Deleted line.--}[^cn-1]',
       'Line after deletion.',
       '',
-      '[^ct-1]: @alice | 2026-02-24 | del | proposed',
+      '[^cn-1]: @alice | 2026-02-24 | del | proposed',
     ].join('\n'));
 
     const resolver = await createTestResolver(tmpDir, config);
@@ -220,7 +220,7 @@ describe('propose_change with settled hashes', () => {
   it('re-records settled hashes after edit for chained edits', async () => {
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(filePath, [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Title',
       'First line.',
       'Second line.',
@@ -300,12 +300,12 @@ describe('propose_change with settled hashes', () => {
     // Test inserting new content using settled-space after_line coordinate
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(filePath, [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Title',
-      '{++Existing insertion.++}[^ct-1]',
+      '{++Existing insertion.++}[^cn-1]',
       'Target line.',
       '',
-      '[^ct-1]: @alice | 2026-02-24 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-24 | ins | proposed',
     ].join('\n'));
 
     const resolver = await createTestResolver(tmpDir, config);

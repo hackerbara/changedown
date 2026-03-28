@@ -1,5 +1,5 @@
-<!-- ctrcks.com/v1: tracked -->
-# Contributing to ChangeTracks
+<!-- changedown.com/v1: tracked -->
+# Contributing to ChangeDown
 
 ## Bug Reports with Tests Get Prioritized
 
@@ -9,7 +9,7 @@ Bug reports without tests are welcome, but reports with a reproducible Gherkin s
 
 ## Understanding Gherkin (the test format)
 
-ChangeTracks tests are written in [Gherkin](https://cucumber.io/docs/gherkin/reference/), a structured specification language used by [Cucumber](https://cucumber.io/). The project follows [Paul Duvall's ATDD two-tier model](https://www.paulmduvall.com/atdd-driven-ai-development-how-prompting-and-tests-steer-the-code/) — behavioral specs in Gherkin, edge-case matrices in native test files.
+ChangeDown tests are written in [Gherkin](https://cucumber.io/docs/gherkin/reference/), a structured specification language used by [Cucumber](https://cucumber.io/). The project follows [Paul Duvall's ATDD two-tier model](https://www.paulmduvall.com/atdd-driven-ai-development-how-prompting-and-tests-steer-the-code/) — behavioral specs in Gherkin, edge-case matrices in native test files.
 
 **The critical thing to understand:** each `Given`, `When`, and `Then` line in a Gherkin scenario must exactly match a registered step definition in the codebase. You cannot write arbitrary English. The test runner pattern-matches your lines against step definitions — if nothing matches, the test fails with "undefined step."
 
@@ -130,7 +130,7 @@ A maintainer will move the scenario into the repo, verify it fails, and implemen
 
 ## Security Requirements
 
-ChangeTracks is an AI-agent-facing tool. Scenarios and test data are processed by AI agents during development and review. All submissions are reviewed against these requirements:
+ChangeDown is an AI-agent-facing tool. Scenarios and test data are processed by AI agents during development and review. All submissions are reviewed against these requirements:
 
 ### No prompt injection in test content
 
@@ -150,5 +150,5 @@ Test scenarios must not contain API keys, tokens, credentials (real or realistic
 
 Doc strings in scenarios must not contain `<script>` tags, `javascript:` or `data:` URIs, event handler attributes (`onload`, `onerror`), or embedded iframes pointing to external resources.
 
-[^ct-1]: ai:claude-opus-4.6 | 2026-03-08 | creation | proposed
+[^cn-1]: ai:claude-opus-4.6 | 2026-03-08 | creation | proposed
     ai:claude-opus-4.6 2026-03-08T05:58:45Z: File created

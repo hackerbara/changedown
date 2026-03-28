@@ -1,7 +1,7 @@
 /**
  * LSP Client
  *
- * Creates and manages the Language Server Protocol client for ChangeTracks.
+ * Creates and manages the Language Server Protocol client for ChangeDown.
  * Spawns the LSP server as a child process and handles custom notifications.
  */
 
@@ -14,17 +14,17 @@ import {
     State,
     TransportKind
 } from 'vscode-languageclient/node';
-import { ChangeNode } from '@changetracks/core';
-import type { ViewName, CoherenceStatusParams, ChangeCountParams, AllChangesResolvedParams, DecorationDataParams } from '@changetracks/core';
+import { ChangeNode } from '@changedown/core';
+import type { ViewName, CoherenceStatusParams, ChangeCountParams, AllChangesResolvedParams, DecorationDataParams } from '@changedown/core';
 import { decorationCache, setCachedDecorationData } from './range-transform';
 
 /**
  * Resolve reviewer identity from VS Code config.
  * Mirrors ExtensionController.getReviewerIdentity():
- * changetracks.reviewerIdentity → changetracks.author → undefined.
+ * changedown.reviewerIdentity → changedown.author → undefined.
  */
 function resolveReviewerIdentity(): string | undefined {
-    const config = vscode.workspace.getConfiguration('changetracks');
+    const config = vscode.workspace.getConfiguration('changedown');
     const identity = (config.get<string>('reviewerIdentity', '') || config.get<string>('author', '')).trim();
     return identity || undefined;
 }
@@ -33,7 +33,7 @@ function resolveReviewerIdentity(): string | undefined {
  * Send current reviewer identity to the LSP server.
  */
 function sendReviewerIdentity(client: LanguageClient): void {
-    client.sendNotification('changetracks/updateSettings', {
+    client.sendNotification('changedown/updateSettings', {
         reviewerIdentity: resolveReviewerIdentity() ?? '',
     });
 }
@@ -171,8 +171,14 @@ let statusBarManager: StatusBarManager | undefined;
 export type DecorationDataHandler = (uri: string, changes: ChangeNode[]) => void;
 let decorationDataHandler: DecorationDataHandler | null = null;
 
+let autoFoldHandler: ((lines: number[]) => void) | undefined;
+
+export function setAutoFoldHandler(handler: (lines: number[]) => void): void {
+    autoFoldHandler = handler;
+}
+
 /**
- * Set the handler invoked when changetracks/decorationData arrives.
+ * Set the handler invoked when changedown/decorationData arrives.
  * Pass null to clear. Call from extension.ts after controller is created.
  */
 export function setDecorationDataHandler(handler: DecorationDataHandler | null): void {
@@ -186,7 +192,7 @@ export type ViewModeChangedHandler = (uri: string, viewMode: ViewName) => void;
 let viewModeChangedHandler: ViewModeChangedHandler | null = null;
 
 /**
- * Set the handler invoked when changetracks/viewModeChanged arrives.
+ * Set the handler invoked when changedown/viewModeChanged arrives.
  * Pass null to clear.
  */
 export function setViewModeChangedHandler(handler: ViewModeChangedHandler | null): void {
@@ -210,7 +216,7 @@ export type CoherenceHandler = (uri: string, rate: number, unresolvedCount: numb
 let coherenceHandler: CoherenceHandler | null = null;
 
 /**
- * Set the handler invoked when changetracks/coherenceStatus arrives.
+ * Set the handler invoked when changedown/coherenceStatus arrives.
  * Pass null to clear.
  */
 export function setCoherenceHandler(handler: CoherenceHandler | null): void {
@@ -218,7 +224,7 @@ export function setCoherenceHandler(handler: CoherenceHandler | null): void {
 }
 
 /**
- * Set the handler invoked when changetracks/promotionStarting arrives.
+ * Set the handler invoked when changedown/promotionStarting arrives.
  * Pass null to clear.
  */
 export function setPromotionStartHandler(handler: PromotionStartHandler | null): void {
@@ -226,7 +232,7 @@ export function setPromotionStartHandler(handler: PromotionStartHandler | null):
 }
 
 /**
- * Set the handler invoked when changetracks/promotionComplete arrives.
+ * Set the handler invoked when changedown/promotionComplete arrives.
  * Pass null to clear.
  */
 export function setPromotionCompleteHandler(handler: PromotionCompleteHandler | null): void {
@@ -289,8 +295,8 @@ export function createLanguageClient(context: vscode.ExtensionContext): Language
 
     // Create the language client
     const client = new LanguageClient(
-        'changetracks-lsp',
-        'ChangeTracks Language Server',
+        'changedown-lsp',
+        'ChangeDown Language Server',
         serverOptions,
         clientOptions
     );
@@ -320,16 +326,19 @@ export function createLanguageClient(context: vscode.ExtensionContext): Language
     // In v9, we register handlers before starting the client
     // Handle decoration data notifications
     client.onNotification(
-        'changetracks/decorationData',
+        'changedown/decorationData',
         (params: DecorationDataParams) => {
             setCachedDecorationData(params.uri, params.changes, params.documentVersion ?? 0);
             decorationDataHandler?.(params.uri, params.changes);
+            if (params.autoFoldLines?.length) {
+                autoFoldHandler?.(params.autoFoldLines);
+            }
         }
     );
 
     // Handle change count notifications
     client.onNotification(
-        'changetracks/changeCount',
+        'changedown/changeCount',
         (params: ChangeCountParams) => {
             if (statusBarManager) {
                 statusBarManager.updateChangeCount(params.uri, params.counts);
@@ -339,7 +348,7 @@ export function createLanguageClient(context: vscode.ExtensionContext): Language
 
     // Handle all changes resolved notifications
     client.onNotification(
-        'changetracks/allChangesResolved',
+        'changedown/allChangesResolved',
         (params: AllChangesResolvedParams) => {
             if (statusBarManager) {
                 statusBarManager.clearChangeCount(params.uri);
@@ -349,29 +358,29 @@ export function createLanguageClient(context: vscode.ExtensionContext): Language
 
     // Handle view mode changed confirmation from server
     client.onNotification(
-        'changetracks/viewModeChanged',
+        'changedown/viewModeChanged',
         (params: { textDocument: { uri: string }; viewMode: ViewName }) => {
             viewModeChangedHandler?.(params.textDocument.uri, params.viewMode);
         }
     );
 
     // Handle document state notifications (tracking + view mode)
-    client.onNotification('changetracks/documentState', (params: DocumentStateParams) => {
+    client.onNotification('changedown/documentState', (params: DocumentStateParams) => {
         documentStateHandler?.(params.textDocument.uri, params);
     });
 
     // Handle promotion lifecycle notifications from LSP
-    client.onNotification('changetracks/promotionStarting', (params: { uri: string }) => {
+    client.onNotification('changedown/promotionStarting', (params: { uri: string }) => {
         promotionStartHandler?.(params.uri);
     });
 
-    client.onNotification('changetracks/promotionComplete', (params: { uri: string }) => {
+    client.onNotification('changedown/promotionComplete', (params: { uri: string }) => {
         promotionCompleteHandler?.(params.uri);
     });
 
     // Handle coherence status notifications
     client.onNotification(
-        'changetracks/coherenceStatus',
+        'changedown/coherenceStatus',
         (params: CoherenceStatusParams) => {
             if (statusBarManager) {
                 statusBarManager.updateCoherence(params.uri, params.coherenceRate, params.unresolvedCount, params.threshold);
@@ -395,8 +404,8 @@ export function createLanguageClient(context: vscode.ExtensionContext): Language
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(event => {
             if (
-                event.affectsConfiguration('changetracks.reviewerIdentity') ||
-                event.affectsConfiguration('changetracks.author')
+                event.affectsConfiguration('changedown.reviewerIdentity') ||
+                event.affectsConfiguration('changedown.author')
             ) {
                 // Only send if the client is already running
                 if (client.isRunning()) {

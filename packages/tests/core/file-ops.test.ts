@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initHashline, splitBodyAndFootnotes } from '@changetracks/core';
+import { initHashline, splitBodyAndFootnotes } from '@changedown/core';
 import {
   findUniqueMatch,
   applyProposeChange,
@@ -13,7 +13,7 @@ import {
   guardOverlap,
   stripRefsFromContent,
   defaultNormalizer,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
@@ -149,42 +149,42 @@ describe('findUniqueMatch', () => {
   // Ref-transparent matching (Level 1.5)
   describe('ref-transparent matching', () => {
     it('finds clean prose when haystack has inline ref', () => {
-      const text = 'The latency is 10-20 milliseconds[^ct-2.1] in practice.';
+      const text = 'The latency is 10-20 milliseconds[^cn-2.1] in practice.';
       const match = findUniqueMatch(text, '10-20 milliseconds in practice', defaultNormalizer);
       expect(match.index).toBe(15); // start of "10-20"
       // Length spans from "10-20" to "in practice" INCLUDING the ref
-      expect(text.slice(match.index, match.index + match.length).includes('[^ct-2.1]')).toBeTruthy();
+      expect(text.slice(match.index, match.index + match.length).includes('[^cn-2.1]')).toBeTruthy();
     });
 
     it('finds clean prose when haystack has multiple refs', () => {
-      const text = 'value[^ct-4][^ct-2.1] is correct.';
+      const text = 'value[^cn-4][^cn-2.1] is correct.';
       const match = findUniqueMatch(text, 'value is correct', defaultNormalizer);
       expect(match.index).toBe(0);
-      expect(text.slice(match.index, match.index + match.length).includes('[^ct-4]')).toBeTruthy();
+      expect(text.slice(match.index, match.index + match.length).includes('[^cn-4]')).toBeTruthy();
     });
 
     it('strips refs from needle too (agent copied from view)', () => {
-      const text = 'value[^ct-1] is correct.';
-      const match = findUniqueMatch(text, 'value[^ct-1] is correct', defaultNormalizer);
+      const text = 'value[^cn-1] is correct.';
+      const match = findUniqueMatch(text, 'value[^cn-1] is correct', defaultNormalizer);
       expect(match.index).toBe(0);
     });
 
     it('rejects ambiguous match after ref stripping', () => {
-      const text = 'value[^ct-1] then value again.';
+      const text = 'value[^cn-1] then value again.';
       expect(() => findUniqueMatch(text, 'value', defaultNormalizer)).toThrow(/ambiguous|multiple/i);
     });
   });
 
   // View-surface-aware matching (also Level 1.5 now — promoted from Level 4)
   it('matches text transparently skipping footnote refs', () => {
-    const text = 'The {++quick++}[^ct-1] brown fox.';
+    const text = 'The {++quick++}[^cn-1] brown fox.';
     // The text with footnote ref stripped is: "The {++quick++} brown fox."
-    // Level 1.5 handles [^ct-N] only, not CriticMarkup, so target needs to include markup
+    // Level 1.5 handles [^cn-N] only, not CriticMarkup, so target needs to include markup
     const target = 'The {++quick++} brown';
     const result = findUniqueMatch(text, target);
     expect(result.wasNormalized).toBe(true);
     // Raw text includes the footnote ref
-    expect(result.originalText.includes('[^ct-1]')).toBeTruthy();
+    expect(result.originalText.includes('[^cn-1]')).toBeTruthy();
   });
 
   // Settled-text matching (Level 5)
@@ -277,13 +277,13 @@ describe('applyProposeChange', () => {
         text: 'The quick brown fox jumps over the lazy dog.',
         oldText: 'quick brown',
         newText: 'slow red',
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         author: 'ai:claude-opus-4.6',
       });
       expect(result.changeType).toBe('sub');
-      expect(result.modifiedText.includes('{~~quick brown~>slow red~~}[^ct-1]')).toBeTruthy();
+      expect(result.modifiedText.includes('{~~quick brown~>slow red~~}[^cn-1]')).toBeTruthy();
       expect(result.modifiedText.includes(
-        `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`
+        `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`
       )).toBeTruthy();
     });
   });
@@ -294,13 +294,13 @@ describe('applyProposeChange', () => {
         text: 'The quick brown fox jumps over the lazy dog.',
         oldText: ' brown',
         newText: '',
-        changeId: 'ct-2',
+        changeId: 'cn-2',
         author: 'ai:claude-opus-4.6',
       });
       expect(result.changeType).toBe('del');
-      expect(result.modifiedText.includes('{-- brown--}[^ct-2]')).toBeTruthy();
+      expect(result.modifiedText.includes('{-- brown--}[^cn-2]')).toBeTruthy();
       expect(result.modifiedText.includes(
-        `[^ct-2]: @ai:claude-opus-4.6 | ${TODAY} | del | proposed`
+        `[^cn-2]: @ai:claude-opus-4.6 | ${TODAY} | del | proposed`
       )).toBeTruthy();
     });
   });
@@ -311,14 +311,14 @@ describe('applyProposeChange', () => {
         text: 'The quick fox jumps.',
         oldText: '',
         newText: ' brown',
-        changeId: 'ct-3',
+        changeId: 'cn-3',
         author: 'ai:claude-opus-4.6',
         insertAfter: 'quick',
       });
       expect(result.changeType).toBe('ins');
-      expect(result.modifiedText.includes('quick{++ brown++}[^ct-3]')).toBeTruthy();
+      expect(result.modifiedText.includes('quick{++ brown++}[^cn-3]')).toBeTruthy();
       expect(result.modifiedText.includes(
-        `[^ct-3]: @ai:claude-opus-4.6 | ${TODAY} | ins | proposed`
+        `[^cn-3]: @ai:claude-opus-4.6 | ${TODAY} | ins | proposed`
       )).toBeTruthy();
     });
   });
@@ -329,13 +329,13 @@ describe('applyProposeChange', () => {
         text: 'Hello world.',
         oldText: 'world',
         newText: 'earth',
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         author: 'ai:claude-opus-4.6',
         reasoning: 'More specific term',
       });
       // Footnote header uses date-only, but reason line uses nowTimestamp().raw (full ISO)
       const footnote = result.modifiedText;
-      expect(footnote.includes(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`)).toBeTruthy();
+      expect(footnote.includes(`[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`)).toBeTruthy();
       expect(footnote).toMatch(new RegExp(`@ai:claude-opus-4\\.6 ${TODAY}T\\d{2}:\\d{2}:\\d{2}Z: More specific term`));
     });
   });
@@ -347,7 +347,7 @@ describe('applyProposeChange', () => {
           text,
           oldText: 'inserted text',
           newText: 'replacement',
-          changeId: 'ct-2',
+          changeId: 'cn-2',
           author: 'ai:test',
         })).rejects.toThrow(/overlaps with proposed change/);
     });
@@ -359,7 +359,7 @@ describe('applyProposeChange', () => {
           text: 'Hello world.',
           oldText: 'xyz not here',
           newText: 'replacement',
-          changeId: 'ct-1',
+          changeId: 'cn-1',
           author: 'ai:claude-opus-4.6',
         })).rejects.toThrow(/xyz not here/);
     });
@@ -369,7 +369,7 @@ describe('applyProposeChange', () => {
           text: 'the cat and the dog',
           oldText: 'the',
           newText: 'a',
-          changeId: 'ct-1',
+          changeId: 'cn-1',
           author: 'ai:claude-opus-4.6',
         })).rejects.toThrow(/ambiguous|multiple|context/i);
     });
@@ -379,7 +379,7 @@ describe('applyProposeChange', () => {
           text: 'Hello world.',
           oldText: '',
           newText: '',
-          changeId: 'ct-1',
+          changeId: 'cn-1',
           author: 'ai:claude-opus-4.6',
         })).rejects.toThrow();
     });
@@ -389,7 +389,7 @@ describe('applyProposeChange', () => {
           text: 'Hello world.',
           oldText: '',
           newText: 'inserted text',
-          changeId: 'ct-1',
+          changeId: 'cn-1',
           author: 'ai:claude-opus-4.6',
         })).rejects.toThrow(/insertAfter/i);
     });
@@ -400,33 +400,33 @@ describe('applyProposeChange', () => {
 
 describe('appendFootnote', () => {
   it('appends to text without existing footnotes', () => {
-    const result = appendFootnote('Some text.', '\n\n[^ct-1]: @alice | 2026-02-10 | sub | proposed');
-    expect(result).toBe('Some text.\n\n[^ct-1]: @alice | 2026-02-10 | sub | proposed');
+    const result = appendFootnote('Some text.', '\n\n[^cn-1]: @alice | 2026-02-10 | sub | proposed');
+    expect(result).toBe('Some text.\n\n[^cn-1]: @alice | 2026-02-10 | sub | proposed');
   });
 
   it('appends after existing footnotes', () => {
     const text = `Some text.
 
-[^ct-1]: @alice | 2026-02-10 | sub | proposed
+[^cn-1]: @alice | 2026-02-10 | sub | proposed
     @alice 2026-02-10: reason`;
 
-    const result = appendFootnote(text, '\n\n[^ct-2]: @bob | 2026-02-10 | ins | proposed');
-    expect(result.includes('reason\n\n[^ct-2]:')).toBeTruthy();
-    expect(result.includes('[^ct-1]:')).toBeTruthy();
+    const result = appendFootnote(text, '\n\n[^cn-2]: @bob | 2026-02-10 | ins | proposed');
+    expect(result.includes('reason\n\n[^cn-2]:')).toBeTruthy();
+    expect(result.includes('[^cn-1]:')).toBeTruthy();
   });
 
   it('ignores footnote definitions inside fenced code blocks', () => {
     const text = `## Example
 
 \`\`\`markdown
-[^ct-42]: @alice | 2026-02-10 | sub | proposed
+[^cn-42]: @alice | 2026-02-10 | sub | proposed
 \`\`\`
 
 ## More content`;
 
-    const result = appendFootnote(text, '\n\n[^ct-1]: @bob | 2026-02-10 | ins | proposed');
+    const result = appendFootnote(text, '\n\n[^cn-1]: @bob | 2026-02-10 | ins | proposed');
     // The new footnote should appear at the end, not after the fenced code block footnote
-    expect(result.endsWith('[^ct-1]: @bob | 2026-02-10 | ins | proposed')).toBeTruthy();
+    expect(result.endsWith('[^cn-1]: @bob | 2026-02-10 | ins | proposed')).toBeTruthy();
   });
 
   it('places footnote after last footnote block when document contains tables', () => {
@@ -435,22 +435,22 @@ describe('appendFootnote', () => {
       '',
       '| Col A | Col B |',
       '|-------|-------|',
-      '| cell  | data{==highlighted==}[^ct-1] |',
+      '| cell  | data{==highlighted==}[^cn-1] |',
       '',
       'More content here.',
       '',
-      '[^ct-1]: @ai:test | 2026-03-06 | comment | proposed',
+      '[^cn-1]: @ai:test | 2026-03-06 | comment | proposed',
       '    @ai:test 2026-03-06T00:00:00Z: Original comment',
     ].join('\n');
 
-    const newFootnote = '\n\n[^ct-2]: @ai:test | 2026-03-06 | comment | proposed\n    @ai:test 2026-03-06T00:00:00Z: New comment';
+    const newFootnote = '\n\n[^cn-2]: @ai:test | 2026-03-06 | comment | proposed\n    @ai:test 2026-03-06T00:00:00Z: New comment';
 
     const result = appendFootnote(text, newFootnote);
 
-    // New footnote should appear after ct-1 block
+    // New footnote should appear after cn-1 block
     const lines = result.split('\n');
-    const ct1Line = lines.findIndex(l => l.startsWith('[^ct-1]:'));
-    const ct2Line = lines.findIndex(l => l.startsWith('[^ct-2]:'));
+    const ct1Line = lines.findIndex(l => l.startsWith('[^cn-1]:'));
+    const ct2Line = lines.findIndex(l => l.startsWith('[^cn-2]:'));
     expect(ct2Line > ct1Line).toBeTruthy();
 
     // Table should be intact
@@ -487,7 +487,7 @@ describe('stripCriticMarkupWithMap', () => {
   });
 
   it('removes footnote references', () => {
-    const result = stripCriticMarkupWithMap('Hello[^ct-1] world[^ct-2.3].');
+    const result = stripCriticMarkupWithMap('Hello[^cn-1] world[^cn-2.3].');
     expect(result.settled).toBe('Hello world.');
   });
 
@@ -548,31 +548,31 @@ describe('checkCriticMarkupOverlap', () => {
 
 describe('checkCriticMarkupOverlap — semantic filtering', () => {
   it('skips settled footnote refs (accepted status)', () => {
-    // Settled ref: inline markup removed, only [^ct-1] remains with accepted footnote
-    const text = 'The quick brown fox[^ct-1] jumps over.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | accepted';
+    // Settled ref: inline markup removed, only [^cn-1] remains with accepted footnote
+    const text = 'The quick brown fox[^cn-1] jumps over.\n\n[^cn-1]: @ai:test | 2026-02-20 | sub | accepted';
     const idx = text.indexOf('quick brown fox');
     const result = checkCriticMarkupOverlap(text, idx, 'quick brown fox'.length);
     expect(result).toBeNull();
   });
 
   it('skips settled footnote refs (rejected status)', () => {
-    const text = 'The quick brown fox[^ct-1] jumps over.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | rejected';
+    const text = 'The quick brown fox[^cn-1] jumps over.\n\n[^cn-1]: @ai:test | 2026-02-20 | sub | rejected';
     const idx = text.indexOf('quick brown fox');
     const result = checkCriticMarkupOverlap(text, idx, 'quick brown fox'.length);
     expect(result).toBeNull();
   });
 
   it('skips standalone settled refs even with proposed status in footnote', () => {
-    // A standalone [^ct-1] ref (no surrounding CriticMarkup) is a metadata anchor
+    // A standalone [^cn-1] ref (no surrounding CriticMarkup) is a metadata anchor
     // The parser sets settled=true for orphaned refs regardless of footnote status
-    const text = 'Result: done[^ct-1] next step.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | proposed';
+    const text = 'Result: done[^cn-1] next step.\n\n[^cn-1]: @ai:test | 2026-02-20 | sub | proposed';
     const idx = text.indexOf('Result: done');
     const result = checkCriticMarkupOverlap(text, idx, 'Result: done'.length);
     expect(result).toBeNull();
   });
 
   it('still blocks overlap with proposed inline CriticMarkup', () => {
-    const text = 'Before {++inserted text++}[^ct-1] after.\n\n[^ct-1]: @ai:test | 2026-02-20 | ins | proposed';
+    const text = 'Before {++inserted text++}[^cn-1] after.\n\n[^cn-1]: @ai:test | 2026-02-20 | ins | proposed';
     const idx = text.indexOf('inserted text');
     const result = checkCriticMarkupOverlap(text, idx, 'inserted text'.length);
     expect(result).not.toBeNull();
@@ -580,21 +580,21 @@ describe('checkCriticMarkupOverlap — semantic filtering', () => {
   });
 
   it('still blocks overlap with proposed substitution', () => {
-    const text = 'Before {~~old~>new~~}[^ct-1] after.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | proposed';
+    const text = 'Before {~~old~>new~~}[^cn-1] after.\n\n[^cn-1]: @ai:test | 2026-02-20 | sub | proposed';
     const idx = text.indexOf('old');
     const result = checkCriticMarkupOverlap(text, idx, 'old'.length);
     expect(result).not.toBeNull();
   });
 
   it('allows overlap with accepted inline CriticMarkup (pre-compaction)', () => {
-    const text = 'Before {++added++}[^ct-1] after.\n\n[^ct-1]: @ai:test | 2026-02-20 | ins | accepted';
+    const text = 'Before {++added++}[^cn-1] after.\n\n[^cn-1]: @ai:test | 2026-02-20 | ins | accepted';
     const idx = text.indexOf('added');
     const result = checkCriticMarkupOverlap(text, idx, 'added'.length);
     expect(result).toBeNull();
   });
 
   it('allows overlap with rejected inline CriticMarkup (pre-compaction)', () => {
-    const text = 'Before {--removed--}[^ct-1] after.\n\n[^ct-1]: @ai:test | 2026-02-20 | del | rejected';
+    const text = 'Before {--removed--}[^cn-1] after.\n\n[^cn-1]: @ai:test | 2026-02-20 | del | rejected';
     const idx = text.indexOf('removed');
     const result = checkCriticMarkupOverlap(text, idx, 'removed'.length);
     expect(result).toBeNull();
@@ -695,11 +695,11 @@ describe('applySingleOperation', () => {
       fileContent: 'Hello world.',
       oldText: 'world',
       newText: 'earth',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       author: 'ai:test',
     });
     expect(result.changeType).toBe('sub');
-    expect(result.modifiedText.includes('{~~world~>earth~~}[^ct-1]')).toBeTruthy();
+    expect(result.modifiedText.includes('{~~world~>earth~~}[^cn-1]')).toBeTruthy();
   });
 
   it('handles afterLine insertion', async () => {
@@ -707,7 +707,7 @@ describe('applySingleOperation', () => {
       fileContent: 'line one\nline two\nline three',
       oldText: '',
       newText: 'inserted text',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       author: 'ai:test',
       afterLine: 1,
     });
@@ -720,7 +720,7 @@ describe('applySingleOperation', () => {
       fileContent: 'line one\nline two\nline three',
       oldText: '',
       newText: 'replaced content',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       author: 'ai:test',
       startLine: 2,
       endLine: 2,
@@ -734,7 +734,7 @@ describe('applySingleOperation', () => {
         fileContent: 'Hello world.',
         oldText: '',
         newText: '',
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         author: 'ai:test',
       })).rejects.toThrow();
   });
@@ -744,21 +744,21 @@ describe('applySingleOperation', () => {
 
 describe('stripRefsFromContent', () => {
   it('strips single ref and returns it', () => {
-    const result = stripRefsFromContent('| **RUNNING** | check |[^ct-2.1]');
+    const result = stripRefsFromContent('| **RUNNING** | check |[^cn-2.1]');
     expect(result.cleaned).toBe('| **RUNNING** | check |');
-    expect(result.refs).toStrictEqual(['[^ct-2.1]']);
+    expect(result.refs).toStrictEqual(['[^cn-2.1]']);
   });
 
   it('strips multiple refs', () => {
-    const result = stripRefsFromContent('text[^ct-1][^ct-2] more');
+    const result = stripRefsFromContent('text[^cn-1][^cn-2] more');
     expect(result.cleaned).toBe('text more');
-    expect(result.refs).toStrictEqual(['[^ct-1]', '[^ct-2]']);
+    expect(result.refs).toStrictEqual(['[^cn-1]', '[^cn-2]']);
   });
 
-  it('handles dotted refs (ct-N.M)', () => {
-    const result = stripRefsFromContent('data[^ct-3.1] here[^ct-3.2]');
+  it('handles dotted refs (cn-N.M)', () => {
+    const result = stripRefsFromContent('data[^cn-3.1] here[^cn-3.2]');
     expect(result.cleaned).toBe('data here');
-    expect(result.refs).toStrictEqual(['[^ct-3.1]', '[^ct-3.2]']);
+    expect(result.refs).toStrictEqual(['[^cn-3.1]', '[^cn-3.2]']);
   });
 
   it('returns text unchanged when no refs', () => {
@@ -768,9 +768,9 @@ describe('stripRefsFromContent', () => {
   });
 
   it('handles multi-line text, returning all refs', () => {
-    const result = stripRefsFromContent('line1[^ct-1]\nline2[^ct-2]');
+    const result = stripRefsFromContent('line1[^cn-1]\nline2[^cn-2]');
     expect(result.cleaned).toBe('line1\nline2');
-    expect(result.refs).toStrictEqual(['[^ct-1]', '[^ct-2]']);
+    expect(result.refs).toStrictEqual(['[^cn-1]', '[^cn-2]']);
   });
 });
 
@@ -778,45 +778,45 @@ describe('stripRefsFromContent', () => {
 
 describe('applyProposeChange — ref preservation', () => {
   it('preserves settled ref when substitution target includes ref via view-aware match', async () => {
-    const text = '| **RUNNING** | check |[^ct-1] end.\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | accepted';
+    const text = '| **RUNNING** | check |[^cn-1] end.\n\n[^cn-1]: @ai:test | 2026-02-20 | sub | accepted';
     const result = await applyProposeChange({
       text,
       oldText: '| **RUNNING** | check |',
       newText: '| **DONE** 95% | check passed |',
-      changeId: 'ct-2',
+      changeId: 'cn-2',
       author: 'ai:test',
     });
-    expect(result.modifiedText.includes('[^ct-1]')).toBeTruthy();
+    expect(result.modifiedText.includes('[^cn-1]')).toBeTruthy();
     expect(result.modifiedText.includes('{~~')).toBeTruthy();
     const subMatch = result.modifiedText.match(/\{~~[^~]*~>[^~]*~~\}/);
     expect(subMatch, 'should have substitution').toBeTruthy();
-    expect(subMatch![0].includes('[^ct-1]')).toBeFalsy();
+    expect(subMatch![0].includes('[^cn-1]')).toBeFalsy();
   });
 
   it('preserves settled ref during deletion', async () => {
-    const text = 'remove this[^ct-1] text.\n\n[^ct-1]: @ai:test | 2026-02-20 | del | accepted';
+    const text = 'remove this[^cn-1] text.\n\n[^cn-1]: @ai:test | 2026-02-20 | del | accepted';
     const result = await applyProposeChange({
       text,
       oldText: 'remove this',
       newText: '',
-      changeId: 'ct-2',
+      changeId: 'cn-2',
       author: 'ai:test',
     });
-    expect(result.modifiedText.includes('[^ct-1]')).toBeTruthy();
+    expect(result.modifiedText.includes('[^cn-1]')).toBeTruthy();
   });
 
   it('preserves ref in applySingleOperation line-range path', async () => {
-    const fileContent = 'line one\n| data |[^ct-1]\nline three\n\n[^ct-1]: @ai:test | 2026-02-20 | sub | accepted';
+    const fileContent = 'line one\n| data |[^cn-1]\nline three\n\n[^cn-1]: @ai:test | 2026-02-20 | sub | accepted';
     const result = await applySingleOperation({
       fileContent,
       oldText: '',
       newText: '| updated data |',
-      changeId: 'ct-2',
+      changeId: 'cn-2',
       author: 'ai:test',
       startLine: 2,
       endLine: 2,
     });
-    expect(result.modifiedText.includes('[^ct-1]')).toBeTruthy();
+    expect(result.modifiedText.includes('[^cn-1]')).toBeTruthy();
   });
 });
 
@@ -828,7 +828,7 @@ describe('applyProposeChange level=3 (L3)', () => {
     '',
     'The quick brown fox jumps over the lazy dog.',
     '',
-    '[^ct-1]: @alice | 2026-03-15 | ins | proposed',
+    '[^cn-1]: @alice | 2026-03-15 | ins | proposed',
     '    3:a1 fox jumps over the',
     '    @alice 2026-03-15: Added verb',
   ].join('\n');
@@ -843,7 +843,7 @@ describe('applyProposeChange level=3 (L3)', () => {
         text: l3Doc,
         oldText: '',
         newText: ' rapidly',
-        changeId: 'ct-2',
+        changeId: 'cn-2',
         author: 'ai:claude-opus-4.6',
         insertAfter: 'jumps over',
         level: 3,
@@ -854,7 +854,7 @@ describe('applyProposeChange level=3 (L3)', () => {
       expect(body).toContain('jumps over rapidly the lazy');
       expect(body).not.toContain('{++');
       // Footnote has LINE:HASH edit-op line (may contain {++ ... ++} as the change record)
-      expect(result.modifiedText).toMatch(/\[\^ct-2\]:.*\| ins \| proposed/);
+      expect(result.modifiedText).toMatch(/\[\^cn-2\]:.*\| ins \| proposed/);
       expect(result.modifiedText).toMatch(/^ {4}\d+:[0-9a-f]{2,} .*\{\+\+ rapidly\+\+\}/m);
     });
   });
@@ -865,7 +865,7 @@ describe('applyProposeChange level=3 (L3)', () => {
         text: l3Doc,
         oldText: 'brown ',
         newText: '',
-        changeId: 'ct-2',
+        changeId: 'cn-2',
         author: 'ai:claude-opus-4.6',
         level: 3,
       });
@@ -875,7 +875,7 @@ describe('applyProposeChange level=3 (L3)', () => {
       expect(body).toContain('The quick fox jumps');
       expect(body).not.toContain('{--');
       // Footnote has edit-op with deletion markup as the change record
-      expect(result.modifiedText).toMatch(/\[\^ct-2\]:.*\| del \| proposed/);
+      expect(result.modifiedText).toMatch(/\[\^cn-2\]:.*\| del \| proposed/);
       expect(result.modifiedText).toMatch(/^ {4}\d+:[0-9a-f]{2,} .*\{--brown --\}/m);
     });
   });
@@ -886,7 +886,7 @@ describe('applyProposeChange level=3 (L3)', () => {
         text: l3Doc,
         oldText: 'quick brown',
         newText: 'slow red',
-        changeId: 'ct-2',
+        changeId: 'cn-2',
         author: 'ai:claude-opus-4.6',
         level: 3,
       });
@@ -896,7 +896,7 @@ describe('applyProposeChange level=3 (L3)', () => {
       expect(body).toContain('The slow red fox');
       expect(body).not.toContain('{~~');
       // Footnote has edit-op with substitution markup as the change record
-      expect(result.modifiedText).toMatch(/\[\^ct-2\]:.*\| sub \| proposed/);
+      expect(result.modifiedText).toMatch(/\[\^cn-2\]:.*\| sub \| proposed/);
       expect(result.modifiedText).toMatch(/^ {4}\d+:[0-9a-f]{2,} .*\{~~quick brown~>slow red~~\}/m);
     });
   });
@@ -907,7 +907,7 @@ describe('applyProposeChange level=3 (L3)', () => {
         text: l3Doc,
         oldText: 'quick',
         newText: 'slow',
-        changeId: 'ct-2',
+        changeId: 'cn-2',
         author: 'test',
         level: 2,
       })).rejects.toThrow();

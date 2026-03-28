@@ -22,17 +22,11 @@ export interface ImageInfo {
   previewable: boolean;
 }
 
-export interface ImagePatchInfo {
-  sentinelName: string;
-  changeType: 'ins' | 'del';
-  author: string;
-  date: string;
-  revisionId: number;
-}
+export type { ImagePatchInfo, HyperlinkPatchInfo } from './patch-types.js';
 
 export interface MediaInjection {
   filename: string;
-  data: Buffer;
+  data: Uint8Array;
   contentType: string;
 }
 

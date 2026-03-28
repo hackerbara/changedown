@@ -60,7 +60,7 @@ Feature: OC1 - OpenCode Hooks
     And an OpenCode pending insertion of "New paragraph here.\n" for file "readme.md" with context "# Hello\n\n"
     When I call OpenCode stop hook
     Then the batch file "readme.md" includes "{++"
-    And the batch file "readme.md" includes "[^ct-"
+    And the batch file "readme.md" includes "[^cn-"
     And the OpenCode pending edits file is empty
 
   Scenario: stop hook handles empty pending queue gracefully

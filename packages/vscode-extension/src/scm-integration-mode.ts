@@ -10,7 +10,7 @@ const DEFAULT_MODE: ScmIntegrationMode = 'scm-first';
  * Used to gate legacy vs SCM-first behavior and to enable hybrid comparison.
  */
 export function getScmIntegrationMode(): ScmIntegrationMode {
-  const raw = vscode.workspace.getConfiguration('changetracks').get<string>('scmIntegrationMode', DEFAULT_MODE);
+  const raw = vscode.workspace.getConfiguration('changedown').get<string>('scmIntegrationMode', DEFAULT_MODE);
   return VALID_MODES.includes(raw as ScmIntegrationMode) ? (raw as ScmIntegrationMode) : DEFAULT_MODE;
 }
 
@@ -22,5 +22,5 @@ export function getScmIntegrationMode(): ScmIntegrationMode {
 export function recordScmIntegrationEvent(event: string, source: 'scm' | 'legacy'): void {
   if (getScmIntegrationMode() !== 'hybrid') return;
   // Structured debug log; can be replaced with telemetry or metrics in production
-  console.debug(`[changetracks] scm_integration: event=${event} source=${source}`);
+  console.debug(`[changedown] scm_integration: event=${event} source=${source}`);
 }

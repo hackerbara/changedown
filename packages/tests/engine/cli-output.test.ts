@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { handlerToCliResult, formatResult, type CliResult } from 'changetracks/cli-output';
+import { handlerToCliResult, formatResult, type CliResult } from 'changedown/cli-output';
 
 /* ---------- shared test fixtures ---------- */
 
 const successResult: CliResult = {
   success: true,
-  data: { change_id: 'ct-1', type: 'substitution', file: 'docs/spec.md' },
-  message: 'Proposed ct-1 (substitution) in docs/spec.md',
+  data: { change_id: 'cn-1', type: 'substitution', file: 'docs/spec.md' },
+  message: 'Proposed cn-1 (substitution) in docs/spec.md',
 };
 
 const errorResult: CliResult = {
@@ -30,7 +30,7 @@ describe('formatResult', () => {
     it('outputs JSON for success (parseable, contains change_id, type)', () => {
       const out = formatResult(successResult, 'json');
       const parsed = JSON.parse(out);
-      expect(parsed.change_id).toBe('ct-1');
+      expect(parsed.change_id).toBe('cn-1');
       expect(parsed.type).toBe('substitution');
       expect(parsed.file).toBe('docs/spec.md');
     });
@@ -46,7 +46,7 @@ describe('formatResult', () => {
   describe('pretty format', () => {
     it('outputs human-readable message for success', () => {
       const out = formatResult(successResult, 'pretty');
-      expect(out).toBe('Proposed ct-1 (substitution) in docs/spec.md\n');
+      expect(out).toBe('Proposed cn-1 (substitution) in docs/spec.md\n');
     });
 
     it('outputs error message for failures', () => {
@@ -58,7 +58,7 @@ describe('formatResult', () => {
   describe('quiet format', () => {
     it('outputs only change_id for propose results', () => {
       const out = formatResult(successResult, 'quiet');
-      expect(out).toBe('ct-1\n');
+      expect(out).toBe('cn-1\n');
     });
 
     it('outputs error code for failures', () => {
@@ -91,12 +91,12 @@ describe('formatResult', () => {
 describe('handlerToCliResult', () => {
   it('converts successful handler JSON to CliResult', () => {
     const handler = {
-      content: [{ type: 'text', text: JSON.stringify({ change_id: 'ct-5', type: 'insertion', file: 'readme.md' }) }],
+      content: [{ type: 'text', text: JSON.stringify({ change_id: 'cn-5', type: 'insertion', file: 'readme.md' }) }],
     };
     const result = handlerToCliResult(handler);
     expect(result.success).toBe(true);
-    expect(result.data.change_id).toBe('ct-5');
-    expect(result.message).toContain('ct-5');
+    expect(result.data.change_id).toBe('cn-5');
+    expect(result.message).toContain('cn-5');
     expect(result.message).toContain('insertion');
     expect(result.message).toContain('readme.md');
   });

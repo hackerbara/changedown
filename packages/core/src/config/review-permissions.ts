@@ -1,4 +1,4 @@
-import type { ChangeTracksConfig } from './index.js';
+import type { ChangeDownConfig } from './index.js';
 
 export type ParticipantType = 'human' | 'agent';
 
@@ -15,7 +15,7 @@ export function reviewerType(author: string): ParticipantType {
 export function canAccept(
   reviewer: string,
   changeAuthor: string,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
 ): { allowed: boolean; reason?: string } {
   const rt = reviewerType(reviewer);
   if (!config.review.may_review[rt]) {
@@ -30,7 +30,7 @@ export function canAccept(
 export function canWithdraw(
   reviewer: string,
   rcAuthor: string,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
 ): boolean {
   if (reviewer === rcAuthor) return true;
   return config.review.cross_withdrawal[reviewerType(reviewer)];

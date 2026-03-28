@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { Workspace, FootnoteNativeParser, ChangeType, ChangeStatus, initHashline, FOOTNOTE_L3_EDIT_OP } from '@changetracks/core/internals';
+import { Workspace, FootnoteNativeParser, ChangeType, ChangeStatus, initHashline, FOOTNOTE_L3_EDIT_OP } from '@changedown/core/internals';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
@@ -7,17 +7,17 @@ describe('isFootnoteNative detection', () => {
   const ws = new Workspace();
 
   it('returns false for settled L2 with old-format footnotes', () => {
-    const settledL2 = `# Document\n\nSome settled text.\n\n[^ct-1]: @alice | 2026-03-16 | ins | accepted\n    approved: @alice 2026-03-16 "looks good"`;
+    const settledL2 = `# Document\n\nSome settled text.\n\n[^cn-1]: @alice | 2026-03-16 | ins | accepted\n    approved: @alice 2026-03-16 "looks good"`;
     expect(ws.isFootnoteNative(settledL2)).toBe(false);
   });
 
   it('returns true for L3 with line-hash + edit-op footnotes', () => {
-    const l3 = `# Document\n\nSome text with additions.\n\n[^ct-1]: @alice | 2026-03-16 | ins | proposed\n    3:a3 {++additions++}`;
+    const l3 = `# Document\n\nSome text with additions.\n\n[^cn-1]: @alice | 2026-03-16 | ins | proposed\n    3:a3 {++additions++}`;
     expect(ws.isFootnoteNative(l3)).toBe(true);
   });
 
   it('returns false for L2 with inline CriticMarkup', () => {
-    const l2 = `# Document\n\n{++Some added text.++}\n\n[^ct-1]: @alice | 2026-03-16 | ins | proposed`;
+    const l2 = `# Document\n\n{++Some added text.++}\n\n[^cn-1]: @alice | 2026-03-16 | ins | proposed`;
     expect(ws.isFootnoteNative(l2)).toBe(false);
   });
 
@@ -39,7 +39,7 @@ describe('FootnoteNativeParser (line-hash + edit-op format)', () => {
   it('parses insertion with line hash and edit op', () => {
     const doc = parser.parse(fixture);
     const changes = doc.getChanges();
-    const ins = changes.find(c => c.id === 'ct-1');
+    const ins = changes.find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.type).toBe(ChangeType.Insertion);
     expect(ins!.status).toBe(ChangeStatus.Proposed);
@@ -51,7 +51,7 @@ describe('FootnoteNativeParser (line-hash + edit-op format)', () => {
   it('parses deletion as zero-width range', () => {
     const doc = parser.parse(fixture);
     const changes = doc.getChanges();
-    const del = changes.find(c => c.id === 'ct-2');
+    const del = changes.find(c => c.id === 'cn-2');
     expect(del).toBeDefined();
     expect(del!.type).toBe(ChangeType.Deletion);
     expect(del!.originalText).toBeDefined();
@@ -61,7 +61,7 @@ describe('FootnoteNativeParser (line-hash + edit-op format)', () => {
   it('parses substitution with original and modified text', () => {
     const doc = parser.parse(fixture);
     const changes = doc.getChanges();
-    const sub = changes.find(c => c.id === 'ct-3');
+    const sub = changes.find(c => c.id === 'cn-3');
     expect(sub).toBeDefined();
     expect(sub!.type).toBe(ChangeType.Substitution);
     expect(sub!.status).toBe(ChangeStatus.Accepted);
@@ -72,7 +72,7 @@ describe('FootnoteNativeParser (line-hash + edit-op format)', () => {
   it('parses approval metadata on accepted change', () => {
     const doc = parser.parse(fixture);
     const changes = doc.getChanges();
-    const sub = changes.find(c => c.id === 'ct-3');
+    const sub = changes.find(c => c.id === 'cn-3');
     expect(sub).toBeDefined();
     expect(sub!.metadata?.approvals).toBeDefined();
     expect(sub!.metadata!.approvals!.length).toBe(1);
@@ -83,7 +83,7 @@ describe('FootnoteNativeParser (line-hash + edit-op format)', () => {
   it('parses rejected insertion (no body range)', () => {
     const doc = parser.parse(fixture);
     const changes = doc.getChanges();
-    const rej = changes.find(c => c.id === 'ct-4');
+    const rej = changes.find(c => c.id === 'cn-4');
     expect(rej).toBeDefined();
     expect(rej!.type).toBe(ChangeType.Insertion);
     expect(rej!.status).toBe(ChangeStatus.Rejected);
@@ -92,7 +92,7 @@ describe('FootnoteNativeParser (line-hash + edit-op format)', () => {
   it('parses highlight with comment', () => {
     const doc = parser.parse(fixture);
     const changes = doc.getChanges();
-    const hig = changes.find(c => c.id === 'ct-5');
+    const hig = changes.find(c => c.id === 'cn-5');
     expect(hig).toBeDefined();
     expect(hig!.type).toBe(ChangeType.Highlight);
     expect(hig!.metadata?.comment).toContain('This needs revision');
@@ -118,7 +118,7 @@ describe('FootnoteNativeParser (line-hash + edit-op format)', () => {
   it('parses standalone comment type', () => {
     const doc = parser.parse(fixture);
     const changes = doc.getChanges();
-    const cmt = changes.find(c => c.id === 'ct-6');
+    const cmt = changes.find(c => c.id === 'cn-6');
     expect(cmt).toBeDefined();
     expect(cmt!.type).toBe(ChangeType.Comment);
     expect(cmt!.status).toBe(ChangeStatus.Proposed);
@@ -132,12 +132,12 @@ describe('FootnoteNativeParser (line-hash + edit-op format)', () => {
       '',
       'The system delivers good results.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | rejected',
+      '[^cn-1]: @alice | 2026-03-16 | sub | rejected',
       '    3:ab {~~provides~>delivers~~}',
       '    rejected: @alice 2026-03-16 "Not the right word"',
     ].join('\n');
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     expect(sub!.type).toBe(ChangeType.Substitution);
     expect(sub!.status).toBe(ChangeStatus.Rejected);
@@ -149,10 +149,10 @@ describe('FootnoteNativeParser (line-hash + edit-op format)', () => {
 
   it('handles stale hash via relocation', () => {
     // Create a document where the hash doesn't match the line content
-    const staleDoc = `<!-- ctrcks.com/v1: tracked -->\n# Title\n\nModified line content.\n\n[^ct-1]: @alice | 2026-03-16 | ins | proposed\n    4:ff {++Modified ++}`;
+    const staleDoc = `<!-- changedown.com/v1: tracked -->\n# Title\n\nModified line content.\n\n[^cn-1]: @alice | 2026-03-16 | ins | proposed\n    4:ff {++Modified ++}`;
     const doc = parser.parse(staleDoc);
     const changes = doc.getChanges();
-    const ins = changes.find(c => c.id === 'ct-1');
+    const ins = changes.find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     // Even with wrong hash, should still find the text via relocation or best-effort
     expect(ins!.type).toBe(ChangeType.Insertion);
@@ -170,11 +170,11 @@ describe('deletion context parsing (@ctx:)', () => {
       '',
       'We should extend the timeline.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | del | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | del | proposed',
       '    3:ab {--old --} @ctx:"We should "||"extend the time"',
     ].join('\n');
     const doc = parser.parse(l3);
-    const del = doc.getChanges().find(c => c.id === 'ct-1');
+    const del = doc.getChanges().find(c => c.id === 'cn-1');
     expect(del).toBeDefined();
     expect(del!.type).toBe(ChangeType.Deletion);
     expect(del!.originalText).toBe('old ');
@@ -191,11 +191,11 @@ describe('deletion context parsing (@ctx:)', () => {
       '',
       'We should extend the timeline.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | del | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | del | proposed',
       '    3:ab {--old --}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const del = doc.getChanges().find(c => c.id === 'ct-1');
+    const del = doc.getChanges().find(c => c.id === 'cn-1');
     expect(del).toBeDefined();
     // Without context, falls back to line start (offset 8 for line 3)
     expect(del!.range.start).toBe(8);
@@ -207,11 +207,11 @@ describe('deletion context parsing (@ctx:)', () => {
       '',
       'She said "hello" to everyone.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | del | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | del | proposed',
       '    3:ab {--old --} @ctx:"said \\"hello\\" "||"to everyone."',
     ].join('\n');
     const doc = parser.parse(l3);
-    const del = doc.getChanges().find(c => c.id === 'ct-1');
+    const del = doc.getChanges().find(c => c.id === 'cn-1');
     expect(del).toBeDefined();
     // Context with escaped quotes should still match
     expect(del!.range.start).toBeGreaterThan(0);
@@ -223,16 +223,16 @@ describe('deletion context parsing (@ctx:)', () => {
       '',
       'But  contact center leaders have  expertise.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | del | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | del | proposed',
       '    3:ab {--most --} @ctx:"But "||" contact cen"',
       '',
-      '[^ct-2]: @alice | 2026-03-16 | del | proposed',
+      '[^cn-2]: @alice | 2026-03-16 | del | proposed',
       '    3:ab {--inbuilt --} @ctx:"rs have "||" expertise."',
     ].join('\n');
     const doc = parser.parse(l3);
     const changes = doc.getChanges();
-    const del1 = changes.find(c => c.id === 'ct-1');
-    const del2 = changes.find(c => c.id === 'ct-2');
+    const del1 = changes.find(c => c.id === 'cn-1');
+    const del2 = changes.find(c => c.id === 'cn-2');
     expect(del1).toBeDefined();
     expect(del2).toBeDefined();
     // They must have DIFFERENT positions (not both at line start)
@@ -248,11 +248,11 @@ describe('deletion context parsing (@ctx:)', () => {
       '',
       'remaining text on line.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | del | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | del | proposed',
       '    3:ab {--old --} @ctx:""||"remaining tex"',
     ].join('\n');
     const doc = parser.parse(l3);
-    const del = doc.getChanges().find(c => c.id === 'ct-1');
+    const del = doc.getChanges().find(c => c.id === 'cn-1');
     expect(del).toBeDefined();
     // With empty before context, deletion should be at line start
     expect(del!.range.start).toBe(8); // line 3 offset
@@ -264,11 +264,11 @@ describe('deletion context parsing (@ctx:)', () => {
       '',
       'Some text before.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | del | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | del | proposed',
       '    3:ab {--old --} @ctx:"text before."||""',
     ].join('\n');
     const doc = parser.parse(l3);
-    const del = doc.getChanges().find(c => c.id === 'ct-1');
+    const del = doc.getChanges().find(c => c.id === 'cn-1');
     expect(del).toBeDefined();
     // Deletion at end — should be after "text before."
     expect(del!.range.start).toBeGreaterThan(8);
@@ -283,11 +283,11 @@ describe('deletion context parsing (@ctx:)', () => {
       '',
       'the cat and the dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
       '    3:ab {++the++}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     // Should signal unresolved, not silently fall back to line start
     expect(ins!.anchored).toBe(false);
@@ -321,12 +321,12 @@ describe('Protocol overview title-case regression', () => {
       '',
       'Protocol Overview and Practical Guidelines',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
       '    3:ab {~~overview~>Overview~~}',
       '    @alice 2026-03-16: Capitalise for title case',
     ].join('\n');
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     expect(sub!.type).toBe(ChangeType.Substitution);
     // Must resolve to "Overview" at column 9, NOT "Protocol" at column 0
@@ -341,11 +341,11 @@ describe('Protocol overview title-case regression', () => {
       '',
       'Protocol Overview and Practical Guidelines',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
       '    3:ab {~~overview~>Overview~~}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     // "Protocol" starts at offset 46 on line 3 and has length 8 (offsets 46–53).
     // The substitution range must not overlap that span.
@@ -365,11 +365,11 @@ describe('Protocol overview title-case regression', () => {
       '',
       'Protocol Overview and Practical Guidelines',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
       '    3:ab {~~overview~>Overview~~}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     // The newText "Overview" is unique on the line — parser must anchor it.
     expect(sub!.anchored).toBe(true);
@@ -383,11 +383,11 @@ describe('Protocol overview title-case regression', () => {
       '',
       'Protocol AI solution and Google AI platform',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
       '    3:ab {~~ai~>AI~~}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     // "AI" appears at "Protocol AI" and "Google AI" → ambiguous → anchored:false
     expect(sub!.anchored).toBe(false);
@@ -404,12 +404,12 @@ describe('L2→L3 expansion prevents title-case ambiguity (Task 4 integration)',
     const l2 = [
       '# Protocol Overview and Practical Guidelines',
       '',
-      'Protocol {~~overview~>Overview~~}[^ct-1] and Practical Guidelines',
+      'Protocol {~~overview~>Overview~~}[^cn-1] and Practical Guidelines',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
       '    @alice 2026-03-16: Capitalise for title case',
     ].join('\n');
-    const { convertL2ToL3 } = await import('@changetracks/core/internals');
+    const { convertL2ToL3 } = await import('@changedown/core/internals');
     const l3 = await convertL2ToL3(l2);
 
     // The emitted substitution edit-op must be unique on the body line.
@@ -430,11 +430,11 @@ describe('L2→L3 expansion prevents title-case ambiguity (Task 4 integration)',
     const l2 = [
       '# Protocol Overview and Practical Guidelines',
       '',
-      'Protocol {~~overview~>Overview~~}[^ct-1] and Practical Guidelines',
+      'Protocol {~~overview~>Overview~~}[^cn-1] and Practical Guidelines',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
     ].join('\n');
-    const { convertL2ToL3 } = await import('@changetracks/core/internals');
+    const { convertL2ToL3 } = await import('@changedown/core/internals');
     const l3 = await convertL2ToL3(l2);
 
     // Must contain a substitution edit-op
@@ -463,11 +463,11 @@ describe('deterministic anchor resolution — no silent fallback for non-deletio
       '',
       'the cat and the dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
       '    3:ab {++the++}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     // DESIRED: anchored:false (not silently placed at line start)
     expect(ins!.anchored).toBe(false);
@@ -482,11 +482,11 @@ describe('deterministic anchor resolution — no silent fallback for non-deletio
       '',
       'the cat and the dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
       '    3:ab {++missing++}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     // DESIRED: anchored:false (text is genuinely missing from body)
     expect(ins!.anchored).toBe(false);
@@ -499,11 +499,11 @@ describe('deterministic anchor resolution — no silent fallback for non-deletio
       '',
       'You can do it, I can too.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
       '    3:ab {~~could~>can~~}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     // DESIRED: anchored:false (newText "can" is ambiguous on this line)
     expect(sub!.anchored).toBe(false);
@@ -519,11 +519,11 @@ describe('deterministic anchor resolution — no silent fallback for non-deletio
       '',
       'good work produces good results.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | highlight | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | highlight | proposed',
       '    3:ab {==good==}{>>This needs work',
     ].join('\n');
     const doc = parser.parse(l3);
-    const hi = doc.getChanges().find(c => c.id === 'ct-1');
+    const hi = doc.getChanges().find(c => c.id === 'cn-1');
     expect(hi).toBeDefined();
     // Highlight: best-effort positioning at line-start, still rendered
     expect(hi!.anchored).toBe(true);
@@ -539,11 +539,11 @@ describe('deterministic anchor resolution — no silent fallback for non-deletio
       '',
       'We should extend the timeline.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | del | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | del | proposed',
       '    3:ab {--old --}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const del = doc.getChanges().find(c => c.id === 'ct-1');
+    const del = doc.getChanges().find(c => c.id === 'cn-1');
     expect(del).toBeDefined();
     // DESIRED: deletion WITHOUT @ctx falls back to line-start (this IS the correct behavior)
     expect(del!.range.start).toBe(lineOffset);
@@ -566,12 +566,12 @@ describe('discussion text preservation in footnotes', () => {
       '',
       'Some text on line three.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | comment | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | comment | proposed',
       '    3:ab {>>',
       '    This is a standalone discussion line that should be preserved',
     ].join('\n');
     const doc = parser.parse(l3);
-    const cmt = doc.getChanges().find(c => c.id === 'ct-1');
+    const cmt = doc.getChanges().find(c => c.id === 'cn-1');
     expect(cmt).toBeDefined();
     expect(cmt!.type).toBe(ChangeType.Comment);
     expect(cmt!.metadata?.comment).toBeDefined();
@@ -585,11 +585,11 @@ describe('discussion text preservation in footnotes', () => {
       '',
       'Some text on line three.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | comment | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | comment | proposed',
       '    This is a discussion-only comment with no op string',
     ].join('\n');
     const doc = parser.parse(l3);
-    const cmt = doc.getChanges().find(c => c.id === 'ct-1');
+    const cmt = doc.getChanges().find(c => c.id === 'cn-1');
     expect(cmt).toBeDefined();
     expect(cmt!.type).toBe(ChangeType.Comment);
     expect(cmt!.metadata?.comment).toBeDefined();
@@ -604,12 +604,12 @@ describe('discussion text preservation in footnotes', () => {
       '',
       'The system provides excellent results.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
       '    3:ab {++excellent ++}',
       '    This is reasoning for the insertion',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.type).toBe(ChangeType.Insertion);
     expect(ins!.anchored).toBe(true);
@@ -622,12 +622,12 @@ describe('discussion text preservation in footnotes', () => {
       '',
       'Some text on line three.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | comment | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | comment | proposed',
       '    3:ab {>>Reasoning from op string',
       '    Discussion line that should NOT override op reasoning',
     ].join('\n');
     const doc = parser.parse(l3);
-    const cmt = doc.getChanges().find(c => c.id === 'ct-1');
+    const cmt = doc.getChanges().find(c => c.id === 'cn-1');
     expect(cmt).toBeDefined();
     expect(cmt!.metadata?.comment).toBe('Reasoning from op string');
     expect(cmt!.metadata!.comment).not.toContain('Discussion line');
@@ -648,11 +648,11 @@ describe('ghost nodes — settled footnotes without opString', () => {
       '',
       'Some settled text here.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-16 | ins | accepted',
       '    approved: @alice 2026-03-16 "looks good"',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.anchored).toBe(false);
   });
@@ -665,11 +665,11 @@ describe('ghost nodes — settled footnotes without opString', () => {
       '',
       'Some settled text here.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-16 | ins | accepted',
       '    approved: @alice 2026-03-16 "looks good"',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     // anchored:false is the key signal — the range value is not meaningful
     expect(ins!.anchored).toBe(false);
@@ -681,11 +681,11 @@ describe('ghost nodes — settled footnotes without opString', () => {
       '',
       'The remaining text after deletion.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | del | accepted',
+      '[^cn-1]: @alice | 2026-03-16 | del | accepted',
       '    approved: @alice 2026-03-16 "approved deletion"',
     ].join('\n');
     const doc = parser.parse(l3);
-    const del = doc.getChanges().find(c => c.id === 'ct-1');
+    const del = doc.getChanges().find(c => c.id === 'cn-1');
     expect(del).toBeDefined();
     expect(del!.anchored).toBe(false);
   });
@@ -696,11 +696,11 @@ describe('ghost nodes — settled footnotes without opString', () => {
       '',
       'The new text after substitution.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | accepted',
+      '[^cn-1]: @alice | 2026-03-16 | sub | accepted',
       '    approved: @alice 2026-03-16 "approved substitution"',
     ].join('\n');
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     expect(sub!.anchored).toBe(false);
   });
@@ -713,11 +713,11 @@ describe('ghost nodes — settled footnotes without opString', () => {
       '',
       'Some settled text.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | accepted',
+      '[^cn-1]: @alice | 2026-03-16 | ins | accepted',
       '    This was the reasoning for the accepted change',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.anchored).toBe(false);
     expect(ins!.metadata?.comment).toContain('reasoning for the accepted change');
@@ -748,11 +748,11 @@ describe('contextual edit-op format parsing', () => {
       '',
       'Protocol overview and Practical Guidelines',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
       '    3:ab Protocol {++o++}verview',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.type).toBe(ChangeType.Insertion);
     expect(ins!.anchored).toBe(true);
@@ -771,11 +771,11 @@ describe('contextual edit-op format parsing', () => {
       '',
       'Protocol verview and Practical Guidelines',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | del | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | del | proposed',
       '    3:ab Protocol {--O--}verview',
     ].join('\n');
     const doc = parser.parse(l3);
-    const del = doc.getChanges().find(c => c.id === 'ct-1');
+    const del = doc.getChanges().find(c => c.id === 'cn-1');
     expect(del).toBeDefined();
     expect(del!.type).toBe(ChangeType.Deletion);
     expect(del!.originalText).toBe('O');
@@ -794,12 +794,12 @@ describe('contextual edit-op format parsing', () => {
       '',
       'Spec-comCpliant trial',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | sub | proposed',
       '    3:ab Spec-{~~compliant~>comCpliant~~} trial',
     ].join('\n');
     // line 3 offset: "# Title\n\n".length = 9
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     expect(sub!.type).toBe(ChangeType.Substitution);
     expect(sub!.anchored).toBe(true);
@@ -817,12 +817,12 @@ describe('contextual edit-op format parsing', () => {
       '',
       'conversational AI',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
       '    3:ab {++c++}onversational',
     ].join('\n');
     // line 3 offset: "# Title\n\n".length = 9
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.type).toBe(ChangeType.Insertion);
     expect(ins!.anchored).toBe(true);
@@ -888,11 +888,11 @@ describe('contextual edit-op format parsing', () => {
       '',
       'good work produces good results.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | highlight | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | highlight | proposed',
       '    3:ab produces {==good==} results',
     ].join('\n');
     const doc = parser.parse(l3);
-    const hi = doc.getChanges().find(c => c.id === 'ct-1');
+    const hi = doc.getChanges().find(c => c.id === 'cn-1');
     expect(hi).toBeDefined();
     expect(hi!.type).toBe(ChangeType.Highlight);
     expect(hi!.anchored).toBe(true);
@@ -915,11 +915,11 @@ describe('contextual edit-op format parsing', () => {
       '',
       'Protocol verview and Practical Guidelines',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | rejected',
+      '[^cn-1]: @alice | 2026-03-16 | ins | rejected',
       '    3:ab Protocol {++o++}verview',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.type).toBe(ChangeType.Insertion);
     expect(ins!.status).toBe(ChangeStatus.Rejected);
@@ -938,12 +938,12 @@ describe('contextual edit-op format parsing', () => {
       '',
       'Spec-compliant trial',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | sub | rejected',
+      '[^cn-1]: @alice | 2026-03-16 | sub | rejected',
       '    3:ab Spec-{~~compliant~>comCpliant~~} trial',
     ].join('\n');
     // Line 3 offset: "# Title\n\n".length = 9
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     expect(sub!.type).toBe(ChangeType.Substitution);
     expect(sub!.status).toBe(ChangeStatus.Rejected);
@@ -960,11 +960,11 @@ describe('contextual edit-op format parsing', () => {
       '',
       'Hello world added text here.',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
       '    3:ab {++added text ++}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.anchored).toBe(true);
     // "added text " found on line via legacy findOnLine
@@ -981,15 +981,15 @@ describe('contextual edit-op format parsing', () => {
     const l2 = [
       '# Test',
       '',
-      'he{++ll++}[^ct-1]o and hello world',
+      'he{++ll++}[^cn-1]o and hello world',
       '',
-      '[^ct-1]: @alice | 2026-03-16 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-16 | ins | proposed',
     ].join('\n');
-    const { convertL2ToL3 } = await import('@changetracks/core/internals');
+    const { convertL2ToL3 } = await import('@changedown/core/internals');
     const l3 = await convertL2ToL3(l2);
 
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.type).toBe(ChangeType.Insertion);
     expect(ins!.anchored).toBe(true);
@@ -1023,11 +1023,11 @@ describe('long-form footnote type names', () => {
       '',
       'Hello beautiful world.',
       '',
-      '[^ct-1]: @alex | 2026-03-19 | insertion | proposed',
+      '[^cn-1]: @alex | 2026-03-19 | insertion | proposed',
       '    3:ab {++beautiful ++}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const ins = doc.getChanges().find(c => c.id === 'ct-1');
+    const ins = doc.getChanges().find(c => c.id === 'cn-1');
     expect(ins).toBeDefined();
     expect(ins!.type).toBe(ChangeType.Insertion);
     expect(ins!.status).toBe(ChangeStatus.Proposed);
@@ -1040,11 +1040,11 @@ describe('long-form footnote type names', () => {
       '',
       'Hello world.',
       '',
-      '[^ct-1]: @alex | 2026-03-19 | deletion | proposed',
+      '[^cn-1]: @alex | 2026-03-19 | deletion | proposed',
       '    3:ab {--old --} @ctx:"Hello "||"world."',
     ].join('\n');
     const doc = parser.parse(l3);
-    const del = doc.getChanges().find(c => c.id === 'ct-1');
+    const del = doc.getChanges().find(c => c.id === 'cn-1');
     expect(del).toBeDefined();
     expect(del!.type).toBe(ChangeType.Deletion);
   });
@@ -1055,11 +1055,11 @@ describe('long-form footnote type names', () => {
       '',
       'Hello new world.',
       '',
-      '[^ct-1]: @alex | 2026-03-19 | substitution | proposed',
+      '[^cn-1]: @alex | 2026-03-19 | substitution | proposed',
       '    3:ab {~~old~>new~~}',
     ].join('\n');
     const doc = parser.parse(l3);
-    const sub = doc.getChanges().find(c => c.id === 'ct-1');
+    const sub = doc.getChanges().find(c => c.id === 'cn-1');
     expect(sub).toBeDefined();
     expect(sub!.type).toBe(ChangeType.Substitution);
   });
@@ -1070,17 +1070,17 @@ describe('long-form footnote type names', () => {
       '',
       'Hello beautiful new world.',
       '',
-      '[^ct-1]: @jennifer | 2026-02-20 | ins | proposed',
+      '[^cn-1]: @jennifer | 2026-02-20 | ins | proposed',
       '    3:ab {++beautiful ++}',
       '',
-      '[^ct-2]: @alex | 2026-03-19 | substitution | proposed',
+      '[^cn-2]: @alex | 2026-03-19 | substitution | proposed',
       '    3:ab {~~old~>new~~}',
     ].join('\n');
     const doc = parser.parse(l3);
     const changes = doc.getChanges();
     expect(changes.length).toBe(2);
-    expect(changes.find(c => c.id === 'ct-1')!.type).toBe(ChangeType.Insertion);
-    expect(changes.find(c => c.id === 'ct-2')!.type).toBe(ChangeType.Substitution);
+    expect(changes.find(c => c.id === 'cn-1')!.type).toBe(ChangeType.Insertion);
+    expect(changes.find(c => c.id === 'cn-2')!.type).toBe(ChangeType.Substitution);
   });
 });
 
@@ -1095,53 +1095,53 @@ describe('edit-over-edit resolution', () => {
   const parser = new FootnoteNativeParser();
 
   it('resolves consumed operations via protocol delegation', () => {
-    // ct-1 inserts "very " into "The lazy dog" → "The very lazy dog"
-    // ct-2 deletes "very " from "The very lazy dog" → "The lazy dog"
-    // Current body is "The lazy dog" — ct-1's text is consumed and absent.
+    // cn-1 inserts "very " into "The lazy dog" → "The very lazy dog"
+    // cn-2 deletes "very " from "The very lazy dog" → "The lazy dog"
+    // Current body is "The lazy dog" — cn-1's text is consumed and absent.
     // The parser's single-pass cannot find "very " in the body.
-    // The resolution protocol replay confirms ct-1 is valid.
+    // The resolution protocol replay confirms cn-1 is valid.
     const l3 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'The lazy dog',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    2:a1 The {++very ++}lazy dog',
       '',
-      '[^ct-2]: @alice | 2026-03-20 | del | proposed',
+      '[^cn-2]: @alice | 2026-03-20 | del | proposed',
       '    2:b1 The {--very --}lazy dog',
     ].join('\n');
 
     const doc = parser.parse(l3);
     const changes = doc.getChanges();
 
-    // ct-1 is consumed — its text ("very ") is absent from the current body.
+    // cn-1 is consumed — its text ("very ") is absent from the current body.
     // The protocol confirms it's valid, but without a body range it stays
     // anchored:false so the ghost node filter (A-4) keeps it from rendering
     // at offset 0.
-    const ct1 = changes.find(c => c.id === 'ct-1');
+    const ct1 = changes.find(c => c.id === 'cn-1');
     expect(ct1).toBeDefined();
     expect(ct1!.anchored).toBe(false);
 
-    // ct-2 should be resolved (contextual match on "The lazy dog")
-    const ct2 = changes.find(c => c.id === 'ct-2');
+    // cn-2 should be resolved (contextual match on "The lazy dog")
+    const ct2 = changes.find(c => c.id === 'cn-2');
     expect(ct2).toBeDefined();
     expect(ct2!.anchored).toBe(true);
   });
 
   it('leaves genuinely unresolvable operations as anchored:false', () => {
-    // ct-1 references text that has never existed in any body state.
+    // cn-1 references text that has never existed in any body state.
     // The resolution protocol should NOT mark it as anchored.
     const l3 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'The lazy dog',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    2:a1 {++nonexistent++}',
     ].join('\n');
 
     const doc = parser.parse(l3);
     const changes = doc.getChanges();
-    const ct1 = changes.find(c => c.id === 'ct-1');
+    const ct1 = changes.find(c => c.id === 'cn-1');
     expect(ct1).toBeDefined();
     expect(ct1!.anchored).toBe(false);
   });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { PendingBuffer } from '@changetracks/core/edit-boundary';
+import type { PendingBuffer } from '@changedown/core/edit-boundary';
 import {
   isEmpty,
   bufferEnd,
@@ -10,7 +10,7 @@ import {
   createBuffer,
   prependOriginal,
   appendOriginal,
-} from '@changetracks/core/edit-boundary';
+} from '@changedown/core/edit-boundary';
 
 describe('PendingBuffer', () => {
   const NOW = 1000;

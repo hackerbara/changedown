@@ -8,9 +8,9 @@ Feature: DX2 - Export Comment Handling
   Scenario: Highlight with attached comment exports as Word comment
     Given CriticMarkup markdown:
       """
-      This is {==highlighted text==}{>>A review comment<<}[^ct-1].
+      This is {==highlighted text==}{>>A review comment<<}[^cn-1].
 
-      [^ct-1]: @alice-chen | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice-chen | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "all"
     Then the export succeeds
@@ -20,9 +20,9 @@ Feature: DX2 - Export Comment Handling
   Scenario: Standalone comment exports
     Given CriticMarkup markdown:
       """
-      This has a {>>standalone note<<}[^ct-1] in it.
+      This has a {>>standalone note<<}[^cn-1] in it.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "all"
     Then the export succeeds
@@ -32,10 +32,10 @@ Feature: DX2 - Export Comment Handling
   Scenario: Comment mode all includes all comments
     Given CriticMarkup markdown:
       """
-      {>>first comment<<}[^ct-1] and {>>second comment<<}[^ct-2].
+      {>>first comment<<}[^cn-1] and {>>second comment<<}[^cn-2].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-16 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-16 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "all"
     Then the export succeeds
@@ -45,9 +45,9 @@ Feature: DX2 - Export Comment Handling
   Scenario: Comment mode none strips all comments
     Given CriticMarkup markdown:
       """
-      {>>a comment<<}[^ct-1] text.
+      {>>a comment<<}[^cn-1] text.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "none"
     Then the export succeeds
@@ -57,9 +57,9 @@ Feature: DX2 - Export Comment Handling
   Scenario: DOCX contains word/comments.xml when comments are present
     Given CriticMarkup markdown:
       """
-      Text {>>note here<<}[^ct-1].
+      Text {>>note here<<}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "all"
     Then the export succeeds
@@ -69,9 +69,9 @@ Feature: DX2 - Export Comment Handling
   Scenario: Comment initials - regular author gets initials
     Given CriticMarkup markdown:
       """
-      {++inserted++}[^ct-1]
+      {++inserted++}[^cn-1]
 
-      [^ct-1]: @alice-chen | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice-chen | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "all"
     Then the export succeeds
@@ -81,9 +81,9 @@ Feature: DX2 - Export Comment Handling
   Scenario: Comment initials - AI author gets AI initials
     Given CriticMarkup markdown:
       """
-      {>>ai suggestion<<}[^ct-1]
+      {>>ai suggestion<<}[^cn-1]
 
-      [^ct-1]: @ai:claude-opus-4.6 | 2026-01-15 | ins | proposed
+      [^cn-1]: @ai:claude-opus-4.6 | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "all"
     Then the export succeeds
@@ -92,10 +92,10 @@ Feature: DX2 - Export Comment Handling
   Scenario: Multiple tracked changes from different authors
     Given CriticMarkup markdown:
       """
-      {++alice added++}[^ct-1] and {--bob removed--}[^ct-2].
+      {++alice added++}[^cn-1] and {--bob removed--}[^cn-2].
 
-      [^ct-1]: @alice-chen | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob-smith | 2026-01-16 | del | proposed
+      [^cn-1]: @alice-chen | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob-smith | 2026-01-16 | del | proposed
       """
     When I export to DOCX with mode "tracked" and comments "all"
     Then the export succeeds
@@ -106,9 +106,9 @@ Feature: DX2 - Export Comment Handling
   Scenario: Comment on accepted change in settled mode
     Given CriticMarkup markdown:
       """
-      {==highlighted==}{>>settled comment<<}[^ct-1]
+      {==highlighted==}{>>settled comment<<}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | accepted
+      [^cn-1]: @alice | 2026-01-15 | ins | accepted
       """
     When I export to DOCX with mode "settled" and comments "all"
     Then the export succeeds
@@ -117,9 +117,9 @@ Feature: DX2 - Export Comment Handling
   Scenario: Highlight without comment (just yellow highlighting)
     Given CriticMarkup markdown:
       """
-      This is {==highlighted only==}[^ct-1] text.
+      This is {==highlighted only==}[^cn-1] text.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -128,9 +128,9 @@ Feature: DX2 - Export Comment Handling
   Scenario: Empty comment text
     Given CriticMarkup markdown:
       """
-      {>><<}[^ct-1] text after.
+      {>><<}[^cn-1] text after.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "all"
     Then the export succeeds
@@ -139,9 +139,9 @@ Feature: DX2 - Export Comment Handling
   Scenario: No comments produces no comments.xml
     Given CriticMarkup markdown:
       """
-      Just {++an insertion++}[^ct-1].
+      Just {++an insertion++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked" and comments "none"
     Then the export succeeds

@@ -13,9 +13,9 @@ import {
     CriticMarkupParser,
     computeResolutionEdit,
     computeUnresolveEdit,
-} from '@changetracks/core';
-import type { ChangeNode } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+} from '@changedown/core';
+import type { ChangeNode } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 import { applyEdit, extractFootnoteStatus } from './test-utils';
 import { buildThreadDataForChanges, type ThreadData } from './lifecycle-viewer.steps';
 
@@ -28,7 +28,7 @@ export interface ResolutionThreadData extends ThreadData {
 // ── Extend World with resolution state ──────────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         resolutionDocText?: string;
         resolutionResultText?: string;
         resolutionThreads?: ResolutionThreadData[];
@@ -37,7 +37,7 @@ declare module './world' {
 
 // ── Lifecycle ───────────────────────────────────────────────────────
 
-Before({ tags: '@fast and @LV4' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @LV4' }, function (this: ChangeDownWorld) {
     this.resolutionDocText = undefined;
     this.resolutionResultText = undefined;
     this.resolutionThreads = undefined;
@@ -45,21 +45,21 @@ Before({ tags: '@fast and @LV4' }, function (this: ChangeTracksWorld) {
 
 // ── Fixture documents ───────────────────────────────────────────────
 
-const PROPOSED_WITH_DISCUSSION = `Hello {++world++}[^ct-1]
+const PROPOSED_WITH_DISCUSSION = `Hello {++world++}[^cn-1]
 
-[^ct-1]: @alice | 2026-03-09 | insertion | proposed
+[^cn-1]: @alice | 2026-03-09 | insertion | proposed
     reason: Added for clarity
     @bob 2026-03-09: Looks good`;
 
-const RESOLVED_INSERTION = `Hello {++world++}[^ct-1]
+const RESOLVED_INSERTION = `Hello {++world++}[^cn-1]
 
-[^ct-1]: @alice | 2026-03-09 | insertion | proposed
+[^cn-1]: @alice | 2026-03-09 | insertion | proposed
     reason: Added for clarity
     resolved: @carol 2026-03-09`;
 
-const ACCEPTED_WITH_DISCUSSION = `Hello {++world++}[^ct-1]
+const ACCEPTED_WITH_DISCUSSION = `Hello {++world++}[^cn-1]
 
-[^ct-1]: @alice | 2026-03-09 | insertion | accepted
+[^cn-1]: @alice | 2026-03-09 | insertion | accepted
     approved: @bob 2026-03-09
     @carol 2026-03-09: Has this been tested?`;
 
@@ -92,19 +92,19 @@ function parseAndBuildThreads(text: string): ResolutionThreadData[] {
 
 // ── Step definitions ────────────────────────────────────────────────
 
-Given('a resolution document with a proposed insertion ct-1 with discussion', function (this: ChangeTracksWorld) {
+Given('a resolution document with a proposed insertion cn-1 with discussion', function (this: ChangeDownWorld) {
     this.resolutionDocText = PROPOSED_WITH_DISCUSSION;
 });
 
-Given('a resolution document with a resolved insertion ct-1', function (this: ChangeTracksWorld) {
+Given('a resolution document with a resolved insertion cn-1', function (this: ChangeDownWorld) {
     this.resolutionDocText = RESOLVED_INSERTION;
 });
 
-Given('a resolution document with an accepted insertion ct-1 with unresolved discussion', function (this: ChangeTracksWorld) {
+Given('a resolution document with an accepted insertion cn-1 with unresolved discussion', function (this: ChangeDownWorld) {
     this.resolutionDocText = ACCEPTED_WITH_DISCUSSION;
 });
 
-When('I resolve the thread for {word}', function (this: ChangeTracksWorld, changeId: string) {
+When('I resolve the thread for {word}', function (this: ChangeDownWorld, changeId: string) {
     assert.ok(this.resolutionDocText !== undefined, 'Document text not set');
     const edit = computeResolutionEdit(this.resolutionDocText, changeId, {
         author: 'bob',
@@ -115,13 +115,13 @@ When('I resolve the thread for {word}', function (this: ChangeTracksWorld, chang
     this.resolutionThreads = parseAndBuildThreads(this.resolutionResultText);
 });
 
-When('I build resolution threads', function (this: ChangeTracksWorld) {
+When('I build resolution threads', function (this: ChangeDownWorld) {
     assert.ok(this.resolutionDocText !== undefined, 'Document text not set');
     this.resolutionResultText = this.resolutionDocText;
     this.resolutionThreads = parseAndBuildThreads(this.resolutionDocText);
 });
 
-When('I unresolve the thread for {word}', function (this: ChangeTracksWorld, changeId: string) {
+When('I unresolve the thread for {word}', function (this: ChangeDownWorld, changeId: string) {
     assert.ok(this.resolutionDocText !== undefined, 'Document text not set');
     const edit = computeUnresolveEdit(this.resolutionDocText, changeId);
     assert.ok(edit, `computeUnresolveEdit returned null for ${changeId}`);
@@ -129,7 +129,7 @@ When('I unresolve the thread for {word}', function (this: ChangeTracksWorld, cha
     this.resolutionThreads = parseAndBuildThreads(this.resolutionResultText);
 });
 
-Then('the thread state for {word} is {string}', function (this: ChangeTracksWorld, changeId: string, expectedState: string) {
+Then('the thread state for {word} is {string}', function (this: ChangeDownWorld, changeId: string, expectedState: string) {
     assert.ok(this.resolutionThreads, 'No resolution threads built');
     const thread = this.resolutionThreads.find(t => t.id === changeId);
     assert.ok(thread, `No thread found for ${changeId}. Available: ${this.resolutionThreads.map(t => t.id).join(', ') || '(none)'}`);
@@ -140,7 +140,7 @@ Then('the thread state for {word} is {string}', function (this: ChangeTracksWorl
     );
 });
 
-Then('the resolution result footnote contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the resolution result footnote contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.resolutionResultText, 'No resolution result');
     assert.ok(
         this.resolutionResultText.includes(expected),
@@ -148,7 +148,7 @@ Then('the resolution result footnote contains {string}', function (this: ChangeT
     );
 });
 
-Then('the resolution result footnote does not contain {string}', function (this: ChangeTracksWorld, unexpected: string) {
+Then('the resolution result footnote does not contain {string}', function (this: ChangeDownWorld, unexpected: string) {
     assert.ok(this.resolutionResultText, 'No resolution result');
     assert.ok(
         !this.resolutionResultText.includes(unexpected),
@@ -156,13 +156,13 @@ Then('the resolution result footnote does not contain {string}', function (this:
     );
 });
 
-Then('a resolution thread exists for {string}', function (this: ChangeTracksWorld, changeId: string) {
+Then('a resolution thread exists for {string}', function (this: ChangeDownWorld, changeId: string) {
     assert.ok(this.resolutionThreads, 'No resolution threads built');
     const thread = this.resolutionThreads.find(t => t.id === changeId);
     assert.ok(thread, `No thread found for ${changeId}. Available: ${this.resolutionThreads.map(t => t.id).join(', ') || '(none)'}`);
 });
 
-Then('the resolution footnote status is {string}', function (this: ChangeTracksWorld, expectedStatus: string) {
+Then('the resolution footnote status is {string}', function (this: ChangeDownWorld, expectedStatus: string) {
     assert.ok(this.resolutionResultText, 'No resolution result');
     const actual = extractFootnoteStatus(this.resolutionResultText);
     assert.strictEqual(

@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleReviewChanges } from '@changetracks/mcp/internals';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleReviewChanges } from '@changedown/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -15,7 +15,7 @@ const TODAY = new Date().toISOString().slice(0, 10);
 describe('handleReviewChanges', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeAll(async () => {
@@ -23,7 +23,7 @@ describe('handleReviewChanges', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-review-changes-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-review-changes-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -67,11 +67,11 @@ describe('handleReviewChanges', () => {
 
     const replacements: [string, string][] = [
       ['quick brown', 'slow red'],
-      ['First part', 'ct-2 replacement'],
-      ['Second part', 'ct-3 replacement'],
+      ['First part', 'cn-2 replacement'],
+      ['Second part', 'cn-3 replacement'],
     ];
     for (let i = 0; i < count; i++) {
-      const [oldText, newText] = replacements[i] ?? [`part-${i}`, `ct-${i + 1}`];
+      const [oldText, newText] = replacements[i] ?? [`part-${i}`, `cn-${i + 1}`];
       await handleProposeChange(
         {
           file: filePath,
@@ -93,7 +93,7 @@ describe('handleReviewChanges', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'Looks good' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'Looks good' },
         ],
       },
       resolver,
@@ -104,21 +104,21 @@ describe('handleReviewChanges', () => {
     const data = JSON.parse(result.content[0].text);
     expect(data.file).toBe(path.relative(tmpDir, filePath));
     expect(data.results).toHaveLength(1);
-    expect(data.results[0].change_id).toBe('ct-1');
+    expect(data.results[0].change_id).toBe('cn-1');
     expect(data.results[0].decision).toBe('approve');
     expect(data.results[0].status_updated).toBe(true);
     expect(data.document_state).toBeDefined();
     expect(data.document_state.remaining_proposed).toBe(0);
     expect(data.document_state.all_resolved).toBe(true);
     expect(data.note).toContain('No proposed changes remain');
-    expect(data.settled).toEqual(['ct-1']);
+    expect(data.settled).toEqual(['cn-1']);
 
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('slow red');
     expect(modified).not.toContain('{~~'); // Markup removed
     // BUG-001 fix: Footnote definition preserved after settlement
-    expect(modified).toContain('[^ct-1]:'); // Footnote kept for audit trail
-    expect(modified).toContain('[^ct-1]'); // Inline ref kept
+    expect(modified).toContain('[^cn-1]:'); // Footnote kept for audit trail
+    expect(modified).toContain('[^cn-1]'); // Inline ref kept
   });
 
   it('three reviews: approve 2, reject 1 — each footnote gets its own entry', async () => {
@@ -128,9 +128,9 @@ describe('handleReviewChanges', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'Good' },
-          { change_id: 'ct-2', decision: 'reject', reason: 'Not needed' },
-          { change_id: 'ct-3', decision: 'approve', reason: 'Keep' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'Good' },
+          { change_id: 'cn-2', decision: 'reject', reason: 'Not needed' },
+          { change_id: 'cn-3', decision: 'approve', reason: 'Keep' },
         ],
       },
       resolver,
@@ -141,26 +141,26 @@ describe('handleReviewChanges', () => {
     const data = JSON.parse(result.content[0].text);
     expect(data.results).toHaveLength(3);
 
-    expect(data.results[0].change_id).toBe('ct-1');
+    expect(data.results[0].change_id).toBe('cn-1');
     expect(data.results[0].decision).toBe('approve');
     expect(data.results[0].status_updated).toBe(true);
 
-    expect(data.results[1].change_id).toBe('ct-2');
+    expect(data.results[1].change_id).toBe('cn-2');
     expect(data.results[1].decision).toBe('reject');
     expect(data.results[1].status_updated).toBe(true);
 
-    expect(data.results[2].change_id).toBe('ct-3');
+    expect(data.results[2].change_id).toBe('cn-3');
     expect(data.results[2].decision).toBe('approve');
     expect(data.results[2].status_updated).toBe(true);
     expect(data.document_state.remaining_proposed).toBe(0);
-    expect(data.settled).toContain('ct-1');
-    expect(data.settled).toContain('ct-3');
+    expect(data.settled).toContain('cn-1');
+    expect(data.settled).toContain('cn-3');
 
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('| rejected');
     expect(modified).toContain('    rejected:');
     expect(modified).toContain('slow red');
-    expect(modified).toContain('ct-3 replacement');
+    expect(modified).toContain('cn-3 replacement');
   });
 
   it('invalid change_id in array: partial success, other reviews still apply', async () => {
@@ -170,9 +170,9 @@ describe('handleReviewChanges', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'Good' },
-          { change_id: 'ct-99', decision: 'approve', reason: 'Missing' },
-          { change_id: 'ct-2', decision: 'reject', reason: 'Drop' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'Good' },
+          { change_id: 'cn-99', decision: 'approve', reason: 'Missing' },
+          { change_id: 'cn-2', decision: 'reject', reason: 'Drop' },
         ],
       },
       resolver,
@@ -183,18 +183,18 @@ describe('handleReviewChanges', () => {
     const data = JSON.parse(result.content[0].text);
     expect(data.results).toHaveLength(3);
 
-    expect(data.results[0].change_id).toBe('ct-1');
+    expect(data.results[0].change_id).toBe('cn-1');
     expect(data.results[0].status_updated).toBe(true);
 
-    expect(data.results[1].change_id).toBe('ct-99');
+    expect(data.results[1].change_id).toBe('cn-99');
     expect(data.results[1].error).toBeDefined();
     expect(data.results[1].status_updated).toBeUndefined();
 
-    expect(data.results[2].change_id).toBe('ct-2');
+    expect(data.results[2].change_id).toBe('cn-2');
     expect(data.results[2].status_updated).toBe(true);
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('[^ct-2]:');
+    expect(modified).toContain('[^cn-2]:');
     expect(modified).toContain('| rejected');
     expect(modified).toContain('slow red');
   });
@@ -206,7 +206,7 @@ describe('handleReviewChanges', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'OK' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'OK' },
         ],
         author: 'ai:claude-sonnet-4.5',
       },
@@ -225,7 +225,7 @@ describe('handleReviewChanges', () => {
     const result = await handleReviewChanges(
       {
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'ok' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'ok' },
         ],
       },
       resolver,
@@ -244,7 +244,7 @@ describe('handleReviewChanges', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'LGTM' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'LGTM' },
         ],
       },
       resolver,
@@ -256,7 +256,7 @@ describe('handleReviewChanges', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'Still LGTM' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'Still LGTM' },
         ],
       },
       resolver,
@@ -277,7 +277,7 @@ describe('handleReviewChanges', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'reject', reason: 'No' },
+          { change_id: 'cn-1', decision: 'reject', reason: 'No' },
         ],
       },
       resolver,
@@ -289,7 +289,7 @@ describe('handleReviewChanges', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'reject', reason: 'Still no' },
+          { change_id: 'cn-1', decision: 'reject', reason: 'Still no' },
         ],
       },
       resolver,
@@ -309,7 +309,7 @@ describe('handleReviewChanges', () => {
       {
         file: filePath,
         reviews: [
-          { change_id: 'ct-1', decision: 'request_changes', reason: 'Need more context' },
+          { change_id: 'cn-1', decision: 'request_changes', reason: 'Need more context' },
         ],
       },
       resolver,
@@ -349,7 +349,7 @@ describe('handleReviewChanges', () => {
     const result = await handleReviewChanges(
       {
         file: filePath,
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'Good change' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'Good change' }],
       },
       resolver,
       state,
@@ -359,7 +359,7 @@ describe('handleReviewChanges', () => {
     const data = JSON.parse(result.content[0].text);
 
     // Settlement happened
-    expect(data.settled).toContain('ct-1');
+    expect(data.settled).toContain('cn-1');
 
     // affected_lines present and contains post-settlement content
     expect(data.affected_lines).toBeDefined();
@@ -381,7 +381,7 @@ describe('handleReviewChanges', () => {
   });
 
   it('returns affected_lines with hashes when hashline enabled', async () => {
-    const hashConfig: ChangeTracksConfig = {
+    const hashConfig: ChangeDownConfig = {
       ...config,
       hashline: { enabled: true, auto_remap: false },
       settlement: { ...config.settlement, auto_on_approve: true },
@@ -394,9 +394,9 @@ describe('handleReviewChanges', () => {
     const filePath = path.join(tmpDir, 'hash-doc.md');
     const today = new Date().toISOString().slice(0, 10);
     const fileContent = [
-      'The {~~quick brown~>slow red~~}[^ct-1] fox.',
+      'The {~~quick brown~>slow red~~}[^cn-1] fox.',
       '',
-      `[^ct-1]: @ai:claude-opus-4.6 | ${today} | sub | proposed`,
+      `[^cn-1]: @ai:claude-opus-4.6 | ${today} | sub | proposed`,
     ].join('\n');
     await fs.writeFile(filePath, fileContent);
 
@@ -404,7 +404,7 @@ describe('handleReviewChanges', () => {
     const result = await handleReviewChanges(
       {
         file: filePath,
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'Good change' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'Good change' }],
       },
       hashResolver,
       hashState,
@@ -414,7 +414,7 @@ describe('handleReviewChanges', () => {
     const data = JSON.parse(result.content[0].text);
 
     // Settlement happened
-    expect(data.settled).toContain('ct-1');
+    expect(data.settled).toContain('cn-1');
 
     // affected_lines present with hash values
     expect(data.affected_lines).toBeDefined();
@@ -439,7 +439,7 @@ describe('handleReviewChanges', () => {
       {
         file: filePath,
         responses: [
-          { change_id: 'ct-1', response: 'Could you explain the reasoning?' },
+          { change_id: 'cn-1', response: 'Could you explain the reasoning?' },
         ],
       },
       resolver,
@@ -465,7 +465,7 @@ describe('handleReviewChanges', () => {
     const result = await handleReviewChanges(
       {
         file: filePath,
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'looks good' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'looks good' }],
         author: 'ai:test-model',
       },
       resolver,
@@ -475,14 +475,14 @@ describe('handleReviewChanges', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data.results).toHaveLength(1);
-    expect(data.results[0].change_id).toBe('ct-1');
+    expect(data.results[0].change_id).toBe('cn-1');
     expect(data.results[0].status_updated).toBe(true);
 
     const fileAfter = await fs.readFile(filePath, 'utf-8');
     // The inline ref must have been inserted
-    expect(fileAfter).toContain('[^ct-1]');
+    expect(fileAfter).toContain('[^cn-1]');
     // The footnote definition must have been appended
-    expect(fileAfter).toContain('[^ct-1]:');
+    expect(fileAfter).toContain('[^cn-1]:');
     // Footnote should show accepted status (auto-settlement settles approved changes)
     expect(fileAfter).toContain('| accepted');
   });
@@ -494,7 +494,7 @@ describe('handleReviewChanges', () => {
     const result = await handleReviewChanges(
       {
         file: filePath,
-        reviews: [{ change_id: 'ct-1', decision: 'reject', reason: 'keep it' }],
+        reviews: [{ change_id: 'cn-1', decision: 'reject', reason: 'keep it' }],
         author: 'ai:test-model',
       },
       resolver,
@@ -503,11 +503,11 @@ describe('handleReviewChanges', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.results[0].change_id).toBe('ct-1');
+    expect(data.results[0].change_id).toBe('cn-1');
     expect(data.results[0].status_updated).toBe(true);
 
     const fileAfter = await fs.readFile(filePath, 'utf-8');
-    expect(fileAfter).toContain('[^ct-1]:');
+    expect(fileAfter).toContain('[^cn-1]:');
     expect(fileAfter).toContain('| rejected');
   });
 
@@ -518,7 +518,7 @@ describe('handleReviewChanges', () => {
     const result = await handleReviewChanges(
       {
         file: filePath,
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'better word' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'better word' }],
         author: 'ai:test-model',
       },
       resolver,
@@ -527,11 +527,11 @@ describe('handleReviewChanges', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.results[0].change_id).toBe('ct-1');
+    expect(data.results[0].change_id).toBe('cn-1');
     expect(data.results[0].status_updated).toBe(true);
 
     const fileAfter = await fs.readFile(filePath, 'utf-8');
-    expect(fileAfter).toContain('[^ct-1]:');
+    expect(fileAfter).toContain('[^cn-1]:');
     // The type abbreviation for substitution should be 'sub'
     expect(fileAfter).toContain('| sub |');
   });
@@ -543,7 +543,7 @@ describe('handleReviewChanges', () => {
     const result = await handleReviewChanges(
       {
         file: filePath,
-        reviews: [{ change_id: 'ct-99', decision: 'approve', reason: 'wrong id' }],
+        reviews: [{ change_id: 'cn-99', decision: 'approve', reason: 'wrong id' }],
         author: 'ai:test-model',
       },
       resolver,
@@ -553,6 +553,6 @@ describe('handleReviewChanges', () => {
     expect(result.isError).toBeUndefined(); // batch never fails at top level
     const data = JSON.parse(result.content[0].text);
     expect(data.results[0].error).toBeDefined();
-    expect(data.results[0].error).toContain('ct-99');
+    expect(data.results[0].error).toContain('cn-99');
   });
 });

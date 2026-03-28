@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initHashline, buildSettledDocument } from '@changetracks/core/internals';
+import { initHashline, buildSettledDocument } from '@changedown/core/internals';
 
 beforeAll(async () => { await initHashline(); });
 
 describe('buildSettledDocument', () => {
   it('produces settled text with all changes applied', () => {
-    const content = 'Hello {++world++}.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello {++world++}.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildSettledDocument(content, {
       filePath: 'test.md',
       trackingStatus: 'tracked',

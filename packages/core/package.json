@@ -1,11 +1,11 @@
 {
-  "name": "@changetracks/core",
+  "name": "@changedown/core",
   "version": "0.1.0",
   "description": "CriticMarkup parser and operations engine",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hackerbara/changetracks.git"
+    "url": "https://github.com/hackerbara/changedown.git"
   },
   "keywords": ["criticmarkup", "parser", "change-tracking", "markdown"],
   "files": ["dist/", "!dist/test/", "!dist/src/", "dist-esm/", "README.md", "LICENSE"],

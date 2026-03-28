@@ -6,10 +6,10 @@ import * as fs from 'node:fs';
 import * as fsp from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { evaluateRawEdit, handlePostToolUse, DEFAULT_CONFIG } from 'changetracks-hooks/internals';
-import type { ChangeTracksConfig } from 'changetracks-hooks/internals';
+import { evaluateRawEdit, handlePostToolUse, DEFAULT_CONFIG } from 'changedown-hooks/internals';
+import type { ChangeDownConfig } from 'changedown-hooks/internals';
 
-function makeConfig(overrides: Partial<ChangeTracksConfig> = {}): ChangeTracksConfig {
+function makeConfig(overrides: Partial<ChangeDownConfig> = {}): ChangeDownConfig {
   return { ...structuredClone(DEFAULT_CONFIG), ...overrides };
 }
 
@@ -17,7 +17,7 @@ describe('File creation tracking — policy engine', () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-creation-'));
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cn-creation-'));
   });
 
   afterEach(() => {
@@ -82,8 +82,8 @@ describe('File creation tracking — PostToolUse wrapping', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-creation-post-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cn-creation-post-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fsp.mkdir(scDir, { recursive: true });
     // Strict config with creation tracking enabled
     await fsp.writeFile(
@@ -111,16 +111,16 @@ describe('File creation tracking — PostToolUse wrapping', () => {
     });
 
     const result = await fsp.readFile(mdPath, 'utf-8');
-    const TRACKING_HEADER = '<!-- ctrcks.com/v1: tracked -->';
+    const TRACKING_HEADER = '<!-- changedown.com/v1: tracked -->';
     expect(result.startsWith(TRACKING_HEADER)).toBe(true);
-    expect(result).toContain('[^ct-1]:');
+    expect(result).toContain('[^cn-1]:');
     expect(result).toContain('creation');
     expect(result).toContain('proposed');
     expect(result).toContain('ai:claude-opus-4.6');
   });
 
   it('does not double-wrap files that already have tracking header', async () => {
-    const TRACKING_HEADER = '<!-- ctrcks.com/v1: tracked -->';
+    const TRACKING_HEADER = '<!-- changedown.com/v1: tracked -->';
     const mdPath = path.join(tmpDir, 'already-tracked.md');
     const content = `${TRACKING_HEADER}\n# Already Tracked\n`;
     await fsp.writeFile(mdPath, content, 'utf-8');
@@ -158,7 +158,7 @@ describe('File creation tracking — PostToolUse wrapping', () => {
   it('does not wrap when creation_tracking is none', async () => {
     // Override config to disable creation tracking
     await fsp.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\nexclude = ["node_modules/**"]\n\n[author]\ndefault = "ai:claude-opus-4.6"\n\n[policy]\nmode = "strict"\ncreation_tracking = "none"\n',
       'utf-8',
     );
@@ -179,12 +179,12 @@ describe('File creation tracking — PostToolUse wrapping', () => {
     expect(result).toBe(content);
   });
 
-  it('uses CHANGETRACKS_AUTHOR env var when available', async () => {
+  it('uses CHANGEDOWN_AUTHOR env var when available', async () => {
     const mdPath = path.join(tmpDir, 'env-author.md');
     await fsp.writeFile(mdPath, '# Content\n', 'utf-8');
 
-    const originalEnv = process.env.CHANGETRACKS_AUTHOR;
-    process.env.CHANGETRACKS_AUTHOR = 'ai:test-agent';
+    const originalEnv = process.env.CHANGEDOWN_AUTHOR;
+    process.env.CHANGEDOWN_AUTHOR = 'ai:test-agent';
 
     try {
       await handlePostToolUse({
@@ -199,9 +199,9 @@ describe('File creation tracking — PostToolUse wrapping', () => {
       expect(result).toContain('ai:test-agent');
     } finally {
       if (originalEnv === undefined) {
-        delete process.env.CHANGETRACKS_AUTHOR;
+        delete process.env.CHANGEDOWN_AUTHOR;
       } else {
-        process.env.CHANGETRACKS_AUTHOR = originalEnv;
+        process.env.CHANGEDOWN_AUTHOR = originalEnv;
       }
     }
   });
@@ -221,7 +221,7 @@ describe('File creation tracking — PostToolUse wrapping', () => {
 
     const result = await fsp.readFile(mdPath, 'utf-8');
     // Edit tool should NOT add creation tracking — only Write
-    const TRACKING_HEADER = '<!-- ctrcks.com/v1: tracked -->';
+    const TRACKING_HEADER = '<!-- changedown.com/v1: tracked -->';
     expect(result.startsWith(TRACKING_HEADER)).toBe(false);
   });
 });

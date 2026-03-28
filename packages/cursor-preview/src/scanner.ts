@@ -10,7 +10,7 @@ import type { ScanMatch, ScanMatchType, MatchRegion } from './types.js';
  *   {~~old~>new~~}     substitution
  *   {==text==}         highlight
  *   {>>text<<}         comment
- *   [^ct-N] / [^ct-N.M]  footnote reference
+ *   [^cn-N] / [^cn-N.M]  footnote reference
  */
 export function scanCriticMarkup(text: string): ScanMatch[] {
   const matches: ScanMatch[] = [];
@@ -60,8 +60,8 @@ export function scanCriticMarkup(text: string): ScanMatch[] {
     matches.push(buildSimpleMatch('comment', m));
   }
 
-  // Footnote references: [^ct-N] or [^ct-N.M]
-  for (const m of text.matchAll(/\[\^ct-\d+(?:\.\d+)?\]/g)) {
+  // Footnote references: [^cn-N] or [^cn-N.M]
+  for (const m of text.matchAll(/\[\^cn-\d+(?:\.\d+)?\]/g)) {
     const start = m.index!;
     const end = start + m[0].length;
     matches.push({

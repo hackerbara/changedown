@@ -19,6 +19,9 @@ export type {
   Effect,
   EditPendingOverlay,
   SignalType,
+  L2CrystallizeResult,
+  L3CrystallizeResult,
+  FullCrystallizeEffect,
 } from './types.js';
 
 export { DEFAULT_EDIT_BOUNDARY_CONFIG } from './types.js';

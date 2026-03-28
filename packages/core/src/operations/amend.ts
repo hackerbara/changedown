@@ -151,7 +151,7 @@ export function computeAmendEdits(
 
   // --- Build new inline markup ---
   const originalMarkup = text.slice(change.range.start, change.range.end);
-  const refs = originalMarkup.match(/\[\^ct-[\d.]+\]/g) ?? [];
+  const refs = originalMarkup.match(/\[\^cn-[\d.]+\]/g) ?? [];
   const refString = refs.join('');
 
   let newMarkup: string;

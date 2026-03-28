@@ -4,21 +4,21 @@ import { resolvePosition } from './position-map.js';
 /**
  * Maps highlight key names to the match types and region roles they cover.
  * Each key becomes a CSS Custom Highlight registered via CSS.highlights.set().
- * Stylesheet targets these with ::highlight(ct-ins-content), etc.
+ * Stylesheet targets these with ::highlight(cn-ins-content), etc.
  */
 const HIGHLIGHT_NAMES: Record<string, { types: string[]; roles: string[] }> = {
-  'ct-ins-content': { types: ['insertion'], roles: ['content'] },
-  'ct-ins-delim':   { types: ['insertion'], roles: ['open-delim', 'close-delim'] },
-  'ct-del-content': { types: ['deletion'], roles: ['content'] },
-  'ct-del-delim':   { types: ['deletion'], roles: ['open-delim', 'close-delim'] },
-  'ct-sub-old':     { types: ['substitution'], roles: ['old-content'] },
-  'ct-sub-new':     { types: ['substitution'], roles: ['new-content'] },
-  'ct-sub-delim':   { types: ['substitution'], roles: ['open-delim', 'close-delim', 'separator'] },
-  'ct-hl-content':  { types: ['highlight'], roles: ['content'] },
-  'ct-hl-delim':    { types: ['highlight'], roles: ['open-delim', 'close-delim'] },
-  'ct-cmt-content': { types: ['comment'], roles: ['content'] },
-  'ct-cmt-delim':   { types: ['comment'], roles: ['open-delim', 'close-delim'] },
-  'ct-fnref':       { types: ['footnote-ref'], roles: ['content'] },
+  'cn-ins-content': { types: ['insertion'], roles: ['content'] },
+  'cn-ins-delim':   { types: ['insertion'], roles: ['open-delim', 'close-delim'] },
+  'cn-del-content': { types: ['deletion'], roles: ['content'] },
+  'cn-del-delim':   { types: ['deletion'], roles: ['open-delim', 'close-delim'] },
+  'cn-sub-old':     { types: ['substitution'], roles: ['old-content'] },
+  'cn-sub-new':     { types: ['substitution'], roles: ['new-content'] },
+  'cn-sub-delim':   { types: ['substitution'], roles: ['open-delim', 'close-delim', 'separator'] },
+  'cn-hl-content':  { types: ['highlight'], roles: ['content'] },
+  'cn-hl-delim':    { types: ['highlight'], roles: ['open-delim', 'close-delim'] },
+  'cn-cmt-content': { types: ['comment'], roles: ['content'] },
+  'cn-cmt-delim':   { types: ['comment'], roles: ['open-delim', 'close-delim'] },
+  'cn-fnref':       { types: ['footnote-ref'], roles: ['content'] },
 };
 
 const ALL_HIGHLIGHT_KEYS = Object.keys(HIGHLIGHT_NAMES);
@@ -26,7 +26,7 @@ const ALL_HIGHLIGHT_KEYS = Object.keys(HIGHLIGHT_NAMES);
 /**
  * Rendering strategy using the CSS Custom Highlight API.
  *
- * Creates named highlights (ct-ins-content, ct-del-delim, etc.) and registers
+ * Creates named highlights (cn-ins-content, cn-del-delim, etc.) and registers
  * them via CSS.highlights. A companion stylesheet targets these names with
  * ::highlight() pseudo-elements to apply colors and text-decoration.
  *

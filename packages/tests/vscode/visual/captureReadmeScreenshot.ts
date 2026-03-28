@@ -119,7 +119,7 @@ async function main() {
 
     // Step 3: Enable smart view
     console.log('  Enabling smart view...');
-    await executeCmd(page, 'ChangeTracks: Toggle Smart View');
+    await executeCmd(page, 'ChangeDown: Toggle Smart View');
     await page.waitForTimeout(1500);
 
     // Step 4: Open markdown preview to the side

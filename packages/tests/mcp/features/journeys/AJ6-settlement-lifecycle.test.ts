@@ -45,7 +45,7 @@ describe('AJ6: Settlement lifecycle', () => {
 
       filePath = await ctx.createFile('lifecycle.md', DOC_5_CHANGES);
 
-      // Create 5 proposed changes (ct-1 through ct-5)
+      // Create 5 proposed changes (cn-1 through cn-5)
       const p1 = await ctx.propose(filePath, {
         old_text: 'monolithic architecture',
         new_text: 'microservices architecture',
@@ -80,7 +80,7 @@ describe('AJ6: Settlement lifecycle', () => {
 
       // Verify all 5 proposed footnotes exist
       for (let i = 1; i <= 5; i++) {
-        await ctx.assertFootnoteStatus(filePath, `ct-${i}`, 'proposed');
+        await ctx.assertFootnoteStatus(filePath, `cn-${i}`, 'proposed');
       }
     });
 
@@ -89,87 +89,87 @@ describe('AJ6: Settlement lifecycle', () => {
     });
 
     it('approves and settles changes one-by-one, verifying intermediate states', async () => {
-      // ── Step 1: Approve ct-1 ──────────────────────────────────────────
+      // ── Step 1: Approve cn-1 ──────────────────────────────────────────
       const r1 = await ctx.review(filePath, {
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'good' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'good' }],
       });
       expect(r1.isError).toBeUndefined();
 
       const d1 = ctx.parseResult(r1);
       expect(d1.settled).toBeDefined();
-      expect(d1.settled).toContain('ct-1');
+      expect(d1.settled).toContain('cn-1');
 
-      // ct-1 settled: new text present, no markup for it
+      // cn-1 settled: new text present, no markup for it
       const disk1 = await ctx.readDisk(filePath);
       expect(disk1).toContain('microservices architecture');
-      await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
 
-      // ct-2 through ct-5 still have inline markup
+      // cn-2 through cn-5 still have inline markup
       expect(disk1).toContain('{~~global try-catch blocks~>structured error boundaries~~}');
       expect(disk1).toContain('{~~raw SQL queries~>parameterized queries via ORM~~}');
       expect(disk1).toContain('{++ Alerts are routed to PagerDuty.++}');
       expect(disk1).toContain('{~~manual server restarts~>automated CI/CD pipelines~~}');
 
       for (let i = 2; i <= 5; i++) {
-        await ctx.assertFootnoteStatus(filePath, `ct-${i}`, 'proposed');
+        await ctx.assertFootnoteStatus(filePath, `cn-${i}`, 'proposed');
       }
 
-      // ── Step 2: Approve ct-2 and ct-3 ─────────────────────────────────
+      // ── Step 2: Approve cn-2 and cn-3 ─────────────────────────────────
       const r2 = await ctx.review(filePath, {
         reviews: [
-          { change_id: 'ct-2', decision: 'approve', reason: 'agreed' },
-          { change_id: 'ct-3', decision: 'approve', reason: 'agreed' },
+          { change_id: 'cn-2', decision: 'approve', reason: 'agreed' },
+          { change_id: 'cn-3', decision: 'approve', reason: 'agreed' },
         ],
       });
       expect(r2.isError).toBeUndefined();
 
       const d2 = ctx.parseResult(r2);
       expect(d2.settled).toBeDefined();
-      expect(d2.settled).toContain('ct-2');
-      expect(d2.settled).toContain('ct-3');
+      expect(d2.settled).toContain('cn-2');
+      expect(d2.settled).toContain('cn-3');
 
       const disk2 = await ctx.readDisk(filePath);
       expect(disk2).toContain('structured error boundaries');
       expect(disk2).toContain('parameterized queries via ORM');
-      await ctx.assertFootnoteStatus(filePath, 'ct-2', 'accepted');
-      await ctx.assertFootnoteStatus(filePath, 'ct-3', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-2', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-3', 'accepted');
 
-      // ct-4 and ct-5 still proposed
+      // cn-4 and cn-5 still proposed
       expect(disk2).toContain('{++');
       expect(disk2).toContain('{~~manual server restarts~>automated CI/CD pipelines~~}');
-      await ctx.assertFootnoteStatus(filePath, 'ct-4', 'proposed');
-      await ctx.assertFootnoteStatus(filePath, 'ct-5', 'proposed');
+      await ctx.assertFootnoteStatus(filePath, 'cn-4', 'proposed');
+      await ctx.assertFootnoteStatus(filePath, 'cn-5', 'proposed');
 
-      // ── Step 3: Reject ct-4 (insertion) ───────────────────────────────
+      // ── Step 3: Reject cn-4 (insertion) ───────────────────────────────
       const r3 = await ctx.review(filePath, {
-        reviews: [{ change_id: 'ct-4', decision: 'reject', reason: 'not needed yet' }],
+        reviews: [{ change_id: 'cn-4', decision: 'reject', reason: 'not needed yet' }],
       });
       expect(r3.isError).toBeUndefined();
 
       const d3 = ctx.parseResult(r3);
       expect(d3.settled).toBeDefined();
-      expect(d3.settled).toContain('ct-4');
+      expect(d3.settled).toContain('cn-4');
 
       // Rejected insertion: inserted text removed from body
       const disk3 = await ctx.readDisk(filePath);
-      const fn3 = disk3.indexOf('\n[^ct-');
+      const fn3 = disk3.indexOf('\n[^cn-');
       const body3 = fn3 >= 0 ? disk3.slice(0, fn3) : disk3;
       expect(body3).not.toContain('Alerts are routed to PagerDuty.');
-      await ctx.assertFootnoteStatus(filePath, 'ct-4', 'rejected');
+      await ctx.assertFootnoteStatus(filePath, 'cn-4', 'rejected');
 
-      // ct-5 still proposed
+      // cn-5 still proposed
       expect(disk3).toContain('{~~manual server restarts~>automated CI/CD pipelines~~}');
-      await ctx.assertFootnoteStatus(filePath, 'ct-5', 'proposed');
+      await ctx.assertFootnoteStatus(filePath, 'cn-5', 'proposed');
 
-      // ── Step 4: Approve ct-5 (final change) ───────────────────────────
+      // ── Step 4: Approve cn-5 (final change) ───────────────────────────
       const r4 = await ctx.review(filePath, {
-        reviews: [{ change_id: 'ct-5', decision: 'approve', reason: 'yes' }],
+        reviews: [{ change_id: 'cn-5', decision: 'approve', reason: 'yes' }],
       });
       expect(r4.isError).toBeUndefined();
 
       const d4 = ctx.parseResult(r4);
       expect(d4.settled).toBeDefined();
-      expect(d4.settled).toContain('ct-5');
+      expect(d4.settled).toContain('cn-5');
 
       // All changes settled: body is clean
       await ctx.assertNoMarkupInBody(filePath);
@@ -181,11 +181,11 @@ describe('AJ6: Settlement lifecycle', () => {
       expect(disk4).toContain('automated CI/CD pipelines');
 
       // Each footnote reflects final status
-      await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
-      await ctx.assertFootnoteStatus(filePath, 'ct-2', 'accepted');
-      await ctx.assertFootnoteStatus(filePath, 'ct-3', 'accepted');
-      await ctx.assertFootnoteStatus(filePath, 'ct-4', 'rejected');
-      await ctx.assertFootnoteStatus(filePath, 'ct-5', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-2', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-3', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-4', 'rejected');
+      await ctx.assertFootnoteStatus(filePath, 'cn-5', 'accepted');
     });
   });
 
@@ -237,14 +237,14 @@ describe('AJ6: Settlement lifecycle', () => {
     });
 
     it('approves all, then batch settles via settle:true, verifying markup persists until settle', async () => {
-      // ── Phase 1: Approve ct-1..ct-3, reject ct-4..ct-5 (no auto-settle) ──
+      // ── Phase 1: Approve cn-1..cn-3, reject cn-4..cn-5 (no auto-settle) ──
       const reviewResult = await ctx.review(filePath, {
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'good' },
-          { change_id: 'ct-2', decision: 'approve', reason: 'good' },
-          { change_id: 'ct-3', decision: 'approve', reason: 'good' },
-          { change_id: 'ct-4', decision: 'reject', reason: 'keep current logging' },
-          { change_id: 'ct-5', decision: 'reject', reason: 'not ready for CI/CD' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'good' },
+          { change_id: 'cn-2', decision: 'approve', reason: 'good' },
+          { change_id: 'cn-3', decision: 'approve', reason: 'good' },
+          { change_id: 'cn-4', decision: 'reject', reason: 'keep current logging' },
+          { change_id: 'cn-5', decision: 'reject', reason: 'not ready for CI/CD' },
         ],
       });
       expect(reviewResult.isError).toBeUndefined();
@@ -262,11 +262,11 @@ describe('AJ6: Settlement lifecycle', () => {
       expect(diskBefore).toContain('{~~manual server restarts~>automated CI/CD pipelines~~}');
 
       // Footnote statuses updated
-      await ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
-      await ctx.assertFootnoteStatus(filePath, 'ct-2', 'accepted');
-      await ctx.assertFootnoteStatus(filePath, 'ct-3', 'accepted');
-      await ctx.assertFootnoteStatus(filePath, 'ct-4', 'rejected');
-      await ctx.assertFootnoteStatus(filePath, 'ct-5', 'rejected');
+      await ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-2', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-3', 'accepted');
+      await ctx.assertFootnoteStatus(filePath, 'cn-4', 'rejected');
+      await ctx.assertFootnoteStatus(filePath, 'cn-5', 'rejected');
 
       // ── Phase 2: Batch settle via settle:true ─────────────────────────
       // Note: settle:true compacts accepted changes only
@@ -276,9 +276,9 @@ describe('AJ6: Settlement lifecycle', () => {
       const settleData = ctx.parseResult(settleResult);
       expect(settleData.settled).toBeDefined();
       const settledIds = settleData.settled as string[];
-      expect(settledIds).toContain('ct-1');
-      expect(settledIds).toContain('ct-2');
-      expect(settledIds).toContain('ct-3');
+      expect(settledIds).toContain('cn-1');
+      expect(settledIds).toContain('cn-2');
+      expect(settledIds).toContain('cn-3');
 
       // Accepted changes compacted: new text in body, no substitution markup for them
       const diskAfter = await ctx.readDisk(filePath);
@@ -295,7 +295,7 @@ describe('AJ6: Settlement lifecycle', () => {
 
       // All 5 footnotes persist
       for (let i = 1; i <= 5; i++) {
-        expect(diskAfter).toContain(`[^ct-${i}]:`);
+        expect(diskAfter).toContain(`[^cn-${i}]:`);
       }
     });
   });
@@ -338,7 +338,7 @@ Development starts in Q1 with a phased rollout.`;
 
       filePath = await ctx.createFile('structured.md', STRUCTURED_DOC);
 
-      // ct-1: insertion after Goals heading content
+      // cn-1: insertion after Goals heading content
       await ctx.propose(filePath, {
         old_text: '',
         new_text: ' We target 1000 users by launch.',
@@ -346,21 +346,21 @@ Development starts in Q1 with a phased rollout.`;
         reason: 'add target metric',
       });
 
-      // ct-2: deletion of a list item
+      // cn-2: deletion of a list item
       await ctx.propose(filePath, {
         old_text: '- Data export in CSV format\n',
         new_text: '',
         reason: 'CSV export deferred to v2',
       });
 
-      // ct-3: substitution in Implementation section
+      // cn-3: substitution in Implementation section
       await ctx.propose(filePath, {
         old_text: 'Express.js',
         new_text: 'Fastify',
         reason: 'better performance',
       });
 
-      // ct-4: insertion in code block area
+      // cn-4: insertion in code block area
       await ctx.propose(filePath, {
         old_text: '',
         new_text: '\napp.post(\'/api\', postHandler);',
@@ -368,7 +368,7 @@ Development starts in Q1 with a phased rollout.`;
         reason: 'add POST endpoint',
       });
 
-      // ct-5: substitution in timeline
+      // cn-5: substitution in timeline
       await ctx.propose(filePath, {
         old_text: 'Q1',
         new_text: 'Q2',
@@ -384,11 +384,11 @@ Development starts in Q1 with a phased rollout.`;
       // Approve all 5 changes (auto-settle fires for each)
       const result = await ctx.review(filePath, {
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'good' },
-          { change_id: 'ct-2', decision: 'approve', reason: 'agreed' },
-          { change_id: 'ct-3', decision: 'approve', reason: 'faster' },
-          { change_id: 'ct-4', decision: 'approve', reason: 'needed' },
-          { change_id: 'ct-5', decision: 'approve', reason: 'realistic' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'good' },
+          { change_id: 'cn-2', decision: 'approve', reason: 'agreed' },
+          { change_id: 'cn-3', decision: 'approve', reason: 'faster' },
+          { change_id: 'cn-4', decision: 'approve', reason: 'needed' },
+          { change_id: 'cn-5', decision: 'approve', reason: 'realistic' },
         ],
       });
       expect(result.isError).toBeUndefined();
@@ -401,10 +401,10 @@ Development starts in Q1 with a phased rollout.`;
       await ctx.assertNoMarkupInBody(filePath);
 
       const disk = await ctx.readDisk(filePath);
-      // Find footnote definitions (start of line [^ct-N]:) to split body from footnotes.
-      // Cannot use simple indexOf('\n[^ct-') because inline footnote refs from settled
-      // deletions can appear at start of line (e.g. [^ct-2] after a deleted list item).
-      const fnDefMatch = disk.match(/^(\[\^ct-\d+(?:\.\d+)?\]:)/m);
+      // Find footnote definitions (start of line [^cn-N]:) to split body from footnotes.
+      // Cannot use simple indexOf('\n[^cn-') because inline footnote refs from settled
+      // deletions can appear at start of line (e.g. [^cn-2] after a deleted list item).
+      const fnDefMatch = disk.match(/^(\[\^cn-\d+(?:\.\d+)?\]:)/m);
       const fnDefStart = fnDefMatch ? disk.indexOf(fnDefMatch[0]) : -1;
       const body = fnDefStart >= 0 ? disk.slice(0, fnDefStart) : disk;
 
@@ -416,23 +416,23 @@ Development starts in Q1 with a phased rollout.`;
       expect(body).toContain('## Timeline');
 
       // Settled content correct
-      expect(body).toContain('We target 1000 users by launch.');  // ct-1 insertion
-      expect(body).not.toContain('Data export in CSV format');     // ct-2 deletion
-      expect(body).toContain('Fastify');                           // ct-3 substitution
+      expect(body).toContain('We target 1000 users by launch.');  // cn-1 insertion
+      expect(body).not.toContain('Data export in CSV format');     // cn-2 deletion
+      expect(body).toContain('Fastify');                           // cn-3 substitution
       expect(body).not.toContain('Express.js');
-      expect(body).toContain('postHandler');                       // ct-4 insertion
-      expect(body).toContain('Q2');                                // ct-5 substitution
+      expect(body).toContain('postHandler');                       // cn-4 insertion
+      expect(body).toContain('Q2');                                // cn-5 substitution
       expect(body).not.toMatch(/\bQ1\b/);
 
       // List still has remaining item
       expect(body).toContain('- User authentication via passwords');
 
       // Footnotes at the end of the file
-      expect(disk).toContain('[^ct-1]:');
-      expect(disk).toContain('[^ct-2]:');
-      expect(disk).toContain('[^ct-3]:');
-      expect(disk).toContain('[^ct-4]:');
-      expect(disk).toContain('[^ct-5]:');
+      expect(disk).toContain('[^cn-1]:');
+      expect(disk).toContain('[^cn-2]:');
+      expect(disk).toContain('[^cn-3]:');
+      expect(disk).toContain('[^cn-4]:');
+      expect(disk).toContain('[^cn-5]:');
 
       // All footnote definitions are after the body content
       expect(fnDefStart).toBeGreaterThan(0);
@@ -486,36 +486,36 @@ Development starts in Q1 with a phased rollout.`;
       });
 
       // Verify all 3 proposed
-      await ctx1.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
-      await ctx1.assertFootnoteStatus(filePath, 'ct-2', 'proposed');
-      await ctx1.assertFootnoteStatus(filePath, 'ct-3', 'proposed');
+      await ctx1.assertFootnoteStatus(filePath, 'cn-1', 'proposed');
+      await ctx1.assertFootnoteStatus(filePath, 'cn-2', 'proposed');
+      await ctx1.assertFootnoteStatus(filePath, 'cn-3', 'proposed');
 
-      // ── Phase 2: Approve ct-1 and ct-2 (auto-settled) ────────────────
+      // ── Phase 2: Approve cn-1 and cn-2 (auto-settled) ────────────────
       const r1 = await ctx1.review(filePath, {
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'good' },
-          { change_id: 'ct-2', decision: 'approve', reason: 'good' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'good' },
+          { change_id: 'cn-2', decision: 'approve', reason: 'good' },
         ],
       });
       expect(r1.isError).toBeUndefined();
 
       const d1 = ctx1.parseResult(r1);
       expect(d1.settled).toBeDefined();
-      expect(d1.settled).toContain('ct-1');
-      expect(d1.settled).toContain('ct-2');
+      expect(d1.settled).toContain('cn-1');
+      expect(d1.settled).toContain('cn-2');
 
-      // ct-1 and ct-2 are settled
-      await ctx1.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
-      await ctx1.assertFootnoteStatus(filePath, 'ct-2', 'accepted');
+      // cn-1 and cn-2 are settled
+      await ctx1.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
+      await ctx1.assertFootnoteStatus(filePath, 'cn-2', 'accepted');
 
-      // ct-3 still has markup
+      // cn-3 still has markup
       const diskMid = await ctx1.readDisk(filePath);
-      expect(diskMid).toContain('60 seconds');  // ct-1 settled
+      expect(diskMid).toContain('60 seconds');  // cn-1 settled
       expect(diskMid).not.toContain('{~~30 seconds~>');
-      expect(diskMid).toContain('{~~one hundred items~>five hundred items~~}');  // ct-3 still has markup
-      await ctx1.assertFootnoteStatus(filePath, 'ct-3', 'proposed');
+      expect(diskMid).toContain('{~~one hundred items~>five hundred items~~}');  // cn-3 still has markup
+      await ctx1.assertFootnoteStatus(filePath, 'cn-3', 'proposed');
 
-      // ── Phase 3: Switch to auto_on_approve = false, approve ct-3 ─────
+      // ── Phase 3: Switch to auto_on_approve = false, approve cn-3 ─────
       // Create a new ScenarioContext with auto_on_approve = false pointing
       // at the same tmpDir. We do this by creating a second context and
       // swapping its tmpDir to match ctx1's.
@@ -539,9 +539,9 @@ Development starts in Q1 with a phased rollout.`;
         protocol: { mode: 'classic', level: 2, reasoning: 'optional', batch_reasoning: 'required' },
       });
 
-      // Approve ct-3 with auto_on_approve = false -> no settlement
+      // Approve cn-3 with auto_on_approve = false -> no settlement
       const r2 = await ctx2.review(filePath, {
-        reviews: [{ change_id: 'ct-3', decision: 'approve', reason: 'good' }],
+        reviews: [{ change_id: 'cn-3', decision: 'approve', reason: 'good' }],
       });
       expect(r2.isError).toBeUndefined();
 
@@ -549,8 +549,8 @@ Development starts in Q1 with a phased rollout.`;
       // No settlement because auto_on_approve is now false
       expect(d2.settled).toBeUndefined();
 
-      // ct-3 is approved but markup still present
-      await ctx2.assertFootnoteStatus(filePath, 'ct-3', 'accepted');
+      // cn-3 is approved but markup still present
+      await ctx2.assertFootnoteStatus(filePath, 'cn-3', 'accepted');
       const diskAfterApprove = await ctx2.readDisk(filePath);
       expect(diskAfterApprove).toContain('{~~one hundred items~>five hundred items~~}');
 
@@ -560,18 +560,18 @@ Development starts in Q1 with a phased rollout.`;
 
       const d3 = ctx2.parseResult(r3);
       expect(d3.settled).toBeDefined();
-      expect(d3.settled).toContain('ct-3');
+      expect(d3.settled).toContain('cn-3');
 
-      // ct-3 is now settled
+      // cn-3 is now settled
       await ctx2.assertNoMarkupInBody(filePath);
       const diskFinal = await ctx2.readDisk(filePath);
       expect(diskFinal).toContain('five hundred items');
       expect(diskFinal).not.toContain('{~~one hundred items~>five hundred items~~}');
 
       // All 3 footnotes present
-      expect(diskFinal).toContain('[^ct-1]:');
-      expect(diskFinal).toContain('[^ct-2]:');
-      expect(diskFinal).toContain('[^ct-3]:');
+      expect(diskFinal).toContain('[^cn-1]:');
+      expect(diskFinal).toContain('[^cn-2]:');
+      expect(diskFinal).toContain('[^cn-3]:');
 
       // Clean up ctx2's original tmpDir
       await fs.rm(originalTmpDir, { recursive: true, force: true });

@@ -11,7 +11,7 @@ describe('workbench patcher', () => {
   const originalContent = '/* workbench CSS content */\n.some-class { color: red; }';
 
   beforeEach(async () => {
-    tempDir = join(tmpdir(), `ct-test-${Date.now()}`);
+    tempDir = join(tmpdir(), `cn-test-${Date.now()}`);
     await fs.mkdir(tempDir, { recursive: true });
     workbenchPath = join(tempDir, 'workbench.desktop.main.js');
     await fs.writeFile(workbenchPath, originalContent);
@@ -36,7 +36,7 @@ describe('workbench patcher', () => {
 
   it('creates a backup before patching', async () => {
     await patchWorkbench(workbenchPath, '/ext/dist/lexical-bridge.js', '/ext/css/lexical.css');
-    const backupPath = workbenchPath + '.ct-backup';
+    const backupPath = workbenchPath + '.cn-backup';
     const backup = await fs.readFile(backupPath, 'utf8');
     expect(backup).toBe(originalContent);
   });

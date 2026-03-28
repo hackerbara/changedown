@@ -2,9 +2,9 @@ import {
   initHashline, computeLineHash, computeSettledLineHash, settledLine,
   computeSettledView, computeCommittedView,
   type SettledViewResult, type CommittedViewResult,
-} from '@changetracks/core';
+} from '@changedown/core';
 import type { SessionState } from './state.js';
-import type { ChangeTracksConfig } from './config.js';
+import type { ChangeDownConfig } from './config.js';
 
 /**
  * Recompute and record session hashes after a file write.
@@ -25,7 +25,7 @@ export async function rerecordState(
   state: SessionState | undefined,
   filePath: string,
   content: string,
-  config: ChangeTracksConfig
+  config: ChangeDownConfig
 ): Promise<{ settledView?: SettledViewResult; committedView?: CommittedViewResult } | undefined> {
   if (!state) return undefined;
 

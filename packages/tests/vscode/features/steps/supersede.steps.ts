@@ -11,15 +11,15 @@ import { strict as assert } from 'assert';
 import {
     computeSupersedeResult as coreSupersedeResult,
     ChangeType,
-} from '@changetracks/core';
-import type { SupersedeResult } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+} from '@changedown/core';
+import type { SupersedeResult } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 import { extractFootnoteStatus, extractFootnoteBlock, findChangeById } from './test-utils';
 
 // -- Extend World with supersede state ------------------------------------
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         supersedeDocText?: string;
         supersedeResultText?: string;
         supersedeAuthor?: string;
@@ -29,7 +29,7 @@ declare module './world' {
 
 // -- Lifecycle ------------------------------------------------------------
 
-Before({ tags: '@fast and @LV6' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @LV6' }, function (this: ChangeDownWorld) {
     this.supersedeDocText = undefined;
     this.supersedeResultText = undefined;
     this.supersedeAuthor = undefined;
@@ -38,16 +38,16 @@ Before({ tags: '@fast and @LV6' }, function (this: ChangeTracksWorld) {
 
 // -- Step definitions -----------------------------------------------------
 
-Given('a supersede document with text:', function (this: ChangeTracksWorld, docString: string) {
+Given('a supersede document with text:', function (this: ChangeDownWorld, docString: string) {
     this.supersedeDocText = docString;
 });
 
-Given('supersede author is {string}', function (this: ChangeTracksWorld, author: string) {
+Given('supersede author is {string}', function (this: ChangeDownWorld, author: string) {
     this.supersedeAuthor = author;
 });
 
 When('I supersede {word} with {string} and reason {string}', async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     newText: string,
     reason: string,
@@ -97,7 +97,7 @@ When('I supersede {word} with {string} and reason {string}', async function (
 });
 
 When('I try to supersede {word} with {string} and reason {string}', async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     newText: string,
     reason: string,
@@ -148,7 +148,7 @@ When('I try to supersede {word} with {string} and reason {string}', async functi
 });
 
 Then('the supersede result footnote status for {word} is {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     expectedStatus: string,
 ) {
@@ -162,7 +162,7 @@ Then('the supersede result footnote status for {word} is {string}', function (
 });
 
 Then('a new change exists in the supersede result with text {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     expectedText: string,
 ) {
     assert.ok(this.supersedeResultText, 'No supersede result -- run a supersede action first');
@@ -173,20 +173,20 @@ Then('a new change exists in the supersede result with text {string}', function 
 });
 
 Then('the new change supersede result footnote contains {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     expected: string,
 ) {
     assert.ok(this.supersedeResultText, 'No supersede result -- run a supersede action first');
 
-    // Find the NEW footnote (ct-2, since ct-1 is the original)
-    // Scan for all footnote IDs and pick the one that isn't ct-1
-    const footnotePattern = /\[(\^ct-\d+)\]:/g;
+    // Find the NEW footnote (cn-2, since cn-1 is the original)
+    // Scan for all footnote IDs and pick the one that isn't cn-1
+    const footnotePattern = /\[(\^cn-\d+)\]:/g;
     const ids: string[] = [];
     let match;
     while ((match = footnotePattern.exec(this.supersedeResultText)) !== null) {
         ids.push(match[1].replace('^', ''));
     }
-    const newId = ids.find(id => id !== 'ct-1');
+    const newId = ids.find(id => id !== 'cn-1');
     assert.ok(newId, `No new footnote found (only found: ${ids.join(', ')}).\nResult:\n${this.supersedeResultText}`);
 
     // Extract specifically the new change's footnote block
@@ -198,11 +198,11 @@ Then('the new change supersede result footnote contains {string}', function (
     );
 });
 
-Then('the supersede is rejected', function (this: ChangeTracksWorld) {
+Then('the supersede is rejected', function (this: ChangeDownWorld) {
     assert.ok(this.supersedeError, 'Expected supersede to be rejected but no error was set');
 });
 
-Then('the supersede is rejected with {string}', function (this: ChangeTracksWorld, expectedError: string) {
+Then('the supersede is rejected with {string}', function (this: ChangeDownWorld, expectedError: string) {
     assert.ok(this.supersedeError, 'Expected supersede to be rejected but no error was set');
     assert.ok(
         this.supersedeError.includes(expectedError),
@@ -211,7 +211,7 @@ Then('the supersede is rejected with {string}', function (this: ChangeTracksWorl
 });
 
 Then('the supersede result footnote for {word} contains {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     expected: string,
 ) {

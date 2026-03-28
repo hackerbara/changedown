@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { Workspace } from '@changetracks/core';
+import { Workspace } from '@changedown/core';
 
 describe('Package Integration', () => {
   it('can import Workspace from core package', () => {

@@ -18,7 +18,7 @@ export default tseslint.config(
       'packages/benchmarks/**',
       'packages/cursor-preview/**',
       'packages/neovim-plugin/**',
-      'packages/changetracks-sublime/**',
+      'packages/changedown-sublime/**',
       'packages/config-types/**',
       'packages/tests/**',
     ],
@@ -104,5 +104,10 @@ export default tseslint.config(
     rules: {
       'import-x/no-default-export': 'off',
     },
+  },
+
+  // Browser Web Worker entry point — excluded from tsconfig.json (uses tsconfig.browser.json)
+  {
+    ignores: ['packages/lsp-server/src/browser-server.ts'],
   },
 );

@@ -74,19 +74,19 @@ Feature: Parser — Highlights
     And change 2 has range 11 to 24
 
   Scenario: Highlight with footnote ref
-    Given the text "{==text==}[^ct-4]"
+    Given the text "{==text==}[^cn-4]"
     When I parse the text
     Then there is 1 change
-    And change 1 has id "ct-4"
+    And change 1 has id "cn-4"
     And change 1 is type "Highlight"
     And change 1 has original text "text"
     And change 1 has range 0 to 17
 
   Scenario: Highlight plus comment with footnote ref
-    Given the text "{==text==}{>>note<<}[^ct-5]"
+    Given the text "{==text==}{>>note<<}[^cn-5]"
     When I parse the text
     Then there is 1 change
-    And change 1 has id "ct-5"
+    And change 1 has id "cn-5"
     And change 1 is type "Highlight"
     And change 1 has original text "text"
     And change 1 has comment "note"
@@ -95,4 +95,4 @@ Feature: Parser — Highlights
   Scenario: Highlight generates correct ID prefix
     Given the text "{==note==}"
     When I parse the text
-    Then change 1 has id "ct-1"
+    Then change 1 has id "cn-1"

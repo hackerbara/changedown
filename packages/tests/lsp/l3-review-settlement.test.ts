@@ -2,15 +2,15 @@
  * l3-review-settlement.test.ts
  *
  * Verifies that code actions for L3 (footnote-native) documents produce
- * Command objects that route through changetracks.acceptChange /
- * changetracks.rejectChange, rather than raw TextEdits.
+ * Command objects that route through changedown.acceptChange /
+ * changedown.rejectChange, rather than raw TextEdits.
  *
  * This is the regression guard for Task 7: code-actions Path B elimination.
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { createServer, CodeActionKind } from '@changetracks/lsp-server/internals';
-import { initHashline } from '@changetracks/core';
+import { ChangedownServer, CodeActionKind } from '@changedown/lsp-server/internals';
+import { initHashline } from '@changedown/core';
 
 function createMockConnection() {
   const handlers: Record<string, Function> = {};
@@ -28,6 +28,7 @@ function createMockConnection() {
     onDidSaveTextDocument: (handler: any) => { handlers.didSave = handler; },
     onHover: (handler: any) => { handlers.hover = handler; },
     onCodeLens: (handler: any) => { handlers.codeLens = handler; },
+    onFoldingRanges: (handler: any) => { handlers.foldingRanges = handler; },
     onCodeAction: (handler: any) => { handlers.codeAction = handler; },
     onDocumentLinks: (handler: any) => { handlers.documentLinks = handler; },
     onRequest: (method: string, handler: any) => { handlers[`request:${method}`] = handler; },
@@ -46,10 +47,10 @@ function createMockConnection() {
 describe('code-actions route through commands (not raw TextEdits)', () => {
   it('L2 inline: code action for accept produces a command, not raw TextEdits', async () => {
     const conn = createMockConnection();
-    const server = createServer(conn as any);
+    const server = new ChangedownServer(conn as any);
 
     const l2 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'Hello {++beautiful ++}world',
     ].join('\n');
 
@@ -76,20 +77,20 @@ describe('code-actions route through commands (not raw TextEdits)', () => {
 
     const quickFixes = (codeActions ?? []).filter((a: any) => a.kind === CodeActionKind.QuickFix);
     if (quickFixes.length > 0) {
-      expect(quickFixes[0].command.command).toMatch(/^changetracks\.(acceptChange|rejectChange)$/);
+      expect(quickFixes[0].command.command).toMatch(/^changedown\.(acceptChange|rejectChange)$/);
     }
   });
 
   it('L3 footnote-native: code action for accept produces a command, not raw TextEdits', async () => {
     await initHashline();
     const conn = createMockConnection();
-    const server = createServer(conn as any);
+    const server = new ChangedownServer(conn as any);
 
     const l3 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'Hello beautiful world',
       '',
-      '[^ct-1]: @alice | 2026-03-18 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-18 | ins | proposed',
       '    1:b4 beautiful ',
     ].join('\n');
 
@@ -115,9 +116,9 @@ describe('code-actions route through commands (not raw TextEdits)', () => {
     }
   });
 
-  it('createCodeActions directly: per-change actions use changetracks.acceptChange command', async () => {
-    const { createCodeActions, DiagnosticSeverity } = await import('@changetracks/lsp-server/internals');
-    const { ChangeType, ChangeStatus } = await import('@changetracks/core');
+  it('createCodeActions directly: per-change actions use changedown.acceptChange command', async () => {
+    const { createCodeActions, DiagnosticSeverity } = await import('@changedown/lsp-server/internals');
+    const { ChangeType, ChangeStatus } = await import('@changedown/core');
 
     const text = 'Hello {++world++}!';
     const changes = [
@@ -135,7 +136,7 @@ describe('code-actions route through commands (not raw TextEdits)', () => {
     const diagnostic = {
       range: { start: { line: 0, character: 6 }, end: { line: 0, character: 17 } },
       severity: DiagnosticSeverity.Information,
-      source: 'changetracks',
+      source: 'changedown',
       message: 'Insertion: world',
       code: 'test-id-1',
       data: { changeId: 'test-id-1', changeType: ChangeType.Insertion },
@@ -151,15 +152,15 @@ describe('code-actions route through commands (not raw TextEdits)', () => {
 
     const quickFixes = actions.filter(a => a.kind === CodeActionKind.QuickFix);
     expect(quickFixes).toHaveLength(4);
-    expect(quickFixes[0].command!.command).toBe('changetracks.acceptChange');
+    expect(quickFixes[0].command!.command).toBe('changedown.acceptChange');
     expect(quickFixes[0].command!.arguments).toContain('test-id-1');
-    expect(quickFixes[1].command!.command).toBe('changetracks.rejectChange');
+    expect(quickFixes[1].command!.command).toBe('changedown.rejectChange');
     expect(quickFixes[1].command!.arguments).toContain('test-id-1');
 
     const bulkActions = actions.filter(a => a.kind === CodeActionKind.Source);
     expect(bulkActions).toHaveLength(2);
-    expect(bulkActions[0].command!.command).toBe('changetracks.acceptAll');
-    expect(bulkActions[1].command!.command).toBe('changetracks.rejectAll');
+    expect(bulkActions[0].command!.command).toBe('changedown.acceptAll');
+    expect(bulkActions[1].command!.command).toBe('changedown.rejectAll');
   });
 });
 
@@ -167,13 +168,13 @@ describe('handleReviewChange on L3 document', () => {
   it('accept insertion: header updated to accepted, edit-op preserved (no auto-settle)', async () => {
     await initHashline();
     const conn = createMockConnection();
-    const server = createServer(conn as any);
+    const server = new ChangedownServer(conn as any);
 
     const l3 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'Hello beautiful world',
       '',
-      '[^ct-1]: @alice | 2026-03-18 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-18 | ins | proposed',
       '    2:b4 {++beautiful ++}',
     ].join('\n');
 
@@ -181,7 +182,7 @@ describe('handleReviewChange on L3 document', () => {
 
     const result = server.handleReviewChange({
       uri: 'file:///test.md',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       decision: 'approve',
     });
 
@@ -190,7 +191,7 @@ describe('handleReviewChange on L3 document', () => {
       const newText = result.edit.newText;
       expect(newText).toContain('Hello beautiful world');
       // Header updated from proposed → accepted; edit-op preserved (auto_on_approve=false)
-      expect(newText).toContain('[^ct-1]:');
+      expect(newText).toContain('[^cn-1]:');
       expect(newText).toContain('| accepted');
       expect(newText).toContain('{++beautiful ++}');
       expect(newText).toContain('approved:');
@@ -200,13 +201,13 @@ describe('handleReviewChange on L3 document', () => {
   it('reject insertion: body unchanged, header updated to rejected, edit-op preserved (no auto-settle)', async () => {
     await initHashline();
     const conn = createMockConnection();
-    const server = createServer(conn as any);
+    const server = new ChangedownServer(conn as any);
 
     const l3 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'Hello beautiful world',
       '',
-      '[^ct-1]: @alice | 2026-03-18 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-18 | ins | proposed',
       '    2:b4 {++beautiful ++}',
     ].join('\n');
 
@@ -214,7 +215,7 @@ describe('handleReviewChange on L3 document', () => {
 
     const result = server.handleReviewChange({
       uri: 'file:///test.md',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       decision: 'reject',
     });
 
@@ -226,7 +227,7 @@ describe('handleReviewChange on L3 document', () => {
       expect(bodyLine).toContain('Hello');
       expect(bodyLine).toContain('beautiful');
       // Header updated from proposed → rejected; edit-op preserved
-      expect(newText).toContain('[^ct-1]:');
+      expect(newText).toContain('[^cn-1]:');
       expect(newText).toContain('| rejected');
       expect(newText).toContain('{++beautiful ++}');
       expect(newText).toContain('rejected:');
@@ -238,17 +239,17 @@ describe('handleReviewAll on L3 document', () => {
   it('bulk accept updates all headers to accepted, edit-ops preserved (no auto-settle)', async () => {
     await initHashline();
     const conn = createMockConnection();
-    const server = createServer(conn as any);
+    const server = new ChangedownServer(conn as any);
 
     // Both insertions on line 2: "Hello beautiful new world"
     // findUniqueMatch locates each insertion independently
     const l3 = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'Hello beautiful new world',
       '',
-      '[^ct-1]: @alice | 2026-03-18 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-18 | ins | proposed',
       '    2:b4 {++beautiful ++}',
-      '[^ct-2]: @bob | 2026-03-18 | ins | proposed',
+      '[^cn-2]: @bob | 2026-03-18 | ins | proposed',
       '    2:b4 {++new ++}',
     ].join('\n');
 
@@ -264,8 +265,8 @@ describe('handleReviewAll on L3 document', () => {
       const newText = result.edit.newText;
       expect(newText).toContain('Hello beautiful new world');
       // Both headers updated to accepted; edit-ops preserved (auto_on_approve=false)
-      expect(newText).toContain('[^ct-1]:');
-      expect(newText).toContain('[^ct-2]:');
+      expect(newText).toContain('[^cn-1]:');
+      expect(newText).toContain('[^cn-2]:');
       expect(newText).toContain('{++beautiful ++}');
       expect(newText).toContain('{++new ++}');
     }

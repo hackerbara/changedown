@@ -14,7 +14,7 @@ export interface CommentSyntax {
 export interface StrippedLine {
   /** The original code with annotation markers removed. */
   code: string;
-  /** The ct-N or ct-N.M tag. */
+  /** The cn-N or cn-N.M tag. */
   tag: string;
   /** True if the line is a deletion marker. */
   isDeletion: boolean;
@@ -104,14 +104,14 @@ export function lineOffset(lines: string[], lineIndex: number): number {
   return offset;
 }
 
-// Regex for ct-N or ct-N.M tags
-const SC_TAG_PATTERN = /ct-\d+(?:\.\d+)?/;
+// Regex for cn-N or cn-N.M tags
+const SC_TAG_PATTERN = /cn-\d+(?:\.\d+)?/;
 
 /**
  * Strips a sidecar annotation from a line, extracting the original code,
  * sc tag, deletion flag, and indentation.
  *
- * Returns null if the line has no ct-N tag.
+ * Returns null if the line has no cn-N tag.
  *
  * Deletion pattern: `indent + commentChar + " - " + code + "  " + commentChar + " " + tag`
  * Insertion pattern: `code + "  " + commentChar + " " + tag`

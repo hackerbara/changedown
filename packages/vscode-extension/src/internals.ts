@@ -42,11 +42,11 @@ export type { SettingsConfig, EditorPreferencesConfig } from './settings-panel';
 export { ProjectStatusModel } from './project-status';
 export type { ProjectStatusField, ProjectStatus } from './project-status';
 
-// Preview
-export { buildReplacements, findFenceZones } from './preview/replacements';
-export type { PreviewOptions, FenceZone } from './preview/replacements';
-export { containsCriticMarkup, renderFenceWithCriticMarkup, changetracksPlugin } from './preview/plugin';
-export type { PluginConfig } from './preview/plugin';
+// Preview (shared package)
+export { buildReplacements, findFenceZones } from '@changedown/preview';
+export type { PreviewOptions, FenceZone } from '@changedown/preview';
+export { containsCriticMarkup, renderFenceWithCriticMarkup, changedownPlugin } from '@changedown/preview';
+export type { PluginConfig } from '@changedown/preview';
 
 // Git integration (used by @integration tier tests that run inside Extension Host)
 export { getPreviousVersion } from './git-integration';

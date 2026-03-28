@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handleListChanges } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
+import { handleListChanges } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 
 describe('list_changes tool', () => {
   let tmpDir: string;
@@ -17,9 +17,9 @@ describe('list_changes tool', () => {
   beforeAll(async () => { await initHashline(); });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-list-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-list-'));
     state = new SessionState();
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: { include: ['**/*.md'], exclude: [], default: 'tracked', auto_header: true },
       author: { default: 'ai:test', enforcement: 'optional' },
       hooks: { enforcement: 'warn', exclude: [] },
@@ -32,14 +32,14 @@ describe('list_changes tool', () => {
     resolver = await createTestResolver(tmpDir, config);
     filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, [
-      '<!-- ctrcks.com/v1: tracked -->',
-      '# {~~Old Title~>New Title~~}[^ct-1]',
+      '<!-- changedown.com/v1: tracked -->',
+      '# {~~Old Title~>New Title~~}[^cn-1]',
       '',
-      'Some {++added++}[^ct-2] text.',
+      'Some {++added++}[^cn-2] text.',
       '',
-      '[^ct-1]: @ai:test | 2026-02-20 | sub | proposed',
+      '[^cn-1]: @ai:test | 2026-02-20 | sub | proposed',
       '    @ai:test 2026-02-20: Title update',
-      '[^ct-2]: @ai:test | 2026-02-20 | ins | accepted',
+      '[^cn-2]: @ai:test | 2026-02-20 | ins | accepted',
       '    @ai:test 2026-02-20: Addition',
     ].join('\n'));
   });
@@ -53,10 +53,10 @@ describe('list_changes tool', () => {
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data.changes).toHaveLength(2);
-    expect(data.changes[0].change_id).toBe('ct-1');
+    expect(data.changes[0].change_id).toBe('cn-1');
     expect(data.changes[0].type).toBe('sub');
     expect(data.changes[0].status).toBe('proposed');
-    expect(data.changes[1].change_id).toBe('ct-2');
+    expect(data.changes[1].change_id).toBe('cn-2');
     expect(data.changes[1].status).toBe('accepted');
   });
 
@@ -67,7 +67,7 @@ describe('list_changes tool', () => {
     );
     const data = JSON.parse(result.content[0].text);
     expect(data.changes).toHaveLength(1);
-    expect(data.changes[0].change_id).toBe('ct-1');
+    expect(data.changes[0].change_id).toBe('cn-1');
   });
 
   it('returns author and line number for each change', async () => {
@@ -91,7 +91,7 @@ describe('list_changes tool', () => {
 
   it('returns empty array for file with no changes', async () => {
     const emptyFile = path.join(tmpDir, 'empty.md');
-    await fs.writeFile(emptyFile, '<!-- ctrcks.com/v1: tracked -->\n\nJust plain text.\n');
+    await fs.writeFile(emptyFile, '<!-- changedown.com/v1: tracked -->\n\nJust plain text.\n');
     const result = await handleListChanges({ file: emptyFile }, resolver, state);
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
@@ -127,14 +127,14 @@ describe('list_changes tool', () => {
   it('lists changes correctly after Layer 1 settlement', async () => {
     // Post-settlement state: inline CriticMarkup removed, refs and footnotes remain
     await fs.writeFile(filePath, [
-      '<!-- ctrcks.com/v1: tracked -->',
-      '# New Title[^ct-1]',
+      '<!-- changedown.com/v1: tracked -->',
+      '# New Title[^cn-1]',
       '',
-      'Some added[^ct-2] text.',
+      'Some added[^cn-2] text.',
       '',
-      '[^ct-1]: @ai:test | 2026-02-20 | sub | accepted',
+      '[^cn-1]: @ai:test | 2026-02-20 | sub | accepted',
       '    @ai:test 2026-02-20: Title update',
-      '[^ct-2]: @ai:test | 2026-02-20 | ins | accepted',
+      '[^cn-2]: @ai:test | 2026-02-20 | ins | accepted',
       '    @ai:test 2026-02-20: Addition',
     ].join('\n'));
 
@@ -143,10 +143,10 @@ describe('list_changes tool', () => {
 
     expect(data.total_count).toBe(2);
     expect(data.changes).toHaveLength(2);
-    expect(data.changes[0].change_id).toBe('ct-1');
+    expect(data.changes[0].change_id).toBe('cn-1');
     expect(data.changes[0].status).toBe('accepted');
     expect(data.changes[0].type).toBe('sub');
-    expect(data.changes[1].change_id).toBe('ct-2');
+    expect(data.changes[1].change_id).toBe('cn-2');
     expect(data.changes[1].status).toBe('accepted');
   });
 
@@ -164,14 +164,14 @@ describe('list_changes tool', () => {
 
   it('returns context lines when detail=context', async () => {
     await fs.writeFile(filePath, [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       'Line one.',
       'Line two.',
-      'Line three {++added++}[^ct-1].',
+      'Line three {++added++}[^cn-1].',
       'Line four.',
       'Line five.',
       '',
-      '[^ct-1]: @alice | 2026-01-01 | ins | proposed',
+      '[^cn-1]: @alice | 2026-01-01 | ins | proposed',
       '    @alice 2026-01-01: test addition',
     ].join('\n'));
 
@@ -218,46 +218,46 @@ describe('list_changes tool', () => {
   // ─── Batch change_ids ──────────────────────────────────────────────────
 
   it('returns details for specific change_ids', async () => {
-    // File already has ct-1 and ct-2 from beforeEach
+    // File already has cn-1 and cn-2 from beforeEach
     const result = await handleListChanges(
-      { file: filePath, change_ids: ['ct-1', 'ct-2'], detail: 'full' },
+      { file: filePath, change_ids: ['cn-1', 'cn-2'], detail: 'full' },
       resolver, state,
     );
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     expect(data.changes).toHaveLength(2);
-    expect(data.changes[0].change_id).toBe('ct-1');
-    expect(data.changes[1].change_id).toBe('ct-2');
+    expect(data.changes[0].change_id).toBe('cn-1');
+    expect(data.changes[1].change_id).toBe('cn-2');
     expect(data.changes[0].footnote).toBeDefined();
   });
 
   it('returns error entry for missing change_id', async () => {
     const result = await handleListChanges(
-      { file: filePath, change_ids: ['ct-1', 'ct-99'] },
+      { file: filePath, change_ids: ['cn-1', 'cn-99'] },
       resolver, state,
     );
     const data = JSON.parse(result.content[0].text);
     expect(data.changes).toHaveLength(2);
-    expect(data.changes[0].change_id).toBe('ct-1');
-    expect(data.changes[1].change_id).toBe('ct-99');
+    expect(data.changes[0].change_id).toBe('cn-1');
+    expect(data.changes[1].change_id).toBe('cn-99');
     expect(data.changes[1].error).toBe('Change not found');
   });
 
   it('handles single change_id (get_change equivalent)', async () => {
     const result = await handleListChanges(
-      { file: filePath, change_id: 'ct-2', detail: 'full' },
+      { file: filePath, change_id: 'cn-2', detail: 'full' },
       resolver, state,
     );
     const data = JSON.parse(result.content[0].text);
     expect(data.changes).toHaveLength(1);
-    expect(data.changes[0].change_id).toBe('ct-2');
+    expect(data.changes[0].change_id).toBe('cn-2');
     expect(data.changes[0].footnote).toBeDefined();
     expect(data.changes[0].footnote.author).toBe('ai:test');
   });
 
   it('defaults to detail=full when change_id specified without detail', async () => {
     const result = await handleListChanges(
-      { file: filePath, change_id: 'ct-1' },
+      { file: filePath, change_id: 'cn-1' },
       resolver, state,
     );
     const data = JSON.parse(result.content[0].text);
@@ -270,10 +270,10 @@ describe('list_changes tool', () => {
   it('returns level and anchored fields for each change', async () => {
     const testFile = path.join(tmpDir, 'level-anchored.md');
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
-      'Hello {++world++}[^ct-1] and {--goodbye--}',
+      '<!-- changedown.com/v1: tracked -->',
+      'Hello {++world++}[^cn-1] and {--goodbye--}',
       '',
-      '[^ct-1]: @ai:test | 2026-03-04 | ins | proposed',
+      '[^cn-1]: @ai:test | 2026-03-04 | ins | proposed',
     ].join('\n');
     await fs.writeFile(testFile, content);
 
@@ -282,7 +282,7 @@ describe('list_changes tool', () => {
     const parsed = JSON.parse(result.content[0].text);
     const changes = parsed.changes;
 
-    const anchored = changes.find((c: any) => c.change_id === 'ct-1');
+    const anchored = changes.find((c: any) => c.change_id === 'cn-1');
     expect(anchored).toBeDefined();
     expect(anchored.level).toBe(2);
     expect(anchored.anchored).toBe(true);
@@ -296,14 +296,14 @@ describe('list_changes tool', () => {
   // ─── Consumed ops ──────────────────────────────────────────────────────
 
   it('includes consumed_by field for consumed changes', async () => {
-    // L3 document: ct-1 inserts "very " then ct-2 deletes it → ct-1 consumed by ct-2
+    // L3 document: cn-1 inserts "very " then cn-2 deletes it → cn-1 consumed by cn-2
     const consumedFile = path.join(tmpDir, 'consumed.md');
     await fs.writeFile(consumedFile, [
       'The lazy dog',
       '',
-      '[^ct-1]: agent | 2026-03-23 | ins | proposed',
+      '[^cn-1]: agent | 2026-03-23 | ins | proposed',
       '    1:ab The {++very ++}lazy dog',
-      '[^ct-2]: agent | 2026-03-23 | del | proposed',
+      '[^cn-2]: agent | 2026-03-23 | del | proposed',
       '    1:cd The {--very --}lazy dog',
     ].join('\n'));
 

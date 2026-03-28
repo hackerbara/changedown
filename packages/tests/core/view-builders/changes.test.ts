@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initHashline, buildChangesDocument } from '@changetracks/core/internals';
+import { initHashline, buildChangesDocument } from '@changedown/core/internals';
 
 beforeAll(async () => { await initHashline(); });
 
 describe('buildChangesDocument', () => {
   it('produces committed text with no CriticMarkup', () => {
-    const content = 'Hello {++world++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello {++world++}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildChangesDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -16,7 +16,7 @@ describe('buildChangesDocument', () => {
   });
 
   it('sets P flag for lines with pending proposals', () => {
-    const content = 'Hello {++world++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello {++world++}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildChangesDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -25,7 +25,7 @@ describe('buildChangesDocument', () => {
   });
 
   it('sets A flag for lines with accepted changes', () => {
-    const content = 'Hello {++world++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | accepted';
+    const content = 'Hello {++world++}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | accepted';
     const doc = buildChangesDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -35,17 +35,17 @@ describe('buildChangesDocument', () => {
   });
 
   it('includes change IDs in metadata', () => {
-    const content = 'Hello {++world++}[^ct-1].\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello {++world++}[^cn-1].\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildChangesDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
     });
     expect(doc.lines[0].metadata).toHaveLength(1);
-    expect(doc.lines[0].metadata[0].changeId).toBe('ct-1');
+    expect(doc.lines[0].metadata[0].changeId).toBe('cn-1');
   });
 
   it('excludes footnote definition lines', () => {
-    const content = 'Content.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Content.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildChangesDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',
@@ -55,7 +55,7 @@ describe('buildChangesDocument', () => {
   });
 
   it('carries sessionHashes with committed hash', () => {
-    const content = 'Hello.\n\n[^ct-1]: @ai:test | 2026-01-01 | ins | proposed';
+    const content = 'Hello.\n\n[^cn-1]: @ai:test | 2026-01-01 | ins | proposed';
     const doc = buildChangesDocument(content, {
       filePath: 'test.md', trackingStatus: 'tracked',
       protocolMode: 'classic', defaultView: 'review', viewPolicy: 'suggest',

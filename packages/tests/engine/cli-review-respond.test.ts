@@ -2,11 +2,11 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { initHashline } from '@changetracks/core';
-import { runCommand } from 'changetracks/cli-runner';
+import { initHashline } from '@changedown/core';
+import { runCommand } from 'changedown/cli-runner';
 
 function makeTrackedFile(text: string): string {
-  return `${text}\n\n[^ct-1]: @ai:test | 2026-02-15 | ins | proposed\n`;
+  return `${text}\n\n[^cn-1]: @ai:test | 2026-02-15 | ins | proposed\n`;
 }
 
 describe('sc review', () => {
@@ -17,8 +17,8 @@ describe('sc review', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-review-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-review-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -32,10 +32,10 @@ describe('sc review', () => {
 
   it('approves a change via --reviews JSON', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, makeTrackedFile('The {++quick ++}[^ct-1]brown fox'));
+    await fs.writeFile(filePath, makeTrackedFile('The {++quick ++}[^cn-1]brown fox'));
 
     const reviews = JSON.stringify([
-      { change_id: 'ct-1', decision: 'approve', reason: 'Looks good' },
+      { change_id: 'cn-1', decision: 'approve', reason: 'Looks good' },
     ]);
 
     const result = await runCommand('review', [filePath, '--reviews', reviews], {
@@ -52,7 +52,7 @@ describe('sc review', () => {
 
   it('returns error for invalid JSON in --reviews', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, makeTrackedFile('The {++quick ++}[^ct-1]brown fox'));
+    await fs.writeFile(filePath, makeTrackedFile('The {++quick ++}[^cn-1]brown fox'));
 
     const result = await runCommand('review', [filePath, '--reviews', 'not-json!!!'], {
       outputFormat: 'json',
@@ -72,8 +72,8 @@ describe('sc respond', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-respond-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-respond-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -87,11 +87,11 @@ describe('sc respond', () => {
 
   it('adds a response to a thread', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, makeTrackedFile('The {++quick ++}[^ct-1]brown fox'));
+    await fs.writeFile(filePath, makeTrackedFile('The {++quick ++}[^cn-1]brown fox'));
 
     const result = await runCommand(
       'respond',
-      [filePath, 'ct-1', 'This insertion improves readability'],
+      [filePath, 'cn-1', 'This insertion improves readability'],
       {
         outputFormat: 'json',
         projectDir: tmpDir,
@@ -107,11 +107,11 @@ describe('sc respond', () => {
 
   it('supports --label flag', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, makeTrackedFile('The {++quick ++}[^ct-1]brown fox'));
+    await fs.writeFile(filePath, makeTrackedFile('The {++quick ++}[^cn-1]brown fox'));
 
     const result = await runCommand(
       'respond',
-      [filePath, 'ct-1', 'Consider a different word', '--label', 'suggestion'],
+      [filePath, 'cn-1', 'Consider a different word', '--label', 'suggestion'],
       {
         outputFormat: 'json',
         projectDir: tmpDir,
@@ -146,11 +146,11 @@ describe('sc respond', () => {
 
   it('accepts response via --response flag instead of positional', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
-    await fs.writeFile(filePath, makeTrackedFile('The {++quick ++}[^ct-1]brown fox'));
+    await fs.writeFile(filePath, makeTrackedFile('The {++quick ++}[^cn-1]brown fox'));
 
     const result = await runCommand(
       'respond',
-      [filePath, 'ct-1', '--response', 'Response via flag'],
+      [filePath, 'cn-1', '--response', 'Response via flag'],
       {
         outputFormat: 'json',
         projectDir: tmpDir,

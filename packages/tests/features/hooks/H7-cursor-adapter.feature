@@ -1,6 +1,6 @@
 @fast @H7
 Feature: H7 - Cursor Adapter
-  The Cursor hook adapter translates Cursor's hook events into ChangeTracks
+  The Cursor hook adapter translates Cursor's hook events into ChangeDown
   policy evaluation and edit tracking. Cursor uses different event names and
   field mappings (workspace_roots instead of cwd, conversation_id instead of
   session_id, file_path/edits instead of tool_input).
@@ -20,7 +20,7 @@ Feature: H7 - Cursor Adapter
     And a tracked file "readme.md" with content "# Hello"
     When I call Cursor preToolUse with tool "Edit" on file "readme.md"
     Then the Cursor decision is "deny"
-    And the Cursor reason contains "tracked by ChangeTracks"
+    And the Cursor reason contains "tracked by ChangeDown"
 
   Scenario: Cursor preToolUse allows Edit on non-tracked file type
     And a strict mode config
@@ -50,7 +50,7 @@ Feature: H7 - Cursor Adapter
 
   # ── beforeMCPExecution: MCP Tool Validation ──
 
-  Scenario: Cursor beforeMCPExecution passes through non-ChangeTracks tools
+  Scenario: Cursor beforeMCPExecution passes through non-ChangeDown tools
     When I call Cursor beforeMCPExecution with tool "some_other_tool"
     Then the Cursor MCP response continues
 
@@ -93,7 +93,7 @@ Feature: H7 - Cursor Adapter
     And a Cursor pending substitution from "# Hello" to "# Updated" in conversation "cur-conv-1"
     When I call Cursor stop for conversation "cur-conv-1"
     Then the batch file "readme.md" includes "{~~"
-    And the batch file "readme.md" includes "[^ct-"
+    And the batch file "readme.md" includes "[^cn-"
 
   Scenario: Cursor stop clears edits without wrapping in strict mode
     And a strict mode config

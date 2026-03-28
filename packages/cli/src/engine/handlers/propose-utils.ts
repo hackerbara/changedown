@@ -1,6 +1,6 @@
 import {
   computeLineHash,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 export interface AffectedLineEntry {
   line: number;

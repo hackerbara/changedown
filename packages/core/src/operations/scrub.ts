@@ -41,7 +41,7 @@ import { parseForFormat } from '../format-aware-parse.js';
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface ActiveOperation {
-  /** Unique change identifier, e.g. "ct-1". */
+  /** Unique change identifier, e.g. "cn-1". */
   id: string;
   /** Semantic type of the change. */
   type: 'insertion' | 'deletion' | 'substitution' | 'highlight' | 'comment';
@@ -492,7 +492,7 @@ export const ABBREV_TO_TYPE: Record<string, ActiveOperation['type']> = {
 /**
  * Parse L3 footnotes into ActiveOperation[].
  *
- * Walks the footnote lines, identifies each `[^ct-N]:` block, extracts
+ * Walks the footnote lines, identifies each `[^cn-N]:` block, extracts
  * the header metadata and the indented LINE:HASH edit-op line.
  */
 function extractOperations(footnoteLines: string[]): ActiveOperation[] {
@@ -501,7 +501,7 @@ function extractOperations(footnoteLines: string[]): ActiveOperation[] {
 
   while (i < footnoteLines.length) {
     const line = footnoteLines[i];
-    const idMatch = line.match(/^\[\^(ct-[\w.]+)\]:/);
+    const idMatch = line.match(/^\[\^(cn-[\w.]+)\]:/);
     if (!idMatch) { i++; continue; }
 
     const id = idMatch[1];
@@ -753,7 +753,7 @@ export function resolve(l3Text: string): ResolvedDocument {
 
   while (fi < footnoteLines.length) {
     const fline = footnoteLines[fi];
-    const idMatch = fline.match(/^\[\^(ct-[\w.]+)\]:/);
+    const idMatch = fline.match(/^\[\^(cn-[\w.]+)\]:/);
 
     if (idMatch) {
       const changeId = idMatch[1];

@@ -67,10 +67,10 @@ Feature: Text matching
   # ── Level 5: Footnote-ref-skipping match ──────────────────────────
 
   Scenario: Matches text transparently skipping footnote refs
-    Given a document text "The {++quick++}[^ct-1] brown fox."
+    Given a document text "The {++quick++}[^cn-1] brown fox."
     When I search for "The {++quick++} brown"
     Then the match was normalized
-    And the match original text contains "[^ct-1]"
+    And the match original text contains "[^cn-1]"
 
   # ── Level 6: Settled-text matching ────────────────────────────────
 
@@ -122,9 +122,9 @@ Feature: Text matching
   Scenario: Overlap skips settled footnote ref (accepted status)
     Given a document text:
       """
-      The quick brown fox[^ct-1] jumps over.
+      The quick brown fox[^cn-1] jumps over.
 
-      [^ct-1]: @ai:test | 2026-02-20 | sub | accepted
+      [^cn-1]: @ai:test | 2026-02-20 | sub | accepted
       """
     When I check overlap at the position of "quick brown fox"
     Then there is no overlap
@@ -132,9 +132,9 @@ Feature: Text matching
   Scenario: Overlap still blocks proposed inline CriticMarkup
     Given a document text:
       """
-      Before {++inserted text++}[^ct-1] after.
+      Before {++inserted text++}[^cn-1] after.
 
-      [^ct-1]: @ai:test | 2026-02-20 | ins | proposed
+      [^cn-1]: @ai:test | 2026-02-20 | ins | proposed
       """
     When I check overlap at the position of "inserted text"
     Then the overlap change type is "ins"
@@ -142,9 +142,9 @@ Feature: Text matching
   Scenario: Overlap allows accepted inline CriticMarkup (pre-compaction)
     Given a document text:
       """
-      Before {++added++}[^ct-1] after.
+      Before {++added++}[^cn-1] after.
 
-      [^ct-1]: @ai:test | 2026-02-20 | ins | accepted
+      [^cn-1]: @ai:test | 2026-02-20 | ins | accepted
       """
     When I check overlap at the position of "added"
     Then there is no overlap

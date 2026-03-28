@@ -9,7 +9,7 @@
  *
  * 2. **Multi-line** (lazy `[\s\S]*?`): used by `committed-text.ts` for
  *    document-level processing where CriticMarkup spans lines. These include
- *    optional footnote reference capture groups `(\[\^(ct-\d+(?:\.\d+)?)\])?`.
+ *    optional footnote reference capture groups `(\[\^(cn-\d+(?:\.\d+)?)\])?`.
  *
  * Both families match the same 5 CriticMarkup types:
  *   - Insertion:    {++text++}
@@ -65,22 +65,22 @@ export function singleLineComment(): RegExp {
 
 /** Substitution: {~~old~>new~~} with optional footnote ref */
 export function multiLineSubstitution(): RegExp {
-  return /\{~~([\s\S]*?)~>([\s\S]*?)~~\}(\[\^(ct-\d+(?:\.\d+)?)\])?/g;
+  return /\{~~([\s\S]*?)~>([\s\S]*?)~~\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
 }
 
 /** Insertion: {++text++} with optional footnote ref */
 export function multiLineInsertion(): RegExp {
-  return /\{\+\+([\s\S]*?)\+\+\}(\[\^(ct-\d+(?:\.\d+)?)\])?/g;
+  return /\{\+\+([\s\S]*?)\+\+\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
 }
 
 /** Deletion: {--text--} with optional footnote ref */
 export function multiLineDeletion(): RegExp {
-  return /\{--([\s\S]*?)--\}(\[\^(ct-\d+(?:\.\d+)?)\])?/g;
+  return /\{--([\s\S]*?)--\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
 }
 
 /** Highlight: {==text==} with optional footnote ref */
 export function multiLineHighlight(): RegExp {
-  return /\{==([\s\S]*?)==\}(\[\^(ct-\d+(?:\.\d+)?)\])?/g;
+  return /\{==([\s\S]*?)==\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
 }
 
 /** Comment: {>>text<<} -> captures content in $1 (no footnote ref) */
@@ -94,7 +94,7 @@ export function multiLineComment(): RegExp {
  * Quick-check: does a line contain CriticMarkup delimiters or footnote refs?
  * Non-global, used with .test() for fast boolean detection.
  */
-export const HAS_CRITIC_MARKUP = /\{\+\+|\{--|\{~~|\{==|\{>>|\[\^ct-\d/;
+export const HAS_CRITIC_MARKUP = /\{\+\+|\{--|\{~~|\{==|\{>>|\[\^cn-\d/;
 
 /**
  * Returns true if the given line contains any CriticMarkup opening delimiter
@@ -118,5 +118,5 @@ export function inlineMarkupAll(): RegExp {
  * Used to count markup instances that have associated footnote references.
  */
 export function markupWithRef(): RegExp {
-  return /(?:\+\+\}|-{2}\}|~~\}|==\}|<<\})\[\^ct-\d+(?:\.\d+)?\]/g;
+  return /(?:\+\+\}|-{2}\}|~~\}|==\}|<<\})\[\^cn-\d+(?:\.\d+)?\]/g;
 }

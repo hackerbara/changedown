@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { findFootnoteBlock } from '@changetracks/core';
-import type { ChangeNode } from '@changetracks/core';
+import { findFootnoteBlock } from '@changedown/core';
+import type { ChangeNode } from '@changedown/core';
 import { positionToOffset, coreRangeToVscode } from '../converters';
 import { isChangeVisibleInMode } from '../view-mode';
 import { findContainingHiddenRange } from '../hidden-range-search';
@@ -44,12 +44,12 @@ export class NavigationManager implements vscode.Disposable {
     // ── Cursor context ────────────────────────────────────────────────────
 
     /**
-     * Update changetracks:changeAtCursor context key when cursor moves or document changes.
+     * Update changedown:changeAtCursor context key when cursor moves or document changes.
      * Used for Keep/Undo keybinding (cmd+y / cmd+n) so they only apply when cursor is inside a change.
      */
     public updateChangeAtCursorContext(editor: vscode.TextEditor): void {
         if (!isSupported(editor.document) || editor.document.languageId !== 'markdown') {
-            setContextKey('changetracks:changeAtCursor', false);
+            setContextKey('changedown:changeAtCursor', false);
             return;
         }
         const text = editor.document.getText();
@@ -57,7 +57,7 @@ export class NavigationManager implements vscode.Disposable {
         const virtualDoc = this.docStateManager.getVirtualDocumentFor(uri, text, editor.document.languageId, true);
         const cursorOffset = positionToOffset(text, editor.selection.active);
         const change = this.docStateManager.workspace.changeAtOffset(virtualDoc, cursorOffset);
-        setContextKey('changetracks:changeAtCursor', change !== null);
+        setContextKey('changedown:changeAtCursor', change !== null);
 
         // Send cursor position to LSP (only when line or changeId changes)
         const cursorLine = editor.selection.active.line;

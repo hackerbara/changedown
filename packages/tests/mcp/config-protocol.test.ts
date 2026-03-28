@@ -2,14 +2,14 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { loadConfig, type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { loadConfig, type ChangeDownConfig } from '@changedown/mcp/internals';
 
 describe('protocol config section', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-config-protocol-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-config-protocol-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
   });
 
@@ -19,7 +19,7 @@ describe('protocol config section', () => {
 
   it('defaults to classic mode when [protocol] section is absent', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n',
     );
     const config = await loadConfig(tmpDir);
@@ -31,7 +31,7 @@ describe('protocol config section', () => {
 
   it('parses compact mode from TOML', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[protocol]\nmode = "compact"\nlevel = 1\nreasoning = "optional"\n',
     );
     const config = await loadConfig(tmpDir);
@@ -42,7 +42,7 @@ describe('protocol config section', () => {
 
   it('rejects invalid mode values, falls back to default', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[protocol]\nmode = "invalid"\n',
     );
     const config = await loadConfig(tmpDir);
@@ -51,31 +51,31 @@ describe('protocol config section', () => {
 });
 
 // Task 2: Environment variable override
-import { resolveProtocolMode } from '@changetracks/mcp/internals';
+import { resolveProtocolMode } from '@changedown/mcp/internals';
 
 describe('resolveProtocolMode', () => {
-  const originalEnv = process.env['CHANGETRACKS_PROTOCOL_MODE'];
+  const originalEnv = process.env['CHANGEDOWN_PROTOCOL_MODE'];
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env['CHANGETRACKS_PROTOCOL_MODE'];
+      delete process.env['CHANGEDOWN_PROTOCOL_MODE'];
     } else {
-      process.env['CHANGETRACKS_PROTOCOL_MODE'] = originalEnv;
+      process.env['CHANGEDOWN_PROTOCOL_MODE'] = originalEnv;
     }
   });
 
   it('returns config value when env var is not set', () => {
-    delete process.env['CHANGETRACKS_PROTOCOL_MODE'];
+    delete process.env['CHANGEDOWN_PROTOCOL_MODE'];
     expect(resolveProtocolMode('compact')).toBe('compact');
   });
 
   it('env var overrides config value', () => {
-    process.env['CHANGETRACKS_PROTOCOL_MODE'] = 'compact';
+    process.env['CHANGEDOWN_PROTOCOL_MODE'] = 'compact';
     expect(resolveProtocolMode('classic')).toBe('compact');
   });
 
   it('ignores invalid env var values', () => {
-    process.env['CHANGETRACKS_PROTOCOL_MODE'] = 'invalid';
+    process.env['CHANGEDOWN_PROTOCOL_MODE'] = 'invalid';
     expect(resolveProtocolMode('classic')).toBe('classic');
   });
 });

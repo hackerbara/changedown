@@ -3,7 +3,7 @@ import { changeTypeToAbbrev } from '../model/types.js';
 import { findFootnoteBlock, parseFootnoteHeader, findReviewInsertionIndex, findChildFootnoteIds } from '../footnote-utils.js';
 import { nowTimestamp } from '../timestamp.js';
 import { ensureL2 } from './ensure-l2.js';
-import type { ChangeTracksConfig } from '../config/index.js';
+import type { ChangeDownConfig } from '../config/index.js';
 import { canAccept } from '../config/review-permissions.js';
 
 export const VALID_DECISIONS = ['approve', 'reject', 'request_changes', 'withdraw'] as const;
@@ -112,7 +112,7 @@ export function applyReview(
   decision: Decision,
   reasoning: string,
   author: string,
-  config?: ChangeTracksConfig,
+  config?: ChangeDownConfig,
 ): ApplyReviewSuccess | ApplyReviewError {
   let lines = fileContent.split('\n');
   let block = findFootnoteBlock(lines, changeId);

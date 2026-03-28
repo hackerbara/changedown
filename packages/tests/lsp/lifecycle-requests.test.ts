@@ -6,41 +6,41 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createServer, ChangetracksServer } from '@changetracks/lsp-server/internals';
-import type { Connection, TextEdit } from '@changetracks/lsp-server/internals';
+import { ChangedownServer } from '@changedown/lsp-server/internals';
+import type { Connection, TextEdit } from '@changedown/lsp-server/internals';
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 /** A markdown document with a Level 2 proposed insertion (footnote-backed). */
 const L2_INSERTION_DOC = `Hello world.
 
-{++added text++}[^ct-1]
+{++added text++}[^cn-1]
 
 More text.
 
-[^ct-1]: @alice | 2026-03-01 | ins | proposed
+[^cn-1]: @alice | 2026-03-01 | ins | proposed
     @alice 2026-03-01: Initial insertion
 `;
 
 /** A markdown document with a Level 2 proposed substitution. */
 const L2_SUBSTITUTION_DOC = `Hello world.
 
-{~~old text~>new text~~}[^ct-1]
+{~~old text~>new text~~}[^cn-1]
 
 More text.
 
-[^ct-1]: @alice | 2026-03-01 | sub | proposed
+[^cn-1]: @alice | 2026-03-01 | sub | proposed
     @alice 2026-03-01: Initial substitution
 `;
 
 /** A markdown document with an accepted change (for compaction tests). */
 const ACCEPTED_DOC = `Hello world.
 
-{++accepted text++}[^ct-1]
+{++accepted text++}[^cn-1]
 
 More text.
 
-[^ct-1]: @alice | 2026-03-01 | ins | accepted
+[^cn-1]: @alice | 2026-03-01 | ins | accepted
     @alice 2026-03-01: Initial insertion
     approved: @bob 2026-03-02 "Looks good"
 `;
@@ -48,11 +48,11 @@ More text.
 /** A markdown document with a resolved thread. */
 const RESOLVED_DOC = `Hello world.
 
-{++added text++}[^ct-1]
+{++added text++}[^cn-1]
 
 More text.
 
-[^ct-1]: @alice | 2026-03-01 | ins | proposed
+[^cn-1]: @alice | 2026-03-01 | ins | proposed
     @alice 2026-03-01: Initial insertion
     resolved: @bob 2026-03-02
 `;
@@ -76,6 +76,7 @@ function createMockConnection(): Connection {
     onDidSaveTextDocument: (handler: any) => { handlers.didSave = handler; },
     onHover: (handler: any) => { handlers.hover = handler; },
     onCodeLens: (handler: any) => { handlers.codeLens = handler; },
+    onFoldingRanges: (handler: any) => { handlers.foldingRanges = handler; },
     onCodeAction: (handler: any) => { handlers.codeAction = handler; },
     onDocumentLinks: (handler: any) => { handlers.documentLinks = handler; },
     onRequest: (method: string, handler: any) => { handlers[`request:${method}`] = handler; },
@@ -97,13 +98,13 @@ function createMockConnection(): Connection {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function setupServer(): { server: ChangetracksServer; conn: Connection } {
+function setupServer(): { server: ChangedownServer; conn: Connection } {
   const conn = createMockConnection();
-  const server = createServer(conn);
+  const server = new ChangedownServer(conn);
   return { server, conn };
 }
 
-function openDoc(server: ChangetracksServer, uri: string, text: string): void {
+function openDoc(server: ChangedownServer, uri: string, text: string): void {
   server.handleDocumentOpen(uri, text, 'markdown');
 }
 
@@ -114,7 +115,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
   // ── 2A: getProjectConfig ──────────────────────────────────────────────────
 
-  describe('changetracks/getProjectConfig (2A)', () => {
+  describe('changedown/getProjectConfig (2A)', () => {
     it('returns default config shape', () => {
       const { server } = setupServer();
       const result = server.handleGetProjectConfig();
@@ -132,14 +133,14 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
   // ── 2B: reviewChange ──────────────────────────────────────────────────────
 
-  describe('changetracks/reviewChange (2B)', () => {
+  describe('changedown/reviewChange (2B)', () => {
     it('approves a proposed change', () => {
       const { server } = setupServer();
       openDoc(server, URI, L2_INSERTION_DOC);
 
       const result = server.handleReviewChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         decision: 'approve',
         reason: 'Looks good',
         author: 'bob',
@@ -159,7 +160,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleReviewChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         decision: 'reject',
         reason: 'Not needed',
         author: 'bob',
@@ -177,7 +178,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleReviewChange({
         uri: URI,
-        changeId: 'ct-999',
+        changeId: 'cn-999',
         decision: 'approve',
         reason: 'test',
         author: 'bob',
@@ -191,7 +192,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleReviewChange({
         uri: 'file:///nonexistent.md',
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         decision: 'approve',
         author: 'bob',
       });
@@ -207,7 +208,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleReviewChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         decision: 'approve',
         reason: 'Auto-approved',
       });
@@ -220,14 +221,14 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
   // ── 2C: replyToThread ─────────────────────────────────────────────────────
 
-  describe('changetracks/replyToThread (2C)', () => {
+  describe('changedown/replyToThread (2C)', () => {
     it('adds a reply to a change thread', () => {
       const { server } = setupServer();
       openDoc(server, URI, L2_INSERTION_DOC);
 
       const result = server.handleReplyToThread({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         text: 'I have a question about this.',
         author: 'bob',
       });
@@ -244,7 +245,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleReplyToThread({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         text: 'Please fix the typo.',
         author: 'bob',
         label: 'nit',
@@ -261,7 +262,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleReplyToThread({
         uri: URI,
-        changeId: 'ct-999',
+        changeId: 'cn-999',
         text: 'Hello',
         author: 'bob',
       });
@@ -272,14 +273,14 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
   // ── 2D: amendChange ───────────────────────────────────────────────────────
 
-  describe('changetracks/amendChange (2D)', () => {
+  describe('changedown/amendChange (2D)', () => {
     it('amends a proposed substitution via supersede', async () => {
       const { server } = setupServer();
       openDoc(server, URI, L2_SUBSTITUTION_DOC);
 
       const result = await server.handleAmendChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         newText: 'amended text',
         reason: 'Improved wording',
         author: 'alice',
@@ -299,7 +300,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = await server.handleAmendChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         newText: 'new text',
         author: 'alice',
       });
@@ -313,7 +314,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = await server.handleAmendChange({
         uri: 'file:///nonexistent.md',
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         newText: 'new text',
         author: 'alice',
       });
@@ -325,14 +326,14 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
   // ── 2E: supersedeChange ───────────────────────────────────────────────────
 
-  describe('changetracks/supersedeChange (2E)', () => {
+  describe('changedown/supersedeChange (2E)', () => {
     it('supersedes a proposed substitution', async () => {
       const { server } = setupServer();
       openDoc(server, URI, L2_SUBSTITUTION_DOC);
 
       const result = await server.handleSupersedeChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         newText: 'better text',
         oldText: 'old text',
         reason: 'Better approach',
@@ -354,7 +355,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = await server.handleSupersedeChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         newText: 'new text',
         author: 'bob',
       });
@@ -366,14 +367,14 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
   // ── 2F: resolveThread / unresolveThread ───────────────────────────────────
 
-  describe('changetracks/resolveThread (2F)', () => {
+  describe('changedown/resolveThread (2F)', () => {
     it('resolves a thread', () => {
       const { server } = setupServer();
       openDoc(server, URI, L2_INSERTION_DOC);
 
       const result = server.handleResolveThread({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         author: 'bob',
       });
 
@@ -389,21 +390,21 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleResolveThread({
         uri: URI,
-        changeId: 'ct-999',
+        changeId: 'cn-999',
       });
 
       expect('error' in result).toBe(true);
     });
   });
 
-  describe('changetracks/unresolveThread (2F)', () => {
+  describe('changedown/unresolveThread (2F)', () => {
     it('unresolves a thread', () => {
       const { server } = setupServer();
       openDoc(server, URI, RESOLVED_DOC);
 
       const result = server.handleUnresolveThread({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
       });
 
       expect('edit' in result).toBe(true);
@@ -417,7 +418,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleUnresolveThread({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
       });
 
       expect('error' in result).toBe(true);
@@ -426,20 +427,20 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
   // ── 2G: compactChange ─────────────────────────────────────────────────────
 
-  describe('changetracks/compactChange (2G)', () => {
+  describe('changedown/compactChange (2G)', () => {
     it('compacts an accepted change from L2 to L1', () => {
       const { server } = setupServer();
       openDoc(server, URI, ACCEPTED_DOC);
 
       const result = server.handleCompactChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
       });
 
       expect('edit' in result).toBe(true);
       const edit = (result as { edit: TextEdit }).edit;
       // After L2 -> L1, the footnote definition is gone, replaced by inline comment
-      expect(edit.newText).not.toContain('[^ct-1]:');
+      expect(edit.newText).not.toContain('[^cn-1]:');
       expect(edit.newText).toContain('{>>');
     });
 
@@ -449,7 +450,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleCompactChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
       });
 
       expect('error' in result).toBe(true);
@@ -462,14 +463,14 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleCompactChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         fully: true,
       });
 
       expect('edit' in result).toBe(true);
       const edit = (result as { edit: TextEdit }).edit;
       // After full compaction (L2 -> L0), no footnote and no inline comment
-      expect(edit.newText).not.toContain('[^ct-1]:');
+      expect(edit.newText).not.toContain('[^cn-1]:');
       // The inline markup should still be present
       expect(edit.newText).toContain('{++accepted text++}');
     });
@@ -479,7 +480,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleCompactChange({
         uri: 'file:///nonexistent.md',
-        changeId: 'ct-1',
+        changeId: 'cn-1',
       });
 
       expect('error' in result).toBe(true);
@@ -496,7 +497,7 @@ describe('Phase 2: Lifecycle LSP Requests', () => {
 
       const result = server.handleReviewChange({
         uri: URI,
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         decision: 'approve',
         reason: 'OK',
         author: 'bob',

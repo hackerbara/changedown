@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 
-export const PATCH_MARKER = '/* CHANGETRACKS_LEXICAL_BRIDGE */';
-const PATCH_END = '/* END_CHANGETRACKS_LEXICAL_BRIDGE */';
+export const PATCH_MARKER = '/* CHANGEDOWN_LEXICAL_BRIDGE */';
+const PATCH_END = '/* END_CHANGEDOWN_LEXICAL_BRIDGE */';
 
 export async function isPatchInstalled(workbenchPath: string): Promise<boolean> {
   const content = await fs.readFile(workbenchPath, 'utf8');
@@ -14,7 +14,7 @@ export async function patchWorkbench(
   bridgeCssPath: string,
 ): Promise<void> {
   let content = await fs.readFile(workbenchPath, 'utf8');
-  const backupPath = workbenchPath + '.ct-backup';
+  const backupPath = workbenchPath + '.cn-backup';
 
   // Create backup if not already backed up
   try {
@@ -37,12 +37,12 @@ ${PATCH_MARKER}
 ;(function() {
   var sc = document.createElement('script');
   sc.src = '${bridgeScriptPath.replace(/'/g, "\\'")}';
-  sc.dataset.changetracks = 'lexical-bridge';
+  sc.dataset.changedown = 'lexical-bridge';
   document.head.appendChild(sc);
   var link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = '${bridgeCssPath.replace(/'/g, "\\'")}';
-  link.dataset.changetracks = 'lexical-css';
+  link.dataset.changedown = 'lexical-css';
   document.head.appendChild(link);
 })();
 ${PATCH_END}`;
@@ -52,7 +52,7 @@ ${PATCH_END}`;
 }
 
 export async function unpatchWorkbench(workbenchPath: string): Promise<void> {
-  const backupPath = workbenchPath + '.ct-backup';
+  const backupPath = workbenchPath + '.cn-backup';
   try {
     const backup = await fs.readFile(backupPath, 'utf8');
     await fs.writeFile(workbenchPath, backup);

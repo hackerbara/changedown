@@ -3,8 +3,8 @@ import * as path from 'path';
 
 const GITIGNORE_ENTRIES = [
   '',
-  '# ChangeTracks transient state',
-  '.changetracks/pending.json',
+  '# ChangeDown transient state',
+  '.changedown/pending.json',
 ];
 
 export interface GitignoreResult {
@@ -13,7 +13,7 @@ export interface GitignoreResult {
 }
 
 /**
- * Append ChangeTracks entries to an existing .gitignore.
+ * Append ChangeDown entries to an existing .gitignore.
  * Returns 'appended' if entries were added, 'skipped' if already present.
  */
 export function ensureGitignoreEntries(projectDir: string): GitignoreResult {
@@ -22,7 +22,7 @@ export function ensureGitignoreEntries(projectDir: string): GitignoreResult {
     ? fs.readFileSync(gitignorePath, 'utf8')
     : '';
 
-  if (existing.includes('.changetracks/pending.json')) {
+  if (existing.includes('.changedown/pending.json')) {
     return { action: 'skipped', path: gitignorePath };
   }
 
@@ -32,7 +32,7 @@ export function ensureGitignoreEntries(projectDir: string): GitignoreResult {
 }
 
 /**
- * Create a new .gitignore with ChangeTracks entries.
+ * Create a new .gitignore with ChangeDown entries.
  */
 export function createGitignore(projectDir: string): GitignoreResult {
   const gitignorePath = path.join(projectDir, '.gitignore');

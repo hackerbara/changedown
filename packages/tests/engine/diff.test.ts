@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isGitDiffDriverInvocation } from 'changetracks/internals';
+import { isGitDiffDriverInvocation } from 'changedown/internals';
 
 describe('isGitDiffDriverInvocation', () => {
   it('returns true for a valid 7-arg invocation with 40-char hex SHA', () => {

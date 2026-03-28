@@ -9,9 +9,9 @@ Feature: Accept/reject with footnote updates and reviewer attribution
   Scenario: Accept with reviewerIdentity records approved in footnote
     Given a document with text:
       """
-      Hello {++world++}[^ct-1] end
+      Hello {++world++}[^cn-1] end
 
-      [^ct-1]: @ai:bot | 2026-02-12 | ins | proposed
+      [^cn-1]: @ai:bot | 2026-02-12 | ins | proposed
       """
     And the cursor is at offset 10
     And reviewer identity is "human:alice"
@@ -24,9 +24,9 @@ Feature: Accept/reject with footnote updates and reviewer attribution
   Scenario: Reject with reviewerIdentity records rejected in footnote
     Given a document with text:
       """
-      Hello {--remove--}[^ct-2] end
+      Hello {--remove--}[^cn-2] end
 
-      [^ct-2]: @ai:bot | 2026-02-12 | del | proposed
+      [^cn-2]: @ai:bot | 2026-02-12 | del | proposed
       """
     And the cursor is at offset 10
     And reviewer identity is "human:bob"
@@ -39,9 +39,9 @@ Feature: Accept/reject with footnote updates and reviewer attribution
   Scenario: Accept without identity updates status only (no approved line)
     Given a document with text:
       """
-      Hello {++world++}[^ct-1] end
+      Hello {++world++}[^cn-1] end
 
-      [^ct-1]: @ai:bot | 2026-02-12 | ins | proposed
+      [^cn-1]: @ai:bot | 2026-02-12 | ins | proposed
       """
     And the cursor is at offset 10
     And no reviewer identity is set
@@ -55,10 +55,10 @@ Feature: Accept/reject with footnote updates and reviewer attribution
   Scenario: Accept All with reviewerIdentity adds approved line per footnote
     Given a document with text:
       """
-      One {++a++}[^ct-1] two {~~x~>y~~}[^ct-2] three.
+      One {++a++}[^cn-1] two {~~x~>y~~}[^cn-2] three.
 
-      [^ct-1]: @alice | 2026-02-10 | ins | proposed
-      [^ct-2]: @bob | 2026-02-10 | sub | proposed
+      [^cn-1]: @alice | 2026-02-10 | ins | proposed
+      [^cn-2]: @bob | 2026-02-10 | sub | proposed
       """
     And reviewer identity is "human:carol"
     When I accept all changes with footnote update
@@ -70,10 +70,10 @@ Feature: Accept/reject with footnote updates and reviewer attribution
   Scenario: Reject All with reviewerIdentity adds rejected line per footnote
     Given a document with text:
       """
-      A {++x++}[^ct-1] B {--y--}[^ct-2] C.
+      A {++x++}[^cn-1] B {--y--}[^cn-2] C.
 
-      [^ct-1]: @alice | 2026-02-10 | ins | proposed
-      [^ct-2]: @bob | 2026-02-10 | del | proposed
+      [^cn-1]: @alice | 2026-02-10 | ins | proposed
+      [^cn-2]: @bob | 2026-02-10 | del | proposed
       """
     And reviewer identity is "human:dave"
     When I reject all changes with footnote update
@@ -85,9 +85,9 @@ Feature: Accept/reject with footnote updates and reviewer attribution
   Scenario: Accept preserves existing footnote body (discussion thread)
     Given a document with text:
       """
-      Use {~~REST~>GraphQL~~}[^ct-1] here.
+      Use {~~REST~>GraphQL~~}[^cn-1] here.
 
-      [^ct-1]: @alice | 2026-02-10 | sub | proposed
+      [^cn-1]: @alice | 2026-02-10 | sub | proposed
           @alice 2026-02-10: Consider using GraphQL instead
       """
     And the cursor is at offset 8
@@ -102,9 +102,9 @@ Feature: Accept/reject with footnote updates and reviewer attribution
   Scenario: Approval line format matches ADR-012 spec
     Given a document with text:
       """
-      Hello {++world++}[^ct-1] end
+      Hello {++world++}[^cn-1] end
 
-      [^ct-1]: @ai:bot | 2026-02-12 | ins | proposed
+      [^cn-1]: @ai:bot | 2026-02-12 | ins | proposed
       """
     And the cursor is at offset 10
     And reviewer identity is "human:alice"
@@ -117,9 +117,9 @@ Feature: Accept/reject with footnote updates and reviewer attribution
   Scenario: Approval line contains todays UTC date
     Given a document with text:
       """
-      Hello {++world++}[^ct-1] end
+      Hello {++world++}[^cn-1] end
 
-      [^ct-1]: @ai:bot | 2026-02-12 | ins | proposed
+      [^cn-1]: @ai:bot | 2026-02-12 | ins | proposed
       """
     And the cursor is at offset 10
     And reviewer identity is "human:alice"
@@ -131,9 +131,9 @@ Feature: Accept/reject with footnote updates and reviewer attribution
   Scenario: Author fallback when only author is set (no reviewerIdentity)
     Given a document with text:
       """
-      Hello {++world++}[^ct-1] end
+      Hello {++world++}[^cn-1] end
 
-      [^ct-1]: @ai:bot | 2026-02-12 | ins | proposed
+      [^cn-1]: @ai:bot | 2026-02-12 | ins | proposed
       """
     And the cursor is at offset 10
     And no reviewer identity is set
@@ -147,9 +147,9 @@ Feature: Accept/reject with footnote updates and reviewer attribution
   Scenario: Archive on accept adds archive line with reference text
     Given a document with text:
       """
-      Use {~~REST~>GraphQL~~}[^ct-1] here.
+      Use {~~REST~>GraphQL~~}[^cn-1] here.
 
-      [^ct-1]: @alice | 2026-02-10 | sub | proposed
+      [^cn-1]: @alice | 2026-02-10 | sub | proposed
       """
     And the cursor is at offset 8
     And reviewer identity is "human:alice"

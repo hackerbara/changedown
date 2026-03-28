@@ -9,8 +9,8 @@ Feature: TM1 -- Tracking mode basic behavior
 
   Scenario: Tracking mode can be toggled on and off
     Given I open "tracking-mode-test.md" in VS Code
-    When I execute "ChangeTracks: Toggle Tracking"
-    And I execute "ChangeTracks: Toggle Tracking"
+    When I execute "ChangeDown: Toggle Tracking"
+    And I execute "ChangeDown: Toggle Tracking"
 
   # ── Wrapping insertions ─────────────────────────────────────────────
 
@@ -43,7 +43,7 @@ Feature: TM1 -- Tracking mode basic behavior
 
   Scenario: Tracking mode can be disabled to stop wrapping
     Given a tracking-mode editor with content "Initial text here."
-    When I execute "ChangeTracks: Toggle Tracking"
+    When I execute "ChangeDown: Toggle Tracking"
     And I insert " test" at the end
     And I wait 300ms
     Then the tracked document does not contain "{++"

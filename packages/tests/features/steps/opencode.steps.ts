@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 
 import {
   toolExecuteBeforeHook,
@@ -11,16 +11,16 @@ import {
   stopHook,
   readPendingEdits,
   appendPendingEdit,
-} from '@changetracks/opencode-plugin/internals';
-import type { HookContext } from '@changetracks/opencode-plugin/internals';
-import ChangeTracksPlugin from '@changetracks/opencode-plugin';
+} from '@changedown/opencode-plugin/internals';
+import type { HookContext } from '@changedown/opencode-plugin/internals';
+import ChangeDownPlugin from '@changedown/opencode-plugin';
 
 // =============================================================================
 // Extend the world with OpenCode-specific state
 // =============================================================================
 
 declare module './world.js' {
-  interface ChangeTracksWorld {
+  interface ChangeDownWorld {
     // OC test state
     ocTmpDir: string | null;
     ocBatchFiles: Map<string, string>;
@@ -37,7 +37,7 @@ declare module './world.js' {
 // Lifecycle hooks
 // =============================================================================
 
-Before({ tags: '@OC1 or @OC2' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@OC1 or @OC2' }, function (this: ChangeDownWorld) {
   this.ocTmpDir = null;
   this.ocBatchFiles = new Map();
   this.ocBeforeError = null;
@@ -47,7 +47,7 @@ Before({ tags: '@OC1 or @OC2' }, function (this: ChangeTracksWorld) {
   this.ocPluginHooks = null;
 });
 
-After({ tags: '@OC1 or @OC2' }, async function (this: ChangeTracksWorld) {
+After({ tags: '@OC1 or @OC2' }, async function (this: ChangeDownWorld) {
   if (this.ocTmpDir) {
     await fs.rm(this.ocTmpDir, { recursive: true, force: true });
   }
@@ -69,9 +69,9 @@ function makeOcCtx(dir: string): HookContext {
 // OC1 — OpenCode Hooks steps
 // =============================================================================
 
-Given('a temporary OpenCode project directory', async function (this: ChangeTracksWorld) {
-  this.ocTmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-bdd-oc-'));
-  const scDir = path.join(this.ocTmpDir, '.changetracks');
+Given('a temporary OpenCode project directory', async function (this: ChangeDownWorld) {
+  this.ocTmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-bdd-oc-'));
+  const scDir = path.join(this.ocTmpDir, '.changedown');
   await fs.mkdir(scDir, { recursive: true });
   // Also set batchTmpDir for shared steps (like "the batch file ... includes")
   this.batchTmpDir = this.ocTmpDir;
@@ -81,10 +81,10 @@ Given('a temporary OpenCode project directory', async function (this: ChangeTrac
 
 Given(
   'an OpenCode config with enforcement {string}',
-  async function (this: ChangeTracksWorld, enforcement: string) {
+  async function (this: ChangeDownWorld, enforcement: string) {
     assert.ok(this.ocTmpDir, 'Need a temporary OpenCode project directory first');
     await fs.writeFile(
-      path.join(this.ocTmpDir, '.changetracks', 'config.toml'),
+      path.join(this.ocTmpDir, '.changedown', 'config.toml'),
       `[tracking]\ninclude = ["**/*.md"]\nexclude = ["node_modules/**"]\n\n[hooks]\nenforcement = "${enforcement}"\n\n[author]\ndefault = "ai:opencode-test"\n`,
       'utf-8',
     );
@@ -98,7 +98,7 @@ Given(
 
 When(
   'I call OpenCode tool.execute.before with tool {string} on file {string}',
-  async function (this: ChangeTracksWorld, tool: string, fileName: string) {
+  async function (this: ChangeDownWorld, tool: string, fileName: string) {
     assert.ok(this.ocTmpDir, 'Need a temporary OpenCode project directory first');
     const filePath = path.join(this.ocTmpDir, fileName);
     try {
@@ -118,7 +118,7 @@ When(
 
 Then(
   'the OpenCode before hook throws with {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.ocBeforeError, 'Expected tool.execute.before to throw but it did not');
     assert.ok(
       this.ocBeforeError.message.toLowerCase().includes(expected.toLowerCase()),
@@ -127,7 +127,7 @@ Then(
   },
 );
 
-Then('the OpenCode before hook does not throw', function (this: ChangeTracksWorld) {
+Then('the OpenCode before hook does not throw', function (this: ChangeDownWorld) {
   assert.ok(
     this.ocBeforeNoThrow || this.ocBeforeError === null,
     `Expected tool.execute.before NOT to throw but it threw: "${this.ocBeforeError?.message}"`,
@@ -139,7 +139,7 @@ Then('the OpenCode before hook does not throw', function (this: ChangeTracksWorl
 When(
   'I call OpenCode tool.execute.after with tool {string} on file {string} with old {string} and new {string}',
   async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     tool: string,
     fileName: string,
     oldText: string,
@@ -156,7 +156,7 @@ When(
 
 Then(
   'the OpenCode pending edits contain an entry for {string}',
-  async function (this: ChangeTracksWorld, fileName: string) {
+  async function (this: ChangeDownWorld, fileName: string) {
     assert.ok(this.ocTmpDir, 'Need a temporary OpenCode project directory first');
     const edits = await readPendingEdits(this.ocTmpDir);
     const fullPath = path.join(this.ocTmpDir, fileName);
@@ -168,7 +168,7 @@ Then(
   },
 );
 
-Then('the OpenCode pending edits file is empty', async function (this: ChangeTracksWorld) {
+Then('the OpenCode pending edits file is empty', async function (this: ChangeDownWorld) {
   assert.ok(this.ocTmpDir, 'Need a temporary OpenCode project directory first');
   const edits = await readPendingEdits(this.ocTmpDir);
   assert.equal(edits.length, 0, `Expected no pending edits but found ${edits.length}`);
@@ -178,7 +178,7 @@ Then('the OpenCode pending edits file is empty', async function (this: ChangeTra
 
 Given(
   'an OpenCode pending edit from {string} to {string} for file {string}',
-  async function (this: ChangeTracksWorld, oldText: string, newText: string, fileName: string) {
+  async function (this: ChangeDownWorld, oldText: string, newText: string, fileName: string) {
     assert.ok(this.ocTmpDir, 'Need a temporary OpenCode project directory first');
     const filePath = path.join(this.ocTmpDir, fileName);
     await appendPendingEdit(this.ocTmpDir, {
@@ -193,7 +193,7 @@ Given(
 
 Given(
   'an OpenCode pending insertion of {string} for file {string} with context {string}',
-  async function (this: ChangeTracksWorld, newText: string, fileName: string, contextBefore: string) {
+  async function (this: ChangeDownWorld, newText: string, fileName: string, contextBefore: string) {
     assert.ok(this.ocTmpDir, 'Need a temporary OpenCode project directory first');
     const filePath = path.join(this.ocTmpDir, fileName);
     const resolvedNew = newText.replace(/\\n/g, '\n');
@@ -209,7 +209,7 @@ Given(
   },
 );
 
-When('I call OpenCode stop hook', async function (this: ChangeTracksWorld) {
+When('I call OpenCode stop hook', async function (this: ChangeDownWorld) {
   assert.ok(this.ocTmpDir, 'Need a temporary OpenCode project directory first');
   await stopHook({}, {}, makeOcCtx(this.ocTmpDir));
 });
@@ -222,7 +222,7 @@ type ConfigInput = { mcp?: Record<string, unknown>; skills?: { paths?: string[] 
 
 Given(
   'an OpenCode plugin context for directory {string}',
-  function (this: ChangeTracksWorld, directory: string) {
+  function (this: ChangeDownWorld, directory: string) {
     this.ocPluginCtx = {
       directory,
       worktree: directory,
@@ -233,9 +233,9 @@ Given(
 
 When(
   'I call the OpenCode config hook with empty config',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.ocPluginCtx, 'Need an OpenCode plugin context first');
-    const plugin = await ChangeTracksPlugin({
+    const plugin = await ChangeDownPlugin({
       ...this.ocPluginCtx,
       client: undefined,
     });
@@ -248,17 +248,17 @@ When(
 );
 
 When(
-  'I call the OpenCode config hook with existing changetracks MCP {string}',
-  async function (this: ChangeTracksWorld, url: string) {
+  'I call the OpenCode config hook with existing changedown MCP {string}',
+  async function (this: ChangeDownWorld, url: string) {
     assert.ok(this.ocPluginCtx, 'Need an OpenCode plugin context first');
-    const plugin = await ChangeTracksPlugin({
+    const plugin = await ChangeDownPlugin({
       ...this.ocPluginCtx,
       client: undefined,
     });
     this.ocPluginHooks = plugin;
     this.ocConfigInput = {
       mcp: {
-        changetracks: { type: 'remote', url },
+        changedown: { type: 'remote', url },
       },
     };
     await (plugin as { config: (input: ConfigInput) => Promise<void> }).config(
@@ -267,40 +267,40 @@ When(
   },
 );
 
-Then('the config has a changetracks MCP server', function (this: ChangeTracksWorld) {
+Then('the config has a changedown MCP server', function (this: ChangeDownWorld) {
   assert.ok(this.ocConfigInput, 'No config input');
-  assert.ok(this.ocConfigInput.mcp?.changetracks, 'No changetracks MCP server in config');
+  assert.ok(this.ocConfigInput.mcp?.changedown, 'No changedown MCP server in config');
 });
 
 Then(
   'the MCP server type is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.ocConfigInput, 'No config input');
-    const server = this.ocConfigInput.mcp?.changetracks as Record<string, unknown>;
+    const server = this.ocConfigInput.mcp?.changedown as Record<string, unknown>;
     assert.equal(server.type, expected);
   },
 );
 
 Then(
-  'the MCP server environment has CHANGETRACKS_PROJECT_DIR {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  'the MCP server environment has CHANGEDOWN_PROJECT_DIR {string}',
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.ocConfigInput, 'No config input');
-    const server = this.ocConfigInput.mcp?.changetracks as Record<string, unknown>;
+    const server = this.ocConfigInput.mcp?.changedown as Record<string, unknown>;
     const env = server.environment as Record<string, string>;
-    assert.equal(env.CHANGETRACKS_PROJECT_DIR, expected);
+    assert.equal(env.CHANGEDOWN_PROJECT_DIR, expected);
   },
 );
 
 Then(
   'the MCP server URL is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.ocConfigInput, 'No config input');
-    const server = this.ocConfigInput.mcp?.changetracks as Record<string, unknown>;
+    const server = this.ocConfigInput.mcp?.changedown as Record<string, unknown>;
     assert.equal(server.url, expected);
   },
 );
 
-Then('the config has skills paths', function (this: ChangeTracksWorld) {
+Then('the config has skills paths', function (this: ChangeDownWorld) {
   assert.ok(this.ocConfigInput, 'No config input');
   assert.ok(this.ocConfigInput.skills?.paths, 'No skills paths in config');
   assert.ok(
@@ -311,7 +311,7 @@ Then('the config has skills paths', function (this: ChangeTracksWorld) {
 
 Then(
   'the skills path contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.ocConfigInput, 'No config input');
     const paths = this.ocConfigInput.skills?.paths as string[];
     assert.ok(
@@ -321,7 +321,7 @@ Then(
   },
 );
 
-Then('the config has no skills paths', function (this: ChangeTracksWorld) {
+Then('the config has no skills paths', function (this: ChangeDownWorld) {
   assert.ok(this.ocConfigInput, 'No config input');
   const skills = this.ocConfigInput.skills;
   assert.ok(
@@ -330,7 +330,7 @@ Then('the config has no skills paths', function (this: ChangeTracksWorld) {
   );
 });
 
-Then('the config has instructions', function (this: ChangeTracksWorld) {
+Then('the config has instructions', function (this: ChangeDownWorld) {
   assert.ok(this.ocConfigInput, 'No config input');
   const instructions = this.ocConfigInput.instructions;
   assert.ok(instructions !== undefined, 'Instructions field not set');
@@ -340,7 +340,7 @@ Then('the config has instructions', function (this: ChangeTracksWorld) {
   );
 });
 
-Then('the config has no instructions', function (this: ChangeTracksWorld) {
+Then('the config has no instructions', function (this: ChangeDownWorld) {
   assert.ok(this.ocConfigInput, 'No config input');
   const instructions = this.ocConfigInput.instructions;
   assert.ok(
@@ -353,12 +353,12 @@ Then('the config has no instructions', function (this: ChangeTracksWorld) {
 
 Given(
   'an OpenCode opt-out config with skills disabled',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.ocTmpDir, 'Need a temporary OpenCode project directory first');
     const ocDir = path.join(this.ocTmpDir, '.opencode');
     await fs.mkdir(ocDir, { recursive: true });
     await fs.writeFile(
-      path.join(ocDir, 'changetracks.json'),
+      path.join(ocDir, 'changedown.json'),
       JSON.stringify({ skills: { enabled: false } }),
       'utf-8',
     );
@@ -367,12 +367,12 @@ Given(
 
 Given(
   'an OpenCode opt-out config with instructions disabled',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.ocTmpDir, 'Need a temporary OpenCode project directory first');
     const ocDir = path.join(this.ocTmpDir, '.opencode');
     await fs.mkdir(ocDir, { recursive: true });
     await fs.writeFile(
-      path.join(ocDir, 'changetracks.json'),
+      path.join(ocDir, 'changedown.json'),
       JSON.stringify({ instructions: { enabled: false } }),
       'utf-8',
     );
@@ -381,9 +381,9 @@ Given(
 
 When(
   'I call the OpenCode config hook from temporary directory',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.ocTmpDir, 'Need a temporary OpenCode project directory first');
-    const plugin = await ChangeTracksPlugin({
+    const plugin = await ChangeDownPlugin({
       directory: this.ocTmpDir,
       worktree: this.ocTmpDir,
       project: undefined,
@@ -399,16 +399,16 @@ When(
 
 // --- No plugin tools ---
 
-When('I initialize the OpenCode plugin', async function (this: ChangeTracksWorld) {
+When('I initialize the OpenCode plugin', async function (this: ChangeDownWorld) {
   assert.ok(this.ocPluginCtx, 'Need an OpenCode plugin context first');
-  const plugin = await ChangeTracksPlugin({
+  const plugin = await ChangeDownPlugin({
     ...this.ocPluginCtx,
     client: undefined,
   });
   this.ocPluginHooks = plugin;
 });
 
-Then('the plugin has no tool registrations', function (this: ChangeTracksWorld) {
+Then('the plugin has no tool registrations', function (this: ChangeDownWorld) {
   assert.ok(this.ocPluginHooks, 'No plugin hooks');
   assert.equal(this.ocPluginHooks.tool, undefined, 'Expected no tool registrations on plugin');
 });

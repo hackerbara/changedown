@@ -35,7 +35,7 @@ export interface ProposeChangeParams {
   text: string;          // current file content
   oldText: string;       // text to replace (empty for insertion)
   newText: string;       // replacement (empty for deletion)
-  changeId: string;      // e.g., "ct-1"
+  changeId: string;      // e.g., "cn-1"
   author: string;        // e.g., "ai:claude-opus-4.6"
   reasoning?: string;    // optional why
   insertAfter?: string;  // anchor for insertions (when oldText is empty)
@@ -49,7 +49,7 @@ export interface ProposeChangeResult {
 }
 
 export interface CriticMarkupOverlap {
-  /** The change ID (e.g. "ct-1") if one was found, or undefined for Level 0/1 changes */
+  /** The change ID (e.g. "cn-1") if one was found, or undefined for Level 0/1 changes */
   changeId?: string;
   /** The type of the overlapping CriticMarkup (e.g. "sub", "ins", "del") */
   changeType: string;
@@ -349,14 +349,14 @@ export function resolveOverlapWithAuthor(
 // ─── Ref preservation ────────────────────────────────────────────────────────
 
 /**
- * Strips footnote refs ([^ct-N] or [^ct-N.M]) from text and returns
+ * Strips footnote refs ([^cn-N] or [^cn-N.M]) from text and returns
  * the cleaned text plus the extracted refs in order. Used to prevent
  * refs from being wrapped inside CriticMarkup delimiters — they are
  * re-attached after the markup.
  */
 export function stripRefsFromContent(text: string): { cleaned: string; refs: string[] } {
   const refs: string[] = [];
-  const cleaned = text.replace(/\[\^ct-\d+(?:\.\d+)?\]/g, (match) => {
+  const cleaned = text.replace(/\[\^cn-\d+(?:\.\d+)?\]/g, (match) => {
     refs.push(match);
     return '';
   });
@@ -372,7 +372,7 @@ export function stripRefsFromContent(text: string): { cleaned: string; refs: str
  *
  * Settled semantics: insertions are kept (accepted), deletions are removed,
  * substitutions keep the new text, highlights keep the text, comments removed.
- * Footnote references `[^ct-N]` or `[^ct-N.M]` are removed.
+ * Footnote references `[^cn-N]` or `[^cn-N.M]` are removed.
  */
 export function stripCriticMarkupWithMap(text: string): SettledMapResult {
   const settled: string[] = [];
@@ -381,11 +381,11 @@ export function stripCriticMarkupWithMap(text: string): SettledMapResult {
   let i = 0;
 
   while (i < text.length) {
-    // Check for footnote ref: [^ct-N] or [^ct-N.M]
-    if (text[i] === '[' && text[i + 1] === '^' && text.startsWith('ct-', i + 2)) {
+    // Check for footnote ref: [^cn-N] or [^cn-N.M]
+    if (text[i] === '[' && text[i + 1] === '^' && text.startsWith('cn-', i + 2)) {
       const closeIdx = text.indexOf(']', i + 2);
       if (closeIdx !== -1
-          && /^\[\^ct-\d+(?:\.\d+)?\]$/.test(text.slice(i, closeIdx + 1))
+          && /^\[\^cn-\d+(?:\.\d+)?\]$/.test(text.slice(i, closeIdx + 1))
           && text[closeIdx + 1] !== ':') {
         markupRanges.push({ rawStart: i, rawEnd: closeIdx + 1 });
         i = closeIdx + 1;
@@ -535,31 +535,31 @@ export function stripCriticMarkupToCommittedWithMap(text: string): CommittedMapR
 
   /**
    * After a CriticMarkup closing delimiter, check for an immediately following
-   * footnote ref like `[^ct-1]` or `[^ct-2.3]` and return the change ID.
+   * footnote ref like `[^cn-1]` or `[^cn-2.3]` and return the change ID.
    * Returns undefined if no ref is found.
    * Also advances `i` past the ref if one is found (via return value — caller
    * must update i).
    */
   function consumeFootnoteRef(pos: number): { id: string; end: number } | undefined {
-    if (text[pos] !== '[' || text[pos + 1] !== '^' || !text.startsWith('ct-', pos + 2)) {
+    if (text[pos] !== '[' || text[pos + 1] !== '^' || !text.startsWith('cn-', pos + 2)) {
       return undefined;
     }
     const closeIdx = text.indexOf(']', pos + 2);
     if (closeIdx === -1) return undefined;
     const candidate = text.slice(pos, closeIdx + 1);
-    if (!/^\[\^ct-\d+(?:\.\d+)?\]$/.test(candidate)) return undefined;
+    if (!/^\[\^cn-\d+(?:\.\d+)?\]$/.test(candidate)) return undefined;
     // Don't consume footnote definitions (followed by ':')
     if (text[closeIdx + 1] === ':') return undefined;
-    const id = text.slice(pos + 2, closeIdx); // e.g. "ct-1"
+    const id = text.slice(pos + 2, closeIdx); // e.g. "cn-1"
     return { id, end: closeIdx + 1 };
   }
 
   while (i < text.length) {
     // Skip footnote refs that appear outside of markup context (inline refs in body)
-    if (text[i] === '[' && text[i + 1] === '^' && text.startsWith('ct-', i + 2)) {
+    if (text[i] === '[' && text[i + 1] === '^' && text.startsWith('cn-', i + 2)) {
       const closeIdx = text.indexOf(']', i + 2);
       if (closeIdx !== -1
-          && /^\[\^ct-\d+(?:\.\d+)?\]$/.test(text.slice(i, closeIdx + 1))
+          && /^\[\^cn-\d+(?:\.\d+)?\]$/.test(text.slice(i, closeIdx + 1))
           && text[closeIdx + 1] !== ':') {
         markupRanges.push({ rawStart: i, rawEnd: closeIdx + 1 });
         i = closeIdx + 1;
@@ -572,7 +572,7 @@ export function stripCriticMarkupToCommittedWithMap(text: string): CommittedMapR
       const twoChar = text[i + 1]! + text[i + 2]!;
 
       if (twoChar === '++') {
-        // Insertion: {++text++}[^ct-N]
+        // Insertion: {++text++}[^cn-N]
         const end = text.indexOf('++}', i + 3);
         if (end !== -1) {
           const constructStart = i;
@@ -604,7 +604,7 @@ export function stripCriticMarkupToCommittedWithMap(text: string): CommittedMapR
       }
 
       if (twoChar === '--') {
-        // Deletion: {--text--}[^ct-N]
+        // Deletion: {--text--}[^cn-N]
         const end = text.indexOf('--}', i + 3);
         if (end !== -1) {
           const constructStart = i;
@@ -635,7 +635,7 @@ export function stripCriticMarkupToCommittedWithMap(text: string): CommittedMapR
       }
 
       if (twoChar === '~~') {
-        // Substitution: {~~old~>new~~}[^ct-N]
+        // Substitution: {~~old~>new~~}[^cn-N]
         const end = text.indexOf('~~}', i + 3);
         if (end !== -1) {
           const arrow = text.indexOf('~>', i + 3);
@@ -720,7 +720,7 @@ export function stripCriticMarkupToCommittedWithMap(text: string): CommittedMapR
  * Finds `target` in `text` using a cascading match:
  *
  * 1. Exact match: `text.indexOf(target)`. Check uniqueness.
- * 1.5. Ref-transparent match: strips `[^ct-N]` refs from both haystack and needle.
+ * 1.5. Ref-transparent match: strips `[^cn-N]` refs from both haystack and needle.
  * 2. Normalized match (if normalizer provided): normalize both, find match,
  *    check uniqueness in normalized space, extract original text.
  * 3. Whitespace-collapsed match: collapse all whitespace runs to single space.
@@ -751,9 +751,9 @@ export function findUniqueMatch(
   }
 
   // Level 1.5: Ref-transparent match (if haystack OR needle contains refs)
-  if (text.includes('[^ct-') || target.includes('[^ct-') || target.includes('[ct-')) {
-    // Strip refs from needle too (agent may have copied [^ct-N] or [ct-N] from view)
-    const cleanTarget = target.replace(/\[\^?ct-\d+(?:\.\d+)?\]/g, '');
+  if (text.includes('[^cn-') || target.includes('[^cn-') || target.includes('[cn-')) {
+    // Strip refs from needle too (agent may have copied [^cn-N] or [cn-N] from view)
+    const cleanTarget = target.replace(/\[\^?cn-\d+(?:\.\d+)?\]/g, '');
     const viewMatch = viewAwareFind(text, cleanTarget);
     if (viewMatch) {
       return {
@@ -855,9 +855,9 @@ export function findUniqueMatch(
         }
 
         // Also expand to cover footnote refs adjacent to the raw range
-        // (footnote refs like [^ct-N] follow CriticMarkup constructs with no gap)
+        // (footnote refs like [^cn-N] follow CriticMarkup constructs with no gap)
         for (const range of markupRanges) {
-          if (range.rawStart === rawEnd && /^\[\^ct-/.test(text.slice(range.rawStart))) {
+          if (range.rawStart === rawEnd && /^\[\^cn-/.test(text.slice(range.rawStart))) {
             rawEnd = range.rawEnd;
           }
         }
@@ -915,9 +915,9 @@ export function findUniqueMatch(
       }
 
       // Also expand to cover footnote refs adjacent to the raw range
-      // (footnote refs like [^ct-N] follow CriticMarkup constructs with no gap)
+      // (footnote refs like [^cn-N] follow CriticMarkup constructs with no gap)
       for (const range of markupRanges) {
-        if (range.rawStart === rawEnd && /^\[\^ct-/.test(text.slice(range.rawStart))) {
+        if (range.rawStart === rawEnd && /^\[\^cn-/.test(text.slice(range.rawStart))) {
           rawEnd = range.rawEnd;
         }
       }
@@ -1045,7 +1045,7 @@ export async function applyProposeChange(params: ProposeChangeParams): Promise<P
 
   // Safety check: prevent L2 logic on L3 text.
   // Cheap pre-check avoids the expensive isL3Format scan for documents without footnotes.
-  if (!isL3 && text.includes('[^ct-') && isL3Format(text)) {
+  if (!isL3 && text.includes('[^cn-') && isL3Format(text)) {
     throw new Error('L3 format detected but level is not 3. Pass level: 3 for L3 text to avoid garbled output.');
   }
 
@@ -1247,7 +1247,7 @@ export function extractLineRange(
 // ─── Footnote placement ─────────────────────────────────────────────────────
 
 /**
- * Appends a footnote block to the document. If existing `[^ct-` footnotes
+ * Appends a footnote block to the document. If existing `[^cn-` footnotes
  * are present outside fenced code blocks, appends after the last such
  * footnote block (including indented continuation lines). Otherwise
  * appends at the end. Footnote definitions inside ``` code blocks are

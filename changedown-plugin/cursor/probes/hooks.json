@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeReadFile": [
+      { "command": "node changedown-plugin/cursor/probes/log-before-read-file.js" }
+    ],
+    "beforeMCPExecution": [
+      { "command": "node changedown-plugin/cursor/probes/log-before-mcp-execution.js" }
+    ],
+    "beforeShellExecution": [
+      { "command": "node changedown-plugin/cursor/probes/log-before-shell-execution.js" }
+    ],
+    "afterFileEdit": [
+      { "command": "node changedown-plugin/cursor/probes/log-after-file-edit.js" }
+    ],
+    "stop": [
+      { "command": "node changedown-plugin/cursor/probes/log-stop.js" }
+    ]
+  }
+}

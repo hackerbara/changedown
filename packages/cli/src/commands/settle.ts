@@ -1,4 +1,4 @@
-import { settleAcceptedChangesOnly, settleRejectedChangesOnly } from '@changetracks/core';
+import { settleAcceptedChangesOnly, settleRejectedChangesOnly } from '@changedown/core';
 
 export interface SettlementResult {
   settledContent: string;

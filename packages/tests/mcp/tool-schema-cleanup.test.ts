@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compactProposeChangeSchema, classicProposeChangeSchema } from '@changetracks/mcp/internals';
+import { compactProposeChangeSchema, classicProposeChangeSchema } from '@changedown/mcp/internals';
 
 describe('propose_change schema: compact mode', () => {
   const props = compactProposeChangeSchema.inputSchema.properties;

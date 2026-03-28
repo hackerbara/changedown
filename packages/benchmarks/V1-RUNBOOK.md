@@ -1,4 +1,4 @@
-<!-- ctrcks.com/v1: tracked -->
+<!-- changedown.com/v1: tracked -->
 # V1 Benchmark Runbook
 
 > Research agent brief for validating the V1 ecology through benchmark runs.
@@ -18,7 +18,7 @@ Compared against existing baselines:
 
 | Surface | What it was | Existing Kimi data |
 |---------|-------------|-------------------|
-| **A** | Raw file tools, no ChangeTracks | task5_v2: 17-21 tools, 4,128-6,702 output tokens |
+| **A** | Raw file tools, no ChangeDown | task5_v2: 17-21 tools, 4,128-6,702 output tokens |
 | **C** | Old compact mode (5 tools, bracket annotations) | task5_v2: 6 tools, 3,435 output tokens |
 
 The core question: **does the V1 ecology make agents better at their tasks than raw editing, while maintaining the efficiency gains that Surface C demonstrated?**
@@ -26,14 +26,14 @@ The core question: **does the V1 ecology make agents better at their tasks than 
 ## Prerequisites
 
 ```bash
-cd /Users/MAC/Coding/changetracks
+cd /Users/MAC/Coding/changedown
 
 # 1. Build everything
 npm run build -w packages/benchmarks
 npm run build:plugin
 
 # 2. Verify MCP server works
-node changetracks-plugin/mcp-server/dist/index.js --help
+node changedown-plugin/mcp-server/dist/index.js --help
 
 # 3. Verify harness works
 node packages/benchmarks/dist/harness/run-full-benchmark.js --help
@@ -126,7 +126,7 @@ These test V1 features that old surfaces couldn't exercise.
 | Change | Impact |
 |--------|--------|
 | Semantic overlap guard rewrite | Only blocks edits overlapping **proposed** changes; settled refs/decided changes no longer block |
-| Ref preservation algorithm | `[^ct-N]` refs transparently preserved through edits |
+| Ref preservation algorithm | `[^cn-N]` refs transparently preserved through edits |
 | First-contact protocol teaching | Editing guide delivered on first `read_tracked_file` call |
 | SKILL.md multi-file guidance | New section on efficient multi-file editing patterns |
 | `reasoning` → `reason` schema fix | All tool schemas standardized |
@@ -194,7 +194,7 @@ All runs verified by subagents reading `after/` workspace snapshots:
 2. **G-task1 significant improvement (-31%)**: 6,104 → 4,211 tokens. SKILL.md multi-file guidance working.
 3. **task5_mixed very efficient**: Both F (2 tools) and G (2 tools) completed with minimal overhead.
 4. **BUG-001 FIXED**: task4 now achieves 4/4 operations correct on both F and G (was 2/4).
-5. **BUG-003 found**: Malformed `{~~...~~}` substitution in F-task5 line 187 (tool-level, under investigation).++}[^ct-2]
+5. **BUG-003 found**: Malformed `{~~...~~}` substitution in F-task5 line 187 (tool-level, under investigation).++}[^cn-2]
 
 ## Post-Hygiene-Fix Sonnet Sweep (2026-02-27)
 
@@ -207,7 +207,7 @@ All runs verified by subagents reading `after/` workspace snapshots:
 
 | Change | Commit | Impact |
 |--------|--------|--------|
-| Strip `[^ct-N]` before hashing | `08fbc19e` | Hash stability when refs added/removed during settlement |
+| Strip `[^cn-N]` before hashing | `08fbc19e` | Hash stability when refs added/removed during settlement |
 | Bounded affected_lines for classic path | `65927d10` | 3 files fixed: file-ops, propose-change, propose-batch |
 | Segment builder for settlement | `d23001e5` | Forward-order assembly prevents compaction duplication |
 | computeAcceptParts/computeRejectParts | `38a2d9ba` | Separated text+ref extraction for segment builder |
@@ -218,7 +218,7 @@ All runs verified by subagents reading `after/` workspace snapshots:
 |---------|------|-------|-----------|---------------|----------|-------|
 | A | task1 | 38 | 34 | 6,685 | 140s | Retry after auth glitch on first attempt |
 | F | task1 | 14 | 8 | 4,056 | 88s | 4 propose + 4 review per doc |
-| G | task1 | 15 | 6 | 2,964 | 51s | Parallel propose+review, 1 re-read |[^ct-4]
+| G | task1 | 15 | 6 | 2,964 | 51s | Parallel propose+review, 1 re-read |[^cn-4]
 | A | task2 | 26 | 21 | 6,860 | 116s | todowrite planning, 7 edits, git commit |
 | F | task2 | 7 | 7 | 3,065 | 77s | 2 batch propose + 1 review cycle |
 | G | task2 | 10 | 11 | 3,123 | 72s | 5 proposes + 1 review, 1 re-read |
@@ -233,7 +233,7 @@ All runs verified by subagents reading `after/` workspace snapshots:
 | G | task5_v2 | 7 | 8 | 2,331 | 61s | Efficient: 4 proposes + 1 review |
 | A | task5_mixed | 25 | 26 | 6,107 | 121s | 22 sequential edits, 2 bash for git |
 | F | task5_mixed | 3 | 4 | 3,692 | 75s | 1 read + 1 batch propose + 1 review — extremely efficient |
-| G | task5_mixed | 2 | 3 | 1,792 | 38s | 1 read + 1 batch propose — most efficient run in sweep | [^ct-9][^ct-8][^ct-7][^ct-6]
+| G | task5_mixed | 2 | 3 | 1,792 | 38s | 1 read + 1 batch propose — most efficient run in sweep | [^cn-9][^cn-8][^cn-7][^cn-6]
 
 ### Verification Summary
 
@@ -248,17 +248,17 @@ All runs verified by subagents reading `after/` workspace snapshots:
 4. **task4 unfair to Surface A**: A had to parse CriticMarkup (15 tools/90s) while F/G used native review tools (4-5 tools/35-37s). task4_git variant now implemented for fair A comparison.
 5. **Surface A baseline is fair for editing tasks**: A's prompt adds git commit overhead, but this is representative of real non-tracked-changes workflow.
 6. **F and G comparable on review tasks (task4)**: Both achieved 4-5 tools in 35-37s. Review is where the tracked-changes model shines.
-7. **Hygiene fixes validated**: No hash mismatches, no oversized affected_lines windows, no compaction duplication across 18 surface runs. [^ct-3]
-[^ct-13]
-### Quality Analysis, Re-runs & task8 Results[^ct-14]
-Detailed analysis: `docs/research/2026-02-27-sonnet-afg-sweep-findings.md`[^ct-15]
-**task4_git** (fair A review): 10 tools/43s vs original 15 tools/90s — 51% fewer tokens when A uses git-diff instead of CriticMarkup parsing.[^ct-16]
-**G-task5_v2 HOSPITALITY FAILURE**: 0/25/6 corrections across 3 runs. Original: agent hallucinated target text, server said "Text not found", agent quit. Rerun 1: 25 fixes with contradictory style conventions. Rerun 2: only 6 of ~22 errors found. Server error message reads like system error, not guidance — agent's rational response is premature abandonment.[^ct-17]
-**G-task3 QUALITY CEILING**: 3/4 on all 3 attempts, each failing a different subtask. Systematic, not variance. 47-tool blowup not reproduced (26, 29 on re-runs).[^ct-18]
-**A-task3 FLAKY**: Original 2.5/4 (CriticMarkup treated as literal), re-runs 4/4 both times. Stochastic — Sonnet sometimes "sees through" CriticMarkup, sometimes doesn't.[^ct-19]
-**task8 (CLEANEST COMPARISON)**: F=31/31 (100%), G=30/31 (96.8%), A=29/31 (93.5%). F caught everything including heading caps and "data are". G: 3 tools/52s. A: 27 tools/173s. No CriticMarkup confound, no multi-author confound. F wins quality, G wins efficiency.[^ct-20]
-**BOTTOM LINE**: F is most reliable (zero failures, 100% on task8). G is most efficient when it works (3 tools/52s on task8) but has variance problems (task5_v2: 0/25/6 across runs, task3: 3/4 ceiling). A is competitive on accuracy but 2.5x slower. The real A disadvantage is efficiency, not quality.[^ct-21]
-**task8 VARIANCE BASELINE (3 runs each)**: Efficiency is rock-stable. G: 3 tools every run (46-52s). F: 7-10 tools (109-123s). A: 25-27 tools (149-173s). Quality: A consistently misses heading caps (29/31). F consistently catches everything (31/31). G catches headings 1/3 runs (29-31/31). Results: `results/sonnet-task8-var1/`, `results/sonnet-task8-var2/`.[^ct-22]
+7. **Hygiene fixes validated**: No hash mismatches, no oversized affected_lines windows, no compaction duplication across 18 surface runs. [^cn-3]
+[^cn-13]
+### Quality Analysis, Re-runs & task8 Results[^cn-14]
+Detailed analysis: `docs/research/2026-02-27-sonnet-afg-sweep-findings.md`[^cn-15]
+**task4_git** (fair A review): 10 tools/43s vs original 15 tools/90s — 51% fewer tokens when A uses git-diff instead of CriticMarkup parsing.[^cn-16]
+**G-task5_v2 HOSPITALITY FAILURE**: 0/25/6 corrections across 3 runs. Original: agent hallucinated target text, server said "Text not found", agent quit. Rerun 1: 25 fixes with contradictory style conventions. Rerun 2: only 6 of ~22 errors found. Server error message reads like system error, not guidance — agent's rational response is premature abandonment.[^cn-17]
+**G-task3 QUALITY CEILING**: 3/4 on all 3 attempts, each failing a different subtask. Systematic, not variance. 47-tool blowup not reproduced (26, 29 on re-runs).[^cn-18]
+**A-task3 FLAKY**: Original 2.5/4 (CriticMarkup treated as literal), re-runs 4/4 both times. Stochastic — Sonnet sometimes "sees through" CriticMarkup, sometimes doesn't.[^cn-19]
+**task8 (CLEANEST COMPARISON)**: F=31/31 (100%), G=30/31 (96.8%), A=29/31 (93.5%). F caught everything including heading caps and "data are". G: 3 tools/52s. A: 27 tools/173s. No CriticMarkup confound, no multi-author confound. F wins quality, G wins efficiency.[^cn-20]
+**BOTTOM LINE**: F is most reliable (zero failures, 100% on task8). G is most efficient when it works (3 tools/52s on task8) but has variance problems (task5_v2: 0/25/6 across runs, task3: 3/4 ceiling). A is competitive on accuracy but 2.5x slower. The real A disadvantage is efficiency, not quality.[^cn-21]
+**task8 VARIANCE BASELINE (3 runs each)**: Efficiency is rock-stable. G: 3 tools every run (46-52s). F: 7-10 tools (109-123s). A: 25-27 tools (149-173s). Quality: A consistently misses heading caps (29/31). F consistently catches everything (31/31). G catches headings 1/3 runs (29-31/31). Results: `results/sonnet-task8-var1/`, `results/sonnet-task8-var2/`.[^cn-22]
 ### Automated Quality Baselines (task8, Sonnet 4.5, 3 runs each)
 
 Scored by `verify.ts` against 32 assertion patterns (8 spelling, 3 grammar, 3 redundancy, 4 version, 10 capitalization, 4 formatting).
@@ -280,8 +280,8 @@ Four matching transparency fixes shipped (confusables removal, footnote ref form
 | Fix | What It Does |
 |-----|--------------|
 | Confusables removal | NFKC-only normalization. Eliminates identity-substitution spirals (en-dash → en-dash). |
-| Footnote ref format | Review renderer emits `[^ct-N]` (with caret) instead of `[ct-N]`. |
-| Ref-transparent matching | `findUniqueMatch()` strips `[^ct-N]` anchors before searching. Identity-substitution guard. |
+| Footnote ref format | Review renderer emits `[^cn-N]` (with caret) instead of `[ct-N]`. |
+| Ref-transparent matching | `findUniqueMatch()` strips `[^cn-N]` anchors before searching. Identity-substitution guard. |
 | Content-zone-only matching | `findUniqueMatch()` truncates search before footnote section. |
 
 #### Results: Before vs After
@@ -323,8 +323,8 @@ During this analysis, two bugs were found in `verify.ts`:
 **Key observation:** No tool failures contributed to misses. All 7 proposed changes applied successfully. The 5 missed corrections were never attempted — pure detection gap, not matching or protocol friction.
 
 Full analysis: `docs/research/2026-03-01-post-matching-transparency-benchmark-results.md`
-[^ct-24]
-### Phase 3: New Review Tasks >>Add automated quality baselines from verify.ts validation of task8 across 3 variance runs[^ct-23]
+[^cn-24]
+### Phase 3: New Review Tasks >>Add automated quality baselines from verify.ts validation of task8 across 3 variance runs[^cn-23]
 Design new fixtures specifically for V1 features:
 - **Task 6 (triage)**: 8+ proposals from 3 authors, agent must accept/reject/amend each
 - **Task 7 (amend cycle)**: Agent proposes, receives request_changes, must amend
@@ -396,74 +396,74 @@ After each run:
 | Duration | 134s |
 
 
-[^ct-1]: ai:claude-opus-4.6 | 2026-02-24 | creation | proposed
+[^cn-1]: ai:claude-opus-4.6 | 2026-02-24 | creation | proposed
     ai:claude-opus-4.6 2026-02-24: File created
 
-[^ct-2]: @ai:claude-opus-4.6 | 2026-02-26 | ins | proposed
+[^cn-2]: @ai:claude-opus-4.6 | 2026-02-26 | ins | proposed
     @ai:claude-opus-4.6 2026-02-26: Add post-improvements validation results from 2026-02-26 benchmark re-run
 
-[^ct-3]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
+[^cn-3]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
     @ai:claude-opus-4.6 2026-02-27: Add benchmark section for post-hygiene-fix Sonnet A/F/G sweep
     approved: @ai:claude-opus-4.6 2026-02-27 "Adds benchmark section for the 2026-02-27 Sonnet sweep"
 
-[^ct-4]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
+[^cn-4]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
     @ai:claude-opus-4.6 2026-02-27: Record Batch 1 task1 results
     approved: @ai:claude-opus-4.6 2026-02-27 "Batch 1 task1 results verified from harness output"
 
-[^ct-6]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
+[^cn-6]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
     @ai:claude-opus-4.6 2026-02-27: Record Batch 2 results, update remaining batch placeholders
     approved: @ai:claude-opus-4.6 2026-02-27 "Batch 2 task2 results verified from harness output"
 
-[^ct-7]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
+[^cn-7]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
     @ai:claude-opus-4.6 2026-02-27: Record Batch 3 task3 results. G-task3 regressed badly - 47 tools, 411s, propose-reread spiral on restructure task
     approved: @ai:claude-opus-4.6 2026-02-27 "Batch 3 task3 results recorded from harness output"
 
-[^ct-8]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
+[^cn-8]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
     @ai:claude-opus-4.6 2026-02-27: Record Batch 4 task4 results. F and G both nailed the review task: 4 tools, 35-37s vs A's 15 tools, 90s
     approved: @ai:claude-opus-4.6 2026-02-27 "Batch 4 task4 results verified"
 
-[^ct-9]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
+[^cn-9]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "Batch 5 (task5_v2) results verified from harness output. Replacing placeholder with actual metrics."
 
-[^ct-10]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
+[^cn-10]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "Batch 6 task5_mixed results verified from harness output."
 
-[^ct-11]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
+[^cn-11]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "Key observations synthesized from all 18 surface runs across 6 tasks."
 
-[^ct-13]: @ai:claude-opus-4.6 | 2026-02-27 | ins | rejected
+[^cn-13]: @ai:claude-opus-4.6 | 2026-02-27 | ins | rejected
     rejected: @ai:claude-opus-4.6 2026-02-27 "Will use research doc for detailed findings instead"
 
-[^ct-14]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
+[^cn-14]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "Section header for quality findings"
 
-[^ct-15]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
+[^cn-15]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "Link to detailed research doc"
 
-[^ct-16]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
+[^cn-16]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "task4_git summary line"
 
-[^ct-17]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
+[^cn-17]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "G-task5_v2 hospitality failure summary"
 
-[^ct-18]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
+[^cn-18]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "G-task3 ceiling finding"
 
-[^ct-19]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
+[^cn-19]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "A-task3 flakiness finding"
 
-[^ct-20]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
+[^cn-20]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "task8 findings summary"
 
-[^ct-21]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
+[^cn-21]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "Bottom line summary"
 
-[^ct-22]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
+[^cn-22]: @ai:claude-opus-4.6 | 2026-02-27 | ins | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "task8 variance baseline data from 2 additional runs"
 
-[^ct-23]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
+[^cn-23]: @ai:claude-opus-4.6 | 2026-02-27 | sub | accepted
     approved: @ai:claude-opus-4.6 2026-02-27 "Adds verified quality baselines from automated scoring"
 
-[^ct-24]: @ai:claude-opus-4.6 | 2026-03-01 | ins | accepted
+[^cn-24]: @ai:claude-opus-4.6 | 2026-03-01 | ins | accepted
     @ai:claude-opus-4.6 2026-03-01T17:54:57Z: @ai:claude-opus-4.6: Insert post-matching-transparency benchmark validation section with results, verify bug discovery, corrected historical scores, and quality gap analysis 
     approved: @ai:claude-opus-4.6 2026-03-01T17:55:12Z "Insert post-matching-transparency benchmark section with verify bug discovery, corrected scores, and quality gap analysis"

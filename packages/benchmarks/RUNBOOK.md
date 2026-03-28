@@ -89,7 +89,7 @@ Task 4 has no Surface A variant (raw editing can't do accept/reject/amend on Cri
 ### Prerequisites
 
 ```bash
-cd /Users/MAC/Coding/changetracks
+cd /Users/MAC/Coding/changedown
 
 # Build the harness
 npm run build -w packages/benchmarks
@@ -98,7 +98,7 @@ npm run build -w packages/benchmarks
 npm run build:plugin
 
 # Verify sc CLI works
-{~~node changetracks-plugin/mcp-server/dist/cli.js --help
+{~~node changedown-plugin/mcp-server/dist/cli.js --help
 ```
 
 ### Harness path fix (REQUIRED)
@@ -115,10 +115,10 @@ const BENCHMARK_FIXTURE_ROOT = path.join(process.cwd(), "packages", "benchmarks"
 
 Then rebuild: `npm run build -w packages/benchmarks`
 
-### Running individual cells~>node changetracks-plugin/mcp-server/dist/cli.js --help
+### Running individual cells~>node changedown-plugin/mcp-server/dist/cli.js --help
 ```
 
-### Running individual cells~~}[^ct-2.1]
+### Running individual cells~~}[^cn-2.1]
 
 The harness uses OpenCode CLI. Environment variables control what runs:
 
@@ -143,27 +143,27 @@ node packages/benchmarks/dist/harness/run-full-benchmark.js
 **The harness does NOT yet support Surface D workspace injection.** You need to modify `workspace.ts` to handle Surface D:
 
 Surface D workspaces need:
-1. `.changetracks/config.toml` — YES (same as C, `sc` CLI reads this)
+1. `.changedown/config.toml` — YES (same as C, `sc` CLI reads this)
 2. `.opencode/opencode.json` with MCP server — NO (the whole point is no MCP)
 3. The `sc` CLI binary accessible — YES, via a shell alias or PATH entry
 
-The simplest approach: for Surface D, inject `.changetracks/config.toml` (same as C) but skip the `.opencode/opencode.json` MCP config. Instead, inject a shell alias in the workspace:
+The simplest approach: for Surface D, inject `.changedown/config.toml` (same as C) but skip the `.opencode/opencode.json` MCP config. Instead, inject a shell alias in the workspace:
 
 ```bash
 # In the temp workspace, create a .bashrc or .env that aliases sc:
-echo 'alias sc="node /Users/MAC/Coding/changetracks/changetracks-plugin/mcp-server/dist/cli.js"' > .bash_aliases
+echo 'alias sc="node /Users/MAC/Coding/changedown/changedown-plugin/mcp-server/dist/cli.js"' > .bash_aliases
 ```
 
 Or modify the Surface D prompt to include the full binary path:
 ```
-Run `node /path/to/changetracks-plugin/mcp-server/dist/cli.js read <file>` ...
+Run `node /path/to/changedown-plugin/mcp-server/dist/cli.js read <file>` ...
 ```
 
 The harness changes needed are small — add a `surface === "D"` branch in `run-full-benchmark.ts` that:
 - Sets `protocolMode: "compact"` (same at/op DSL)
-- Sets `injectChangeTracks: true` (for config.toml)
+- Sets `injectChangeDown: true` (for config.toml)
 - Adds `--project-dir` handling or shell alias
-- Sets `disableChangeTracksPlugin: true` (no MCP server in OpenCode)
+- Sets `disableChangeDownPlugin: true` (no MCP server in OpenCode)
 
 ### Running a batch
 
@@ -231,7 +231,7 @@ After completing a phase, write a brief findings note with:
 
 **Note:** D-task5 found only 35/58 changes (60% vs C's 100%). See Results Summary below.~>| **D** | **4-6** | **5-7** | **1,337-2,471** | **75,582-123,931** | **36-47s** |
 
-**Note:** D-task5 shows 23% variance: 19-35 edits (61-113% vs C's 31), mean 27 (87%). Speed-thoroughness tradeoff.~~}[^ct-4.2]~~}[^ct-3.1]
+**Note:** D-task5 shows 23% variance: 19-35 edits (61-113% vs C's 31), mean 27 (87%). Speed-thoroughness tradeoff.~~}[^cn-4.2]~~}[^cn-3.1]
 
 {~~### Task 1 (rename) — Canonical v2
 
@@ -249,7 +249,7 @@ After completing a phase, write a brief findings note with:
 | C | 9 | 4 | 3,497 | 57,633 | 63s |
 | **D** | **10** | **7** | **3,405** | **134,521** | **70s** |
 
-**Note:** D-task1 was 11% slower than C-task1 (multi-file coordination overhead).~~}[^ct-3.2]
+**Note:** D-task1 was 11% slower than C-task1 (multi-file coordination overhead).~~}[^cn-3.2]
 
 {~~### Task 5 Outcome-only (no tool instructions)
 
@@ -265,7 +265,7 @@ After completing a phase, write a brief findings note with:
 | C | 9 | 8 | 4,047 | 171,635 | 85s |
 | **D** | **29** | **30** | **7,133** | **1,027,451** | **150s** |
 
-**Note:** D without instructions degraded 305% (37s → 150s). Instructions > Environment.~~}[^ct-3.3]
+**Note:** D without instructions degraded 305% (37s → 150s). Instructions > Environment.~~}[^cn-3.3]
 
 {~~{~~## Known Issues
 
@@ -280,8 +280,8 @@ After completing a phase, write a brief findings note with:
 3. **OpenCode runner only** — Harness uses `opencode run --format json`. For Claude Code or other runners, would need a new runner implementation.
 4. **Single runs** — All results are single-run. Agent behavior is stochastic. If a result looks anomalous, re-run before concluding.
 5. **No correctness scoring** — No automated golden-file comparison. Manual spot-check required.
-6. 🔴 **CRITICAL BUG**: Accept operation deletes footnotes instead of updating status — See BUG_REPORT.md for details~~}[^ct-3.4]
-++}[^ct-1]~>## Known Issues
+6. 🔴 **CRITICAL BUG**: Accept operation deletes footnotes instead of updating status — See BUG_REPORT.md for details~~}[^cn-3.4]
+++}[^cn-1]~>## Known Issues
 
 1. ✅ ~~**Fixture path stale in harness**~~ — FIXED in commit 2ae273b
 2. ✅ ~~**Surface D workspace setup not implemented**~~ — FIXED in commits 817cc23, e0320e0
@@ -298,7 +298,7 @@ After completing a phase, write a brief findings note with:
 
 ---
 
-## Results Summary~~}[^ct-4.1]
+## Results Summary~~}[^cn-4.1]
 
 **Last Updated:** 2026-02-16
 **Status:** Phases 1-4 complete (19 benchmark runs)
@@ -434,20 +434,20 @@ See `BUG_REPORT.md` for complete details.
 6. **Optimize prompts**: CLI-specific prompt engineering for better agent patterns
 
 **Conclusion:** The benchmark successfully filled the test matrix and provided deep insights into surface tradeoffs. Surface D shows promise but results are preliminary — refinement of testing environment and CLI implementation needed to unlock full potential.
-++}[^ct-1]~~}[^ct-3.5]
+++}[^cn-1]~~}[^cn-3.5]
 
-[^ct-1]: @ai:claude-opus-4.6 | 2026-02-16 | ins | proposed
+[^cn-1]: @ai:claude-opus-4.6 | 2026-02-16 | ins | proposed
 
-[^ct-2]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
-[^ct-2.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-2]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
+[^cn-2.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
 
-[^ct-3]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
-[^ct-3.5]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
-[^ct-3.4]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
-[^ct-3.3]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
-[^ct-3.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
-[^ct-3.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-3]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
+[^cn-3.5]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-3.4]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-3.3]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-3.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-3.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
 
-[^ct-4]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
-[^ct-4.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
-[^ct-4.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-4]: @ai:claude-opus-4.6 | 2026-02-16 | group | proposed
+[^cn-4.2]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed
+[^cn-4.1]: @ai:claude-opus-4.6 | 2026-02-16 | sub | proposed

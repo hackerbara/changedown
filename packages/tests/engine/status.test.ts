@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeStatus } from 'changetracks/internals';
+import { computeStatus } from 'changedown/internals';
 
 describe('computeStatus', () => {
   it('returns all zeros for clean text', () => {
@@ -18,11 +18,11 @@ describe('computeStatus', () => {
 
   it('counts mixed accepted and rejected changes via footnotes', () => {
     const content = [
-      'Hello {++world++}[^ct-1] and {--goodbye--}[^ct-2].',
+      'Hello {++world++}[^cn-1] and {--goodbye--}[^cn-2].',
       '',
-      '[^ct-1]: @alice | 2026-02-01 | ins | accepted',
+      '[^cn-1]: @alice | 2026-02-01 | ins | accepted',
       '    reason: added greeting',
-      '[^ct-2]: @bob | 2026-02-02 | del | rejected',
+      '[^cn-2]: @bob | 2026-02-02 | del | rejected',
       '    reason: keep farewell',
     ].join('\n');
     const result = computeStatus(content);

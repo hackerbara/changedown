@@ -50,7 +50,7 @@ Feature: H1 - Policy Engine
 
   # ── MCP Call Evaluation ──
 
-  Scenario: ChangeTracks MCP read tools always pass through
+  Scenario: ChangeDown MCP read tools always pass through
     When I evaluate an MCP call "read_tracked_file" with no author
     Then the policy action is "allow"
 

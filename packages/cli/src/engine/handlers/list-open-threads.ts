@@ -1,14 +1,14 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { CriticMarkupParser } from '@changetracks/core';
+import { CriticMarkupParser } from '@changedown/core';
 import { errorResult } from '../shared/error-result.js';
 import { optionalStrArg } from '../args.js';
-import { isFileInScope, type ChangeTracksConfig } from '../config.js';
+import { isFileInScope, type ChangeDownConfig } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
 import { toRelativePath } from '../path-utils.js';
 import { SessionState } from '../state.js';
 
-const TRACKING_HEADER_TRACKED = '<!-- ctrcks.com/v1: tracked -->';
+const TRACKING_HEADER_TRACKED = '<!-- changedown.com/v1: tracked -->';
 const VALID_STATUSES = ['proposed', 'accepted', 'rejected'] as const;
 
 /**
@@ -73,7 +73,7 @@ async function hasTrackingHeader(filePath: string): Promise<boolean> {
  */
 async function collectTrackedMdFiles(
   dirPath: string,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
   projectDir: string
 ): Promise<string[]> {
   const out: string[] = [];
@@ -106,7 +106,7 @@ async function collectTrackedMdFiles(
  * If directory: scans for .md files, quick-checks for tracking header, parses only tracked files, aggregates results.
  * Each result includes `file` so the caller knows which file each change came from.
  *
- * Uses @changetracks/core's CriticMarkupParser for footnote parsing.
+ * Uses @changedown/core's CriticMarkupParser for footnote parsing.
  *
  * Returns an array of changes with metadata, filtered by status (default proposed) and optional author.
  */
@@ -136,7 +136,7 @@ export async function handleListOpenThreads(
         if (!isFileInScope(resolvedPath, config, projectDir)) {
           return errorResult(
             `File is not in scope for tracking: "${resolvedPath}". ` +
-              'Check .changetracks/config.toml include/exclude patterns.'
+              'Check .changedown/config.toml include/exclude patterns.'
           );
         }
         filesToScan = [resolvedPath];

@@ -10,7 +10,7 @@
 
 import { Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 
 // ── Then: no error notification ──────────────────────────────────────
 
@@ -23,7 +23,7 @@ import type { ChangeTracksWorld } from './world';
 Then(
     'no error notification appeared',
     { timeout: 8000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Wait a moment for any notification to potentially appear
         await this.page.waitForTimeout(1500);

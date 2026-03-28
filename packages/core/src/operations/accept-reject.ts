@@ -12,7 +12,7 @@ export interface AcceptRejectParts {
   offset: number;
   length: number;
   text: string;   // Content without footnote ref
-  refId: string;  // Footnote ID (e.g. 'ct-1') or '' if no ref
+  refId: string;  // Footnote ID (e.g. 'cn-1') or '' if no ref
 }
 
 export function computeAcceptParts(change: ChangeNode): AcceptRejectParts {

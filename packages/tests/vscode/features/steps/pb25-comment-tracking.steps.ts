@@ -4,7 +4,7 @@
  * TIER: @slow (Playwright + VS Code Electron)
  *
  * These steps exercise the REAL addComment() code path in controller.ts
- * by invoking the "ChangeTracks: Insert Comment" command via the command palette
+ * by invoking the "ChangeDown: Insert Comment" command via the command palette
  * and interacting with the VS Code Quick Input widget. This is critical for
  * PB-25 because the bug was in addComment() not setting isApplyingTrackedEdit,
  * which caused onDidChangeTextDocument to wrap footnote edits in {++...++}.
@@ -23,7 +23,7 @@ import { strict as assert } from 'assert';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import { getOrCreateInstance } from './world';
 import {
     launchWithJourneyFixture,
@@ -36,7 +36,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const FIXTURE_NAME = 'tracking-mode-test.md';
-const PANEL_STATE_PATH = path.join(os.tmpdir(), 'changetracks-test-state.json');
+const PANEL_STATE_PATH = path.join(os.tmpdir(), 'changedown-test-state.json');
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -51,7 +51,7 @@ async function isTrackingEnabled(page: import('playwright').Page): Promise<boole
     // Dismiss any open dialogs before querying
     await page.keyboard.press('Escape');
     await page.waitForTimeout(200);
-    await executeCommandViaBridge(page, 'changetracks._testQueryPanelState');
+    await executeCommandViaBridge(page, 'changedown._testQueryPanelState');
     await page.waitForTimeout(600);
     try {
         if (!fs.existsSync(PANEL_STATE_PATH)) return null;
@@ -76,7 +76,7 @@ async function isTrackingEnabled(page: import('playwright').Page): Promise<boole
 async function ensureTrackingEnabled(page: import('playwright').Page): Promise<void> {
     const tracking = await isTrackingEnabled(page);
     if (tracking === false || tracking === null) {
-        await executeCommandViaBridge(page, 'ChangeTracks: Toggle Tracking');
+        await executeCommandViaBridge(page, 'ChangeDown: Toggle Tracking');
         await page.waitForTimeout(500);
     }
     // Poll for tracking state confirmation with timeout.
@@ -103,7 +103,7 @@ async function ensureTrackingEnabled(page: import('playwright').Page): Promise<v
  * starting state regardless of what previous scenarios left behind.
  *
  * The fixture "tracking-mode-test.md" contains:
- *   <!-- ctrcks.com/v1: tracked -->
+ *   <!-- changedown.com/v1: tracked -->
  *   # Tracking Mode Test
  *
  *   This is a clean document for testing tracking mode.
@@ -112,7 +112,7 @@ async function ensureTrackingEnabled(page: import('playwright').Page): Promise<v
 Given(
     'a fresh tracking-mode editor with the fixture content',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         // 1. Get or reuse the shared VS Code instance
         this.fixtureFile = FIXTURE_NAME;
         this.instance = await getOrCreateInstance(
@@ -148,13 +148,13 @@ Given(
         }
 
         // Reset via bridge command (runs in extension host, suppresses tracking)
-        const inputPath = path.join(os.tmpdir(), 'changetracks-test-reset-input.json');
+        const inputPath = path.join(os.tmpdir(), 'changedown-test-reset-input.json');
         fs.writeFileSync(inputPath, JSON.stringify({ content: fixtureContent }));
-        await executeCommandViaBridge(this.page!, 'ChangeTracks: Test Reset Document');
+        await executeCommandViaBridge(this.page!, 'ChangeDown: Test Reset Document');
         await this.page!.waitForTimeout(500);
 
         // Verify reset succeeded
-        const resultPath = path.join(os.tmpdir(), 'changetracks-test-reset.json');
+        const resultPath = path.join(os.tmpdir(), 'changedown-test-reset.json');
         if (fs.existsSync(resultPath)) {
             const result = JSON.parse(fs.readFileSync(resultPath, 'utf8'));
             assert.ok(result.ok, `Failed to reset document: ${result.error}`);
@@ -174,7 +174,7 @@ Given(
 // ---------------------------------------------------------------------------
 
 /**
- * Select text in the editor, invoke the real "ChangeTracks: Insert Comment"
+ * Select text in the editor, invoke the real "ChangeDown: Insert Comment"
  * command via the command palette, type comment text into the Quick Input
  * widget, and submit. This exercises controller.addComment() including the
  * isApplyingTrackedEdit guard that prevents PB-25.
@@ -182,7 +182,7 @@ Given(
  * The flow:
  *   1. Use _testSelectText bridge command to find `targetText` and set editor selection
  *   2. Dismiss any stale overlays (Escape)
- *   3. Open command palette and execute "ChangeTracks: Insert Comment"
+ *   3. Open command palette and execute "ChangeDown: Insert Comment"
  *   4. Wait for Quick Input widget to appear (.quick-input-widget visible)
  *   5. Type comment text into the Quick Input input field
  *   6. Press Enter to submit
@@ -191,15 +191,15 @@ Given(
 When(
     'I invoke Add Comment on selection {string} with text {string}',
     { timeout: 30000 },
-    async function (this: ChangeTracksWorld, targetText: string, commentText: string) {
+    async function (this: ChangeDownWorld, targetText: string, commentText: string) {
         assert.ok(this.page, 'Page not available');
 
         // 1. Find target text and select it via bridge command
         //    (replaces globalThis.monaco which is unavailable in VS Code 1.109+)
-        const selectInputPath = path.join(os.tmpdir(), 'changetracks-test-select-text-input.json');
-        const selectResultPath = path.join(os.tmpdir(), 'changetracks-test-select-text.json');
+        const selectInputPath = path.join(os.tmpdir(), 'changedown-test-select-text-input.json');
+        const selectResultPath = path.join(os.tmpdir(), 'changedown-test-select-text.json');
         fs.writeFileSync(selectInputPath, JSON.stringify({ target: targetText }));
-        await executeCommandViaBridge(this.page!, 'changetracks._testSelectText');
+        await executeCommandViaBridge(this.page!, 'changedown._testSelectText');
         await this.page!.waitForTimeout(600);
 
         // Poll for result with timeout
@@ -225,11 +225,11 @@ When(
         await this.page!.keyboard.press('Escape');
         await this.page!.waitForTimeout(200);
 
-        // 3. Execute "ChangeTracks: Insert Comment" via command palette.
+        // 3. Execute "ChangeDown: Insert Comment" via command palette.
         //    executeCommand opens the palette, types the command name, and presses Enter.
         //    After the command runs, addComment() calls showInputBox() which opens
         //    the Quick Input widget.
-        await executeCommand(this.page!, 'ChangeTracks: Insert Comment');
+        await executeCommand(this.page!, 'ChangeDown: Insert Comment');
 
         // 4. Wait for the Quick Input widget to become visible.
         //    VS Code renders showInputBox() as a .quick-input-widget element.
@@ -269,7 +269,7 @@ When(
 When(
     'I invoke Add Comment at cursor with text {string}',
     { timeout: 30000 },
-    async function (this: ChangeTracksWorld, commentText: string) {
+    async function (this: ChangeDownWorld, commentText: string) {
         assert.ok(this.page, 'Page not available');
 
         // Dismiss any stale overlays and focus editor
@@ -278,8 +278,8 @@ When(
         await this.page!.click('.monaco-editor .view-lines').catch(() => {});
         await this.page!.waitForTimeout(200);
 
-        // Execute "ChangeTracks: Insert Comment" via command palette
-        await executeCommand(this.page!, 'ChangeTracks: Insert Comment');
+        // Execute "ChangeDown: Insert Comment" via command palette
+        await executeCommand(this.page!, 'ChangeDown: Insert Comment');
 
         // Wait for Quick Input widget
         try {

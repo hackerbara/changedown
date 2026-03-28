@@ -1,5 +1,5 @@
 /**
- * @fast tier step definitions for LV1 -- ct-ID lifecycle viewer.
+ * @fast tier step definitions for LV1 -- cn-ID lifecycle viewer.
  *
  * Tests the thread-building logic as pure functions (no VS Code Comment API).
  * Parses document text with CriticMarkupParser, then builds ThreadData[]
@@ -8,10 +8,10 @@
 
 import { Given, When, Then, Before } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { CriticMarkupParser } from '@changetracks/core';
-import { buildThreadDataForChanges } from 'changetracks-vscode/internals';
-import type { CommentData, ThreadData } from 'changetracks-vscode/internals';
-import type { ChangeTracksWorld } from './world';
+import { CriticMarkupParser } from '@changedown/core';
+import { buildThreadDataForChanges } from 'changedown-vscode/internals';
+import type { CommentData, ThreadData } from 'changedown-vscode/internals';
+import type { ChangeDownWorld } from './world';
 
 // Re-export types and builder so other step files can import them
 export type { CommentData, ThreadData };
@@ -20,7 +20,7 @@ export { buildThreadDataForChanges };
 // ── Extend World with lifecycle viewer state ────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         lifecycleThreads?: ThreadData[];
         lifecycleDocText?: string;
         lifecycleViewMode?: string;
@@ -29,7 +29,7 @@ declare module './world' {
 
 // ── Lifecycle ───────────────────────────────────────────────────────
 
-Before({ tags: '@fast and (@LV1 or @LV7)' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and (@LV1 or @LV7)' }, function (this: ChangeDownWorld) {
     this.lifecycleThreads = undefined;
     this.lifecycleDocText = undefined;
     this.lifecycleViewMode = undefined;
@@ -37,11 +37,11 @@ Before({ tags: '@fast and (@LV1 or @LV7)' }, function (this: ChangeTracksWorld) 
 
 // ── Step definitions ────────────────────────────────────────────────
 
-Given('a lifecycle document with text:', function (this: ChangeTracksWorld, docString: string) {
+Given('a lifecycle document with text:', function (this: ChangeDownWorld, docString: string) {
     this.lifecycleDocText = docString;
 });
 
-When('I build comment threads', async function (this: ChangeTracksWorld) {
+When('I build comment threads', async function (this: ChangeDownWorld) {
     assert.ok(this.lifecycleDocText !== undefined, 'Document text not set — call "a document with text:" first');
     const parser = new CriticMarkupParser();
     const vdoc = parser.parse(this.lifecycleDocText);
@@ -49,20 +49,20 @@ When('I build comment threads', async function (this: ChangeTracksWorld) {
     this.lifecycleThreads = buildThreadDataForChanges(changes, this.lifecycleViewMode);
 });
 
-Then('a thread exists for {string}', function (this: ChangeTracksWorld, threadId: string) {
+Then('a thread exists for {string}', function (this: ChangeDownWorld, threadId: string) {
     assert.ok(this.lifecycleThreads, 'No threads built — call "I build comment threads" first');
     const thread = this.lifecycleThreads.find(t => t.id === threadId);
     assert.ok(thread, `No thread found for id "${threadId}". Available: ${this.lifecycleThreads.map(t => t.id).join(', ') || '(none)'}`);
 });
 
-Then('the thread label is {string}', function (this: ChangeTracksWorld, expectedLabel: string) {
+Then('the thread label is {string}', function (this: ChangeDownWorld, expectedLabel: string) {
     assert.ok(this.lifecycleThreads, 'No threads built');
     assert.ok(this.lifecycleThreads.length > 0, 'No threads exist');
     const thread = this.lifecycleThreads[0];
     assert.strictEqual(thread.label, expectedLabel, `Expected label "${expectedLabel}", got "${thread.label}"`);
 });
 
-Then('the first comment body contains {string}', function (this: ChangeTracksWorld, expectedText: string) {
+Then('the first comment body contains {string}', function (this: ChangeDownWorld, expectedText: string) {
     assert.ok(this.lifecycleThreads, 'No threads built');
     assert.ok(this.lifecycleThreads.length > 0, 'No threads exist');
     const thread = this.lifecycleThreads[0];
@@ -74,12 +74,12 @@ Then('the first comment body contains {string}', function (this: ChangeTracksWor
     );
 });
 
-Then('no threads exist', async function (this: ChangeTracksWorld) {
+Then('no threads exist', async function (this: ChangeDownWorld) {
     assert.ok(this.lifecycleThreads, 'No threads built');
     assert.strictEqual(this.lifecycleThreads.length, 0, `Expected 0 threads, got ${this.lifecycleThreads.length}`);
 });
 
-Then('the thread has {int} comments', function (this: ChangeTracksWorld, expectedCount: number) {
+Then('the thread has {int} comments', function (this: ChangeDownWorld, expectedCount: number) {
     assert.ok(this.lifecycleThreads, 'No threads built');
     assert.ok(this.lifecycleThreads.length > 0, 'No threads exist');
     const thread = this.lifecycleThreads[0];
@@ -90,7 +90,7 @@ Then('the thread has {int} comments', function (this: ChangeTracksWorld, expecte
     );
 });
 
-Then('comment {int} author is {string}', function (this: ChangeTracksWorld, commentIndex: number, expectedAuthor: string) {
+Then('comment {int} author is {string}', function (this: ChangeDownWorld, commentIndex: number, expectedAuthor: string) {
     assert.ok(this.lifecycleThreads, 'No threads built');
     assert.ok(this.lifecycleThreads.length > 0, 'No threads exist');
     const thread = this.lifecycleThreads[0];
@@ -101,7 +101,7 @@ Then('comment {int} author is {string}', function (this: ChangeTracksWorld, comm
     assert.strictEqual(thread.comments[idx].author, expectedAuthor, `Comment ${commentIndex}: expected author "${expectedAuthor}", got "${thread.comments[idx].author}"`);
 });
 
-Then('comment {int} body contains {string}', function (this: ChangeTracksWorld, commentIndex: number, expectedText: string) {
+Then('comment {int} body contains {string}', function (this: ChangeDownWorld, commentIndex: number, expectedText: string) {
     assert.ok(this.lifecycleThreads, 'No threads built');
     assert.ok(this.lifecycleThreads.length > 0, 'No threads exist');
     const thread = this.lifecycleThreads[0];
@@ -113,7 +113,7 @@ Then('comment {int} body contains {string}', function (this: ChangeTracksWorld, 
     );
 });
 
-Then('the last comment body contains {string}', function (this: ChangeTracksWorld, expectedText: string) {
+Then('the last comment body contains {string}', function (this: ChangeDownWorld, expectedText: string) {
     assert.ok(this.lifecycleThreads, 'No threads built');
     assert.ok(this.lifecycleThreads.length > 0, 'No threads exist');
     const thread = this.lifecycleThreads[0];
@@ -125,7 +125,7 @@ Then('the last comment body contains {string}', function (this: ChangeTracksWorl
     );
 });
 
-Then('{int} thread exists', function (this: ChangeTracksWorld, expectedCount: number) {
+Then('{int} thread exists', function (this: ChangeDownWorld, expectedCount: number) {
     assert.ok(this.lifecycleThreads, 'No threads built');
     assert.strictEqual(
         this.lifecycleThreads.length,
@@ -136,11 +136,11 @@ Then('{int} thread exists', function (this: ChangeTracksWorld, expectedCount: nu
 
 // ── LV7: View mode surface visibility ──────────────────────────────
 
-Given('view mode is {string}', function (this: ChangeTracksWorld, mode: string) {
+Given('view mode is {string}', function (this: ChangeDownWorld, mode: string) {
     this.lifecycleViewMode = mode;
 });
 
-Then('{int} threads exist with gutter presence', function (this: ChangeTracksWorld, expectedCount: number) {
+Then('{int} threads exist with gutter presence', function (this: ChangeDownWorld, expectedCount: number) {
     assert.ok(this.lifecycleThreads, 'No threads built');
     assert.strictEqual(
         this.lifecycleThreads.length,
@@ -149,7 +149,7 @@ Then('{int} threads exist with gutter presence', function (this: ChangeTracksWor
     );
 });
 
-Then('no threads are visible', function (this: ChangeTracksWorld) {
+Then('no threads are visible', function (this: ChangeDownWorld) {
     assert.ok(this.lifecycleThreads, 'No threads built');
     assert.strictEqual(
         this.lifecycleThreads.length,

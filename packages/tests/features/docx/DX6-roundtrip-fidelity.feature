@@ -11,9 +11,9 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Insertion round-trip preserves text
     Given CriticMarkup markdown:
       """
-      Text with {++inserted words++}[^ct-1] here.
+      Text with {++inserted words++}[^cn-1] here.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -25,9 +25,9 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Deletion round-trip preserves text
     Given CriticMarkup markdown:
       """
-      Text with {--deleted words--}[^ct-1] here.
+      Text with {--deleted words--}[^cn-1] here.
 
-      [^ct-1]: @alice | 2026-01-15 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -39,9 +39,9 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Substitution round-trip preserves both old and new text
     Given CriticMarkup markdown:
       """
-      Text with {~~old phrase~>new phrase~~}[^ct-1] here.
+      Text with {~~old phrase~>new phrase~~}[^cn-1] here.
 
-      [^ct-1]: @alice | 2026-01-15 | sub | proposed
+      [^cn-1]: @alice | 2026-01-15 | sub | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -54,11 +54,11 @@ Feature: DX6 - Round-trip Fidelity
       """
       # Document
 
-      Has {++insertion++}[^ct-1], {--deletion--}[^ct-2], and {~~sub old~>sub new~~}[^ct-3].
+      Has {++insertion++}[^cn-1], {--deletion--}[^cn-2], and {~~sub old~>sub new~~}[^cn-3].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-15 | del | proposed
-      [^ct-3]: @carol | 2026-01-15 | sub | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-15 | del | proposed
+      [^cn-3]: @carol | 2026-01-15 | sub | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -69,9 +69,9 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Round-trip preserves author names
     Given CriticMarkup markdown:
       """
-      {++text++}[^ct-1]
+      {++text++}[^cn-1]
 
-      [^ct-1]: @alice-chen | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice-chen | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -81,10 +81,10 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Round-trip with multiple authors
     Given CriticMarkup markdown:
       """
-      {++alice text++}[^ct-1] and {--bob text--}[^ct-2].
+      {++alice text++}[^cn-1] and {--bob text--}[^cn-2].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-16 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-16 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -95,10 +95,10 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Round-trip settled mode - only proposed changes survive
     Given CriticMarkup markdown:
       """
-      {++accepted++}[^ct-1] and {++proposed++}[^ct-2].
+      {++accepted++}[^cn-1] and {++proposed++}[^cn-2].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | accepted
-      [^ct-2]: @bob | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | accepted
+      [^cn-2]: @bob | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "settled"
     And I import the exported DOCX file
@@ -130,13 +130,13 @@ Feature: DX6 - Round-trip Fidelity
 
       ## Section One
 
-      Paragraph with {++change++}[^ct-1].
+      Paragraph with {++change++}[^cn-1].
 
       ### Subsection
 
       More text.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -147,9 +147,9 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Empty-content deletion round-trips
     Given CriticMarkup markdown:
       """
-      Text with{----}[^ct-1] more text.
+      Text with{----}[^cn-1] more text.
 
-      [^ct-1]: @alice | 2026-01-15 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export stats show 1 deletion
@@ -160,9 +160,9 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Empty-content insertion round-trips
     Given CriticMarkup markdown:
       """
-      Text with{++++}[^ct-1] more text.
+      Text with{++++}[^cn-1] more text.
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export stats show 1 insertion
@@ -173,9 +173,9 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Comment round-trip preserves text and author
     Given CriticMarkup markdown:
       """
-      Text with {==highlighted==}{>>review this<<}[^ct-1] here.
+      Text with {==highlighted==}{>>review this<<}[^cn-1] here.
 
-      [^ct-1]: @alice | 2026-01-15 | hl | proposed
+      [^cn-1]: @alice | 2026-01-15 | hl | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export stats show 1 comments
@@ -187,9 +187,9 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Zero-length comment round-trip
     Given CriticMarkup markdown:
       """
-      Text here.{>>standalone note<<}[^ct-1]
+      Text here.{>>standalone note<<}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | hl | proposed
+      [^cn-1]: @alice | 2026-01-15 | hl | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export stats show 1 comments
@@ -201,10 +201,10 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Non-adjacent del+ins not merged into substitution
     Given CriticMarkup markdown:
       """
-      Word{--old--}[^ct-1] text {++new++}[^ct-2] here.
+      Word{--old--}[^cn-1] text {++new++}[^cn-2] here.
 
-      [^ct-1]: @alice | 2026-01-15 | del | proposed
-      [^ct-2]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | del | proposed
+      [^cn-2]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -217,10 +217,10 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Adjacent same-type changes stay separate
     Given CriticMarkup markdown:
       """
-      Text{--first--}[^ct-1]{--second--}[^ct-2] here.
+      Text{--first--}[^cn-1]{--second--}[^cn-2] here.
 
-      [^ct-1]: @alice | 2026-01-15 | del | proposed
-      [^ct-2]: @alice | 2026-01-15 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | del | proposed
+      [^cn-2]: @alice | 2026-01-15 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -230,11 +230,11 @@ Feature: DX6 - Round-trip Fidelity
   Scenario: Compound merging — adjacent insertions stay separate even after del+ins merge
     Given CriticMarkup markdown:
       """
-      Text{--removed--}[^ct-1]{++first++}[^ct-2]{++second++}[^ct-3] here.
+      Text{--removed--}[^cn-1]{++first++}[^cn-2]{++second++}[^cn-3] here.
 
-      [^ct-1]: @alice | 2026-01-15 | del | proposed
-      [^ct-2]: @alice | 2026-01-15 | ins | proposed
-      [^ct-3]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | del | proposed
+      [^cn-2]: @alice | 2026-01-15 | ins | proposed
+      [^cn-3]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file

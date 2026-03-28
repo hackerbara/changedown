@@ -13,7 +13,7 @@
   #     DOM structure varies between VS Code versions)
   #   - "Then the Explorer sidebar opens (if not already open)" (not implemented)
   #   - "Given the Explorer sidebar is open but a different section is expanded" (not implemented)
-  #   - "Then the ChangeTracks panel scrolls into view and expands" (not implemented)
+  #   - "Then the ChangeDown panel scrolls into view and expands" (not implemented)
   #   - "Then NO QuickPick menu appears" (negative assertion on QuickPick not implemented)
   #   - "When I hover over the status bar item" (tooltip probing unreliable in Playwright)
   #   - "Then the tooltip shows:" (data table tooltip assertion not implemented)
@@ -28,15 +28,15 @@ Feature: Status bar — minimal indicator and panel opener
   So I have a persistent, unobtrusive presence indicator
 
   Background:
-    Given the ChangeTracks extension is active
+    Given the ChangeDown extension is active
 
   # ── Display ──
 
   Scenario: Status bar shows tracking state
     Given tracking mode is OFF
-    Then the status bar shows "ChangeTracks"
+    Then the status bar shows "ChangeDown"
     When tracking mode is turned ON
-    Then the status bar shows "ChangeTracks ✓"
+    Then the status bar shows "ChangeDown ✓"
 
   Scenario: Status bar is always visible for markdown files
     Given I have a markdown file open
@@ -49,12 +49,12 @@ Feature: Status bar — minimal indicator and panel opener
   Scenario: Click opens the panel
     When I click the status bar item
     Then the Explorer sidebar opens (if not already open)
-    And the ChangeTracks Changes tab is focused/revealed
+    And the ChangeDown Changes tab is focused/revealed
 
   Scenario: Click when panel is already visible focuses it
     Given the Explorer sidebar is open but a different section is expanded
     When I click the status bar item
-    Then the ChangeTracks panel scrolls into view and expands
+    Then the ChangeDown panel scrolls into view and expands
 
   # ── QuickPick Removal ──
 
@@ -69,6 +69,6 @@ Feature: Status bar — minimal indicator and panel opener
     When I hover over the status bar item
     Then the tooltip shows:
       | Line                       |
-      | ChangeTracks               |
+      | ChangeDown               |
       | Tracking: ON               |
       | Click to open panel        |

@@ -1,11 +1,11 @@
 import * as vscode from 'vscode';
-import { annotateMarkdown, annotateSidecar, SIDECAR_BLOCK_MARKER } from '@changetracks/core';
+import { annotateMarkdown, annotateSidecar, SIDECAR_BLOCK_MARKER } from '@changedown/core';
 import { getPreviousVersion } from './git-integration';
 
 /**
  * Annotate Recent Changes Command
  *
- * Main command that generates ChangeTracks annotations from git changes.
+ * Main command that generates ChangeDown annotations from git changes.
  * Routes to appropriate annotator based on file type:
  * - Markdown files → CriticMarkup annotations
  * - Code files → Sidecar annotations
@@ -26,7 +26,7 @@ export async function annotateFromGit(editor: vscode.TextEditor): Promise<boolea
 
     // Step 1: Check if file is saved
     if (doc.uri.scheme !== 'file') {
-        vscode.window.showWarningMessage('ChangeTracks: Can only annotate saved files');
+        vscode.window.showWarningMessage('ChangeDown: Can only annotate saved files');
         return false;
     }
 
@@ -34,7 +34,7 @@ export async function annotateFromGit(editor: vscode.TextEditor): Promise<boolea
 
     // Step 2: Check if already annotated
     if (currentText.includes(SIDECAR_BLOCK_MARKER) || currentText.includes('{++') || currentText.includes('{--')) {
-        vscode.window.showWarningMessage('ChangeTracks: File already contains annotations');
+        vscode.window.showWarningMessage('ChangeDown: File already contains annotations');
         return false;
     }
 
@@ -42,13 +42,13 @@ export async function annotateFromGit(editor: vscode.TextEditor): Promise<boolea
     const prev = await getPreviousVersion(doc.uri);
 
     if (!prev) {
-        vscode.window.showInformationMessage('ChangeTracks: No git history found for this file');
+        vscode.window.showInformationMessage('ChangeDown: No git history found for this file');
         return false;
     }
 
     // Step 4: Check if there are actual changes
     if (prev.oldText === currentText) {
-        vscode.window.showInformationMessage('ChangeTracks: No changes detected');
+        vscode.window.showInformationMessage('ChangeDown: No changes detected');
         return false;
     }
 
@@ -66,7 +66,7 @@ export async function annotateFromGit(editor: vscode.TextEditor): Promise<boolea
         });
 
         if (!annotatedText) {
-            vscode.window.showWarningMessage(`ChangeTracks: Language "${languageId}" is not supported for code annotations`);
+            vscode.window.showWarningMessage(`ChangeDown: Language "${languageId}" is not supported for code annotations`);
             return false;
         }
     }
@@ -82,12 +82,12 @@ export async function annotateFromGit(editor: vscode.TextEditor): Promise<boolea
     });
 
     if (!success) {
-        vscode.window.showErrorMessage('ChangeTracks: Failed to apply annotations');
+        vscode.window.showErrorMessage('ChangeDown: Failed to apply annotations');
         return false;
     }
 
     // Step 7: Save to disk if configured
-    const config = vscode.workspace.getConfiguration('changetracks');
+    const config = vscode.workspace.getConfiguration('changedown');
     const shouldPersist = config.get<boolean>('persistAnnotations', true);
 
     if (shouldPersist) {
@@ -96,7 +96,7 @@ export async function annotateFromGit(editor: vscode.TextEditor): Promise<boolea
 
     // Success message
     const changeCount = 'changes';
-    vscode.window.showInformationMessage(`ChangeTracks: Annotated with recent ${changeCount}`);
+    vscode.window.showInformationMessage(`ChangeDown: Annotated with recent ${changeCount}`);
 
     return true;
 }

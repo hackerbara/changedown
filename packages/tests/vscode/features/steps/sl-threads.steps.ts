@@ -9,7 +9,7 @@
 
 import { When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import {
     getCommentThreads,
     getDocumentText,
@@ -23,7 +23,7 @@ import { findLineNumber, extractFootnoteBlock } from './sl-shared.steps';
 Then(
     'comment threads exist for {word}, {word}, {word}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, id1: string, id2: string, id3: string) {
+    async function (this: ChangeDownWorld, id1: string, id2: string, id3: string) {
         assert.ok(this.page, 'Page not available');
         const { threads } = await getCommentThreads(this.page);
         const ids = threads.map(t => t.changeId);
@@ -41,7 +41,7 @@ Then(
 Then(
     'the thread count is {int}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, expected: number) {
+    async function (this: ChangeDownWorld, expected: number) {
         assert.ok(this.page, 'Page not available');
         // Poll briefly in case threads are still updating after a view mode switch
         const deadline = Date.now() + 5000;
@@ -61,7 +61,7 @@ Then(
 Then(
     'the thread for {word} has {int} discussion comment(s)',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string, expectedCount: number) {
+    async function (this: ChangeDownWorld, changeId: string, expectedCount: number) {
         assert.ok(this.page, 'Page not available');
         const { threads } = await getCommentThreads(this.page);
         const thread = threads.find(t => t.changeId === changeId);
@@ -82,7 +82,7 @@ Then(
 Then(
     'the thread for {word} has state {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string, expectedState: string) {
+    async function (this: ChangeDownWorld, changeId: string, expectedState: string) {
         assert.ok(this.page, 'Page not available');
         const { threads } = await getCommentThreads(this.page);
         const thread = threads.find(t => t.changeId === changeId);
@@ -103,7 +103,7 @@ Then(
 When(
     'I open the comment thread for {word}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string) {
+    async function (this: ChangeDownWorld, changeId: string) {
         assert.ok(this.page, 'Page not available');
         // Find the line containing the footnote reference marker and position cursor there
         const text = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
@@ -115,7 +115,7 @@ When(
         await setCursorPosition(this.page, lineNum, 15);
         await this.page.waitForTimeout(500);
         // Trigger the comment peek widget via bridge command
-        await executeCommandViaBridge(this.page, 'changetracks.openCommentThread');
+        await executeCommandViaBridge(this.page, 'changedown.openCommentThread');
         await this.page.waitForTimeout(1000);
     }
 );
@@ -125,7 +125,7 @@ When(
 When(
     'I type {string} in the reply box',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, text: string) {
+    async function (this: ChangeDownWorld, text: string) {
         assert.ok(this.page, 'Page not available');
         // The comment peek widget reply textarea
         const replyBox = await this.page.$(
@@ -147,7 +147,7 @@ When(
 When(
     'I click the Reply button',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         assert.ok(this.page, 'Page not available');
         // Look for Submit/Reply button in the comment peek widget
         const replyBtn = await this.page.$(
@@ -171,7 +171,7 @@ When(
 When(
     'I execute {string} on {word}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, command: string, changeId: string) {
+    async function (this: ChangeDownWorld, command: string, changeId: string) {
         assert.ok(this.page, 'Page not available');
         // Position cursor inside the change so context commands operate on the right change
         const text = await getDocumentText(this.page, { instanceId: this.instance?.instanceId });
@@ -193,7 +193,7 @@ When(
 Then(
     'the document footnote for {word} does not contain {string}',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, changeId: string, unexpected: string) {
+    async function (this: ChangeDownWorld, changeId: string, unexpected: string) {
         assert.ok(this.page, 'Page not available');
         const deadline = Date.now() + 5000;
         let footnote = '';

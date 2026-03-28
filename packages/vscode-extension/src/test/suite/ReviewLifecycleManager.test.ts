@@ -16,18 +16,18 @@ suite('ReviewLifecycleManager', () => {
     suite('findChangeInList', () => {
         // Minimal ChangeNode-like objects for testing the lookup logic
         const changes = [
-            { id: 'ct-1', type: 'insertion', range: { start: 0, end: 10 } },
-            { id: 'ct-2', type: 'deletion', range: { start: 20, end: 30 } },
-            { id: 'ct-3', type: 'substitution', range: { start: 40, end: 50 } },
+            { id: 'cn-1', type: 'insertion', range: { start: 0, end: 10 } },
+            { id: 'cn-2', type: 'deletion', range: { start: 20, end: 30 } },
+            { id: 'cn-3', type: 'substitution', range: { start: 40, end: 50 } },
         ] as any[];
 
         test('returns change by ID when provided', () => {
-            const result = findChangeInList(changes, 'ct-2');
-            assert.strictEqual(result?.id, 'ct-2');
+            const result = findChangeInList(changes, 'cn-2');
+            assert.strictEqual(result?.id, 'cn-2');
         });
 
         test('returns undefined for unknown ID', () => {
-            const result = findChangeInList(changes, 'ct-99');
+            const result = findChangeInList(changes, 'cn-99');
             assert.strictEqual(result, undefined);
         });
 
@@ -37,7 +37,7 @@ suite('ReviewLifecycleManager', () => {
         });
 
         test('returns undefined for empty changes list', () => {
-            const result = findChangeInList([], 'ct-1');
+            const result = findChangeInList([], 'cn-1');
             assert.strictEqual(result, undefined);
         });
     });

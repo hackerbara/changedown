@@ -5,7 +5,7 @@ Feature: D7-slow -- View mode switching clears author decorations (E2E)
 
   Background:
     Given I open "multi-author-view-switch.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   Scenario: All-markup shows colored decorations for multi-author changes

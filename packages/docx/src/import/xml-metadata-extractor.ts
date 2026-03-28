@@ -162,7 +162,7 @@ function findAllChildren(container: any[], tag: string): Array<{ children: any[]
 // ─── Main entry point ─────────────────────────────────────────────────────────
 
 export async function extractMetadata(
-  docxBuffer: Buffer
+  docxBuffer: Uint8Array
 ): Promise<ExtractedMetadata> {
   const zip = await JSZip.loadAsync(docxBuffer);
   const parser = new XMLParser(PARSER_CONFIG);

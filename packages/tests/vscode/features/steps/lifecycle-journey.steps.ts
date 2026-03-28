@@ -20,14 +20,14 @@ import {
     compactToLevel0,
     findFootnoteBlock,
     parseFootnoteHeader,
-} from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+} from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 import { applyEdit } from './test-utils';
 
 // ── Extend World with journey state ─────────────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         journeyDocText?: string;
         journeyAmendError?: string;
     }
@@ -35,7 +35,7 @@ declare module './world' {
 
 // ── Lifecycle ────────────────────────────────────────────────────────
 
-Before({ tags: '@fast and @LV9' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @LV9' }, function (this: ChangeDownWorld) {
     this.journeyDocText = undefined;
     this.journeyAmendError = undefined;
 });
@@ -60,14 +60,14 @@ function getFootnoteText(text: string, changeId: string): string {
 
 // ── Given ────────────────────────────────────────────────────────────
 
-Given('a journey document with text:', function (this: ChangeTracksWorld, docString: string) {
+Given('a journey document with text:', function (this: ChangeDownWorld, docString: string) {
     this.journeyDocText = docString;
 });
 
 // ── When: operations ─────────────────────────────────────────────────
 
 When('{word} replies to {word} with {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     author: string,
     changeId: string,
     text: string,
@@ -84,7 +84,7 @@ When('{word} replies to {word} with {string}', function (
 });
 
 When('{word} replies to the L0 change with {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     author: string,
     text: string,
 ) {
@@ -115,7 +115,7 @@ When('{word} replies to the L0 change with {string}', function (
 });
 
 When('{word} accepts {word} with reason {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     author: string,
     changeId: string,
     reason: string,
@@ -135,7 +135,7 @@ When('{word} accepts {word} with reason {string}', function (
 });
 
 When('{word} rejects {word} with reason {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     author: string,
     changeId: string,
     reason: string,
@@ -155,7 +155,7 @@ When('{word} rejects {word} with reason {string}', function (
 });
 
 When('{word} requests changes on {word} with {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     author: string,
     changeId: string,
     reason: string,
@@ -175,7 +175,7 @@ When('{word} requests changes on {word} with {string}', function (
 });
 
 When('{word} resolves {word}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     author: string,
     changeId: string,
 ) {
@@ -188,7 +188,7 @@ When('{word} resolves {word}', function (
 });
 
 When('{word} amends {word} to {string} with reason {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     author: string,
     changeId: string,
     newText: string,
@@ -208,7 +208,7 @@ When('{word} amends {word} to {string} with reason {string}', function (
 });
 
 When('{word} tries to amend {word} to {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     author: string,
     changeId: string,
     newText: string,
@@ -226,7 +226,7 @@ When('{word} tries to amend {word} to {string}', function (
 });
 
 When('{word} supersedes {word} with {string} and reason {string}', async function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     author: string,
     changeId: string,
     newText: string,
@@ -249,7 +249,7 @@ When('{word} supersedes {word} with {string} and reason {string}', async functio
 });
 
 When('I compact {word} fully in the journey', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
 ) {
     assert.ok(this.journeyDocText !== undefined, 'Journey document not set');
@@ -278,7 +278,7 @@ When('I compact {word} fully in the journey', function (
 // ── Then: assertions ─────────────────────────────────────────────────
 
 Then('the journey footnote for {word} contains {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     expected: string,
 ) {
@@ -291,7 +291,7 @@ Then('the journey footnote for {word} contains {string}', function (
 });
 
 Then('the journey footnote for {word} has status {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     expectedStatus: string,
 ) {
@@ -304,7 +304,7 @@ Then('the journey footnote for {word} has status {string}', function (
     );
 });
 
-Then('the journey document text contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the journey document text contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.journeyDocText !== undefined, 'Journey document not set');
     assert.ok(
         this.journeyDocText.includes(expected),
@@ -312,7 +312,7 @@ Then('the journey document text contains {string}', function (this: ChangeTracks
     );
 });
 
-Then('the journey document text does not contain {string}', function (this: ChangeTracksWorld, unexpected: string) {
+Then('the journey document text does not contain {string}', function (this: ChangeDownWorld, unexpected: string) {
     assert.ok(this.journeyDocText !== undefined, 'Journey document not set');
     assert.ok(
         !this.journeyDocText.includes(unexpected),
@@ -321,7 +321,7 @@ Then('the journey document text does not contain {string}', function (this: Chan
 });
 
 Then('the journey document contains {int} changes', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     expectedCount: number,
 ) {
     assert.ok(this.journeyDocText !== undefined, 'Journey document not set');
@@ -331,16 +331,16 @@ Then('the journey document contains {int} changes', function (
     assert.equal(count, expectedCount, `Expected ${expectedCount} changes, found ${count}`);
 });
 
-Then('the journey document contains a footnote reference', function (this: ChangeTracksWorld) {
+Then('the journey document contains a footnote reference', function (this: ChangeDownWorld) {
     assert.ok(this.journeyDocText !== undefined, 'Journey document not set');
     assert.ok(
-        /\[\^ct-\d+\]/.test(this.journeyDocText),
+        /\[\^cn-\d+\]/.test(this.journeyDocText),
         'Document does not contain a footnote reference'
     );
 });
 
 Then('the journey document contains a footnote block for {word}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
 ) {
     assert.ok(this.journeyDocText !== undefined, 'Journey document not set');
@@ -352,7 +352,7 @@ Then('the journey document contains a footnote block for {word}', function (
 });
 
 Then('the journey document has {int} changes with status {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     expectedCount: number,
     expectedStatus: string,
 ) {
@@ -376,7 +376,7 @@ Then('the journey document has {int} changes with status {string}', function (
 });
 
 Then('the journey document has {int} change with status {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     expectedCount: number,
     expectedStatus: string,
 ) {
@@ -400,7 +400,7 @@ Then('the journey document has {int} change with status {string}', function (
 });
 
 Then('the journey amend is rejected with {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     expectedError: string,
 ) {
     assert.ok(this.journeyAmendError, 'Expected amend error but none was set');
@@ -411,7 +411,7 @@ Then('the journey amend is rejected with {string}', function (
 });
 
 Then('a new {word} change exists in the journey document', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
 ) {
     assert.ok(this.journeyDocText !== undefined, 'Journey document not set');

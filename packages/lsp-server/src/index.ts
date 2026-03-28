@@ -1,8 +1,8 @@
 /**
- * ChangeTracks LSP Server
+ * ChangeDown LSP Server
  *
  * Language Server Protocol implementation for CriticMarkup editing.
- * Wraps the editor-agnostic @changetracks/core package.
+ * Wraps the editor-agnostic @changedown/core package.
  */
 
 export * from './server';

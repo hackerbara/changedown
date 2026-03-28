@@ -37,19 +37,19 @@ describe('AJ3: Multi-agent deliberation', () => {
     });
     expect(propose1.isError).toBeUndefined();
     const proposeData = ctx.parseResult(propose1);
-    expect(proposeData.change_id).toBe('ct-1');
+    expect(proposeData.change_id).toBe('cn-1');
     expect(proposeData.type).toBe('sub');
 
-    // Verify ct-1 on disk with architect as author
+    // Verify cn-1 on disk with architect as author
     const disk1 = await ctx.readDisk(filePath);
     expect(disk1).toContain('{~~PostgreSQL~>CockroachDB~~}');
     expect(disk1).toContain('@ai:architect');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'proposed');
 
     // ── Phase 2: Agent B (ai:security) responds with concern ─────────
     const response1 = await ctx.review(filePath, {
       responses: [{
-        change_id: 'ct-1',
+        change_id: 'cn-1',
         response: 'CockroachDB has different encryption-at-rest defaults. Verify compliance.',
         label: 'issue',
       }],
@@ -65,7 +65,7 @@ describe('AJ3: Multi-agent deliberation', () => {
     // ── Phase 3: Agent C (ai:performance) responds with data ─────────
     const response2 = await ctx.review(filePath, {
       responses: [{
-        change_id: 'ct-1',
+        change_id: 'cn-1',
         response: 'Benchmarks show 2x latency for cross-region queries. Consider the trade-off.',
         label: 'thought',
       }],
@@ -86,7 +86,7 @@ describe('AJ3: Multi-agent deliberation', () => {
 
     // ── Phase 4: Cross-author amendment blocked ──────────────────────
     // Agent B (ai:security) cannot amend Agent A's proposal
-    const badAmend = await ctx.amend(filePath, 'ct-1', {
+    const badAmend = await ctx.amend(filePath, 'cn-1', {
       new_text: 'MySQL',
       reason: 'I prefer MySQL',
       author: 'ai:security',
@@ -102,7 +102,7 @@ describe('AJ3: Multi-agent deliberation', () => {
     expect(disk4).not.toContain('MySQL');
 
     // ── Phase 5: Original author amends based on feedback (supersede) ─
-    const amendResult = await ctx.amend(filePath, 'ct-1', {
+    const amendResult = await ctx.amend(filePath, 'cn-1', {
       new_text: 'CockroachDB with encryption-at-rest enabled',
       reason: 'Addressed security concern: enable encryption-at-rest',
       author: 'ai:architect',
@@ -110,21 +110,21 @@ describe('AJ3: Multi-agent deliberation', () => {
     expect(amendResult.isError).toBeUndefined();
 
     const amendData = ctx.parseResult(amendResult);
-    expect(amendData.change_id).toBe('ct-1');
+    expect(amendData.change_id).toBe('cn-1');
     expect(amendData.new_change_id).toBeDefined();
     expect(amendData.amended).toBe(true);
     const newChangeId = amendData.new_change_id as string;
 
     const disk5 = await ctx.readDisk(filePath);
     expect(disk5).toContain('{~~PostgreSQL~>CockroachDB with encryption-at-rest enabled~~}');
-    // Original ct-1 rejected with superseded-by cross-reference
+    // Original cn-1 rejected with superseded-by cross-reference
     expect(disk5).toContain(`superseded-by: ${newChangeId}`);
-    expect(disk5).toContain('supersedes: ct-1');
+    expect(disk5).toContain('supersedes: cn-1');
 
     // ── Phase 6: get_change on the NEW change to verify it exists ────
     // (Must check before approval triggers auto-settlement which removes inline markup)
-    // The original ct-1 footnote preserves the discussion thread from all agents
-    const getResultOrig = await ctx.getChange(filePath, 'ct-1');
+    // The original cn-1 footnote preserves the discussion thread from all agents
+    const getResultOrig = await ctx.getChange(filePath, 'cn-1');
     expect(getResultOrig.isError).toBeUndefined();
     const origData = ctx.parseResult(getResultOrig);
     const origParticipants = origData.participants as string[];
@@ -156,7 +156,7 @@ describe('AJ3: Multi-agent deliberation', () => {
     const disk6 = await ctx.readDisk(filePath);
     expect(disk6).toContain('CockroachDB with encryption-at-rest enabled');
 
-    // Original ct-1 footnote preserves all three agent identities in the thread
+    // Original cn-1 footnote preserves all three agent identities in the thread
     expect(disk6).toContain('@ai:architect');
     expect(disk6).toContain('@ai:security');
     expect(disk6).toContain('@ai:performance');
@@ -170,7 +170,7 @@ describe('AJ3: Multi-agent deliberation', () => {
   it('Scenario 2: Competing proposals on different text regions', async () => {
     const filePath = await ctx.createFile('architecture.md', ARCHITECTURE_DOC);
 
-    // Agent A proposes ct-1: substitute "PostgreSQL" -> "CockroachDB"
+    // Agent A proposes cn-1: substitute "PostgreSQL" -> "CockroachDB"
     const propose1 = await ctx.propose(filePath, {
       old_text: 'PostgreSQL',
       new_text: 'CockroachDB',
@@ -179,9 +179,9 @@ describe('AJ3: Multi-agent deliberation', () => {
     });
     expect(propose1.isError).toBeUndefined();
     const data1 = ctx.parseResult(propose1);
-    expect(data1.change_id).toBe('ct-1');
+    expect(data1.change_id).toBe('cn-1');
 
-    // Agent B proposes ct-2: substitute "JWT tokens" -> "OAuth2 + OIDC"
+    // Agent B proposes cn-2: substitute "JWT tokens" -> "OAuth2 + OIDC"
     const propose2 = await ctx.propose(filePath, {
       old_text: 'JWT tokens',
       new_text: 'OAuth2 + OIDC',
@@ -190,20 +190,20 @@ describe('AJ3: Multi-agent deliberation', () => {
     });
     expect(propose2.isError).toBeUndefined();
     const data2 = ctx.parseResult(propose2);
-    expect(data2.change_id).toBe('ct-2');
+    expect(data2.change_id).toBe('cn-2');
 
     // Both changes coexist on disk
     const disk1 = await ctx.readDisk(filePath);
     expect(disk1).toContain('{~~PostgreSQL~>CockroachDB~~}');
     expect(disk1).toContain('{~~JWT tokens~>OAuth2 + OIDC~~}');
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
-    await ctx.assertFootnoteStatus(filePath, 'ct-2', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'proposed');
+    await ctx.assertFootnoteStatus(filePath, 'cn-2', 'proposed');
 
-    // Agent C (ai:performance) reviews both: rejects ct-1, approves ct-2
+    // Agent C (ai:performance) reviews both: rejects cn-1, approves cn-2
     const reviewResult = await ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-1', decision: 'reject', reason: 'CockroachDB too slow for our use case' },
-        { change_id: 'ct-2', decision: 'approve', reason: 'OAuth2 is industry standard' },
+        { change_id: 'cn-1', decision: 'reject', reason: 'CockroachDB too slow for our use case' },
+        { change_id: 'cn-2', decision: 'approve', reason: 'OAuth2 is industry standard' },
       ],
       author: 'ai:performance',
     });
@@ -213,12 +213,12 @@ describe('AJ3: Multi-agent deliberation', () => {
     const reviewData = ctx.parseResult(reviewResult);
     expect(reviewData.settled).toBeDefined();
     const settledIds = reviewData.settled as string[];
-    expect(settledIds).toContain('ct-1');
-    expect(settledIds).toContain('ct-2');
+    expect(settledIds).toContain('cn-1');
+    expect(settledIds).toContain('cn-2');
 
     // Statuses
-    await ctx.assertFootnoteStatus(filePath, 'ct-1', 'rejected');
-    await ctx.assertFootnoteStatus(filePath, 'ct-2', 'accepted');
+    await ctx.assertFootnoteStatus(filePath, 'cn-1', 'rejected');
+    await ctx.assertFootnoteStatus(filePath, 'cn-2', 'accepted');
 
     // Body settled -- no markup delimiters remain
     await ctx.assertNoMarkupInBody(filePath);
@@ -226,7 +226,7 @@ describe('AJ3: Multi-agent deliberation', () => {
     const disk2 = await ctx.readDisk(filePath);
 
     // Extract document body (before footnotes) for content assertions
-    const footnoteStart = disk2.indexOf('\n[^ct-');
+    const footnoteStart = disk2.indexOf('\n[^cn-');
     const body = footnoteStart >= 0 ? disk2.slice(0, footnoteStart) : disk2;
 
     // Rejected change: body has original text restored, no substitution target
@@ -237,8 +237,8 @@ describe('AJ3: Multi-agent deliberation', () => {
     expect(body).not.toContain('JWT tokens');
 
     // Both footnotes preserve their deliberation history (full file)
-    expect(disk2).toContain('[^ct-1]:');
-    expect(disk2).toContain('[^ct-2]:');
+    expect(disk2).toContain('[^cn-1]:');
+    expect(disk2).toContain('[^cn-2]:');
     expect(disk2).toContain('CockroachDB too slow');
     expect(disk2).toContain('OAuth2 is industry standard');
   });
@@ -258,7 +258,7 @@ describe('AJ3: Multi-agent deliberation', () => {
     });
     expect(propose.isError).toBeUndefined();
     const proposeData = ctx.parseResult(propose);
-    expect(proposeData.change_id).toBe('ct-1');
+    expect(proposeData.change_id).toBe('cn-1');
 
     // Build a deep discussion: 5 responses from alternating agents
     // Labels must be from valid enum: suggestion, issue, question, praise, todo, thought, nitpick
@@ -273,7 +273,7 @@ describe('AJ3: Multi-agent deliberation', () => {
     for (const entry of threadResponses) {
       const result = await ctx.review(filePath, {
         responses: [{
-          change_id: 'ct-1',
+          change_id: 'cn-1',
           response: entry.response,
           label: entry.label,
         }],
@@ -305,7 +305,7 @@ describe('AJ3: Multi-agent deliberation', () => {
 
     // ── Verify get_change returns correct discussion_count ───────────
     // discussion_count includes the original reasoning + 5 responses = 6
-    const getResult = await ctx.getChange(filePath, 'ct-1');
+    const getResult = await ctx.getChange(filePath, 'cn-1');
     expect(getResult.isError).toBeUndefined();
     const changeData = ctx.parseResult(getResult);
     expect(changeData.footnote).toBeDefined();
@@ -320,7 +320,7 @@ describe('AJ3: Multi-agent deliberation', () => {
     expect(participants).toHaveLength(3);
 
     // ── Verify threading indentation in raw footnote ─────────────────
-    const getRaw = await ctx.getChange(filePath, 'ct-1', { include_raw_footnote: true });
+    const getRaw = await ctx.getChange(filePath, 'cn-1', { include_raw_footnote: true });
     expect(getRaw.isError).toBeUndefined();
     const rawData = ctx.parseResult(getRaw);
     const rawFootnote = (rawData.footnote as { raw_text: string }).raw_text;

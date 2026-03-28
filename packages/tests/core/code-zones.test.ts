@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findCodeZones } from '@changetracks/core/internals';
+import { findCodeZones } from '@changedown/core/internals';
 
 describe('findCodeZones', () => {
 

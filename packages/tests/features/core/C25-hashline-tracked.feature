@@ -56,7 +56,7 @@ Feature: C25 — Hashline Tracked Utilities
   Scenario: Footnote references stripped
     Given the settled line input is:
       """
-      Hello world[^ct-1]
+      Hello world[^cn-1]
       """
     When I compute the settled line output
     Then the settled line output is "Hello world"
@@ -64,7 +64,7 @@ Feature: C25 — Hashline Tracked Utilities
   Scenario: Multiple markup types on one line
     Given the settled line input is:
       """
-      The {++quick ++}{--slow --}{~~brown~>red~~} fox[^ct-1]{>>nice<<}
+      The {++quick ++}{--slow --}{~~brown~>red~~} fox[^cn-1]{>>nice<<}
       """
     When I compute the settled line output
     Then the settled line output is "The quick red fox"
@@ -246,9 +246,9 @@ Feature: C25 — Hashline Tracked Utilities
     Given the hashline module is ready
     When I format tracked header for file "test.md" with content:
       """
-      Hello {++world++}[^ct-1] text
+      Hello {++world++}[^cn-1] text
 
-      [^ct-1]: @alice | 2026-02-10 | ins | accepted
+      [^cn-1]: @alice | 2026-02-10 | ins | accepted
       """
     Then the tracked header contains "1 accepted"
 
@@ -257,9 +257,9 @@ Feature: C25 — Hashline Tracked Utilities
     Given the hashline module is ready
     When I format tracked header for file "test.md" with content:
       """
-      Hello {--world--}[^ct-1] text
+      Hello {--world--}[^cn-1] text
 
-      [^ct-1]: @alice | 2026-02-10 | del | rejected
+      [^cn-1]: @alice | 2026-02-10 | del | rejected
       """
     Then the tracked header contains "1 rejected"
 

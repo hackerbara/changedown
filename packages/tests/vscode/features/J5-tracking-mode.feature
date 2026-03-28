@@ -7,7 +7,7 @@ Feature: Creating tracked changes via tracking mode
   Background:
     Given I open "tracking-mode-test.md" in VS Code
     And the editor is reset to the fixture
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
 
   Scenario: Typed text in tracking mode produces full insertion markup
     When I position the cursor at line 3 column 1

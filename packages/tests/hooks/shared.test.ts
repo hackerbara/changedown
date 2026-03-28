@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { loadConfig } from 'changetracks-hooks/internals';
+import { loadConfig } from 'changedown-hooks/internals';
 
 describe('loadConfig - policy section', () => {
   let tmpDir: string;
   let configPath: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-shared-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-shared-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     configPath = path.join(scDir, 'config.toml');
   });
@@ -69,7 +69,7 @@ describe('loadConfig - policy section', () => {
 
   it('parses creation_tracking from policy section', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[policy]\nmode = "safety-net"\ncreation_tracking = "footnote"\n',
       'utf-8',
     );
@@ -79,7 +79,7 @@ describe('loadConfig - policy section', () => {
 
   it('defaults creation_tracking to "footnote" when not specified', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[policy]\nmode = "safety-net"\n',
       'utf-8',
     );
@@ -89,7 +89,7 @@ describe('loadConfig - policy section', () => {
 
   it('accepts creation_tracking = "none"', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[policy]\nmode = "safety-net"\ncreation_tracking = "none"\n',
       'utf-8',
     );
@@ -99,7 +99,7 @@ describe('loadConfig - policy section', () => {
 
   it('accepts creation_tracking = "inline"', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[policy]\nmode = "safety-net"\ncreation_tracking = "inline"\n',
       'utf-8',
     );

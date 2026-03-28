@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
-import { ChangeType, parseForFormat } from '@changetracks/core';
+import { ChangeType, parseForFormat } from '@changedown/core';
 import { renderMarkdownToHtml } from './docx-preview-renderer';
 import { buildAnnotationCards } from './annotation-extractor';
 import { buildLoadingHtml, buildErrorHtml, buildChoiceHtml, buildPreviewHtml } from './docx-preview-html';
@@ -26,7 +26,7 @@ function rewriteImagePaths(markdown: string, mediaDir: string, webview: vscode.W
 }
 
 export class DocxEditorProvider implements vscode.CustomReadonlyEditorProvider {
-  public static readonly viewType = 'changetracks.docxEditor';
+  public static readonly viewType = 'changedown.docxEditor';
   private readonly tempFiles: string[] = [];
 
   constructor(private readonly context: vscode.ExtensionContext) {}
@@ -51,7 +51,7 @@ export class DocxEditorProvider implements vscode.CustomReadonlyEditorProvider {
   ): Promise<void> {
     const docxPath = document.uri.fsPath;
     const fileName = path.basename(docxPath);
-    const mdPath = docxPath.replace(/\.docx$/i, '-changetracks.md');
+    const mdPath = docxPath.replace(/\.docx$/i, '-changedown.md');
     const mdFileName = path.basename(mdPath);
     const mdExists = fs.existsSync(mdPath);
 
@@ -160,7 +160,7 @@ export class DocxEditorProvider implements vscode.CustomReadonlyEditorProvider {
     webviewPanel.webview.html = buildLoadingHtml(fileName);
 
     try {
-      const { importDocx } = await import('@changetracks/docx');
+      const { importDocx } = await import('@changedown/docx');
       const { markdown, mediaDir } = await importDocx(docxPath);
 
       // Add media folder to localResourceRoots so the webview can load images
@@ -176,8 +176,8 @@ export class DocxEditorProvider implements vscode.CustomReadonlyEditorProvider {
       }
 
       // Write to temp file
-      const mdBaseName = path.basename(docxPath).replace(/\.docx$/i, '-changetracks.md');
-      const tempPath = path.join(os.tmpdir(), `changetracks-${Date.now()}-${mdBaseName}`);
+      const mdBaseName = path.basename(docxPath).replace(/\.docx$/i, '-changedown.md');
+      const tempPath = path.join(os.tmpdir(), `changedown-${Date.now()}-${mdBaseName}`);
       fs.writeFileSync(tempPath, markdown, 'utf-8');
       this.tempFiles.push(tempPath);
 

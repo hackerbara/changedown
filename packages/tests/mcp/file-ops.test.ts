@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { applyProposeChange, replaceUnique, findUniqueMatch } from '@changetracks/mcp/internals';
-import { defaultNormalizer } from '@changetracks/core';
+import { applyProposeChange, replaceUnique, findUniqueMatch } from '@changedown/mcp/internals';
+import { defaultNormalizer } from '@changedown/core';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 const TS_RE = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z';
@@ -12,14 +12,14 @@ describe('applyProposeChange', () => {
         text: 'The quick brown fox jumps over the lazy dog.',
         oldText: 'quick brown',
         newText: 'slow red',
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         author: 'ai:claude-opus-4.6',
       });
 
       expect(result.changeType).toBe('sub');
-      expect(result.modifiedText).toContain('{~~quick brown~>slow red~~}[^ct-1]');
+      expect(result.modifiedText).toContain('{~~quick brown~>slow red~~}[^cn-1]');
       expect(result.modifiedText).toContain(
-        `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`
+        `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`
       );
     });
   });
@@ -30,14 +30,14 @@ describe('applyProposeChange', () => {
         text: 'The quick brown fox jumps over the lazy dog.',
         oldText: ' brown',
         newText: '',
-        changeId: 'ct-2',
+        changeId: 'cn-2',
         author: 'ai:claude-opus-4.6',
       });
 
       expect(result.changeType).toBe('del');
-      expect(result.modifiedText).toContain('{-- brown--}[^ct-2]');
+      expect(result.modifiedText).toContain('{-- brown--}[^cn-2]');
       expect(result.modifiedText).toContain(
-        `[^ct-2]: @ai:claude-opus-4.6 | ${TODAY} | del | proposed`
+        `[^cn-2]: @ai:claude-opus-4.6 | ${TODAY} | del | proposed`
       );
     });
   });
@@ -48,15 +48,15 @@ describe('applyProposeChange', () => {
         text: 'The quick fox jumps.',
         oldText: '',
         newText: ' brown',
-        changeId: 'ct-3',
+        changeId: 'cn-3',
         author: 'ai:claude-opus-4.6',
         insertAfter: 'quick',
       });
 
       expect(result.changeType).toBe('ins');
-      expect(result.modifiedText).toContain('quick{++ brown++}[^ct-3]');
+      expect(result.modifiedText).toContain('quick{++ brown++}[^cn-3]');
       expect(result.modifiedText).toContain(
-        `[^ct-3]: @ai:claude-opus-4.6 | ${TODAY} | ins | proposed`
+        `[^cn-3]: @ai:claude-opus-4.6 | ${TODAY} | ins | proposed`
       );
     });
   });
@@ -67,14 +67,14 @@ describe('applyProposeChange', () => {
         text: 'Hello world.',
         oldText: 'world',
         newText: 'earth',
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         author: 'ai:claude-opus-4.6',
         reasoning: 'More specific term',
       });
 
       // Footnote header uses date-only, reason line uses full ISO timestamp
       expect(result.modifiedText).toContain(
-        `[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`
+        `[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`
       );
       expect(result.modifiedText).toMatch(new RegExp(`@ai:claude-opus-4.6 ${TS_RE}: More specific term`));
     });
@@ -84,7 +84,7 @@ describe('applyProposeChange', () => {
         text: 'Hello world.',
         oldText: 'world',
         newText: 'earth',
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         author: 'ai:claude-opus-4.6',
       });
 
@@ -94,21 +94,21 @@ describe('applyProposeChange', () => {
 
   describe('footnote placement with existing footnotes', () => {
     it('appends new footnote after last existing footnote block', async () => {
-      const text = `Some text with {++an insertion++}[^ct-1] in it.
+      const text = `Some text with {++an insertion++}[^cn-1] in it.
 
-[^ct-1]: @alice | 2026-02-10 | ins | proposed
+[^cn-1]: @alice | 2026-02-10 | ins | proposed
     reason: Added for clarity`;
 
       const result = await applyProposeChange({
         text,
         oldText: 'Some',
         newText: 'The',
-        changeId: 'ct-2',
+        changeId: 'cn-2',
         author: 'ai:claude-opus-4.6',
       });
 
       expect(result.modifiedText).toContain(
-        `    reason: Added for clarity\n\n[^ct-2]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`
+        `    reason: Added for clarity\n\n[^cn-2]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`
       );
     });
 
@@ -116,9 +116,9 @@ describe('applyProposeChange', () => {
       const text = `## Example
 
 \`\`\`markdown
-The API should use {~~REST~>GraphQL~~}[^ct-42].
+The API should use {~~REST~>GraphQL~~}[^cn-42].
 
-[^ct-42]: @alice | 2026-02-10 | sub | proposed
+[^cn-42]: @alice | 2026-02-10 | sub | proposed
     reason: Example only
 \`\`\`
 
@@ -128,21 +128,21 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
         text,
         oldText: 'More content',
         newText: 'Further content',
-        changeId: 'ct-1',
+        changeId: 'cn-1',
         author: 'ai:claude-opus-4.6',
       });
 
       // New footnote must be after the closing fence (end of file), not inside the block.
       const lastFence = result.modifiedText.lastIndexOf('```');
-      const footnotePos = result.modifiedText.indexOf('[^ct-1]:');
+      const footnotePos = result.modifiedText.indexOf('[^cn-1]:');
       expect(footnotePos).toBeGreaterThan(lastFence);
       expect(result.modifiedText).toContain('Further content');
       // Content between first ``` and second ``` must not contain the new footnote.
       const firstFence = result.modifiedText.indexOf('```');
       const closingFence = result.modifiedText.indexOf('```', firstFence + 1);
       const insideFence = result.modifiedText.slice(firstFence, closingFence);
-      expect(insideFence).not.toContain('[^ct-1]:');
-      expect(insideFence).toContain('[^ct-42]:');
+      expect(insideFence).not.toContain('[^cn-1]:');
+      expect(insideFence).toContain('[^cn-42]:');
     });
   });
 
@@ -153,7 +153,7 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
           text: 'Hello world.',
           oldText: 'xyz not here',
           newText: 'replacement',
-          changeId: 'ct-1',
+          changeId: 'cn-1',
           author: 'ai:claude-opus-4.6',
         })
       ).rejects.toThrow(/xyz not here/);
@@ -165,7 +165,7 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
           text: 'the cat and the dog',
           oldText: 'the',
           newText: 'a',
-          changeId: 'ct-1',
+          changeId: 'cn-1',
           author: 'ai:claude-opus-4.6',
         })
       ).rejects.toThrow(/ambiguous|multiple|context/i);
@@ -177,7 +177,7 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
           text: 'Hello world.',
           oldText: '',
           newText: '',
-          changeId: 'ct-1',
+          changeId: 'cn-1',
           author: 'ai:claude-opus-4.6',
         })
       ).rejects.toThrow();
@@ -189,7 +189,7 @@ The API should use {~~REST~>GraphQL~~}[^ct-42].
           text: 'Hello world.',
           oldText: '',
           newText: 'inserted text',
-          changeId: 'ct-1',
+          changeId: 'cn-1',
           author: 'ai:claude-opus-4.6',
         })
       ).rejects.toThrow(/insertAfter/i);
@@ -290,7 +290,7 @@ describe('applyProposeChange without confusable matching', () => {
       text,
       oldText: '"smart quotes"',  // agent uses ASCII
       newText: '"regular quotes"',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       author: 'ai:claude-opus-4.6',
     })).rejects.toThrow(/not found/i);
   });
@@ -302,7 +302,7 @@ describe('applyProposeChange without confusable matching', () => {
       text,
       oldText: "Sublime's text ",  // agent uses ASCII apostrophe
       newText: '',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       author: 'ai:claude-opus-4.6',
     })).rejects.toThrow(/not found/i);
   });
@@ -314,7 +314,7 @@ describe('applyProposeChange without confusable matching', () => {
       text,
       oldText: '',
       newText: ' INSERTED',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       author: 'ai:claude-opus-4.6',
       insertAfter: "Sublime's intro",  // ASCII quote
     })).rejects.toThrow(/insertAfter anchor not found/i);
@@ -444,7 +444,7 @@ describe('applyProposeChange with whitespace-collapsed matching', () => {
       text,
       oldText: 'truth;\nprojections derive current state.',
       newText: 'truth; models predict future state.',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       author: 'ai:claude-opus-4.6',
     });
     expect(result.changeType).toBe('sub');
@@ -458,7 +458,7 @@ describe('applyProposeChange with whitespace-collapsed matching', () => {
       text,
       oldText: 'this\ntext',
       newText: '',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       author: 'ai:claude-opus-4.6',
     });
     expect(result.changeType).toBe('del');
@@ -472,7 +472,7 @@ describe('applyProposeChange with whitespace-collapsed matching', () => {
       text,
       oldText: '',
       newText: ' INSERTED',
-      changeId: 'ct-1',
+      changeId: 'cn-1',
       author: 'ai:claude-opus-4.6',
       insertAfter: 'this anchor',  // LLM sends space instead of newline
     });

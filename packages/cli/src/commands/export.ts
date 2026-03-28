@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { exportDocx } from '@changetracks/docx';
-import type { ExportOptions, ExportMode, CommentMode } from '@changetracks/docx';
+import { exportDocx } from '@changedown/docx';
+import type { ExportOptions, ExportMode, CommentMode } from '@changedown/docx';
 
 export interface ExportCliOptions {
   output?: string;
@@ -26,6 +26,7 @@ export async function handleExport(
     mode,
     comments,
     mediaDir: path.dirname(path.resolve(file)),
+    fileReader: (p) => { try { return new Uint8Array(fs.readFileSync(p)); } catch { return null; } },
   };
 
   const { buffer, stats } = await exportDocx(markdown, exportOpts);

@@ -27,7 +27,7 @@ const encoder = new TextEncoder();
 // workspace package. A module-level `let` would be separate per instance,
 // causing "xxhash-wasm not initialized" errors even after calling initHashline().
 // All read sites use getXXHash() so they always get the live global value.
-const HASHLINE_KEY = '__changetracks_xxhash__';
+const HASHLINE_KEY = '__changedown_xxhash__';
 
 function getXXHash(): XXHashAPI | null {
   return (globalThis as any)[HASHLINE_KEY] ?? null;
@@ -58,7 +58,7 @@ export const ensureHashlineReady: () => Promise<void> = initHashline;
  * Strip a line for hashing: remove trailing \r, footnote refs, and ALL whitespace.
  */
 function stripForHash(line: string): string {
-  return line.replace(/\r$/, '').replace(/\[\^ct-[\w.]+\]/g, '').replace(/\s+/g, '');
+  return line.replace(/\r$/, '').replace(/\[\^cn-[\w.]+\]/g, '').replace(/\s+/g, '');
 }
 
 /**

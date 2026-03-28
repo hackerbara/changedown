@@ -2,16 +2,16 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handleStop, findDeletionInsertionPoint, findEditPosition, appendPendingEdit, readPendingEdits, clearSessionEdits } from 'changetracks-hooks/internals';
-import type { HookInput, PendingEdit } from 'changetracks-hooks/internals';
+import { handleStop, findDeletionInsertionPoint, findEditPosition, appendPendingEdit, readPendingEdits, clearSessionEdits } from 'changedown-hooks/internals';
+import type { HookInput, PendingEdit } from 'changedown-hooks/internals';
 
 describe('Stop handler', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-stop-'));
-    // Create .changetracks dir with config
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-stop-'));
+    // Create .changedown dir with config
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     await fs.writeFile(
       path.join(scDir, 'config.toml'),
@@ -70,15 +70,15 @@ describe('Stop handler', () => {
     // Verify CriticMarkup was applied
     const content = await fs.readFile(mdPath, 'utf-8');
     expect(content).toContain('{~~# Original heading~># Updated heading~~}');
-    expect(content).toContain('[^ct-1]');
+    expect(content).toContain('[^cn-1]');
     // Verify footnote was appended
-    expect(content).toContain('[^ct-1]: @ai:claude-opus-4.6');
+    expect(content).toContain('[^cn-1]: @ai:claude-opus-4.6');
     expect(content).toContain('| sub | proposed');
 
     // Verify summary message (Stop hooks use systemMessage, not hookSpecificOutput)
     expect(result.systemMessage).toBeDefined();
     expect(result.systemMessage).toContain('1 edit(s)');
-    expect(result.systemMessage).toContain('[^ct-1]');
+    expect(result.systemMessage).toContain('[^cn-1]');
   });
 
   it('applies insertion markup for a pure insertion', async () => {
@@ -98,7 +98,7 @@ describe('Stop handler', () => {
 
     const content = await fs.readFile(mdPath, 'utf-8');
     expect(content).toContain('{++New paragraph here.\n\n++}');
-    expect(content).toContain('[^ct-1]');
+    expect(content).toContain('[^cn-1]');
     expect(content).toContain('| ins | proposed');
   });
 
@@ -121,7 +121,7 @@ describe('Stop handler', () => {
 
     const content = await fs.readFile(mdPath, 'utf-8');
     expect(content).toContain('{--Removed text. --}');
-    expect(content).toContain('[^ct-1]');
+    expect(content).toContain('[^cn-1]');
     expect(content).toContain('| del | proposed');
   });
 
@@ -149,8 +149,8 @@ describe('Stop handler', () => {
 
     const content = await fs.readFile(mdPath, 'utf-8');
     // Should use dotted IDs under a parent
-    expect(content).toContain('[^ct-1.1]');
-    expect(content).toContain('[^ct-1.2]');
+    expect(content).toContain('[^cn-1.1]');
+    expect(content).toContain('[^cn-1.2]');
     expect(result.systemMessage).toContain('2 edit(s)');
   });
 
@@ -174,10 +174,10 @@ describe('Stop handler', () => {
 
   it('preserves existing footnote IDs (increments from max)', async () => {
     const mdPath = path.join(tmpDir, 'readme.md');
-    // File already has ct-3 as the highest ID
+    // File already has cn-3 as the highest ID
     await fs.writeFile(
       mdPath,
-      '# New heading\n\nSome {++inserted++}[^ct-3] text.\n\n[^ct-3]: @someone | 2026-02-09 | ins | proposed\n',
+      '# New heading\n\nSome {++inserted++}[^cn-3] text.\n\n[^cn-3]: @someone | 2026-02-09 | ins | proposed\n',
       'utf-8',
     );
 
@@ -192,10 +192,10 @@ describe('Stop handler', () => {
     await handleStop(makeInput('ses_123'));
 
     const content = await fs.readFile(mdPath, 'utf-8');
-    // New change should be ct-4 (max was 3)
-    expect(content).toContain('[^ct-4]');
-    // Original ct-3 should still be there
-    expect(content).toContain('[^ct-3]');
+    // New change should be cn-4 (max was 3)
+    expect(content).toContain('[^cn-4]');
+    // Original cn-3 should still be there
+    expect(content).toContain('[^cn-3]');
   });
 });
 
@@ -292,8 +292,8 @@ describe('Stop handler - context-based position (Fix 1)', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-fix1-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-fix1-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     await fs.writeFile(
       path.join(scDir, 'config.toml'),
@@ -333,7 +333,7 @@ describe('Stop handler - context-based position (Fix 1)', () => {
     const content = await fs.readFile(mdPath, 'utf-8');
     // The second "hello world" should be wrapped, the first should be untouched
     expect(content).toContain('AAA hello world BBB');
-    expect(content).toContain('CCC {++hello world++}[^ct-1] DDD');
+    expect(content).toContain('CCC {++hello world++}[^cn-1] DDD');
   });
 
   it('wraps the correct substitution occurrence using context', async () => {
@@ -356,7 +356,7 @@ describe('Stop handler - context-based position (Fix 1)', () => {
     const content = await fs.readFile(mdPath, 'utf-8');
     // First "updated" should be untouched, second should have markup
     expect(content).toContain('First updated text.');
-    expect(content).toContain('Second {~~original~>updated~~}[^ct-1]');
+    expect(content).toContain('Second {~~original~>updated~~}[^cn-1]');
   });
 });
 
@@ -364,8 +364,8 @@ describe('Stop handler - ID ordering (Fix 2)', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-fix2-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-fix2-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     await fs.writeFile(
       path.join(scDir, 'config.toml'),
@@ -385,7 +385,7 @@ describe('Stop handler - ID ordering (Fix 2)', () => {
     stop_hook_active: true,
   });
 
-  it('assigns ct-N.1 to the first edit in document order, not the last', async () => {
+  it('assigns cn-N.1 to the first edit in document order, not the last', async () => {
     const mdPath = path.join(tmpDir, 'readme.md');
     await fs.writeFile(mdPath, 'First change here.\n\nSecond change here.\n', 'utf-8');
 
@@ -413,9 +413,9 @@ describe('Stop handler - ID ordering (Fix 2)', () => {
     await handleStop(makeInput('ses_order'));
 
     const content = await fs.readFile(mdPath, 'utf-8');
-    // ct-1.1 should be the FIRST edit (First change), ct-1.2 should be the SECOND (Second change)
-    expect(content).toContain('{~~first original~>First change~~}[^ct-1.1]');
-    expect(content).toContain('{~~second original~>Second change~~}[^ct-1.2]');
+    // cn-1.1 should be the FIRST edit (First change), cn-1.2 should be the SECOND (Second change)
+    expect(content).toContain('{~~first original~>First change~~}[^cn-1.1]');
+    expect(content).toContain('{~~second original~>Second change~~}[^cn-1.2]');
   });
 });
 
@@ -423,8 +423,8 @@ describe('Stop handler - session-specific clearing (Fix 3)', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-fix3-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-fix3-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     await fs.writeFile(
       path.join(scDir, 'config.toml'),
@@ -520,8 +520,8 @@ describe('Stop handler - global max ID (Fix 4)', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-fix4-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-fix4-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     await fs.writeFile(
       path.join(scDir, 'config.toml'),
@@ -545,16 +545,16 @@ describe('Stop handler - global max ID (Fix 4)', () => {
     const mdPathA = path.join(tmpDir, 'a.md');
     const mdPathB = path.join(tmpDir, 'b.md');
 
-    // File A has existing ct-5
+    // File A has existing cn-5
     await fs.writeFile(
       mdPathA,
-      'Change in A.\n\n[^ct-5]: @someone | 2026-02-09 | ins | proposed\n',
+      'Change in A.\n\n[^cn-5]: @someone | 2026-02-09 | ins | proposed\n',
       'utf-8',
     );
-    // File B has existing ct-3
+    // File B has existing cn-3
     await fs.writeFile(
       mdPathB,
-      'Change in B.\n\n[^ct-3]: @someone | 2026-02-09 | ins | proposed\n',
+      'Change in B.\n\n[^cn-3]: @someone | 2026-02-09 | ins | proposed\n',
       'utf-8',
     );
 
@@ -584,10 +584,10 @@ describe('Stop handler - global max ID (Fix 4)', () => {
     const contentB = await fs.readFile(mdPathB, 'utf-8');
 
     // Global max is 5 (from file A), so parent ID should be 6
-    expect(contentA).toContain('[^ct-6.1]');
-    expect(contentB).toContain('[^ct-6.2]');
+    expect(contentA).toContain('[^cn-6.1]');
+    expect(contentB).toContain('[^cn-6.2]');
     // Parent footnote should be in the first file
-    expect(contentA).toContain('[^ct-6]: @ai:claude-opus-4.6');
+    expect(contentA).toContain('[^cn-6]: @ai:claude-opus-4.6');
     expect(contentA).toContain('| group | proposed');
   });
 });
@@ -596,8 +596,8 @@ describe('Stop handler - parent footnote for groups (Fix 7)', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-fix7-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-fix7-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     await fs.writeFile(
       path.join(scDir, 'config.toml'),
@@ -617,7 +617,7 @@ describe('Stop handler - parent footnote for groups (Fix 7)', () => {
     stop_hook_active: true,
   });
 
-  it('generates parent footnote [^ct-N] with type group for multi-edit sessions', async () => {
+  it('generates parent footnote [^cn-N] with type group for multi-edit sessions', async () => {
     const mdPath = path.join(tmpDir, 'readme.md');
     await fs.writeFile(mdPath, '# New Title\n\nNew paragraph.\n', 'utf-8');
 
@@ -640,11 +640,11 @@ describe('Stop handler - parent footnote for groups (Fix 7)', () => {
 
     const content = await fs.readFile(mdPath, 'utf-8');
     // Parent footnote should exist with group type
-    expect(content).toContain('[^ct-1]: @ai:claude-opus-4.6');
+    expect(content).toContain('[^cn-1]: @ai:claude-opus-4.6');
     expect(content).toContain('| group | proposed');
     // Children should exist
-    expect(content).toContain('[^ct-1.1]');
-    expect(content).toContain('[^ct-1.2]');
+    expect(content).toContain('[^cn-1.1]');
+    expect(content).toContain('[^cn-1.2]');
   });
 
   it('does not generate parent footnote for single edits', async () => {
@@ -662,9 +662,9 @@ describe('Stop handler - parent footnote for groups (Fix 7)', () => {
     await handleStop(makeInput('ses_single'));
 
     const content = await fs.readFile(mdPath, 'utf-8');
-    // No group footnote — only [^ct-1] with type sub
+    // No group footnote — only [^cn-1] with type sub
     expect(content).not.toContain('| group | proposed');
-    expect(content).toContain('[^ct-1]');
+    expect(content).toContain('[^cn-1]');
     expect(content).toContain('| sub | proposed');
   });
 });
@@ -673,8 +673,8 @@ describe('Stop handler - footnote spacing (Fix 6)', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-fix6-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-fix6-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     await fs.writeFile(
       path.join(scDir, 'config.toml'),
@@ -720,8 +720,8 @@ describe('Stop handler - footnote spacing (Fix 6)', () => {
     expect(content).not.toMatch(/\n\n\n/);
     // Footnotes should be separated by single newlines (within the block)
     // and the block starts with a blank line separator from the content
-    const footnoteSection = content.slice(content.indexOf('[^ct-'));
-    const footnoteLines = footnoteSection.split('\n').filter((l) => l.startsWith('[^ct-'));
+    const footnoteSection = content.slice(content.indexOf('[^cn-'));
+    const footnoteLines = footnoteSection.split('\n').filter((l) => l.startsWith('[^cn-'));
     expect(footnoteLines.length).toBeGreaterThanOrEqual(2);
   });
 });
@@ -730,8 +730,8 @@ describe('Stop handler - session_id fallback (Fix 5)', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-fix5-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-fix5-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     await fs.writeFile(
       path.join(scDir, 'config.toml'),
@@ -866,8 +866,8 @@ describe('Stop handler - policy.mode gating', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-policy-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-policy-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
   });
 
@@ -876,7 +876,7 @@ describe('Stop handler - policy.mode gating', () => {
   });
 
   it('skips batch-wrapping in strict mode even with pending edits', async () => {
-    const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+    const configPath = path.join(tmpDir, '.changedown', 'config.toml');
     await fs.writeFile(configPath, '[tracking]\ninclude = ["**/*.md"]\n\n[author]\ndefault = "ai:claude-opus-4.6"\n\n[policy]\nmode = "strict"\n', 'utf-8');
 
     const mdPath = path.join(tmpDir, 'readme.md');
@@ -903,7 +903,7 @@ describe('Stop handler - policy.mode gating', () => {
   });
 
   it('skips batch-wrapping in permissive mode', async () => {
-    const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+    const configPath = path.join(tmpDir, '.changedown', 'config.toml');
     await fs.writeFile(configPath, '[tracking]\ninclude = ["**/*.md"]\n\n[author]\ndefault = "ai:claude-opus-4.6"\n\n[policy]\nmode = "permissive"\n', 'utf-8');
 
     const mdPath = path.join(tmpDir, 'readme.md');
@@ -930,7 +930,7 @@ describe('Stop handler - policy.mode gating', () => {
   });
 
   it('batch-wraps in safety-net mode (existing behavior)', async () => {
-    const configPath = path.join(tmpDir, '.changetracks', 'config.toml');
+    const configPath = path.join(tmpDir, '.changedown', 'config.toml');
     await fs.writeFile(configPath, '[tracking]\ninclude = ["**/*.md"]\n\n[author]\ndefault = "ai:claude-opus-4.6"\n\n[policy]\nmode = "safety-net"\n', 'utf-8');
 
     const mdPath = path.join(tmpDir, 'readme.md');
@@ -960,7 +960,7 @@ describe('Stop handler — creation tracking', () => {
 
   /** Writes a safety-net config with optional creation_tracking override */
   async function writeConfig(creationTracking?: string) {
-    const scDir = path.join(tmpDir, '.changetracks');
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     const ct = creationTracking ? `\ncreation_tracking = "${creationTracking}"` : '';
     await fs.writeFile(
@@ -971,7 +971,7 @@ describe('Stop handler — creation tracking', () => {
   }
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-creation-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-creation-'));
   });
 
   afterEach(async () => {
@@ -1004,8 +1004,8 @@ describe('Stop handler — creation tracking', () => {
     await handleStop(makeInput('ses_create'));
 
     const result = await fs.readFile(mdPath, 'utf-8');
-    expect(result).toContain('<!-- ctrcks.com/v1: tracked -->');
-    expect(result).toContain('[^ct-1]');
+    expect(result).toContain('<!-- changedown.com/v1: tracked -->');
+    expect(result).toContain('[^cn-1]');
     expect(result).toContain('| creation | proposed');
     expect(result).not.toContain('{++');
     expect(result).not.toContain('++}');
@@ -1077,7 +1077,7 @@ describe('Stop handler — creation tracking', () => {
     await handleStop(makeInput('ses_default'));
 
     const result = await fs.readFile(mdPath, 'utf-8');
-    expect(result).toContain('<!-- ctrcks.com/v1: tracked -->');
+    expect(result).toContain('<!-- changedown.com/v1: tracked -->');
     expect(result).toContain('| creation | proposed');
     expect(result).not.toContain('{++');
   });
@@ -1101,7 +1101,7 @@ describe('Stop handler — creation tracking', () => {
     await handleStop(makeInput('ses_guard'));
 
     const result = await fs.readFile(mdPath, 'utf-8');
-    expect(result).toContain('<!-- ctrcks.com/v1: tracked -->');
+    expect(result).toContain('<!-- changedown.com/v1: tracked -->');
     expect(result).toContain('| creation | proposed');
     expect(result).not.toContain('{++');
   });
@@ -1132,7 +1132,7 @@ describe('Stop handler — creation tracking', () => {
   it('preserves existing tracking header during creation tracking', async () => {
     await writeConfig('footnote');
     const mdPath = path.join(tmpDir, 'already-tracked.md');
-    const fullContent = '<!-- ctrcks.com/v1: tracked -->\n# Already Tracked\n\nContent.\n';
+    const fullContent = '<!-- changedown.com/v1: tracked -->\n# Already Tracked\n\nContent.\n';
     await fs.writeFile(mdPath, fullContent, 'utf-8');
 
     await appendPendingEdit(tmpDir, {
@@ -1148,7 +1148,7 @@ describe('Stop handler — creation tracking', () => {
     await handleStop(makeInput('ses_existing'));
 
     const result = await fs.readFile(mdPath, 'utf-8');
-    const headerCount = (result.match(/ctrcks.com\/v1/g) || []).length;
+    const headerCount = (result.match(/changedown.com\/v1/g) || []).length;
     expect(headerCount).toBe(1);
   });
 
@@ -1174,7 +1174,7 @@ describe('Stop handler — creation tracking', () => {
     expect(result).toContain('{++insertion++}');
     expect(result).toContain('{--deletion--}');
     expect(result).not.toMatch(/\{[+][+]# Test Fixture/);
-    expect(result).toContain('<!-- ctrcks.com/v1: tracked -->');
+    expect(result).toContain('<!-- changedown.com/v1: tracked -->');
     expect(result).toContain('| creation | proposed');
   });
 

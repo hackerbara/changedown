@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { isGhostNode, ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
+import { isGhostNode, ChangeNode, ChangeType, ChangeStatus } from '@changedown/core';
 
 function makeNode(overrides: Partial<ChangeNode>): ChangeNode {
   return {
-    id: 'ct-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
+    id: 'cn-1', type: ChangeType.Insertion, status: ChangeStatus.Proposed,
     range: { start: 0, end: 0 }, contentRange: { start: 0, end: 0 },
     anchored: false, level: 2, originalText: '', modifiedText: '',
     ...overrides,
@@ -16,7 +16,7 @@ describe('isGhostNode', () => {
   });
 
   it('returns false for consumed L2+ node (anchored:false, has consumedBy)', () => {
-    expect(isGhostNode(makeNode({ anchored: false, level: 2, consumedBy: 'ct-5' }))).toBe(false);
+    expect(isGhostNode(makeNode({ anchored: false, level: 2, consumedBy: 'cn-5' }))).toBe(false);
   });
 
   it('returns false for anchored L2+ node', () => {

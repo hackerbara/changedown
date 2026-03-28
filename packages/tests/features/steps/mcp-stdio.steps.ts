@@ -12,7 +12,7 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,9 +35,9 @@ interface P1State {
   pendingRequests: Map<number, { resolve: (value: any) => void; reject: (reason: any) => void }>;
 }
 
-const p1State: WeakMap<ChangeTracksWorld, P1State> = new WeakMap();
+const p1State: WeakMap<ChangeDownWorld, P1State> = new WeakMap();
 
-function getState(world: ChangeTracksWorld): P1State {
+function getState(world: ChangeDownWorld): P1State {
   const s = p1State.get(world);
   if (!s) throw new Error('P1 state not initialized — run Background steps first');
   return s;
@@ -106,7 +106,7 @@ async function callTool(state: P1State, toolName: string, args: Record<string, u
 
 Given(
   'an MCP server process spawned via stdio transport',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     // Create state for this scenario
     const state: P1State = {
       serverProcess: null,
@@ -127,14 +127,14 @@ Given(
 
 Given(
   'a temp project directory with config.toml',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getState(this);
 
     // Create temp directory
-    state.tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-p1-stdio-'));
+    state.tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-p1-stdio-'));
 
-    // Create .changetracks/config.toml
-    const configDir = path.join(state.tmpDir, '.changetracks');
+    // Create .changedown/config.toml
+    const configDir = path.join(state.tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -165,7 +165,7 @@ auto_on_reject = true
     // Spawn the MCP server. Use the built dist file.
     const serverPath = path.resolve(
       __dirname,
-      '../../../../changetracks-plugin/mcp-server/dist/index.js',
+      '../../../../changedown-plugin/mcp-server/dist/index.js',
     );
 
     // Verify server exists
@@ -173,7 +173,7 @@ auto_on_reject = true
       await fs.access(serverPath);
     } catch {
       throw new Error(
-        `MCP server dist not found at ${serverPath} — run 'npm run build' in changetracks-plugin/mcp-server first`,
+        `MCP server dist not found at ${serverPath} — run 'npm run build' in changedown-plugin/mcp-server first`,
       );
     }
 
@@ -181,7 +181,7 @@ auto_on_reject = true
       cwd: state.tmpDir,
       env: {
         ...process.env,
-        CHANGETRACKS_PROJECT_DIR: state.tmpDir,
+        CHANGEDOWN_PROJECT_DIR: state.tmpDir,
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -253,7 +253,7 @@ auto_on_reject = true
 // Cleanup
 // =============================================================================
 
-After({ tags: '@stdio or not @skip' }, async function (this: ChangeTracksWorld) {
+After({ tags: '@stdio or not @skip' }, async function (this: ChangeDownWorld) {
   const state = p1State.get(this);
   if (!state) return;
 
@@ -281,7 +281,7 @@ After({ tags: '@stdio or not @skip' }, async function (this: ChangeTracksWorld) 
 
 When(
   'I send a JSON-RPC {string} request',
-  async function (this: ChangeTracksWorld, method: string) {
+  async function (this: ChangeDownWorld, method: string) {
     const state = getState(this);
     const id = nextId(state);
     state.lastResponse = await sendJsonRpc(state, {
@@ -295,7 +295,7 @@ When(
 
 Then(
   'I receive a valid response with at least {int} tools',
-  function (this: ChangeTracksWorld, expectedCount: number) {
+  function (this: ChangeDownWorld, expectedCount: number) {
     const state = getState(this);
     assert.ok(state.lastResponse, 'No response received');
     assert.ok(state.lastResponse.result, 'Response missing result');
@@ -310,7 +310,7 @@ Then(
 
 Then(
   'the tools include: read_tracked_file, propose_change, review_changes, resolve_thread, amend_change, list_changes, supersede_change',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getState(this);
     const tools = state.lastResponse.result.tools;
     const toolNames = tools.map((t: any) => t.name);
@@ -338,7 +338,7 @@ Then(
 
 When(
   'I send read_tracked_file for a tracked file',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getState(this);
     state.lastResponse = await callTool(state, 'read_tracked_file', {
       file: state.testFilePath,
@@ -349,7 +349,7 @@ When(
 
 Then(
   'I receive content with no errors',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getState(this);
     assert.ok(state.lastResponse, 'No response received');
     assert.ok(state.lastResponse.result, 'Response missing result');
@@ -364,7 +364,7 @@ Then(
 
 When(
   'I send propose_change with old_text\\/new_text',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getState(this);
     state.lastResponse = await callTool(state, 'propose_change', {
       file: state.testFilePath,
@@ -377,7 +377,7 @@ When(
 
 Then(
   'I receive a response with change_id',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getState(this);
     assert.ok(state.lastResponse, 'No response received');
     assert.ok(state.lastResponse.result, 'Response missing result');
@@ -393,7 +393,7 @@ Then(
 
 When(
   'I send review_changes approving the change',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getState(this);
     assert.ok(state.lastChangeId, 'No change_id from previous step');
     state.lastResponse = await callTool(state, 'review_changes', {
@@ -411,7 +411,7 @@ When(
 
 Then(
   'I receive a success response',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getState(this);
     assert.ok(state.lastResponse, 'No response received');
     assert.ok(state.lastResponse.result, 'Response missing result');
@@ -422,7 +422,7 @@ Then(
 
 Then(
   'the file on disk reflects the settled change',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getState(this);
     const content = await fs.readFile(state.testFilePath, 'utf-8');
     // After approval with auto_on_approve=true, the CriticMarkup is settled
@@ -445,7 +445,7 @@ Then(
 
 When(
   'I send propose_change for a nonexistent file',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getState(this);
     state.lastResponse = await callTool(state, 'propose_change', {
       file: path.join(state.tmpDir, 'does-not-exist.md'),
@@ -458,7 +458,7 @@ When(
 
 Then(
   'I receive a JSON-RPC error response',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getState(this);
     assert.ok(state.lastResponse, 'No response received');
     // MCP tool errors are returned as result.isError=true (not JSON-RPC level error)
@@ -470,7 +470,7 @@ Then(
 
 Then(
   'the error has a message field describing the problem',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getState(this);
     const result = state.lastResponse.result;
     assert.ok(
@@ -502,7 +502,7 @@ Then(
 
 When(
   'I send a {string} tool call \\(unlisted alias)',
-  async function (this: ChangeTracksWorld, toolName: string) {
+  async function (this: ChangeDownWorld, toolName: string) {
     const state = getState(this);
     // propose_batch expects a changes array with file, old_text, new_text per change
     state.lastResponse = await callTool(state, toolName, {
@@ -517,7 +517,7 @@ When(
 
 Then(
   'the server routes it correctly and returns grouped change IDs',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getState(this);
     assert.ok(state.lastResponse, 'No response received');
     assert.ok(state.lastResponse.result, 'Response missing result');
@@ -546,7 +546,7 @@ Then(
 
 When(
   'I send two propose_change requests in rapid succession',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getState(this);
 
     // Send two requests in rapid succession — send the first, then
@@ -573,7 +573,7 @@ When(
 
 Then(
   'both complete without corruption',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getState(this);
     assert.equal(state.lastResponses.length, 2, 'Expected 2 responses');
     for (let i = 0; i < state.lastResponses.length; i++) {
@@ -591,17 +591,17 @@ Then(
 
 Then(
   'the file contains both changes with sequential IDs',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getState(this);
     const content = await fs.readFile(state.testFilePath, 'utf-8');
     // Both changes should be present in the file as CriticMarkup
     assert.ok(
-      content.includes('[^ct-1]') || content.includes('ct-1'),
-      `Expected ct-1 in file but got:\n${content}`,
+      content.includes('[^cn-1]') || content.includes('cn-1'),
+      `Expected cn-1 in file but got:\n${content}`,
     );
     assert.ok(
-      content.includes('[^ct-2]') || content.includes('ct-2'),
-      `Expected ct-2 in file but got:\n${content}`,
+      content.includes('[^cn-2]') || content.includes('cn-2'),
+      `Expected cn-2 in file but got:\n${content}`,
     );
   },
 );

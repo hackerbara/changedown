@@ -11,70 +11,70 @@ Feature: File operations
 
   Scenario: Substitution wraps old text in CriticMarkup substitution markup
     Given a file-ops document "The quick brown fox jumps over the lazy dog."
-    When I apply propose-change substituting "quick brown" with "slow red" as "ct-1" by "ai:claude-opus-4.6"
+    When I apply propose-change substituting "quick brown" with "slow red" as "cn-1" by "ai:claude-opus-4.6"
     Then the file-ops change type is "sub"
-    And the file-ops output contains "{~~quick brown~>slow red~~}[^ct-1]"
-    And the file-ops output contains "ct-1]: @ai:claude-opus-4.6"
+    And the file-ops output contains "{~~quick brown~>slow red~~}[^cn-1]"
+    And the file-ops output contains "cn-1]: @ai:claude-opus-4.6"
     And the file-ops output contains "| sub | proposed"
 
   Scenario: Deletion wraps old text in CriticMarkup deletion markup
     Given a file-ops document "The quick brown fox jumps over the lazy dog."
-    When I apply propose-change deleting " brown" as "ct-2" by "ai:claude-opus-4.6"
+    When I apply propose-change deleting " brown" as "cn-2" by "ai:claude-opus-4.6"
     Then the file-ops change type is "del"
-    And the file-ops output contains "{-- brown--}[^ct-2]"
+    And the file-ops output contains "{-- brown--}[^cn-2]"
     And the file-ops output contains "| del | proposed"
 
   Scenario: Insertion adds new text after anchor with insertion markup
     Given a file-ops document "The quick fox jumps."
-    When I apply propose-change inserting " brown" after "quick" as "ct-3" by "ai:claude-opus-4.6"
+    When I apply propose-change inserting " brown" after "quick" as "cn-3" by "ai:claude-opus-4.6"
     Then the file-ops change type is "ins"
-    And the file-ops output contains "quick{++ brown++}[^ct-3]"
+    And the file-ops output contains "quick{++ brown++}[^cn-3]"
     And the file-ops output contains "| ins | proposed"
 
   Scenario: Reasoning is included in the footnote
     Given a file-ops document "Hello world."
-    When I apply propose-change substituting "world" with "earth" as "ct-1" by "ai:claude-opus-4.6" with reasoning "More specific term"
+    When I apply propose-change substituting "world" with "earth" as "cn-1" by "ai:claude-opus-4.6" with reasoning "More specific term"
     Then the file-ops output contains "More specific term"
-    And the file-ops output contains "ct-1]: @ai:claude-opus-4.6"
+    And the file-ops output contains "cn-1]: @ai:claude-opus-4.6"
 
   Scenario: Not-found error when old text is absent
     Given a file-ops document "Hello world."
-    When I apply propose-change substituting "xyz not here" with "replacement" as "ct-1" by "ai:claude-opus-4.6" expecting an error
+    When I apply propose-change substituting "xyz not here" with "replacement" as "cn-1" by "ai:claude-opus-4.6" expecting an error
     Then the file-ops error message matches "xyz not here"
 
   Scenario: Ambiguous error when old text appears multiple times
     Given a file-ops document "the cat and the dog"
-    When I apply propose-change substituting "the" with "a" as "ct-1" by "ai:claude-opus-4.6" expecting an error
+    When I apply propose-change substituting "the" with "a" as "cn-1" by "ai:claude-opus-4.6" expecting an error
     Then the file-ops error message matches "ambiguous|multiple|context"
 
   Scenario: Both-empty error when old and new text are both empty
     Given a file-ops document "Hello world."
-    When I apply propose-change with empty old and new text as "ct-1" by "ai:claude-opus-4.6" expecting an error
+    When I apply propose-change with empty old and new text as "cn-1" by "ai:claude-opus-4.6" expecting an error
     Then the file-ops error message matches "empty"
 
   Scenario: No-insertAfter error for insertion without anchor
     Given a file-ops document "Hello world."
-    When I apply propose-change inserting "text" without anchor as "ct-1" by "ai:claude-opus-4.6" expecting an error
+    When I apply propose-change inserting "text" without anchor as "cn-1" by "ai:claude-opus-4.6" expecting an error
     Then the file-ops error message matches "insertAfter"
 
   # ── appendFootnote ─────────────────────────────────────────────────
 
   Scenario: Appends footnote when no existing footnotes
     Given a file-ops document "Some text."
-    When I append footnote "\n\n[^ct-1]: @alice | 2026-02-10 | sub | proposed"
-    Then the file-ops footnote result is "Some text.\n\n[^ct-1]: @alice | 2026-02-10 | sub | proposed"
+    When I append footnote "\n\n[^cn-1]: @alice | 2026-02-10 | sub | proposed"
+    Then the file-ops footnote result is "Some text.\n\n[^cn-1]: @alice | 2026-02-10 | sub | proposed"
 
   Scenario: Appends footnote after existing footnotes
     Given a file-ops document with existing footnotes:
       """
       Some text.
 
-      [^ct-1]: @alice | 2026-02-10 | sub | proposed
+      [^cn-1]: @alice | 2026-02-10 | sub | proposed
           @alice 2026-02-10: reason
       """
-    When I append footnote "\n\n[^ct-2]: @bob | 2026-02-10 | ins | proposed"
-    Then the file-ops footnote result contains "[^ct-1]:"
-    And the file-ops footnote result contains "[^ct-2]:"
+    When I append footnote "\n\n[^cn-2]: @bob | 2026-02-10 | ins | proposed"
+    Then the file-ops footnote result contains "[^cn-1]:"
+    And the file-ops footnote result contains "[^cn-2]:"
     And the file-ops footnote result contains "reason"
 
   Scenario: Ignores footnote definitions inside fenced code blocks
@@ -83,13 +83,13 @@ Feature: File operations
       ## Example
 
       ```markdown
-      [^ct-42]: @alice | 2026-02-10 | sub | proposed
+      [^cn-42]: @alice | 2026-02-10 | sub | proposed
       ```
 
       ## More content
       """
-    When I append footnote "\n\n[^ct-1]: @bob | 2026-02-10 | ins | proposed"
-    Then the file-ops footnote result ends with "[^ct-1]: @bob | 2026-02-10 | ins | proposed"
+    When I append footnote "\n\n[^cn-1]: @bob | 2026-02-10 | ins | proposed"
+    Then the file-ops footnote result ends with "[^cn-1]: @bob | 2026-02-10 | ins | proposed"
 
   # ── extractLineRange ───────────────────────────────────────────────
 
@@ -126,23 +126,23 @@ Feature: File operations
 
   Scenario: Delegates to applyProposeChange for string-match substitution
     Given a file-ops document "Hello world."
-    When I apply single-operation substituting "world" with "earth" as "ct-1" by "ai:test"
+    When I apply single-operation substituting "world" with "earth" as "cn-1" by "ai:test"
     Then the file-ops change type is "sub"
-    And the file-ops output contains "{~~world~>earth~~}[^ct-1]"
+    And the file-ops output contains "{~~world~>earth~~}[^cn-1]"
 
   # ── stripRefsFromContent ───────────────────────────────────────────
 
   Scenario: Strips single footnote ref and returns it
-    Given a file-ops content "| **RUNNING** | check |[^ct-2.1]"
+    Given a file-ops content "| **RUNNING** | check |[^cn-2.1]"
     When I strip refs from the content
     Then the stripped content is "| **RUNNING** | check |"
-    And the stripped refs are "[^ct-2.1]"
+    And the stripped refs are "[^cn-2.1]"
 
   Scenario: Strips multiple footnote refs
-    Given a file-ops content "text[^ct-1][^ct-2] more"
+    Given a file-ops content "text[^cn-1][^cn-2] more"
     When I strip refs from the content
     Then the stripped content is "text more"
-    And the stripped refs are "[^ct-1]" and "[^ct-2]"
+    And the stripped refs are "[^cn-1]" and "[^cn-2]"
 
   Scenario: Returns text unchanged when no refs present
     Given a file-ops content "just plain text"
@@ -155,10 +155,10 @@ Feature: File operations
   Scenario: Preserves settled ref during substitution via view-aware match
     Given a file-ops document with refs:
       """
-      | **RUNNING** | check |[^ct-1] end.
+      | **RUNNING** | check |[^cn-1] end.
 
-      [^ct-1]: @ai:test | 2026-02-20 | sub | accepted
+      [^cn-1]: @ai:test | 2026-02-20 | sub | accepted
       """
-    When I apply propose-change substituting "| **RUNNING** | check |" with "| **DONE** 95% | check passed |" as "ct-2" by "ai:test"
-    Then the file-ops output contains "[^ct-1]"
+    When I apply propose-change substituting "| **RUNNING** | check |" with "| **DONE** 95% | check passed |" as "cn-2" by "ai:test"
+    Then the file-ops output contains "[^cn-1]"
     And the file-ops output contains "{~~"

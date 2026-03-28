@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseOp } from '@changetracks/core/internals';
+import { parseOp } from '@changedown/core/internals';
 
 describe('parseOp', () => {
   // ─── Substitution ──────────────────────────────────────────────────────

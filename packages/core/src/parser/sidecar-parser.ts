@@ -15,7 +15,7 @@ interface SidecarEntryMeta {
 
 /** A tagged line found during inline scanning. */
 interface TaggedLine {
-  /** The ct-N or ct-N.M tag. */
+  /** The cn-N or cn-N.M tag. */
   tag: string;
   /** Index of this line in the full lines array. */
   lineIndex: number;
@@ -38,10 +38,10 @@ interface TagGroup {
  * Parses sidecar-annotated code files back into ChangeNode[].
  *
  * A sidecar-annotated file has:
- * 1. Code lines with ct-N tags (insertion/deletion markers)
+ * 1. Code lines with cn-N tags (insertion/deletion markers)
  * 2. A sidecar metadata block at the bottom with footnote entries
  *
- * The parser extracts both, groups tagged lines by ct-N tag,
+ * The parser extracts both, groups tagged lines by cn-N tag,
  * and constructs ChangeNode[] with proper types, ranges, and metadata.
  */
 export class SidecarParser {
@@ -63,7 +63,7 @@ export class SidecarParser {
       ? this.parseSidecarBlock(lines, sidecarStart, syntax)
       : new Map<string, SidecarEntryMeta>();
 
-    // Step 2: Scan code lines (before sidecar block) for ct-N tags
+    // Step 2: Scan code lines (before sidecar block) for cn-N tags
     const codeLineEnd = sidecarStart >= 0 ? sidecarStart : lines.length;
     const taggedLines = this.scanTaggedLines(lines, codeLineEnd, syntax);
 
@@ -82,7 +82,7 @@ export class SidecarParser {
 
   /**
    * Parses the sidecar block starting at the given line index.
-   * Returns a map from tag (e.g. "ct-1") to its metadata.
+   * Returns a map from tag (e.g. "cn-1") to its metadata.
    */
   private parseSidecarBlock(
     lines: string[],
@@ -92,9 +92,9 @@ export class SidecarParser {
     const map = new Map<string, SidecarEntryMeta>();
     const cm = escapeRegex(syntax.line);
 
-    // Pattern for footnote entry: `COMMENT [^ct-N]: TYPE | STATUS`
+    // Pattern for footnote entry: `COMMENT [^cn-N]: TYPE | STATUS`
     const entryPattern = new RegExp(
-      `^${cm}\\s+\\[\\^(ct-\\d+(?:\\.\\d+)?)\\]:\\s+(\\w+)\\s+\\|\\s+(\\w+)`
+      `^${cm}\\s+\\[\\^(cn-\\d+(?:\\.\\d+)?)\\]:\\s+(\\w+)\\s+\\|\\s+(\\w+)`
     );
 
     // Pattern for field lines: `COMMENT     key: value`
@@ -164,7 +164,7 @@ export class SidecarParser {
   }
 
   /**
-   * Scans lines up to the sidecar block for ct-N tags.
+   * Scans lines up to the sidecar block for cn-N tags.
    * Returns an array of tagged lines with their line index and parsed info.
    */
   private scanTaggedLines(
@@ -191,7 +191,7 @@ export class SidecarParser {
   }
 
   /**
-   * Groups tagged lines by their ct-N tag.
+   * Groups tagged lines by their cn-N tag.
    * Preserves insertion order (first tag seen comes first).
    */
   private groupByTag(taggedLines: TaggedLine[]): TagGroup[] {

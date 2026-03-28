@@ -3,10 +3,10 @@ import {
   HashlineMismatchError,
   computeLineHash,
   relocateHashRef,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 /** Re-exported so tests can use the same hash function as relocation (avoids duplicate module instances). */
-export { computeLineHash } from '@changetracks/core';
+export { computeLineHash, HashlineMismatchError } from '@changedown/core';
 
 export interface RelocationEntry {
   param: string; // 'start_line' | 'end_line' | 'after_line'
@@ -133,14 +133,14 @@ export function validateOrAutoRemap(
       err.message = [
         `Hash mismatch on line ${ref.line}: expected ${actualHash}, got ${ref.hash}.`,
         '',
-        'This means the file content has changed since your last read — likely because',
-        'a proposal was accepted and settled, or another agent edited this region.',
-        'The hash is a verification token that confirms you are targeting the content',
-        'you intend to modify.',
+        'Coordinate resolution failed: line content not found in any view.',
         '',
-        'Call read_tracked_file to get current hashes, then retry your full batch',
-        'with corrected coordinates. Do not break your batch into smaller pieces —',
-        'the mismatch affects specific coordinates, not your batch structure.',
+        'The file has changed in a way that can\'t be automatically resolved.',
+        'Call read_tracked_file to get current coordinates, then retry.',
+        'For multiple edits, use propose_change with a changes array or propose_batch',
+        'to apply all changes atomically against the same file state.',
+        '',
+        `  read_tracked_file(file: "<path>", view: "review")`,
         '',
         `Quick-fix: ${ref.line}:${ref.hash} → ${ref.line}:${actualHash}`,
       ].join('\n');

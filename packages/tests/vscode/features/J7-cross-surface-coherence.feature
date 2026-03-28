@@ -6,7 +6,7 @@ Feature: All surfaces stay synchronized after state changes
 
   Background:
     Given I open "journey-review-target.md" in VS Code
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And I wait for changes to load
 
   Scenario: Accept changes reflects across surfaces

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { OffsetRange, TextEdit } from '@changetracks/core';
+import { OffsetRange, TextEdit } from '@changedown/core';
 
 export function offsetToPosition(text: string, offset: number): vscode.Position {
     let line = 0, char = 0;

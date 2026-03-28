@@ -2,7 +2,7 @@
  * Step definitions for the "Review with reason" feature (ops/review-with-reason.feature).
  *
  * These steps call computeApprovalLineEdit and computeFootnoteStatusEdits from
- * @changetracks/core to apply review operations directly on in-memory text.
+ * @changedown/core to apply review operations directly on in-memory text.
  *
  * Existing steps reused (from core-operations.steps.ts):
  *   - Given the text is: (docstring)
@@ -11,12 +11,12 @@
  */
 import { When } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 import {
   computeApprovalLineEdit,
   computeFootnoteStatusEdits,
   type TextEdit,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 /**
  * Apply a TextEdit to a source string, producing the resulting text.
@@ -44,7 +44,7 @@ function applyEdits(text: string, edits: TextEdit[]): string {
 When(
   'I review {word} with decision {string} and reason {string} by {string} on {string}',
   function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     decision: string,
     reason: string,
@@ -74,7 +74,7 @@ When(
 When(
   'I review {word} with decision {string} without reason by {string} on {string}',
   function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     decision: string,
     author: string,

@@ -6,7 +6,7 @@ import {
   findFootnoteBlock,
   type ThreeZoneViewName,
   type ThreeZoneDocument,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 // ANSI codes used for thread rendering (subset of what formatAnsi uses)
 const RESET = '\x1b[0m';
@@ -38,8 +38,8 @@ export function extractThreadEntries(content: string): Map<string, ThreadEntry[]
   const lines = content.split('\n');
   const threads = new Map<string, ThreadEntry[]>();
 
-  // Find all change IDs referenced in the file by scanning for [^ct-N] patterns
-  const refRe = /\[\^(ct-\d+(?:\.\d+)?)\]/g;
+  // Find all change IDs referenced in the file by scanning for [^cn-N] patterns
+  const refRe = /\[\^(cn-\d+(?:\.\d+)?)\]/g;
   const changeIds = new Set<string>();
   for (const match of content.matchAll(refRe)) {
     changeIds.add(match[1]);

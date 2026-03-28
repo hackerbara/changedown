@@ -9,10 +9,12 @@ import {
   defaultNormalizer,
   generateFootnoteDefinition,
   resolveAt,
-} from '@changetracks/core';
-import { validateOrAutoRemap, type RelocationEntry, type AutoRemapResult } from './hashline-relocate.js';
+  computeCommittedView,
+  computeSettledView,
+} from '@changedown/core';
+import { validateOrAutoRemap, HashlineMismatchError, type RelocationEntry, type AutoRemapResult } from './hashline-relocate.js';
 import type { SessionState, ViewName } from '../state.js';
-import type { ChangeTracksConfig } from '../config.js';
+import type { ChangeDownConfig } from '../config.js';
 import {
   findUniqueMatch,
   contentZoneText,
@@ -21,6 +23,7 @@ import {
   stripRefsFromContent,
   appendFootnote,
 } from '../file-ops.js';
+import { offsetToLineNumber } from './change-utils.js';
 
 export interface NormalizedCompactOp {
   at: string;
@@ -109,21 +112,151 @@ export function resolveCoordinates(
     endHash = startHash;
   }
 
-  // Stage 3: Auto-relocation
-  const startResult = validateOrAutoRemap(
-    { line: startLine, hash: startHash }, fileLines, 'start_line', relocations, autoRemap,
-  );
-  startLine = startResult.line;
-  if (startResult.remap) remaps.push(startResult.remap);
-
-  if (parsed.startLine !== parsed.endLine) {
-    const endResult = validateOrAutoRemap(
-      { line: endLine, hash: endHash }, fileLines, 'end_line', relocations, autoRemap,
+  // Stage 3: Auto-relocation (with Stage 3.5a fallback)
+  let stage3StartFailed = false;
+  try {
+    const startResult = validateOrAutoRemap(
+      { line: startLine, hash: startHash }, fileLines, 'start_line', relocations, autoRemap,
     );
-    endLine = endResult.line;
-    if (endResult.remap) remaps.push(endResult.remap);
+    startLine = startResult.line;
+    if (startResult.remap) remaps.push(startResult.remap);
+  } catch (stage3Err) {
+    if (!(stage3Err instanceof HashlineMismatchError)) throw stage3Err;
+    stage3StartFailed = true;
+  }
+
+  let stage3EndFailed = false;
+  if (parsed.startLine !== parsed.endLine) {
+    try {
+      const endResult = validateOrAutoRemap(
+        { line: endLine, hash: endHash }, fileLines, 'end_line', relocations, autoRemap,
+      );
+      endLine = endResult.line;
+      if (endResult.remap) remaps.push(endResult.remap);
+    } catch (stage3Err) {
+      if (!(stage3Err instanceof HashlineMismatchError)) throw stage3Err;
+      stage3EndFailed = true;
+    }
   } else {
     endLine = startLine;
+    stage3EndFailed = stage3StartFailed;
+  }
+
+  // Stage 3+: Content confirmation gate
+  // When hash validated (Stage 3 passed) but op has oldText, verify the text
+  // actually exists at the resolved line. Catches cases where quick-fix hashes
+  // or hash collisions point to a valid-but-wrong line.
+  if (!stage3StartFailed && !stage3EndFailed && op.oldText !== '') {
+    const rangeText = fileLines.slice(startLine - 1, endLine).join('\n');
+    try {
+      findUniqueMatch(rangeText, op.oldText, defaultNormalizer);
+    } catch (confirmErr: unknown) {
+      // Only invalidate if text genuinely not found (not if ambiguous — ambiguous means it IS there)
+      if (confirmErr instanceof Error && confirmErr.message.startsWith('Text not found')) {
+        stage3StartFailed = true;
+        stage3EndFailed = true;
+      }
+    }
+  }
+
+  // Stage 3.5a: findUniqueMatch fallback (sub/del/highlight with explicit oldText)
+  if ((stage3StartFailed || stage3EndFailed) && op.oldText !== '') {
+    try {
+      const contentZone = contentZoneText(fileContent);
+      const match = findUniqueMatch(contentZone, op.oldText, defaultNormalizer);
+      const matchStartLine = offsetToLineNumber(contentZone, match.index);
+      const matchEndLine = offsetToLineNumber(contentZone, match.index + match.length - 1);
+      if (stage3StartFailed) startLine = matchStartLine;
+      if (stage3EndFailed) endLine = matchEndLine;
+      stage3StartFailed = false;
+      stage3EndFailed = false;
+    } catch {
+      // findUniqueMatch failed (ambiguous or not found) — fall through to Stage 3.5b
+    }
+  }
+
+  // Stage 3.5b: View-hash resolution via committed/settled view
+  // Fires when 3.5a didn't resolve (insertion, comment, whole-line del/sub, or ambiguous oldText)
+  if (stage3StartFailed || stage3EndFailed) {
+    const lastView = state.getLastReadView(filePath) ?? 'raw';
+    const useSettled = lastView === 'settled';
+
+    // Compute the appropriate view — committed strips pending proposals,
+    // settled accepts them. Both return line-number mappings to raw file.
+    const viewResult = useSettled
+      ? computeSettledView(fileContent)
+      : computeCommittedView(fileContent);
+
+    const viewLines = viewResult.lines;
+    const viewToRaw: Map<number, number> = useSettled
+      ? (viewResult as ReturnType<typeof computeSettledView>).settledToRaw
+      : (viewResult as ReturnType<typeof computeCommittedView>).committedToRaw;
+
+    const getViewLineNum = (entry: (typeof viewLines)[0]): number =>
+      useSettled
+        ? (entry as { settledLineNum: number }).settledLineNum
+        : (entry as { committedLineNum: number }).committedLineNum;
+
+    const findInView = (targetLine: number, targetHash: string): number | undefined => {
+      // Try exact line match first
+      const exact = viewLines.find(
+        (l) => getViewLineNum(l) === targetLine && l.hash === targetHash,
+      );
+      if (exact) {
+        return viewToRaw.get(targetLine);
+      }
+
+      // Content-addressed scan: find hash at any line (unique match only)
+      let uniqueMatch: (typeof viewLines)[0] | undefined;
+      let ambiguous = false;
+      for (const entry of viewLines) {
+        if (entry.hash === targetHash) {
+          if (uniqueMatch) { ambiguous = true; break; }
+          uniqueMatch = entry;
+        }
+      }
+      if (uniqueMatch && !ambiguous) {
+        const matchedViewLine = getViewLineNum(uniqueMatch);
+        return viewToRaw.get(matchedViewLine);
+      }
+      return undefined;
+    };
+
+    if (stage3StartFailed) {
+      const rawLine = findInView(parsed.startLine, parsed.startHash);
+      if (rawLine !== undefined && rawLine >= 1 && rawLine <= fileLines.length) {
+        startLine = rawLine;
+        // Validate via Stage 3 contract: recompute raw hash
+        startHash = computeLineHash(rawLine - 1, fileLines[rawLine - 1], fileLines);
+        stage3StartFailed = false;
+      }
+    }
+
+    if (stage3EndFailed && parsed.startLine !== parsed.endLine) {
+      const rawLine = findInView(parsed.endLine, parsed.endHash);
+      if (rawLine !== undefined && rawLine >= 1 && rawLine <= fileLines.length) {
+        endLine = rawLine;
+        endHash = computeLineHash(rawLine - 1, fileLines[rawLine - 1], fileLines);
+        stage3EndFailed = false;
+      }
+    } else if (stage3EndFailed) {
+      endLine = startLine;
+      endHash = startHash;
+      stage3EndFailed = stage3StartFailed;
+    }
+
+    // If still unresolved after all fallbacks, throw hospitable error
+    if (stage3StartFailed || stage3EndFailed) {
+      const failedEndpoint = stage3StartFailed ? parsed.startLine : parsed.endLine;
+      const failedHash = stage3StartFailed ? parsed.startHash : parsed.endHash;
+      throw new HashlineMismatchError([{
+        line: failedEndpoint,
+        expected: failedHash,
+        actual: failedEndpoint <= fileLines.length
+          ? computeLineHash(failedEndpoint - 1, fileLines[failedEndpoint - 1], fileLines)
+          : 'out-of-range',
+      }], fileLines);
+    }
   }
 
   // Compute character offsets
@@ -136,10 +269,6 @@ export function resolveCoordinates(
     endOffset += fileLines[i].length + (i < endLine - 1 ? 1 : 0);
   }
   const content = fileLines.slice(startLine - 1, endLine).join('\n');
-
-  // fileContent reserved for stages 4-7 (settle-on-demand, auto-supersede);
-  // suppress unused-variable lint in resolveCoordinates which only handles stages 1-3
-  void fileContent;
 
   return {
     rawStartLine: startLine,
@@ -429,7 +558,7 @@ export function resolveAndApply(
   fileLines: string[],
   state: SessionState,
   filePath: string,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
   changeId: string,
   author: string,
 ): ApplyResult {

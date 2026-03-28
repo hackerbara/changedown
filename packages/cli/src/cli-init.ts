@@ -36,17 +36,17 @@ if (command === 'init') {
   printHelp();
 } else {
   console.log(`Unknown command: ${command}`);
-  console.log(`Run 'changetracks --help' for usage.`);
+  console.log(`Run 'changedown --help' for usage.`);
   process.exit(1);
 }
 
 function printHelp(): void {
   console.log(`
-  changetracks — durable change tracking for editors and AI agents
+  changedown — durable change tracking for editors and AI agents
 
   Usage:
-    changetracks init [options]    Set up change tracking in the current project
-    changetracks --help            Show this help
+    changedown init [options]    Set up change tracking in the current project
+    changedown --help            Show this help
 
   Init options:
     --author=NAME                  Set author identity (default: git config user.name)

@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import { SIDECAR_BLOCK_MARKER } from '@changetracks/core';
+import { SIDECAR_BLOCK_MARKER } from '@changedown/core';
 import { getOutputChannel } from '../output-channel';
 
 /**
- * Check if a document is supported for ChangeTracks operations.
+ * Check if a document is supported for ChangeDown operations.
  * Markdown files are always supported. Code files are supported if they have sidecar annotations.
  */
 export function isSupported(doc: vscode.TextDocument): boolean {
@@ -53,10 +53,10 @@ export function logError(message: string, error: unknown, showNotification = fal
             }
         }
     } catch (e) {
-        console.error('ChangeTracks Error:', message, error);
+        console.error('ChangeDown Error:', message, error);
     }
 
     if (showNotification) {
-        vscode.window.showErrorMessage(`ChangeTracks: ${message}`);
+        vscode.window.showErrorMessage(`ChangeDown: ${message}`);
     }
 }

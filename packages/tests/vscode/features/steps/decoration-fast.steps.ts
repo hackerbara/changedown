@@ -12,16 +12,16 @@ installVscodeMock();
 
 import { Given, When, Then, Before } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { CriticMarkupParser, ChangeType, VirtualDocument } from '@changetracks/core';
-import type { ChangeNode } from '@changetracks/core';
-import { EditorDecorator } from 'changetracks-vscode/internals';
+import { CriticMarkupParser, ChangeType, VirtualDocument } from '@changedown/core';
+import type { ChangeNode } from '@changedown/core';
+import { EditorDecorator } from 'changedown-vscode/internals';
 import { SpyEditor, RecordedDecoration } from '../../helpers/SpyEditor';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 
 // ── Extend World with decoration test state ─────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         decoratorInstance?: EditorDecorator;
         decoratorStyle?: 'foreground' | 'background';
         decoratorAuthorColors?: 'auto' | 'always' | 'never';
@@ -34,7 +34,7 @@ declare module './world' {
 
 // ── Lifecycle ───────────────────────────────────────────────────────
 
-Before({ tags: '@fast and (@D3 or @D4 or @D5 or @D6 or @D7 or @D8 or @D9 or @D10)' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and (@D3 or @D4 or @D5 or @D6 or @D7 or @D8 or @D9 or @D10)' }, function (this: ChangeDownWorld) {
     resetDecorationTypeCounter();
     this.decoratorStyle = 'foreground';
     this.decoratorAuthorColors = 'auto';
@@ -47,7 +47,7 @@ Before({ tags: '@fast and (@D3 or @D4 or @D5 or @D6 or @D7 or @D8 or @D9 or @D10
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-function getOrCreateDecorator(world: ChangeTracksWorld): EditorDecorator {
+function getOrCreateDecorator(world: ChangeDownWorld): EditorDecorator {
     if (!world.decoratorInstance) {
         world.decoratorInstance = new EditorDecorator(
             world.decoratorStyle ?? 'foreground',
@@ -79,15 +79,15 @@ function resolveDecorationArray(spy: SpyEditor, name: string): RecordedDecoratio
 
 // ── Given steps ─────────────────────────────────────────────────────
 
-Given('markup text {string}', function (this: ChangeTracksWorld, text: string) {
+Given('markup text {string}', function (this: ChangeDownWorld, text: string) {
     this.decorationText = text;
 });
 
-Given('markup text:', function (this: ChangeTracksWorld, docString: string) {
+Given('markup text:', function (this: ChangeDownWorld, docString: string) {
     this.decorationText = docString;
 });
 
-Given('decorator style {string}', function (this: ChangeTracksWorld, style: string) {
+Given('decorator style {string}', function (this: ChangeDownWorld, style: string) {
     assert.ok(style === 'foreground' || style === 'background', `Invalid style: ${style}`);
     this.decoratorStyle = style;
     // Force re-creation of decorator
@@ -97,7 +97,7 @@ Given('decorator style {string}', function (this: ChangeTracksWorld, style: stri
     }
 });
 
-Given('author colors mode {string}', function (this: ChangeTracksWorld, mode: string) {
+Given('author colors mode {string}', function (this: ChangeDownWorld, mode: string) {
     assert.ok(mode === 'auto' || mode === 'always' || mode === 'never', `Invalid author colors mode: ${mode}`);
     this.decoratorAuthorColors = mode;
     if (this.decoratorInstance) {
@@ -107,7 +107,7 @@ Given('author colors mode {string}', function (this: ChangeTracksWorld, mode: st
 });
 
 Given('a change of type {string} by {string} at offset {int} to {int}', function (
-    this: ChangeTracksWorld, typeName: string, author: string, start: number, end: number
+    this: ChangeDownWorld, typeName: string, author: string, start: number, end: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     const typeMap: Record<string, ChangeType> = {
@@ -120,7 +120,7 @@ Given('a change of type {string} by {string} at offset {int} to {int}', function
     const type = typeMap[typeName.toLowerCase()];
     assert.ok(type !== undefined, `Unknown change type "${typeName}"`);
     this.manualChanges.push({
-        id: `ct-${start}`,
+        id: `cn-${start}`,
         type,
         status: 'Pending' as any,
         range: { start, end },
@@ -131,7 +131,7 @@ Given('a change of type {string} by {string} at offset {int} to {int}', function
 });
 
 Given('a change of type {string} with no author at offset {int} to {int}', function (
-    this: ChangeTracksWorld, typeName: string, start: number, end: number
+    this: ChangeDownWorld, typeName: string, start: number, end: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     const typeMap: Record<string, ChangeType> = {
@@ -144,7 +144,7 @@ Given('a change of type {string} with no author at offset {int} to {int}', funct
     const type = typeMap[typeName.toLowerCase()];
     assert.ok(type !== undefined, `Unknown change type "${typeName}"`);
     this.manualChanges.push({
-        id: `ct-${start}`,
+        id: `cn-${start}`,
         type,
         status: 'Pending' as any,
         range: { start, end },
@@ -154,14 +154,14 @@ Given('a change of type {string} with no author at offset {int} to {int}', funct
 });
 
 Given('a substitution by {string} at offset {int} to {int} with originalRange {int}-{int} and modifiedRange {int}-{int}', function (
-    this: ChangeTracksWorld, author: string,
+    this: ChangeDownWorld, author: string,
     start: number, end: number,
     origStart: number, origEnd: number,
     modStart: number, modEnd: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     this.manualChanges.push({
-        id: `ct-${start}`,
+        id: `cn-${start}`,
         type: ChangeType.Substitution,
         status: 'Pending' as any,
         range: { start, end },
@@ -174,77 +174,77 @@ Given('a substitution by {string} at offset {int} to {int} with originalRange {i
 });
 
 Given('a move-from change at offset {int} to {int} with content {int} to {int}', function (
-    this: ChangeTracksWorld, start: number, end: number, contentStart: number, contentEnd: number
+    this: ChangeDownWorld, start: number, end: number, contentStart: number, contentEnd: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     this.manualChanges.push({
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Deletion,
         status: 'Pending' as any,
         range: { start, end },
         contentRange: { start: contentStart, end: contentEnd },
         moveRole: 'from',
-        groupId: 'ct-1',
+        groupId: 'cn-1',
         level: 0, anchored: false,
     });
 });
 
 Given('a move-to change at offset {int} to {int} with content {int} to {int}', function (
-    this: ChangeTracksWorld, start: number, end: number, contentStart: number, contentEnd: number
+    this: ChangeDownWorld, start: number, end: number, contentStart: number, contentEnd: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     this.manualChanges.push({
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Insertion,
         status: 'Pending' as any,
         range: { start, end },
         contentRange: { start: contentStart, end: contentEnd },
         moveRole: 'to',
-        groupId: 'ct-1',
+        groupId: 'cn-1',
         level: 0, anchored: false,
     });
 });
 
 Given('a move-from change by {string} at offset {int} to {int} with content {int} to {int}', function (
-    this: ChangeTracksWorld, author: string, start: number, end: number, contentStart: number, contentEnd: number
+    this: ChangeDownWorld, author: string, start: number, end: number, contentStart: number, contentEnd: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     this.manualChanges.push({
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Deletion,
         status: 'Pending' as any,
         range: { start, end },
         contentRange: { start: contentStart, end: contentEnd },
         moveRole: 'from',
-        groupId: 'ct-1',
+        groupId: 'cn-1',
         metadata: { author },
         level: 0, anchored: false,
     });
 });
 
 Given('a move-to change by {string} at offset {int} to {int} with content {int} to {int}', function (
-    this: ChangeTracksWorld, author: string, start: number, end: number, contentStart: number, contentEnd: number
+    this: ChangeDownWorld, author: string, start: number, end: number, contentStart: number, contentEnd: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     this.manualChanges.push({
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Insertion,
         status: 'Pending' as any,
         range: { start, end },
         contentRange: { start: contentStart, end: contentEnd },
         moveRole: 'to',
-        groupId: 'ct-1',
+        groupId: 'cn-1',
         metadata: { author },
         level: 0, anchored: false,
     });
 });
 
 Given('a normal deletion at offset {int} to {int} with content {int} to {int}', function (
-    this: ChangeTracksWorld, start: number, end: number, contentStart: number, contentEnd: number
+    this: ChangeDownWorld, start: number, end: number, contentStart: number, contentEnd: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     this.manualChanges.push({
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Deletion,
         status: 'Pending' as any,
         range: { start, end },
@@ -254,7 +254,7 @@ Given('a normal deletion at offset {int} to {int} with content {int} to {int}', 
 });
 
 Given('a sidecar substitution with original {string} modified {string} at offset {int}', function (
-    this: ChangeTracksWorld, originalTextRaw: string, modifiedTextRaw: string, startOffset: number
+    this: ChangeDownWorld, originalTextRaw: string, modifiedTextRaw: string, startOffset: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     // Interpret \n escape sequences from Gherkin string parameters
@@ -262,7 +262,7 @@ Given('a sidecar substitution with original {string} modified {string} at offset
     const modifiedText = modifiedTextRaw.replace(/\\n/g, '\n');
     const contentLength = modifiedText.length;
     this.manualChanges.push({
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Substitution,
         status: 'Pending' as any,
         range: { start: startOffset, end: startOffset + contentLength },
@@ -274,11 +274,11 @@ Given('a sidecar substitution with original {string} modified {string} at offset
 });
 
 Given('a sidecar substitution with only modifiedText {string} at offset {int} to {int}', function (
-    this: ChangeTracksWorld, modifiedText: string, start: number, end: number
+    this: ChangeDownWorld, modifiedText: string, start: number, end: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     this.manualChanges.push({
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Substitution,
         status: 'Pending' as any,
         range: { start, end },
@@ -289,11 +289,11 @@ Given('a sidecar substitution with only modifiedText {string} at offset {int} to
 });
 
 Given('a sidecar substitution with only originalText {string} at offset {int} to {int}', function (
-    this: ChangeTracksWorld, originalText: string, start: number, end: number
+    this: ChangeDownWorld, originalText: string, start: number, end: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     this.manualChanges.push({
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Substitution,
         status: 'Pending' as any,
         range: { start, end },
@@ -304,11 +304,11 @@ Given('a sidecar substitution with only originalText {string} at offset {int} to
 });
 
 Given('a sidecar insertion with modifiedText {string} at offset {int} to {int}', function (
-    this: ChangeTracksWorld, modifiedText: string, start: number, end: number
+    this: ChangeDownWorld, modifiedText: string, start: number, end: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     this.manualChanges.push({
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Insertion,
         status: 'Pending' as any,
         range: { start, end },
@@ -319,11 +319,11 @@ Given('a sidecar insertion with modifiedText {string} at offset {int} to {int}',
 });
 
 Given('a sidecar deletion with originalText {string} at offset {int} to {int}', function (
-    this: ChangeTracksWorld, originalText: string, start: number, end: number
+    this: ChangeDownWorld, originalText: string, start: number, end: number
 ) {
     if (!this.manualChanges) this.manualChanges = [];
     this.manualChanges.push({
-        id: 'ct-1',
+        id: 'cn-1',
         type: ChangeType.Deletion,
         status: 'Pending' as any,
         range: { start, end },
@@ -335,7 +335,7 @@ Given('a sidecar deletion with originalText {string} at offset {int} to {int}', 
 
 // ── When steps ──────────────────────────────────────────────────────
 
-When('I decorate in markup mode', function (this: ChangeTracksWorld) {
+When('I decorate in markup mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
     const parser = new CriticMarkupParser();
@@ -345,7 +345,7 @@ When('I decorate in markup mode', function (this: ChangeTracksWorld) {
 });
 
 When('I decorate in markup mode with cursor at {int}:{int}', function (
-    this: ChangeTracksWorld, line: number, char: number
+    this: ChangeDownWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
@@ -355,7 +355,7 @@ When('I decorate in markup mode with cursor at {int}:{int}', function (
     decorator.decorate(this.spyEditor, this.parsedDoc, true, this.decorationText!, true);
 });
 
-When('I decorate in smart view mode', function (this: ChangeTracksWorld) {
+When('I decorate in smart view mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
     const parser = new CriticMarkupParser();
@@ -365,7 +365,7 @@ When('I decorate in smart view mode', function (this: ChangeTracksWorld) {
 });
 
 When('I decorate in smart view mode with cursor at {int}:{int}', function (
-    this: ChangeTracksWorld, line: number, char: number
+    this: ChangeDownWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
@@ -375,7 +375,7 @@ When('I decorate in smart view mode with cursor at {int}:{int}', function (
     decorator.decorate(this.spyEditor, this.parsedDoc, false, this.decorationText!);
 });
 
-When('I decorate in final mode', function (this: ChangeTracksWorld) {
+When('I decorate in final mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
     const parser = new CriticMarkupParser();
@@ -385,7 +385,7 @@ When('I decorate in final mode', function (this: ChangeTracksWorld) {
 });
 
 When('I decorate in final mode with cursor at {int}:{int}', function (
-    this: ChangeTracksWorld, line: number, char: number
+    this: ChangeDownWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
@@ -395,7 +395,7 @@ When('I decorate in final mode with cursor at {int}:{int}', function (
     decorator.decorate(this.spyEditor, this.parsedDoc, 'settled', this.decorationText!);
 });
 
-When('I decorate in original mode', function (this: ChangeTracksWorld) {
+When('I decorate in original mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
     const parser = new CriticMarkupParser();
@@ -405,7 +405,7 @@ When('I decorate in original mode', function (this: ChangeTracksWorld) {
 });
 
 When('I decorate in original mode with cursor at {int}:{int}', function (
-    this: ChangeTracksWorld, line: number, char: number
+    this: ChangeDownWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
@@ -415,7 +415,7 @@ When('I decorate in original mode with cursor at {int}:{int}', function (
     decorator.decorate(this.spyEditor, this.parsedDoc, 'raw', this.decorationText!);
 });
 
-When('I decorate in review mode with showDelimiters off', function (this: ChangeTracksWorld) {
+When('I decorate in review mode with showDelimiters off', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
     const parser = new CriticMarkupParser();
@@ -425,7 +425,7 @@ When('I decorate in review mode with showDelimiters off', function (this: Change
 });
 
 When('I decorate in review mode with showDelimiters off and cursor at {int}:{int}', function (
-    this: ChangeTracksWorld, line: number, char: number
+    this: ChangeDownWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
@@ -435,7 +435,7 @@ When('I decorate in review mode with showDelimiters off and cursor at {int}:{int
     decorator.decorate(this.spyEditor, this.parsedDoc, 'review', this.decorationText!, false);
 });
 
-When('I decorate in review mode with showDelimiters on', function (this: ChangeTracksWorld) {
+When('I decorate in review mode with showDelimiters on', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
     const parser = new CriticMarkupParser();
@@ -445,7 +445,7 @@ When('I decorate in review mode with showDelimiters on', function (this: ChangeT
 });
 
 When('I decorate in review mode with showDelimiters on and cursor at {int}:{int}', function (
-    this: ChangeTracksWorld, line: number, char: number
+    this: ChangeDownWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
@@ -458,7 +458,7 @@ When('I decorate in review mode with showDelimiters on and cursor at {int}:{int}
 // ── showDelimiters step definitions (smart view mode with cursor) ──
 
 When('I decorate in smart view mode with showDelimiters on and cursor at {int}:{int}', function (
-    this: ChangeTracksWorld, line: number, char: number
+    this: ChangeDownWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
@@ -468,7 +468,7 @@ When('I decorate in smart view mode with showDelimiters on and cursor at {int}:{
     decorator.decorate(this.spyEditor, this.parsedDoc, 'changes', this.decorationText!, true);
 });
 
-When('I decorate in smart view mode with showDelimiters on', function (this: ChangeTracksWorld) {
+When('I decorate in smart view mode with showDelimiters on', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
     const parser = new CriticMarkupParser();
@@ -477,7 +477,7 @@ When('I decorate in smart view mode with showDelimiters on', function (this: Cha
     decorator.decorate(this.spyEditor, this.parsedDoc, 'changes', this.decorationText!, true);
 });
 
-When('I decorate in final mode with showDelimiters on', function (this: ChangeTracksWorld) {
+When('I decorate in final mode with showDelimiters on', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
     const parser = new CriticMarkupParser();
@@ -486,7 +486,7 @@ When('I decorate in final mode with showDelimiters on', function (this: ChangeTr
     decorator.decorate(this.spyEditor, this.parsedDoc, 'settled', this.decorationText!, true);
 });
 
-When('I decorate in original mode with showDelimiters on', function (this: ChangeTracksWorld) {
+When('I decorate in original mode with showDelimiters on', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     const decorator = getOrCreateDecorator(this);
     const parser = new CriticMarkupParser();
@@ -495,7 +495,7 @@ When('I decorate in original mode with showDelimiters on', function (this: Chang
     decorator.decorate(this.spyEditor, this.parsedDoc, 'raw', this.decorationText!, true);
 });
 
-When('I decorate the manual changes in markup mode', function (this: ChangeTracksWorld) {
+When('I decorate the manual changes in markup mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     assert.ok(this.manualChanges && this.manualChanges.length > 0, 'No manual changes set');
     const decorator = getOrCreateDecorator(this);
@@ -505,7 +505,7 @@ When('I decorate the manual changes in markup mode', function (this: ChangeTrack
 });
 
 When('I decorate the manual changes in markup mode with cursor at {int}:{int}', function (
-    this: ChangeTracksWorld, line: number, char: number
+    this: ChangeDownWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     assert.ok(this.manualChanges && this.manualChanges.length > 0, 'No manual changes set');
@@ -515,7 +515,7 @@ When('I decorate the manual changes in markup mode with cursor at {int}:{int}', 
     decorator.decorate(this.spyEditor, doc, true, this.decorationText!, true);
 });
 
-When('I decorate the manual changes in smart view mode', function (this: ChangeTracksWorld) {
+When('I decorate the manual changes in smart view mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     assert.ok(this.manualChanges && this.manualChanges.length > 0, 'No manual changes set');
     const decorator = getOrCreateDecorator(this);
@@ -525,7 +525,7 @@ When('I decorate the manual changes in smart view mode', function (this: ChangeT
 });
 
 When('I decorate the manual changes in smart view mode with cursor at {int}:{int}', function (
-    this: ChangeTracksWorld, line: number, char: number
+    this: ChangeDownWorld, line: number, char: number
 ) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     assert.ok(this.manualChanges && this.manualChanges.length > 0, 'No manual changes set');
@@ -535,7 +535,7 @@ When('I decorate the manual changes in smart view mode with cursor at {int}:{int
     decorator.decorate(this.spyEditor, doc, false, this.decorationText!);
 });
 
-When('I decorate the manual changes in final mode', function (this: ChangeTracksWorld) {
+When('I decorate the manual changes in final mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     assert.ok(this.manualChanges && this.manualChanges.length > 0, 'No manual changes set');
     const decorator = getOrCreateDecorator(this);
@@ -544,7 +544,7 @@ When('I decorate the manual changes in final mode', function (this: ChangeTracks
     decorator.decorate(this.spyEditor, doc, 'settled', this.decorationText!);
 });
 
-When('I decorate the manual changes in original mode', function (this: ChangeTracksWorld) {
+When('I decorate the manual changes in original mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     assert.ok(this.manualChanges && this.manualChanges.length > 0, 'No manual changes set');
     const decorator = getOrCreateDecorator(this);
@@ -555,7 +555,7 @@ When('I decorate the manual changes in original mode', function (this: ChangeTra
 
 // ── When steps: re-decorate (reuse existing spy to detect stale decorations) ──
 
-When('I re-decorate the manual changes in final mode', function (this: ChangeTracksWorld) {
+When('I re-decorate the manual changes in final mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     assert.ok(this.manualChanges && this.manualChanges.length > 0, 'No manual changes set');
     assert.ok(this.spyEditor, 'No spy editor — run an initial decorate step first');
@@ -564,7 +564,7 @@ When('I re-decorate the manual changes in final mode', function (this: ChangeTra
     decorator.decorate(this.spyEditor, doc, 'settled', this.decorationText!);
 });
 
-When('I re-decorate the manual changes in original mode', function (this: ChangeTracksWorld) {
+When('I re-decorate the manual changes in original mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     assert.ok(this.manualChanges && this.manualChanges.length > 0, 'No manual changes set');
     assert.ok(this.spyEditor, 'No spy editor — run an initial decorate step first');
@@ -573,7 +573,7 @@ When('I re-decorate the manual changes in original mode', function (this: Change
     decorator.decorate(this.spyEditor, doc, 'raw', this.decorationText!);
 });
 
-When('I re-decorate the manual changes in markup mode', function (this: ChangeTracksWorld) {
+When('I re-decorate the manual changes in markup mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     assert.ok(this.manualChanges && this.manualChanges.length > 0, 'No manual changes set');
     assert.ok(this.spyEditor, 'No spy editor — run an initial decorate step first');
@@ -582,7 +582,7 @@ When('I re-decorate the manual changes in markup mode', function (this: ChangeTr
     decorator.decorate(this.spyEditor, doc, true, this.decorationText!, true);
 });
 
-When('I re-decorate the manual changes in smart view mode', function (this: ChangeTracksWorld) {
+When('I re-decorate the manual changes in smart view mode', function (this: ChangeDownWorld) {
     assert.ok(this.decorationText !== undefined, 'No markup text set');
     assert.ok(this.manualChanges && this.manualChanges.length > 0, 'No manual changes set');
     assert.ok(this.spyEditor, 'No spy editor — run an initial decorate step first');
@@ -593,7 +593,7 @@ When('I re-decorate the manual changes in smart view mode', function (this: Chan
 
 // ── Then steps: count assertions ────────────────────────────────────
 
-Then('{word} count is {int}', function (this: ChangeTracksWorld, arrayName: string, expected: number) {
+Then('{word} count is {int}', function (this: ChangeDownWorld, arrayName: string, expected: number) {
     assert.ok(this.spyEditor, 'No spy editor — run a decorate step first');
     const decorations = resolveDecorationArray(this.spyEditor, arrayName);
     assert.strictEqual(
@@ -606,7 +606,7 @@ Then('{word} count is {int}', function (this: ChangeTracksWorld, arrayName: stri
     );
 });
 
-Then('{word} is empty', function (this: ChangeTracksWorld, arrayName: string) {
+Then('{word} is empty', function (this: ChangeDownWorld, arrayName: string) {
     assert.ok(this.spyEditor, 'No spy editor — run a decorate step first');
     const decorations = resolveDecorationArray(this.spyEditor, arrayName);
     assert.strictEqual(
@@ -622,7 +622,7 @@ Then('{word} is empty', function (this: ChangeTracksWorld, arrayName: string) {
 // ── Then steps: range assertions ────────────────────────────────────
 
 Then('{word} has range {int}:{int} to {int}:{int}', function (
-    this: ChangeTracksWorld, arrayName: string,
+    this: ChangeDownWorld, arrayName: string,
     startLine: number, startChar: number, endLine: number, endChar: number
 ) {
     assert.ok(this.spyEditor, 'No spy editor — run a decorate step first');
@@ -644,7 +644,7 @@ Then('{word} has range {int}:{int} to {int}:{int}', function (
 });
 
 Then('{word} has point range {int}:{int}', function (
-    this: ChangeTracksWorld, arrayName: string, line: number, char: number
+    this: ChangeDownWorld, arrayName: string, line: number, char: number
 ) {
     assert.ok(this.spyEditor, 'No spy editor — run a decorate step first');
     const decorations = resolveDecorationArray(this.spyEditor, arrayName);
@@ -667,7 +667,7 @@ Then('{word} has point range {int}:{int}', function (
 // ── Then steps: hover message assertions ────────────────────────────
 
 Then('{word} at index {int} has hover containing {string}', function (
-    this: ChangeTracksWorld, arrayName: string, index: number, expectedText: string
+    this: ChangeDownWorld, arrayName: string, index: number, expectedText: string
 ) {
     assert.ok(this.spyEditor, 'No spy editor — run a decorate step first');
     const decorations = resolveDecorationArray(this.spyEditor, arrayName);
@@ -681,7 +681,7 @@ Then('{word} at index {int} has hover containing {string}', function (
 });
 
 Then('{word} at index {int} has no hover message', function (
-    this: ChangeTracksWorld, arrayName: string, index: number
+    this: ChangeDownWorld, arrayName: string, index: number
 ) {
     assert.ok(this.spyEditor, 'No spy editor — run a decorate step first');
     const decorations = resolveDecorationArray(this.spyEditor, arrayName);
@@ -693,7 +693,7 @@ Then('{word} at index {int} has no hover message', function (
 
 // ── Then steps: total calls assertion (for author coloring) ─────────
 
-Then('total setDecorations calls is {int}', function (this: ChangeTracksWorld, expected: number) {
+Then('total setDecorations calls is {int}', function (this: ChangeDownWorld, expected: number) {
     assert.ok(this.spyEditor, 'No spy editor — run a decorate step first');
     assert.strictEqual(
         this.spyEditor.getAllCalls().length,
@@ -703,7 +703,7 @@ Then('total setDecorations calls is {int}', function (this: ChangeTracksWorld, e
 });
 
 Then('author decoration call {int} has {int} ranges', function (
-    this: ChangeTracksWorld, callIndex: number, expected: number
+    this: ChangeDownWorld, callIndex: number, expected: number
 ) {
     assert.ok(this.spyEditor, 'No spy editor — run a decorate step first');
     const allCalls = this.spyEditor.getAllCalls();
@@ -717,7 +717,7 @@ Then('author decoration call {int} has {int} ranges', function (
 
 // ── Then steps: hiddens length assertion (for view mode comparison) ─
 
-Then('hiddens length is greater than {int}', function (this: ChangeTracksWorld, expected: number) {
+Then('hiddens length is greater than {int}', function (this: ChangeDownWorld, expected: number) {
     assert.ok(this.spyEditor, 'No spy editor — run a decorate step first');
     assert.ok(
         this.spyEditor.hiddens.length > expected,
@@ -727,12 +727,12 @@ Then('hiddens length is greater than {int}', function (this: ChangeTracksWorld, 
 
 // ── Then steps: parser assertions (used in some D3 tests) ───────────
 
-Then('the parser finds {int} change(s) in the decoration text', function (this: ChangeTracksWorld, expected: number) {
+Then('the parser finds {int} change(s) in the decoration text', function (this: ChangeDownWorld, expected: number) {
     assert.ok(this.parsedDoc, 'No parsed document — run a decorate step first');
     assert.strictEqual(this.parsedDoc.getChanges().length, expected);
 });
 
-Then('parsed change {int} is type {word}', function (this: ChangeTracksWorld, index: number, typeName: string) {
+Then('parsed change {int} is type {word}', function (this: ChangeDownWorld, index: number, typeName: string) {
     assert.ok(this.parsedDoc, 'No parsed document');
     const typeMap: Record<string, ChangeType> = {
         Insertion: ChangeType.Insertion,
@@ -746,12 +746,12 @@ Then('parsed change {int} is type {word}', function (this: ChangeTracksWorld, in
     assert.strictEqual(this.parsedDoc!.getChanges()[index - 1].type, expectedType);
 });
 
-Then('parsed change {int} has author {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('parsed change {int} has author {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parsedDoc, 'No parsed document');
     assert.strictEqual(this.parsedDoc!.getChanges()[index - 1].metadata?.author, expected);
 });
 
-Then('parsed change {int} has metadata comment {string}', function (this: ChangeTracksWorld, index: number, expected: string) {
+Then('parsed change {int} has metadata comment {string}', function (this: ChangeDownWorld, index: number, expected: string) {
     assert.ok(this.parsedDoc, 'No parsed document');
     assert.strictEqual(this.parsedDoc!.getChanges()[index - 1].metadata?.comment, expected);
 });
@@ -761,7 +761,7 @@ Then('parsed change {int} has metadata comment {string}', function (this: Change
 Then('the module {string} does not export {string}', function (
     _moduleName: string, exportName: string
 ) {
-    const mod = require('changetracks-vscode/internals');
+    const mod = require('changedown-vscode/internals');
     assert.strictEqual(mod[exportName], undefined,
         `Expected "${exportName}" to NOT be exported from "${_moduleName}"`);
 });

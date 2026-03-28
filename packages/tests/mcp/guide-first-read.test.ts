@@ -18,7 +18,7 @@ describe('First-contact guide in read_tracked_file', () => {
 
     it('first read includes the edit guide', async () => {
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       const result = await ctx.read(filePath);
       // Guide is the first content item, file content is second
       expect(result.content.length).toBe(2);
@@ -33,7 +33,7 @@ describe('First-contact guide in read_tracked_file', () => {
 
     it('second read omits the edit guide', async () => {
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       await ctx.read(filePath);
       const result2 = await ctx.read(filePath);
       expect(result2.content.length).toBe(1);
@@ -41,9 +41,9 @@ describe('First-contact guide in read_tracked_file', () => {
 
     it('reading a different file in the same session omits the guide', async () => {
       const file1 = await ctx.createFile('a.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# A\nContent A.\n');
+        '<!-- changedown.com/v1: tracked -->\n# A\nContent A.\n');
       const file2 = await ctx.createFile('b.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# B\nContent B.\n');
+        '<!-- changedown.com/v1: tracked -->\n# B\nContent B.\n');
       await ctx.read(file1);
       const result2 = await ctx.read(file2);
       expect(result2.content.length).toBe(1);
@@ -51,7 +51,7 @@ describe('First-contact guide in read_tracked_file', () => {
 
     it('guide shows required author when enforcement is required', async () => {
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       const result = await ctx.read(filePath);
       expect(result.content.length).toBe(2);
       const guideText = result.content[0].text;
@@ -75,7 +75,7 @@ describe('First-contact guide in read_tracked_file', () => {
 
     it('first read includes classic-mode guide', async () => {
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       const result = await ctx.read(filePath);
       expect(result.content.length).toBe(2);
       const guideText = result.content[0].text;
@@ -87,7 +87,7 @@ describe('First-contact guide in read_tracked_file', () => {
 
     it('classic guide shows optional author as recommended', async () => {
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       const result = await ctx.read(filePath);
       expect(result.content.length).toBe(2);
       const guideText = result.content[0].text;
@@ -111,7 +111,7 @@ describe('First-contact guide in read_tracked_file', () => {
 
     it('include_guide: true delivers guide even after first read consumed it', async () => {
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       // First read consumes the auto-delivery
       const result1 = await ctx.read(filePath);
       expect(result1.content.length).toBe(2);
@@ -128,7 +128,7 @@ describe('First-contact guide in read_tracked_file', () => {
 
     it('include_guide: false does not re-deliver guide after first read', async () => {
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       await ctx.read(filePath);
       const result2 = await ctx.read(filePath, { include_guide: false });
       expect(result2.content.length).toBe(1);
@@ -136,7 +136,7 @@ describe('First-contact guide in read_tracked_file', () => {
 
     it('omitted include_guide does not re-deliver guide after first read', async () => {
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       await ctx.read(filePath);
       const result2 = await ctx.read(filePath);
       expect(result2.content.length).toBe(1);
@@ -144,7 +144,7 @@ describe('First-contact guide in read_tracked_file', () => {
 
     it('include_guide: true on first read still delivers guide and consumes auto-delivery', async () => {
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       // First read with include_guide: true
       const result1 = await ctx.read(filePath, { include_guide: true });
       expect(result1.content.length).toBe(2);
@@ -163,7 +163,7 @@ describe('First-contact guide in read_tracked_file', () => {
       }, { showGuide: true });
       await ctx.setup();
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       const result = await ctx.read(filePath);
       expect(result.content.length).toBe(2);
       const guideText = result.content[0].text;
@@ -178,7 +178,7 @@ describe('First-contact guide in read_tracked_file', () => {
       }, { showGuide: true });
       await ctx.setup();
       const filePath = await ctx.createFile('doc.md',
-        '<!-- ctrcks.com/v1: tracked -->\n# Test\nSome content.\n');
+        '<!-- changedown.com/v1: tracked -->\n# Test\nSome content.\n');
       const result = await ctx.read(filePath, { view: 'changes' });
       expect(result.content.length).toBe(2);
       const guideText = result.content[0].text;

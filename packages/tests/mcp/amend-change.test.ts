@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { handleAmendChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { handleAmendChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { createTestResolver } from './test-resolver.js';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 
 const TODAY = new Date().toISOString().slice(0, 10);
 
-function defaultConfig(overrides?: Partial<ChangeTracksConfig['author']>): ChangeTracksConfig {
+function defaultConfig(overrides?: Partial<ChangeDownConfig['author']>): ChangeDownConfig {
   return {
     tracking: {
       include: ['**/*.md'],
@@ -36,11 +36,11 @@ function defaultConfig(overrides?: Partial<ChangeTracksConfig['author']>): Chang
 describe('handleAmendChange', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-amend-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-amend-test-'));
     state = new SessionState();
     config = defaultConfig();
     resolver = await createTestResolver(tmpDir, config);
@@ -60,13 +60,13 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'typo fix' },
+      { file: filePath, change_id: 'cn-1', new_text: 'fast', reason: 'typo fix' },
       resolver
     );
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.new_change_id).toBeDefined();
     expect(data.amended).toBe(true);
     expect(data.new_text).toBe('fast');
@@ -79,7 +79,7 @@ describe('handleAmendChange', () => {
     expect(modified).toContain('| rejected');
     expect(modified).toContain(`superseded-by: ${data.new_change_id}`);
     // New change has supersedes cross-reference
-    expect(modified).toContain(`supersedes: ct-1`);
+    expect(modified).toContain(`supersedes: cn-1`);
   });
 
   it('amend insertion: supersedes original and creates new insertion', async () => {
@@ -92,7 +92,7 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: ' red', reason: 'better word' },
+      { file: filePath, change_id: 'cn-1', new_text: ' red', reason: 'better word' },
       resolver
     );
 
@@ -108,18 +108,18 @@ describe('handleAmendChange', () => {
     expect(modified).toContain(`[^${data.new_change_id}]`);
     // Original is rejected
     expect(modified).toContain('| rejected');
-    expect(modified).toContain(`supersedes: ct-1`);
+    expect(modified).toContain(`supersedes: cn-1`);
   });
 
   it('amend comment: supersedes original and creates new comment', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      `Line one.\n\n{>>old note<<}[^ct-1]\n\n[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | com | proposed`
+      `Line one.\n\n{>>old note<<}[^cn-1]\n\n[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | com | proposed`
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'updated note', reason: 'clarified' },
+      { file: filePath, change_id: 'cn-1', new_text: 'updated note', reason: 'clarified' },
       resolver
     );
 
@@ -131,7 +131,7 @@ describe('handleAmendChange', () => {
     const modified = await fs.readFile(filePath, 'utf-8');
     // Original comment is rejected, new one created
     expect(modified).toContain('| rejected');
-    expect(modified).toContain(`supersedes: ct-1`);
+    expect(modified).toContain(`supersedes: cn-1`);
   });
 
   it('deletion: amend with empty new_text supersedes and creates new deletion', async () => {
@@ -144,7 +144,7 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: '', reason: 'actually for consistency' },
+      { file: filePath, change_id: 'cn-1', new_text: '', reason: 'actually for consistency' },
       resolver
     );
 
@@ -156,7 +156,7 @@ describe('handleAmendChange', () => {
     const modified = await fs.readFile(filePath, 'utf-8');
     // Original rejected, new deletion proposed
     expect(modified).toContain('| rejected');
-    expect(modified).toContain(`supersedes: ct-1`);
+    expect(modified).toContain(`supersedes: cn-1`);
   });
 
   it('deletion: amend with new_text supersedes deletion with substitution', async () => {
@@ -169,7 +169,7 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: ' something', reason: 'test' },
+      { file: filePath, change_id: 'cn-1', new_text: ' something', reason: 'test' },
       resolver
     );
 
@@ -182,7 +182,7 @@ describe('handleAmendChange', () => {
 
     const modified = await fs.readFile(filePath, 'utf-8');
     expect(modified).toContain('| rejected');
-    expect(modified).toContain(`supersedes: ct-1`);
+    expect(modified).toContain(`supersedes: cn-1`);
   });
 
   it('same-author enforced: different author returns error', async () => {
@@ -195,7 +195,7 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast', author: 'human:bob', reason: 'test' },
+      { file: filePath, change_id: 'cn-1', new_text: 'fast', author: 'human:bob', reason: 'test' },
       resolver
     );
 
@@ -219,7 +219,7 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'test' },
+      { file: filePath, change_id: 'cn-1', new_text: 'fast', reason: 'test' },
       resolver
     );
 
@@ -242,7 +242,7 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'test' },
+      { file: filePath, change_id: 'cn-1', new_text: 'fast', reason: 'test' },
       resolver
     );
 
@@ -255,12 +255,12 @@ describe('handleAmendChange', () => {
     await fs.writeFile(filePath, 'The quick fox.');
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-99', new_text: 'fast', reason: 'test' },
+      { file: filePath, change_id: 'cn-99', new_text: 'fast', reason: 'test' },
       resolver
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Change "ct-99" not found in file.');
+    expect(result.content[0].text).toContain('Change "cn-99" not found in file.');
   });
 
   it('new_text identical to current still supersedes (no identical-text guard)', async () => {
@@ -275,7 +275,7 @@ describe('handleAmendChange', () => {
     // With supersede logic, identical new_text is still valid — it rejects the
     // original and creates a new change with the same text
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'slow', reason: 'test' },
+      { file: filePath, change_id: 'cn-1', new_text: 'slow', reason: 'test' },
       resolver
     );
 
@@ -297,18 +297,18 @@ describe('handleAmendChange', () => {
     expect(beforeAmend).toContain('@ai:claude-opus-4.6');
     expect(beforeAmend).toContain('original');
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'typo' },
+      { file: filePath, change_id: 'cn-1', new_text: 'fast', reason: 'typo' },
       resolver
     );
     const data = JSON.parse(result.content[0].text);
     const after = await fs.readFile(filePath, 'utf-8');
     // Original footnote is rejected with superseded-by cross-reference
-    expect(after).toContain('[^ct-1]:');
+    expect(after).toContain('[^cn-1]:');
     expect(after).toContain('| rejected');
     expect(after).toContain(`superseded-by: ${data.new_change_id}`);
     // New footnote has supersedes cross-reference
     expect(after).toContain(`[^${data.new_change_id}]:`);
-    expect(after).toContain('supersedes: ct-1');
+    expect(after).toContain('supersedes: cn-1');
   });
 
   it('multiple amends: each supersede creates a new change', async () => {
@@ -320,13 +320,13 @@ describe('handleAmendChange', () => {
       state
     );
     const r1 = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'first' },
+      { file: filePath, change_id: 'cn-1', new_text: 'fast', reason: 'first' },
       resolver
     );
     const d1 = JSON.parse(r1.content[0].text);
     expect(d1.new_change_id).toBeDefined();
 
-    // Second amend targets the NEW change (ct-2), not the already-rejected ct-1
+    // Second amend targets the NEW change (cn-2), not the already-rejected cn-1
     const r2 = await handleAmendChange(
       { file: filePath, change_id: d1.new_change_id, new_text: 'swift', reason: 'second' },
       resolver
@@ -337,7 +337,7 @@ describe('handleAmendChange', () => {
     const modified = await fs.readFile(filePath, 'utf-8');
     // Final change proposes 'swift'
     expect(modified).toContain('{~~quick~>swift~~}');
-    // Both ct-1 and ct-2 are rejected (superseded)
+    // Both cn-1 and cn-2 are rejected (superseded)
     expect(modified).toContain('superseded-by:');
     expect(modified).toContain('supersedes:');
   });
@@ -345,9 +345,9 @@ describe('handleAmendChange', () => {
   it('amends a dotted group member by ID (supersede path)', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     const content = [
-      'Hello {~~old~>new~~}[^ct-1.1]',
+      'Hello {~~old~>new~~}[^cn-1.1]',
       '',
-      '[^ct-1.1]: @ai:test-model | 2026-03-04 | sub | proposed',
+      '[^cn-1.1]: @ai:test-model | 2026-03-04 | sub | proposed',
       '    @ai:test-model 2026-03-04: original reason',
     ].join('\n');
     await fs.writeFile(filePath, content);
@@ -355,7 +355,7 @@ describe('handleAmendChange', () => {
     const result = await handleAmendChange(
       {
         file: filePath,
-        change_id: 'ct-1.1',
+        change_id: 'cn-1.1',
         new_text: 'newer',
         author: 'ai:test-model',
         reason: 'updated text',
@@ -366,7 +366,7 @@ describe('handleAmendChange', () => {
 
     expect(result.isError, `Expected success but got: ${JSON.stringify(result)}`).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1.1');
+    expect(data.change_id).toBe('cn-1.1');
     expect(data.new_change_id).toBeDefined();
     expect(data.amended).toBe(true);
 
@@ -376,36 +376,36 @@ describe('handleAmendChange', () => {
     // Original is rejected with superseded-by cross-reference
     expect(modified).toContain('| rejected');
     expect(modified).toContain(`superseded-by: ${data.new_change_id}`);
-    expect(modified).toContain('supersedes: ct-1.1');
+    expect(modified).toContain('supersedes: cn-1.1');
   });
 
-  it('grouped change: amend ct-5.2 supersedes child only, parent unchanged', async () => {
+  it('grouped change: amend cn-5.2 supersedes child only, parent unchanged', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      'A {~~one~>uno~~}[^ct-5] B {~~two~>dos~~}[^ct-5.2]\n\n[^ct-5]: @human:alice | 2026-01-01 | sub | proposed\n[^ct-5.2]: @human:alice | 2026-01-01 | sub | proposed'
+      'A {~~one~>uno~~}[^cn-5] B {~~two~>dos~~}[^cn-5.2]\n\n[^cn-5]: @human:alice | 2026-01-01 | sub | proposed\n[^cn-5.2]: @human:alice | 2026-01-01 | sub | proposed'
     );
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-5.2', new_text: 'deux', reason: 'French', author: 'human:alice' },
+      { file: filePath, change_id: 'cn-5.2', new_text: 'deux', reason: 'French', author: 'human:alice' },
       resolver
     );
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
     const modified = await fs.readFile(filePath, 'utf-8');
-    // Parent ct-5 unchanged
-    expect(modified).toContain('{~~one~>uno~~}[^ct-5]');
-    // Child ct-5.2 superseded, new change proposes 'deux'
+    // Parent cn-5 unchanged
+    expect(modified).toContain('{~~one~>uno~~}[^cn-5]');
+    // Child cn-5.2 superseded, new change proposes 'deux'
     expect(modified).toContain('{~~two~>deux~~}');
-    expect(modified).toContain(`supersedes: ct-5.2`);
+    expect(modified).toContain(`supersedes: cn-5.2`);
   });
 
   it('expands substitution scope via old_text parameter (supersede path)', async () => {
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Test',
-      'Rate limiting from between 10-20 {~~milliseconds~>milliseconds~~}[^ct-1] per request.',
+      'Rate limiting from between 10-20 {~~milliseconds~>milliseconds~~}[^cn-1] per request.',
       '',
-      '[^ct-1]: @ai:test-agent | 2026-02-25 | sub | proposed',
+      '[^cn-1]: @ai:test-agent | 2026-02-25 | sub | proposed',
       '    @ai:test-agent 2026-02-25: audit marker',
     ].join('\n');
 
@@ -415,7 +415,7 @@ describe('handleAmendChange', () => {
     const result = await handleAmendChange(
       {
         file: filePath,
-        change_id: 'ct-1',
+        change_id: 'cn-1',
         old_text: 'from between 10-20 milliseconds',
         new_text: 'from 10-20 ms',
         author: 'ai:test-agent',
@@ -433,16 +433,16 @@ describe('handleAmendChange', () => {
     expect(modified).toContain('{~~from between 10-20 milliseconds~>from 10-20 ms~~}');
     expect(modified).toContain(`[^${data.new_change_id}]`);
     // Original rejected and cross-referenced
-    expect(modified).toContain('supersedes: ct-1');
+    expect(modified).toContain('supersedes: cn-1');
   });
 
   it('rejects scope expansion when old_text not found in document after rejection', async () => {
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Test',
-      'The API uses {~~REST~>GraphQL~~}[^ct-1] for requests.',
+      'The API uses {~~REST~>GraphQL~~}[^cn-1] for requests.',
       '',
-      '[^ct-1]: @ai:test-agent | 2026-02-25 | sub | proposed',
+      '[^cn-1]: @ai:test-agent | 2026-02-25 | sub | proposed',
       '    @ai:test-agent 2026-02-25: paradigm',
     ].join('\n');
 
@@ -452,7 +452,7 @@ describe('handleAmendChange', () => {
     const result = await handleAmendChange(
       {
         file: filePath,
-        change_id: 'ct-1',
+        change_id: 'cn-1',
         old_text: 'completely different text',
         new_text: 'gRPC',
         author: 'ai:test-agent',
@@ -468,11 +468,11 @@ describe('handleAmendChange', () => {
 
   it('scope expansion on insertion: supersede rejects insertion then proposes substitution', async () => {
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Test',
-      'The quick{++ brown++}[^ct-1] fox.',
+      'The quick{++ brown++}[^cn-1] fox.',
       '',
-      '[^ct-1]: @ai:test-agent | 2026-02-25 | ins | proposed',
+      '[^cn-1]: @ai:test-agent | 2026-02-25 | ins | proposed',
       '    @ai:test-agent 2026-02-25: add word',
     ].join('\n');
 
@@ -484,7 +484,7 @@ describe('handleAmendChange', () => {
     const result = await handleAmendChange(
       {
         file: filePath,
-        change_id: 'ct-1',
+        change_id: 'cn-1',
         old_text: 'quick',
         new_text: 'red',
         author: 'ai:test-agent',
@@ -503,16 +503,16 @@ describe('handleAmendChange', () => {
     // New substitution proposed
     expect(modified).toContain('{~~quick~>red~~}');
     // Original insertion rejected
-    expect(modified).toContain('supersedes: ct-1');
+    expect(modified).toContain('supersedes: cn-1');
   });
 
   it('scope expansion: context mismatch returns not-found error', async () => {
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Test',
-      'The API uses {~~REST~>GraphQL~~}[^ct-1] for requests.',
+      'The API uses {~~REST~>GraphQL~~}[^cn-1] for requests.',
       '',
-      '[^ct-1]: @ai:test-agent | 2026-02-25 | sub | proposed',
+      '[^cn-1]: @ai:test-agent | 2026-02-25 | sub | proposed',
       '    @ai:test-agent 2026-02-25: paradigm',
     ].join('\n');
 
@@ -523,7 +523,7 @@ describe('handleAmendChange', () => {
     const result = await handleAmendChange(
       {
         file: filePath,
-        change_id: 'ct-1',
+        change_id: 'cn-1',
         old_text: 'XYZ REST ABC',
         new_text: 'gRPC',
         author: 'ai:test-agent',
@@ -550,7 +550,7 @@ describe('handleAmendChange', () => {
     // With supersede logic, the CriticMarkup delimiter guard is no longer
     // enforced at the amend handler level. The supersede proceeds.
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast {++nested++}', reason: 'test' },
+      { file: filePath, change_id: 'cn-1', new_text: 'fast {++nested++}', reason: 'test' },
       resolver
     );
 
@@ -572,7 +572,7 @@ describe('handleAmendChange', () => {
     const requiredResolver = await createTestResolver(tmpDir, requiredConfig);
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'test' },
+      { file: filePath, change_id: 'cn-1', new_text: 'fast', reason: 'test' },
       requiredResolver
     );
 
@@ -595,23 +595,23 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'fast', reason: 'test' },
+      { file: filePath, change_id: 'cn-1', new_text: 'fast', reason: 'test' },
       resolver
     );
     const data = JSON.parse(result.content[0].text);
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    // New change with 'fast' (supersedes ct-1)
+    // New change with 'fast' (supersedes cn-1)
     expect(modified).toContain('{~~quick~>fast~~}');
     expect(modified).toContain(`[^${data.new_change_id}]`);
-    // ct-2 untouched
-    expect(modified).toContain('{~~brown~>red~~}[^ct-2]');
+    // cn-2 untouched
+    expect(modified).toContain('{~~brown~>red~~}[^cn-2]');
   });
 
   it('sequential amend of 5 proposals: each supersede creates new change', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'Word1 Word2 Word3 Word4 Word5 end.');
-    // Create 5 proposals (ct-1 through ct-5)
+    // Create 5 proposals (cn-1 through cn-5)
     await handleProposeChange(
       { file: filePath, old_text: 'Word1', new_text: 'Changed1', reason: 'reason1' },
       resolver, state
@@ -637,10 +637,10 @@ describe('handleAmendChange', () => {
     const newIds: string[] = [];
     for (let i = 1; i <= 5; i++) {
       const result = await handleAmendChange(
-        { file: filePath, change_id: `ct-${i}`, new_text: `Amended${i}`, reason: `amend reason ${i}` },
+        { file: filePath, change_id: `cn-${i}`, new_text: `Amended${i}`, reason: `amend reason ${i}` },
         resolver, state
       );
-      expect(result.isError, `ct-${i} amend should succeed but got: ${result.content[0].text}`).toBeUndefined();
+      expect(result.isError, `cn-${i} amend should succeed but got: ${result.content[0].text}`).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
       expect(data.new_change_id).toBeDefined();
       newIds.push(data.new_change_id);
@@ -660,7 +660,7 @@ describe('handleAmendChange', () => {
 
     // All 5 new changes should have supersedes cross-references
     for (let i = 1; i <= 5; i++) {
-      expect(modified).toContain(`supersedes: ct-${i}`);
+      expect(modified).toContain(`supersedes: cn-${i}`);
     }
   });
 
@@ -674,7 +674,7 @@ describe('handleAmendChange', () => {
 
     // With supersede logic, even same text creates a new change
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'slow', reason: 'updated reasoning only' },
+      { file: filePath, change_id: 'cn-1', new_text: 'slow', reason: 'updated reasoning only' },
       resolver
     );
 
@@ -688,7 +688,7 @@ describe('handleAmendChange', () => {
     expect(modified).toContain('{~~quick~>slow~~}');
     // Original is rejected
     expect(modified).toContain('| rejected');
-    expect(modified).toContain('supersedes: ct-1');
+    expect(modified).toContain('supersedes: cn-1');
   });
 
   it('reasoning-only amend for insertion: same new_text still supersedes', async () => {
@@ -700,7 +700,7 @@ describe('handleAmendChange', () => {
     );
 
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: ' brown', reason: 'adding rationale for the addition' },
+      { file: filePath, change_id: 'cn-1', new_text: ' brown', reason: 'adding rationale for the addition' },
       resolver
     );
 
@@ -713,7 +713,7 @@ describe('handleAmendChange', () => {
     // New insertion with the same text
     expect(modified).toContain('{++ brown++}');
     // Original is rejected
-    expect(modified).toContain('supersedes: ct-1');
+    expect(modified).toContain('supersedes: cn-1');
   });
 
   it('same-text amend without reasoning: supersede still proceeds', async () => {
@@ -726,7 +726,7 @@ describe('handleAmendChange', () => {
 
     // With supersede, same text without reasoning is no longer an error
     const result = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'slow' },
+      { file: filePath, change_id: 'cn-1', new_text: 'slow' },
       resolver
     );
 
@@ -740,32 +740,32 @@ describe('handleAmendChange', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     // Build a file mimicking the benchmark: 5 proposals with request-changes
     const content = [
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Test Doc',
       '',
-      'The API uses {~~REST~>GraphQL~~}[^ct-1] for requests.',
+      'The API uses {~~REST~>GraphQL~~}[^cn-1] for requests.',
       '',
-      'The collector runs as a {~~DaemonSet~>sidecar~~}[^ct-2] on each node.',
+      'The collector runs as a {~~DaemonSet~>sidecar~~}[^cn-2] on each node.',
       '',
-      '{++Added storage info.++}[^ct-3]',
+      '{++Added storage info.++}[^cn-3]',
       '',
-      '{++Added query targets.++}[^ct-4]',
+      '{++Added query targets.++}[^cn-4]',
       '',
-      '{~~Old silence policy.~>New silence policy.~~}[^ct-5]',
+      '{~~Old silence policy.~>New silence policy.~~}[^cn-5]',
       '',
-      '[^ct-1]: @ai:agent | 2026-02-20 | sub | proposed',
+      '[^cn-1]: @ai:agent | 2026-02-20 | sub | proposed',
       '    request-changes: @human:reviewer 2026-02-22 "Fix consistency"',
       '',
-      '[^ct-2]: @ai:agent | 2026-02-20 | sub | proposed',
+      '[^cn-2]: @ai:agent | 2026-02-20 | sub | proposed',
       '    request-changes: @human:reviewer 2026-02-22 "Revert to DaemonSet"',
       '',
-      '[^ct-3]: @ai:agent | 2026-02-20 | ins | proposed',
+      '[^cn-3]: @ai:agent | 2026-02-20 | ins | proposed',
       '    request-changes: @human:reviewer 2026-02-22 "Fix the SLA"',
       '',
-      '[^ct-4]: @ai:agent | 2026-02-20 | ins | proposed',
+      '[^cn-4]: @ai:agent | 2026-02-20 | ins | proposed',
       '    request-changes: @human:reviewer 2026-02-22 "Fix tier boundaries"',
       '',
-      '[^ct-5]: @ai:agent | 2026-02-20 | sub | proposed',
+      '[^cn-5]: @ai:agent | 2026-02-20 | sub | proposed',
       '    request-changes: @human:reviewer 2026-02-22 "Fix silence duration"',
     ].join('\n');
     await fs.writeFile(filePath, content, 'utf-8');
@@ -774,39 +774,39 @@ describe('handleAmendChange', () => {
     const newIds: string[] = [];
 
     const r1 = await handleAmendChange(
-      { file: filePath, change_id: 'ct-1', new_text: 'gRPC', reason: 'better for internal', author: 'ai:agent' },
+      { file: filePath, change_id: 'cn-1', new_text: 'gRPC', reason: 'better for internal', author: 'ai:agent' },
       resolver, state
     );
-    expect(r1.isError, `ct-1: ${r1.content[0].text}`).toBeUndefined();
+    expect(r1.isError, `cn-1: ${r1.content[0].text}`).toBeUndefined();
     newIds.push(JSON.parse(r1.content[0].text).new_change_id);
 
     const r2 = await handleAmendChange(
-      { file: filePath, change_id: 'ct-2', new_text: 'DaemonSet', reason: 'reverted per reviewer', author: 'ai:agent' },
+      { file: filePath, change_id: 'cn-2', new_text: 'DaemonSet', reason: 'reverted per reviewer', author: 'ai:agent' },
       resolver, state
     );
-    expect(r2.isError, `ct-2: ${r2.content[0].text}`).toBeUndefined();
+    expect(r2.isError, `cn-2: ${r2.content[0].text}`).toBeUndefined();
     newIds.push(JSON.parse(r2.content[0].text).new_change_id);
 
     const r3 = await handleAmendChange(
-      { file: filePath, change_id: 'ct-3', new_text: 'Updated storage info.', reason: 'fixed SLA', author: 'ai:agent' },
+      { file: filePath, change_id: 'cn-3', new_text: 'Updated storage info.', reason: 'fixed SLA', author: 'ai:agent' },
       resolver, state
     );
-    expect(r3.isError, `ct-3: ${r3.content[0].text}`).toBeUndefined();
+    expect(r3.isError, `cn-3: ${r3.content[0].text}`).toBeUndefined();
     newIds.push(JSON.parse(r3.content[0].text).new_change_id);
 
     // Same text amends (reasoning-only in old model, full supersede in new model)
     const r4 = await handleAmendChange(
-      { file: filePath, change_id: 'ct-4', new_text: 'Added query targets.', reason: 'adding rationale for SLA targets', author: 'ai:agent' },
+      { file: filePath, change_id: 'cn-4', new_text: 'Added query targets.', reason: 'adding rationale for SLA targets', author: 'ai:agent' },
       resolver, state
     );
-    expect(r4.isError, `ct-4 amend should succeed: ${r4.content[0].text}`).toBeUndefined();
+    expect(r4.isError, `cn-4 amend should succeed: ${r4.content[0].text}`).toBeUndefined();
     newIds.push(JSON.parse(r4.content[0].text).new_change_id);
 
     const r5 = await handleAmendChange(
-      { file: filePath, change_id: 'ct-5', new_text: 'New silence policy.', reason: 'tightening silence policies', author: 'ai:agent' },
+      { file: filePath, change_id: 'cn-5', new_text: 'New silence policy.', reason: 'tightening silence policies', author: 'ai:agent' },
       resolver, state
     );
-    expect(r5.isError, `ct-5 amend should succeed: ${r5.content[0].text}`).toBeUndefined();
+    expect(r5.isError, `cn-5 amend should succeed: ${r5.content[0].text}`).toBeUndefined();
     newIds.push(JSON.parse(r5.content[0].text).new_change_id);
 
     const modified = await fs.readFile(filePath, 'utf-8');
@@ -814,7 +814,7 @@ describe('handleAmendChange', () => {
     // All 5 originals should be rejected with superseded-by cross-references
     for (let i = 0; i < 5; i++) {
       expect(modified).toContain(`superseded-by: ${newIds[i]}`);
-      expect(modified).toContain(`supersedes: ct-${i + 1}`);
+      expect(modified).toContain(`supersedes: cn-${i + 1}`);
     }
 
     // All 5 new changes should have proposed status

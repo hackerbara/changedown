@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CriticMarkupParser } from '@changetracks/core/internals';
+import { CriticMarkupParser } from '@changedown/core/internals';
 
 describe('footnote ref position', () => {
   const parser = new CriticMarkupParser();

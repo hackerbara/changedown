@@ -31,7 +31,7 @@ Feature: G9 — Tracking mode deletion markup correctness
   Background:
     Given I open "tracking-mode-test.md" in VS Code
     And the editor is reset to the fixture
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And tracking mode is enabled
 
   # --- Single deletion correctness ---

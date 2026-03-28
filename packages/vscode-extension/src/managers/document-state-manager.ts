@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { Workspace, VirtualDocument, ChangeNode, scanMaxCtId } from '@changetracks/core';
+import { Workspace, VirtualDocument, ChangeNode, scanMaxCnId } from '@changedown/core';
 import { getCachedDecorationData, migrateDecorationCache } from '../lsp-client';
 import { ExtDocumentState, createExtDocumentState } from '../document-state';
 import { isSupported } from './shared';
@@ -87,8 +87,8 @@ export class DocumentStateManager implements vscode.Disposable {
     // ── scId allocation ────────────────────────────────────────────────────
 
     /**
-     * Allocate the next ct-ID for a document. IDs are sequential per-document
-     * and formatted as 'ct-N' where N starts from 1 (or max+1 if document already has ct-IDs).
+     * Allocate the next cn-ID for a document. IDs are sequential per-document
+     * and formatted as 'cn-N' where N starts from 1 (or max+1 if document already has cn-IDs).
      */
     allocateScId(docUri: string): string {
         let state = this.docStates.get(docUri);
@@ -96,19 +96,19 @@ export class DocumentStateManager implements vscode.Disposable {
             const editor = vscode.window.activeTextEditor;
             if (editor && editor.document.uri.toString() === docUri) {
                 state = this.ensureDocState(docUri, editor.document.version, editor.document.getText());
-                const maxId = scanMaxCtId(editor.document.getText());
+                const maxId = scanMaxCnId(editor.document.getText());
                 state.nextScId = maxId + 1;
             }
         } else if (state.nextScId === 1) {
             const editor = vscode.window.activeTextEditor;
             if (editor && editor.document.uri.toString() === docUri) {
-                const maxId = scanMaxCtId(editor.document.getText());
+                const maxId = scanMaxCnId(editor.document.getText());
                 state.nextScId = maxId + 1;
             }
         }
         const current = state?.nextScId ?? 1;
         if (state) state.nextScId = current + 1;
-        return `ct-${current}`;
+        return `cn-${current}`;
     }
 
     // ── Virtual document construction ──────────────────────────────────────
@@ -170,7 +170,7 @@ export class DocumentStateManager implements vscode.Disposable {
     // ── Document state from LSP ────────────────────────────────────────────
 
     /**
-     * Called when LSP sends changetracks/documentState.
+     * Called when LSP sends changedown/documentState.
      * Stores tracking + viewMode on the doc state and fires onDidChangeDocumentState
      * for the controller to update context keys.
      */

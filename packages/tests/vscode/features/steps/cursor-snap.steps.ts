@@ -10,12 +10,12 @@ installVscodeMock();
 
 import { Given, When, Then, Before } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { findContainingHiddenRange } from 'changetracks-vscode/internals';
-import type { ChangeTracksWorld } from './world';
+import { findContainingHiddenRange } from 'changedown-vscode/internals';
+import type { ChangeDownWorld } from './world';
 
 // ── Extend World with cursor snap test state ─────────────────────────
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         searchRanges?: ReadonlyArray<{start: number; end: number}>;
         searchResult?: {start: number; end: number} | undefined;
         /** Sentinel to distinguish "not searched yet" from "searched, got undefined". */
@@ -23,7 +23,7 @@ declare module './world' {
     }
 }
 
-Before({ tags: '@fast and @CS1' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @CS1' }, function (this: ChangeDownWorld) {
     resetDecorationTypeCounter();
     this.searchRanges = undefined;
     this.searchResult = undefined;
@@ -32,28 +32,28 @@ Before({ tags: '@fast and @CS1' }, function (this: ChangeTracksWorld) {
 
 // ── Binary search Given/When/Then ──
 
-Given('hidden offset ranges []', function (this: ChangeTracksWorld) {
+Given('hidden offset ranges []', function (this: ChangeDownWorld) {
     this.searchRanges = [];
 });
 
-Given('hidden offset ranges {string}', function (this: ChangeTracksWorld, rangesJson: string) {
+Given('hidden offset ranges {string}', function (this: ChangeDownWorld, rangesJson: string) {
     this.searchRanges = JSON.parse(rangesJson);
 });
 
-When('I search for offset {int}', function (this: ChangeTracksWorld, offset: number) {
+When('I search for offset {int}', function (this: ChangeDownWorld, offset: number) {
     assert.ok(this.searchRanges !== undefined, 'No search ranges set');
     this.searchResult = findContainingHiddenRange(this.searchRanges!, offset);
     this.searchPerformed = true;
 });
 
-Then('the search result is undefined', function (this: ChangeTracksWorld) {
+Then('the search result is undefined', function (this: ChangeDownWorld) {
     assert.ok(this.searchPerformed, 'No search performed');
     assert.strictEqual(this.searchResult, undefined,
         `Expected undefined, got ${JSON.stringify(this.searchResult)}`);
 });
 
 Then('the search result is {int} to {int}', function (
-    this: ChangeTracksWorld, start: number, end: number
+    this: ChangeDownWorld, start: number, end: number
 ) {
     assert.ok(this.searchPerformed, 'No search performed');
     assert.ok(this.searchResult !== undefined, 'Search result is undefined');
@@ -68,7 +68,7 @@ Then('the search result is {int} to {int}', function (
 // defined in decoration-fast.steps.ts. These Then steps access
 // this.decoratorInstance which is populated by those existing steps.
 
-Then('hidden offset count is {int}', function (this: ChangeTracksWorld, expected: number) {
+Then('hidden offset count is {int}', function (this: ChangeDownWorld, expected: number) {
     assert.ok(this.decoratorInstance, 'No decorator — run a decorate step first');
     const offsets = this.decoratorInstance!.getHiddenOffsets();
     assert.strictEqual(offsets.length, expected,
@@ -76,7 +76,7 @@ Then('hidden offset count is {int}', function (this: ChangeTracksWorld, expected
 });
 
 Then('hidden offset {int} is {int} to {int}', function (
-    this: ChangeTracksWorld, index: number, start: number, end: number
+    this: ChangeDownWorld, index: number, start: number, end: number
 ) {
     assert.ok(this.decoratorInstance, 'No decorator — run a decorate step first');
     const offsets = this.decoratorInstance!.getHiddenOffsets();

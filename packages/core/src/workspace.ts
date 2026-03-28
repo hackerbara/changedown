@@ -186,7 +186,7 @@ export class Workspace {
    * Determines whether to use the FootnoteNativeParser for a given text.
    *
    * Returns true when footnoteNative is explicitly true, or when auto-detected:
-   * the text has [^ct-N] footnote definitions AND no inline CriticMarkup delimiters.
+   * the text has [^cn-N] footnote definitions AND no inline CriticMarkup delimiters.
    * This distinguishes footnote-native files (clean body + footnotes) from
    * regular CriticMarkup files that also have L2 footnotes.
    */
@@ -218,7 +218,7 @@ export class Workspace {
    * Returns true when ALL of:
    * 1. languageId is provided and is NOT 'markdown'
    * 2. The language has line-comment syntax in the comment syntax map
-   * 3. The text contains a '-- ChangeTracks' sidecar block marker
+   * 3. The text contains a '-- ChangeDown' sidecar block marker
    */
   private shouldUseSidecar(text: string, languageId?: string): boolean {
     if (!languageId || languageId === 'markdown') {

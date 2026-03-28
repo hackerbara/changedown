@@ -1,4 +1,4 @@
-<!-- ctrcks.com/v1: tracked -->
+<!-- changedown.com/v1: tracked -->
 
 # API Caching Strategy
 
@@ -26,13 +26,13 @@ Edge cache TTLs are configured per route:
 | `/api/v2/static/*` | 24 hours | Static assets are versioned by URL |
 | `/api/v2/config` | 1 minute | Feature flags need near-real-time updates |
 
-{++For public API responses that do not vary by user identity, the edge cache serves directly from CloudFront without forwarding to the origin, reducing p99 latency from 120ms to 8ms.++}[^ct-1] Authenticated endpoints bypass the edge cache entirely by including `Cache-Control: private` in the response.
+{++For public API responses that do not vary by user identity, the edge cache serves directly from CloudFront without forwarding to the origin, reducing p99 latency from 120ms to 8ms.++}[^cn-1] Authenticated endpoints bypass the edge cache entirely by including `Cache-Control: private` in the response.
 
 ### Application Cache
 
 The application cache sits within each service instance and stores computed results that are expensive to regenerate. This layer uses an in-process LRU cache (Caffeine for JVM services, lru-cache for Node.js services) with a maximum size of 512MB per instance.
 
-The application cache is particularly effective for {~~REST API~>GraphQL~~}[^ct-2] query results where the same data is requested repeatedly with minor variations. Cache entries are keyed on a normalized representation of the query to maximize hit rates across similar requests.
+The application cache is particularly effective for {~~REST API~>GraphQL~~}[^cn-2] query results where the same data is requested repeatedly with minor variations. Cache entries are keyed on a normalized representation of the query to maximize hit rates across similar requests.
 
 Cache warming occurs at service startup: the 1,000 most frequently accessed keys from the previous instance are pre-loaded using a snapshot stored in S3. This eliminates the cold-start penalty during deployments and scaling events.
 
@@ -40,7 +40,7 @@ Cache warming occurs at service startup: the 1,000 most frequently accessed keys
 
 The database cache layer reduces load on PostgreSQL by caching frequently accessed rows and query results.
 
-{--Redis is used as a distributed cache layer that sits between the application and the database. Each service writes query results to Redis with a TTL matching the data's staleness tolerance. Redis is deployed as a 3-node cluster with automatic failover. Cache keys follow the pattern `{service}:{entity}:{id}:{version}` to enable granular invalidation. The Redis cluster handles approximately 45,000 reads per second at peak, with a hit rate of 94%.--}[^ct-3]
+{--Redis is used as a distributed cache layer that sits between the application and the database. Each service writes query results to Redis with a TTL matching the data's staleness tolerance. Redis is deployed as a 3-node cluster with automatic failover. Cache keys follow the pattern `{service}:{entity}:{id}:{version}` to enable granular invalidation. The Redis cluster handles approximately 45,000 reads per second at peak, with a hit rate of 94%.--}[^cn-3]
 
 PostgreSQL's built-in `shared_buffers` and query cache handle the majority of read optimization for single-row lookups. For complex aggregation queries, materialized views are refreshed on a schedule (every 5 minutes for dashboards, every 1 hour for reports).
 
@@ -79,12 +79,12 @@ Dashboard: `https://grafana.internal/d/cache-overview`
 - **Multi-region cache synchronization:** As the platform expands to EU and APAC regions, implement cross-region cache replication to ensure consistent latency for global users.
 - **Cache cost attribution:** Tag cache entries by team and service to enable per-team cost accounting for shared cache infrastructure.
 
-[^ct-1]: @ai:claude-sonnet-4-5 | 2026-02-14 | ins | proposed
+[^cn-1]: @ai:claude-sonnet-4-5 | 2026-02-14 | ins | proposed
   @ai:claude-sonnet-4-5 2026-02-14: Added explicit performance benefit for public API edge caching. The 120ms to 8ms improvement is measured from production CloudFront analytics over the past 30 days.
   @reviewer 2026-02-15: Should we specify which responses are considered 'public'? The term is ambiguous — does it mean unauthenticated endpoints only, or also authenticated responses that don't vary per user?
 
-[^ct-2]: @ai:claude-sonnet-4-5 | 2026-02-14 | sub | proposed
+[^cn-2]: @ai:claude-sonnet-4-5 | 2026-02-14 | sub | proposed
   @ai:claude-sonnet-4-5 2026-02-14: Changed from REST API to GraphQL. GraphQL queries exhibit higher cache reuse because clients request exactly the fields they need, leading to more predictable cache key patterns and reduced over-fetching of data that would otherwise bust cache entries.
 
-[^ct-3]: @ai:claude-sonnet-4-5 | 2026-02-14 | del | proposed
+[^cn-3]: @ai:claude-sonnet-4-5 | 2026-02-14 | del | proposed
   @ai:claude-sonnet-4-5 2026-02-14: Proposing removal of the Redis cache layer. Redis adds significant operational complexity (cluster management, failover monitoring, memory sizing) and the PostgreSQL built-in caching plus application-level LRU cache already achieve a 94% effective hit rate. The marginal benefit does not justify the operational burden.

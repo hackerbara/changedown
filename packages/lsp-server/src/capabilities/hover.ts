@@ -11,7 +11,7 @@
  */
 
 import { Hover, Position, MarkupKind } from 'vscode-languageserver';
-import { ChangeNode, ChangeType, isGhostNode, consumptionLabel } from '@changetracks/core';
+import { ChangeNode, ChangeType, isGhostNode, consumptionLabel } from '@changedown/core';
 import { positionToOffset } from '../converters';
 
 /**

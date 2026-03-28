@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { findEditPosition, findDeletionInsertionPoint } from 'changetracks-hooks/internals';
+import { findEditPosition, findDeletionInsertionPoint } from 'changedown-hooks/internals';
 
 describe('findEditPosition', () => {
   const fileContent = 'The quick brown fox jumps over the lazy dog.';

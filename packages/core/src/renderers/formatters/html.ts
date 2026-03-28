@@ -3,7 +3,7 @@ import type { ThreeZoneDocument, ThreeZoneLine, ContentSpan, LineMetadata } from
 export interface HtmlFormatOptions {
   /** Show CriticMarkup delimiters in output. Default: true. */
   showMarkup?: boolean;
-  /** Show [^ct-N] anchors. Default: true. */
+  /** Show [^cn-N] anchors. Default: true. */
   showAnchors?: boolean;
   /** Show Zone 3 metadata as data attributes on anchor spans. Default: true. */
   embedMetadata?: boolean;
@@ -29,9 +29,9 @@ function esc(text: string): string {
  *   - Zone 2: `<span class="tz-content">` with typed content spans
  *   - Zone 3: metadata embedded as data-* attributes on anchor spans
  *
- * Content spans get CSS classes: ct-plain, ct-insertion, ct-deletion,
- * ct-sub-old, ct-sub-arrow, ct-sub-new, ct-highlight, ct-comment,
- * ct-anchor, ct-delimiter.
+ * Content spans get CSS classes: cn-plain, cn-insertion, cn-deletion,
+ * cn-sub-old, cn-sub-arrow, cn-sub-new, cn-highlight, cn-comment,
+ * cn-anchor, cn-delimiter.
  */
 export function formatHtml(doc: ThreeZoneDocument, options?: HtmlFormatOptions): string {
   const showMarkup = options?.showMarkup ?? true;
@@ -113,8 +113,8 @@ function formatSpan(
       return `<span class="${prefix}-comment">${esc(span.text)}</span>`;
     case 'anchor': {
       if (!showAnchors) return '';
-      // Extract changeId from the anchor text [^ct-N] or [^ct-N.N]
-      const idMatch = span.text.match(/\[\^(ct-[\d.]+)\]/);
+      // Extract changeId from the anchor text [^cn-N] or [^cn-N.N]
+      const idMatch = span.text.match(/\[\^(cn-[\d.]+)\]/);
       const changeId = idMatch ? idMatch[1] : '';
       const meta = metaByChangeId.get(changeId);
       const dataAttrs = meta ? buildDataAttrs(meta) : '';
@@ -141,7 +141,7 @@ function buildDataAttrs(meta: LineMetadata): string {
 
 /**
  * Render Zone 3 metadata as visible HTML at end of line,
- * matching MCP formatPlainText style: {>>ct-1 @author: reason | N replies<<}
+ * matching MCP formatPlainText style: {>>cn-1 @author: reason | N replies<<}
  */
 function formatZone3(metadata: LineMetadata[], prefix: string): string {
   if (metadata.length === 0) return '';

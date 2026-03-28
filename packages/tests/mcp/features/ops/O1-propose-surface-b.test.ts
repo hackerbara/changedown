@@ -36,13 +36,13 @@ describe('O1: Propose changes via Surface B (classic MCP)', () => {
 
       expect(result.isError).toBeUndefined();
       const data = ctx.parseResult(result);
-      expect(data.change_id).toBe('ct-1');
+      expect(data.change_id).toBe('cn-1');
       expect(data.type).toBe('ins');
 
       const disk = await ctx.readDisk(filePath);
       expect(disk).toContain('{++Pagination defaults to 50 results.++}');
-      expect(disk).toContain('[^ct-1]');
-      await ctx.assertFootnoteStatus(filePath, 'ct-1', 'proposed');
+      expect(disk).toContain('[^cn-1]');
+      await ctx.assertFootnoteStatus(filePath, 'cn-1', 'proposed');
       // Verify reasoning in footnote
       expect(disk).toContain('API needs pagination for list endpoints');
     });
@@ -225,12 +225,12 @@ describe('O1: Propose changes via Surface B (classic MCP)', () => {
         reason: 'change 2',
       });
 
-      expect(ctx.parseResult(r1).change_id).toBe('ct-1');
-      expect(ctx.parseResult(r2).change_id).toBe('ct-2');
+      expect(ctx.parseResult(r1).change_id).toBe('cn-1');
+      expect(ctx.parseResult(r2).change_id).toBe('cn-2');
 
       const disk = await ctx.readDisk(filePath);
-      expect(disk).toContain('[^ct-1]');
-      expect(disk).toContain('[^ct-2]');
+      expect(disk).toContain('[^cn-1]');
+      expect(disk).toContain('[^cn-2]');
     });
   });
 
@@ -289,7 +289,7 @@ describe('O1: Propose changes via Surface B (classic MCP)', () => {
   describe('affected_lines windowing', () => {
     it('Scenario: Single-change affected_lines returns bounded window in classic mode', async () => {
       // Create a 55-line file (well above the 50+ line threshold)
-      const lines = ['<!-- ctrcks.com/v1: tracked -->', '# Large Document', ''];
+      const lines = ['<!-- changedown.com/v1: tracked -->', '# Large Document', ''];
       for (let i = 1; i <= 52; i++) {
         lines.push(`Line ${i} of the specification document.`);
       }

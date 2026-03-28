@@ -7,6 +7,8 @@
  * extension and the LSP server consume them via thin adapters.
  */
 
+import type { TextEdit } from '../model/types.js';
+
 // ── Events ──────────────────────────────────────────────────────────────
 
 /**
@@ -19,7 +21,8 @@ export type EditEvent =
   | { type: 'substitution'; offset: number; oldText: string; newText: string }
   | { type: 'save' }
   | { type: 'editorSwitch' }
-  | { type: 'flush' };
+  | { type: 'flush' }
+  | { type: 'cursorMove'; offset: number };
 
 // ── Pending Buffer ──────────────────────────────────────────────────────
 
@@ -83,8 +86,33 @@ export const DEFAULT_EDIT_BOUNDARY_CONFIG: Readonly<EditBoundaryConfig> = {
 export type Effect =
   | { type: 'crystallize'; changeType: 'insertion' | 'deletion' | 'substitution';
       offset: number; length: number; currentText: string; originalText: string; scId?: string }
+  | FullCrystallizeEffect
   | { type: 'updatePendingOverlay'; overlay: EditPendingOverlay | null }
   | { type: 'mergeAdjacent'; offset: number };
+
+/** L2 crystallize result: markup at edit site + footnote at document end */
+export interface L2CrystallizeResult {
+  format: 'l2';
+  /** Replace user's typed text with CriticMarkup + footnote ref */
+  markupEdit: TextEdit;
+  /** Append footnote definition at document end */
+  footnoteEdit: TextEdit;
+}
+
+/** L3 crystallize result: footnote only (body text stays as-is) */
+export interface L3CrystallizeResult {
+  format: 'l3';
+  /** No body edit — user's text is already in document */
+  markupEdit: null;
+  /** Append footnote with LINE:HASH edit-op */
+  footnoteEdit: TextEdit;
+}
+
+/** Fully-formed crystallize effect (when context provides documentText + author) */
+export interface FullCrystallizeEffect {
+  type: 'crystallize';
+  edits: L2CrystallizeResult | L3CrystallizeResult;
+}
 
 /**
  * Overlay data the host uses to render the pending edit region.

@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
 
 /** Helper: write a minimal config.toml with a given protocol mode */
 async function writeConfig(tmpDir: string, mode: 'classic' | 'compact' = 'classic'): Promise<void> {
-  const configDir = path.join(tmpDir, '.changetracks');
+  const configDir = path.join(tmpDir, '.changedown');
   await fs.mkdir(configDir, { recursive: true });
   await fs.writeFile(
     path.join(configDir, 'config.toml'),
@@ -53,7 +53,7 @@ describe('ConfigResolver file watching', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-resolver-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-resolver-'));
   });
 
   afterEach(async () => {
@@ -144,7 +144,7 @@ describe('ConfigResolver file watching', () => {
     await resolver.forFile(filePath);
 
     // Delete config file
-    await fs.rm(path.join(tmpDir, '.changetracks', 'config.toml'));
+    await fs.rm(path.join(tmpDir, '.changedown', 'config.toml'));
     await delay(300);
 
     // No crash — dispose works cleanly

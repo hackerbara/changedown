@@ -82,10 +82,10 @@ Feature: Pending/committed lifecycle — flush, merge, race conditions, save
 
   # === CONSECUTIVE COMMITTED EDIT MERGING ===
 
-  Scenario: Adjacent insertions stay separate with Level 1 tracking (each gets unique ct-ID)
-    # Mocha: 'adjacent insertions stay separate with Level 1 tracking (each gets unique ct-ID)'
+  Scenario: Adjacent insertions stay separate with Level 1 tracking (each gets unique cn-ID)
+    # Mocha: 'adjacent insertions stay separate with Level 1 tracking (each gets unique cn-ID)'
     # Types "hello", waits for timer. Types " world", waits for timer.
-    # Level 1: each insertion has ct-ID, so no merge.
+    # Level 1: each insertion has cn-ID, so no merge.
     Given a tracking-mode editor with content "Start here."
     And the pause threshold is 2000ms
     When I insert "hello" at the end

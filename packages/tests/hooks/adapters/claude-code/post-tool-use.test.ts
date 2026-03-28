@@ -6,15 +6,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handlePostToolUse, readPendingEdits } from 'changetracks-hooks/internals';
-import type { HookInput } from 'changetracks-hooks/internals';
+import { handlePostToolUse, readPendingEdits } from 'changedown-hooks/internals';
+import type { HookInput } from 'changedown-hooks/internals';
 
 describe('Claude Code PostToolUse adapter — I/O contract', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-adapter-post-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-adapter-post-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     // Default safety-net config (logs edits)
     await fs.writeFile(
@@ -141,7 +141,7 @@ describe('Claude Code PostToolUse adapter — I/O contract', () => {
 
   // --- Pending edits are written ---
 
-  it('writes pending edit to .changetracks/pending.json', async () => {
+  it('writes pending edit to .changedown/pending.json', async () => {
     const mdPath = path.join(tmpDir, 'readme.md');
     await fs.writeFile(mdPath, 'Updated text', 'utf-8');
     await handlePostToolUse({

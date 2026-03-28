@@ -1,5 +1,5 @@
 /**
- * Settings Panel Provider — WebviewView GUI for `.changetracks/config.toml`
+ * Settings Panel Provider — WebviewView GUI for `.changedown/config.toml`
  * and VS Code editor preferences.
  *
  * Renders a native-looking form using VS Code CSS variables, organized
@@ -883,7 +883,7 @@ export function serializeToToml(config: SettingsConfig): string {
 // ── WebviewViewProvider ──────────────────────────────────────────────────────
 
 export class SettingsPanelProvider implements vscode.WebviewViewProvider, vscode.Disposable {
-    static readonly viewType = 'changetracksSettings';
+    static readonly viewType = 'changedownSettings';
 
     private view: vscode.WebviewView | undefined;
     private disposables: vscode.Disposable[] = [];
@@ -956,7 +956,7 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider, vscode
     }
 
     private readEditorPreferences(): EditorPreferencesConfig {
-        const cfg = vscode.workspace.getConfiguration('changetracks');
+        const cfg = vscode.workspace.getConfiguration('changedown');
         return {
             showDelimiters: cfg.get<boolean>('showDelimiters', DEFAULT_EDITOR_PREFS.showDelimiters),
             clickToShowComments: cfg.get<boolean>('clickToShowComments', DEFAULT_EDITOR_PREFS.clickToShowComments),
@@ -966,7 +966,7 @@ export class SettingsPanelProvider implements vscode.WebviewViewProvider, vscode
     }
 
     private async writeEditorPreferences(prefs: EditorPreferencesConfig): Promise<void> {
-        const cfg = vscode.workspace.getConfiguration('changetracks');
+        const cfg = vscode.workspace.getConfiguration('changedown');
         await cfg.update('showDelimiters', prefs.showDelimiters, vscode.ConfigurationTarget.Workspace);
         await cfg.update('clickToShowComments', prefs.clickToShowComments, vscode.ConfigurationTarget.Workspace);
         await cfg.update('commentInsertFormat', prefs.commentInsertFormat, vscode.ConfigurationTarget.Workspace);

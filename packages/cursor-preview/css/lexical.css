@@ -57,37 +57,37 @@
 }
 
 /* =============================================
-   FALLBACK: DOM Mutation (.ct-* classes)
+   FALLBACK: DOM Mutation (.cn-* classes)
    ============================================= */
 
-.ct-ins {
+.cn-ins {
   color: #1E824C;
   text-decoration: underline;
 }
-.ct-del {
+.cn-del {
   color: #C0392B;
   text-decoration: line-through;
 }
-.ct-sub-old {
+.cn-sub-old {
   color: #C0392B;
   text-decoration: line-through;
 }
-.ct-sub-new {
+.cn-sub-new {
   color: #1E824C;
   text-decoration: underline;
 }
-.ct-hl {
+.cn-hl {
   background-color: rgba(241, 196, 15, 0.3);
 }
-.ct-cmt {
+.cn-cmt {
   color: #7f8c8d;
   font-style: italic;
 }
-.ct-fnref {
+.cn-fnref {
   color: #7f8c8d;
   font-size: 0.85em;
 }
-.ct-delim {
+.cn-delim {
   font-size: 0;
   display: inline;
   color: transparent;
@@ -120,11 +120,11 @@ body[class*="dark"] ::highlight(ct-sub-new) {
 }
 
 /* DOM fallback dark theme */
-.vscode-dark .ct-ins,
-body[class*="dark"] .ct-ins { color: #66BB6A; }
-.vscode-dark .ct-del,
-body[class*="dark"] .ct-del { color: #EF5350; }
-.vscode-dark .ct-sub-old,
-body[class*="dark"] .ct-sub-old { color: #EF5350; }
-.vscode-dark .ct-sub-new,
-body[class*="dark"] .ct-sub-new { color: #66BB6A; }
+.vscode-dark .cn-ins,
+body[class*="dark"] .cn-ins { color: #66BB6A; }
+.vscode-dark .cn-del,
+body[class*="dark"] .cn-del { color: #EF5350; }
+.vscode-dark .cn-sub-old,
+body[class*="dark"] .cn-sub-old { color: #EF5350; }
+.vscode-dark .cn-sub-new,
+body[class*="dark"] .cn-sub-new { color: #66BB6A; }

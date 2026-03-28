@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { readPendingEdits, appendPendingEdit, clearPendingEdits, type PendingEdit } from 'changetracks-hooks/internals';
+import { readPendingEdits, appendPendingEdit, clearPendingEdits, type PendingEdit } from 'changedown-hooks/internals';
 
 describe('pending edits', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-hooks-pending-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-hooks-pending-'));
   });
 
   afterEach(async () => {
@@ -29,11 +29,11 @@ describe('pending edits', () => {
     expect(edits).toEqual([]);
   });
 
-  it('appendPendingEdit creates .changetracks dir and pending.json if they do not exist', async () => {
+  it('appendPendingEdit creates .changedown dir and pending.json if they do not exist', async () => {
     const edit = makeEdit();
     await appendPendingEdit(tmpDir, edit);
 
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     const raw = await fs.readFile(pendingPath, 'utf-8');
     const parsed = JSON.parse(raw);
     expect(parsed).toHaveLength(1);
@@ -77,7 +77,7 @@ describe('pending edits', () => {
   });
 
   it('readPendingEdits returns empty array for malformed JSON', async () => {
-    const pendingPath = path.join(tmpDir, '.changetracks', 'pending.json');
+    const pendingPath = path.join(tmpDir, '.changedown', 'pending.json');
     await fs.mkdir(path.dirname(pendingPath), { recursive: true });
     await fs.writeFile(pendingPath, '{{not valid json', 'utf-8');
 

@@ -1,0 +1,29 @@
+{
+  "name": "@changedown/preview",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./style.css": "./media/preview.css"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@changedown/core": "file:../core",
+    "diff": "^7.0.0"
+  },
+  "peerDependencies": {
+    "markdown-it": "^14.0.0"
+  },
+  "devDependencies": {
+    "markdown-it": "^14.0.0",
+    "typescript": "^5.4.0"
+  }
+}

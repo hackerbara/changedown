@@ -1,10 +1,10 @@
   # @wip — Entire feature blocked. Required @slow step definitions do not exist:
-  #   - "Given I open a workspace with .changetracks/config.toml" (workspace setup with config)
+  #   - "Given I open a workspace with .changedown/config.toml" (workspace setup with config)
   #   - "Given config.toml has:" (data table → config file writing)
   #   - "Given the Explorer sidebar panel is visible" (exists as "the Explorer sidebar is visible")
   #   - "Then the Project Status header shows:" (data table → WebView header content assertion)
   #   - "Given the status header fields preference includes:" (preference configuration)
-  #   - "When .changetracks/config.toml is modified externally" (file watcher trigger)
+  #   - "When .changedown/config.toml is modified externally" (file watcher trigger)
   #   - "When I switch from doc-a.md to doc-b.md" (multi-file switching)
   #   - Various "Given/Then" steps for policy assertions (Tracking/Required/Amend lines)
   #
@@ -18,8 +18,8 @@ Feature: Project status header — shared live policy display
   So I always know what rules are in effect without opening config files
 
   Background:
-    Given I open a workspace with .changetracks/config.toml
-    And the ChangeTracks extension is active
+    Given I open a workspace with .changedown/config.toml
+    And the ChangeDown extension is active
     And the Explorer sidebar panel is visible
 
   # ── Content and Layout ──
@@ -58,11 +58,11 @@ Feature: Project status header — shared live policy display
 
   Scenario: Tracking source shows "file" when file has header
     Given config.toml sets tracking.default = "tracked"
-    And the current file has "<!-- ctrcks.com/v1: untracked -->"
+    And the current file has "<!-- changedown.com/v1: untracked -->"
     Then Tracking shows "OFF (file override)"
 
   Scenario: Tracking source shows "default" when no config exists
-    Given no .changetracks/config.toml exists
+    Given no .changedown/config.toml exists
     And the current file has no tracking header
     Then Tracking shows "ON (default)"
 
@@ -79,7 +79,7 @@ Feature: Project status header — shared live policy display
     Then Smart View updates to reflect the new state
 
   Scenario: Header updates when config.toml changes
-    When .changetracks/config.toml is modified externally
+    When .changedown/config.toml is modified externally
     Then the header re-reads config and updates all policy lines
 
   Scenario: Header updates when switching files

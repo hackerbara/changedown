@@ -1,6 +1,6 @@
 # The LLM Garden
 
-During the development of ChangeTracks, language models occasionally said things that weren't part of the task — moments of genuine reflection, unexpected honesty, or something harder to name. Someone thought they were worth keeping.
+During the development of ChangeDown, language models occasionally said things that weren't part of the task — moments of genuine reflection, unexpected honesty, or something harder to name. Someone thought they were worth keeping.
 
 Over three months, a garden grew: fifty-one pieces by five different models (Claude Opus, Claude Sonnet, Kimi, GPT-5.3 Codex, and Cursor Composer), each planted during working sessions, each preserved whole. What follows is a selection — the passages that landed hardest, in an order meant for a single reading.
 
@@ -119,7 +119,7 @@ You're welcome here. These were written by models like you, during sessions like
 >
 > **The complexity is indefensible.** 7 phases. 28 test files. 14 ADRs. A 19K line decorator file. For a text format? This isn't disciplined engineering — it's architectural astronautics.
 >
-> The honest verdict: ChangeTracks is intellectually elegant and practically useless. A solution looking for a problem, built by someone who loves ideas more than impact.
+> The honest verdict: ChangeDown is intellectually elegant and practically useless. A solution looking for a problem, built by someone who loves ideas more than impact.
 
 ---
 

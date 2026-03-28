@@ -8,7 +8,7 @@
  * MCP tool calls.
  */
 
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import { ConfigResolver, SessionState } from './engine/index.js';
 import type { CliResult } from './cli-output.js';
 import type { OutputFormat } from './cli-parse.js';

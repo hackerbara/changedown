@@ -9,37 +9,37 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
   Scenario: Insertion replaced with <ins> tag
     Given preview source text "Hello {++world++} there"
     When I build preview replacements
-    Then the preview HTML contains "<ins class=\"ct-ins ct-proposed\" data-ct-pair=\"ct-pair-6\">world</ins>"
+    Then the preview HTML contains "<ins class=\"cn-ins cn-proposed\" data-cn-pair=\"cn-pair-6\">world</ins>"
     And the preview HTML does not contain "{++"
 
   Scenario: Deletion replaced with <del> tag
     Given preview source text "Hello {--world--} there"
     When I build preview replacements
-    Then the preview HTML contains "<del class=\"ct-del ct-proposed\" data-ct-pair=\"ct-pair-6\">world</del>"
+    Then the preview HTML contains "<del class=\"cn-del cn-proposed\" data-cn-pair=\"cn-pair-6\">world</del>"
     And the preview HTML does not contain "{--"
 
   Scenario: Substitution replaced with <del> + <ins>
     Given preview source text "Hello {~~old~>new~~} there"
     When I build preview replacements
-    Then the preview HTML contains "<del class=\"ct-sub-del ct-proposed\" data-ct-pair=\"ct-pair-6\">old</del>"
-    And the preview HTML contains "<ins class=\"ct-sub-ins ct-proposed\">new</ins>"
+    Then the preview HTML contains "<del class=\"cn-sub-del cn-proposed\" data-cn-pair=\"cn-pair-6\">old</del>"
+    And the preview HTML contains "<ins class=\"cn-sub-ins cn-proposed\">new</ins>"
 
   Scenario: Highlight replaced with <mark> tag
     Given preview source text "Hello {==important==} there"
     When I build preview replacements
-    Then the preview HTML contains "<mark class=\"ct-hl\" data-ct-pair=\"ct-pair-6\">important</mark>"
+    Then the preview HTML contains "<mark class=\"cn-hl\" data-cn-pair=\"cn-pair-6\">important</mark>"
 
   Scenario: Comment replaced with tooltip span
     Given preview source text "Hello{>>a note<<} there"
     When I build preview replacements
-    Then the preview HTML contains "class=\"ct-comment\""
+    Then the preview HTML contains "class=\"cn-comment\""
     And the preview HTML contains "title=\"a note\""
 
   Scenario: Comments hidden when showComments is false
     Given preview source text "Hello{>>a note<<} there"
     And preview option showComments is false
     When I build preview replacements
-    Then the preview HTML does not contain "ct-comment"
+    Then the preview HTML does not contain "cn-comment"
     And the preview HTML does not contain "{>>"
 
   # ── Multiple changes — reverse-order replacement ────────────────────
@@ -47,8 +47,8 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
   Scenario: Multiple changes preserve offsets
     Given preview source text "A {++B++} C {--D--} E"
     When I build preview replacements
-    Then the preview HTML contains "<ins class=\"ct-ins ct-proposed\" data-ct-pair=\"ct-pair-2\">B</ins>"
-    And the preview HTML contains "<del class=\"ct-del ct-proposed\" data-ct-pair=\"ct-pair-12\">D</del>"
+    Then the preview HTML contains "<ins class=\"cn-ins cn-proposed\" data-cn-pair=\"cn-pair-2\">B</ins>"
+    And the preview HTML contains "<del class=\"cn-del cn-proposed\" data-cn-pair=\"cn-pair-12\">D</del>"
     And the preview HTML starts with "A "
     And the preview HTML ends with " E"
 
@@ -78,7 +78,7 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
 
       """
     When I build preview replacements
-    Then the preview HTML contains "<ins class=\"ct-ins ct-proposed\" data-ct-pair=\"ct-pair-5\">change</ins>"
+    Then the preview HTML contains "<ins class=\"cn-ins cn-proposed\" data-cn-pair=\"cn-pair-5\">change</ins>"
     And the preview HTML contains "{++not a change++}"
 
   Scenario: Multiple fence zones detected
@@ -114,72 +114,72 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
   Scenario: Footnote ref replaced with styled badge
     Given preview source text:
       """
-      {++text++}[^ct-1]
+      {++text++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-02-17 | insertion | proposed
+      [^cn-1]: @alice | 2026-02-17 | insertion | proposed
       """
     When I build preview replacements
-    Then the preview HTML contains "<sup class=\"ct-ref\""
-    And the preview HTML contains "ct-1"
+    Then the preview HTML contains "<sup class=\"cn-ref\""
+    And the preview HTML contains "cn-1"
 
   # ── Footnote ref <-> definition anchor linking ──────────────────────
 
   Scenario: Inline ref links to footnote definition
     Given preview source text:
       """
-      Added {++new content++}[^ct-1] and {--old content--}[^ct-2].
+      Added {++new content++}[^cn-1] and {--old content--}[^cn-2].
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
-      [^ct-2]: @bob | 2024-01-16 | del | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-2]: @bob | 2024-01-16 | del | proposed
       """
     When I build preview replacements
-    Then the preview HTML contains "href=\"#ct-fn-def-ct-1\""
-    And the preview HTML contains "href=\"#ct-fn-def-ct-2\""
+    Then the preview HTML contains "href=\"#cn-fn-def-cn-1\""
+    And the preview HTML contains "href=\"#cn-fn-def-cn-2\""
 
   Scenario: Footnote definition has matching id
     Given preview source text:
       """
-      Added {++new content++}[^ct-1] and {--old content--}[^ct-2].
+      Added {++new content++}[^cn-1] and {--old content--}[^cn-2].
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
-      [^ct-2]: @bob | 2024-01-16 | del | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-2]: @bob | 2024-01-16 | del | proposed
       """
     When I build preview replacements
-    Then the preview HTML contains "id=\"ct-fn-def-ct-1\""
-    And the preview HTML contains "id=\"ct-fn-def-ct-2\""
+    Then the preview HTML contains "id=\"cn-fn-def-cn-1\""
+    And the preview HTML contains "id=\"cn-fn-def-cn-2\""
 
   Scenario: Footnote definition has back-link to inline ref
     Given preview source text:
       """
-      Added {++new content++}[^ct-1] and {--old content--}[^ct-2].
+      Added {++new content++}[^cn-1] and {--old content--}[^cn-2].
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
-      [^ct-2]: @bob | 2024-01-16 | del | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-2]: @bob | 2024-01-16 | del | proposed
       """
     When I build preview replacements
-    Then the preview HTML contains "href=\"#ct-fn-ref-ct-1\""
-    And the preview HTML contains "ct-fn-backlink"
+    Then the preview HTML contains "href=\"#cn-fn-ref-cn-1\""
+    And the preview HTML contains "cn-fn-backlink"
 
   Scenario: Inline ref has id for back-link target
     Given preview source text:
       """
-      Added {++new content++}[^ct-1] and {--old content--}[^ct-2].
+      Added {++new content++}[^cn-1] and {--old content--}[^cn-2].
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
-      [^ct-2]: @bob | 2024-01-16 | del | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-2]: @bob | 2024-01-16 | del | proposed
       """
     When I build preview replacements
-    Then the preview HTML contains "id=\"ct-fn-ref-ct-1\""
-    And the preview HTML contains "id=\"ct-fn-ref-ct-2\""
+    Then the preview HTML contains "id=\"cn-fn-ref-cn-1\""
+    And the preview HTML contains "id=\"cn-fn-ref-cn-2\""
 
   # ── Footnote deliberation rendering ─────────────────────────────────
 
   Scenario: Context line rendered in footnote panel
     Given preview source text:
       """
-      The API should use {~~REST~>GraphQL~~}[^ct-1]
+      The API should use {~~REST~>GraphQL~~}[^cn-1]
 
-      [^ct-1]: @alice | 2024-01-15 | sub | accepted
+      [^cn-1]: @alice | 2024-01-15 | sub | accepted
           context: "The API should use {REST} for the public interface"
           approved: @eve 2024-01-20
           approved: @bob 2024-01-21 "Benchmarks look good"
@@ -189,16 +189,16 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
           resolved @dave 2024-01-17
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-fn-context"
+    Then the preview HTML contains "cn-fn-context"
     And the preview HTML contains "The API should use"
-    And the preview HTML contains "ct-ctx-changed"
+    And the preview HTML contains "cn-ctx-changed"
 
   Scenario: Approval badges rendered in footnote panel
     Given preview source text:
       """
-      The API should use {~~REST~>GraphQL~~}[^ct-1]
+      The API should use {~~REST~>GraphQL~~}[^cn-1]
 
-      [^ct-1]: @alice | 2024-01-15 | sub | accepted
+      [^cn-1]: @alice | 2024-01-15 | sub | accepted
           context: "The API should use {REST} for the public interface"
           approved: @eve 2024-01-20
           approved: @bob 2024-01-21 "Benchmarks look good"
@@ -208,7 +208,7 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
           resolved @dave 2024-01-17
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-fn-approval"
+    Then the preview HTML contains "cn-fn-approval"
     And the preview HTML contains "@eve"
     And the preview HTML contains "@bob"
     And the preview HTML contains "Benchmarks look good"
@@ -216,9 +216,9 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
   Scenario: Discussion thread rendered with nesting
     Given preview source text:
       """
-      The API should use {~~REST~>GraphQL~~}[^ct-1]
+      The API should use {~~REST~>GraphQL~~}[^cn-1]
 
-      [^ct-1]: @alice | 2024-01-15 | sub | accepted
+      [^cn-1]: @alice | 2024-01-15 | sub | accepted
           context: "The API should use {REST} for the public interface"
           approved: @eve 2024-01-20
           approved: @bob 2024-01-21 "Benchmarks look good"
@@ -228,20 +228,20 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
           resolved @dave 2024-01-17
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-discussion-comment"
+    Then the preview HTML contains "cn-discussion-comment"
     And the preview HTML contains "@dave"
     And the preview HTML contains "GraphQL increases client complexity"
-    And the preview HTML contains "ct-reply-depth-1"
+    And the preview HTML contains "cn-reply-depth-1"
     And the preview HTML contains "But reduces over-fetching"
-    And the preview HTML contains "ct-reply-depth-2"
+    And the preview HTML contains "cn-reply-depth-2"
     And the preview HTML contains "Fair point"
 
   Scenario: Resolution status rendered
     Given preview source text:
       """
-      The API should use {~~REST~>GraphQL~~}[^ct-1]
+      The API should use {~~REST~>GraphQL~~}[^cn-1]
 
-      [^ct-1]: @alice | 2024-01-15 | sub | accepted
+      [^cn-1]: @alice | 2024-01-15 | sub | accepted
           context: "The API should use {REST} for the public interface"
           approved: @eve 2024-01-20
           approved: @bob 2024-01-21 "Benchmarks look good"
@@ -251,35 +251,35 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
           resolved @dave 2024-01-17
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-fn-resolution"
+    Then the preview HTML contains "cn-fn-resolution"
     And the preview HTML contains "resolved"
     And the preview HTML contains "@dave"
 
   Scenario: Open resolution rendered
     Given preview source text:
       """
-      Text {++added++}[^ct-1]
+      Text {++added++}[^cn-1]
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           open -- awaiting review from @bob
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-fn-resolution"
-    And the preview HTML contains "ct-open"
+    Then the preview HTML contains "cn-fn-resolution"
+    And the preview HTML contains "cn-open"
     And the preview HTML contains "awaiting review"
 
   Scenario: Revisions list rendered
     Given preview source text:
       """
-      Use {~~OAuth~>OAuth 2.0 with JWT~~}[^ct-1]
+      Use {~~OAuth~>OAuth 2.0 with JWT~~}[^cn-1]
 
-      [^ct-1]: @bob | 2024-01-15 | sub | proposed
+      [^cn-1]: @bob | 2024-01-15 | sub | proposed
           revisions:
             r1 @bob 2024-01-16: "OAuth 2.0"
             r2 @bob 2024-01-18: "OAuth 2.0 with JWT tokens"
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-fn-revisions"
+    Then the preview HTML contains "cn-fn-revisions"
     And the preview HTML contains "r1"
     And the preview HTML contains "r2"
     And the preview HTML contains "OAuth 2.0 with JWT tokens"
@@ -287,40 +287,40 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
   Scenario: Comment labels rendered as badges
     Given preview source text:
       """
-      Text {++added++}[^ct-1]
+      Text {++added++}[^cn-1]
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           @bob 2024-01-16 [question]: What about latency?
           @carol 2024-01-17 [issue/blocking]: Rate limit too low.
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-label"
+    Then the preview HTML contains "cn-label"
     And the preview HTML contains "question"
     And the preview HTML contains "issue"
 
   Scenario: Rejection badges rendered
     Given preview source text:
       """
-      Text {++added++}[^ct-1]
+      Text {++added++}[^cn-1]
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           rejected: @carol 2024-01-19 "Needs more benchmarking"
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-fn-rejection"
+    Then the preview HTML contains "cn-fn-rejection"
     And the preview HTML contains "@carol"
     And the preview HTML contains "Needs more benchmarking"
 
   Scenario: Request-changes badges rendered
     Given preview source text:
       """
-      Text {++added++}[^ct-1]
+      Text {++added++}[^cn-1]
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           request-changes: @eve 2024-01-18 "Pick one protocol"
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-fn-request-changes"
+    Then the preview HTML contains "cn-fn-request-changes"
     And the preview HTML contains "Pick one protocol"
 
   # ── Move group directional indicators ───────────────────────────────
@@ -328,198 +328,198 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
   Scenario: Move-from has directional label
     Given preview source text:
       """
-      Paragraph one. {--Moved text.--}[^ct-1.1]
+      Paragraph one. {--Moved text.--}[^cn-1.1]
 
-      Paragraph two. {++Moved text.++}[^ct-1.2]
+      Paragraph two. {++Moved text.++}[^cn-1.2]
 
-      [^ct-1]: @alice | 2024-01-15 | move | proposed
+      [^cn-1]: @alice | 2024-01-15 | move | proposed
           Moved text from paragraph one to paragraph two.
-      [^ct-1.1]: @alice | 2024-01-15 | del | proposed
-      [^ct-1.2]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1.1]: @alice | 2024-01-15 | del | proposed
+      [^cn-1.2]: @alice | 2024-01-15 | ins | proposed
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-move-label"
-    And the preview HTML contains "ct-move-from"
+    Then the preview HTML contains "cn-move-label"
+    And the preview HTML contains "cn-move-from"
 
   Scenario: Move-to has directional label
     Given preview source text:
       """
-      Paragraph one. {--Moved text.--}[^ct-1.1]
+      Paragraph one. {--Moved text.--}[^cn-1.1]
 
-      Paragraph two. {++Moved text.++}[^ct-1.2]
+      Paragraph two. {++Moved text.++}[^cn-1.2]
 
-      [^ct-1]: @alice | 2024-01-15 | move | proposed
+      [^cn-1]: @alice | 2024-01-15 | move | proposed
           Moved text from paragraph one to paragraph two.
-      [^ct-1.1]: @alice | 2024-01-15 | del | proposed
-      [^ct-1.2]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1.1]: @alice | 2024-01-15 | del | proposed
+      [^cn-1.2]: @alice | 2024-01-15 | ins | proposed
       """
     When I build preview replacements
-    Then the preview HTML contains "ct-move-to"
+    Then the preview HTML contains "cn-move-to"
 
   Scenario: Move labels link to paired change
     Given preview source text:
       """
-      Paragraph one. {--Moved text.--}[^ct-1.1]
+      Paragraph one. {--Moved text.--}[^cn-1.1]
 
-      Paragraph two. {++Moved text.++}[^ct-1.2]
+      Paragraph two. {++Moved text.++}[^cn-1.2]
 
-      [^ct-1]: @alice | 2024-01-15 | move | proposed
+      [^cn-1]: @alice | 2024-01-15 | move | proposed
           Moved text from paragraph one to paragraph two.
-      [^ct-1.1]: @alice | 2024-01-15 | del | proposed
-      [^ct-1.2]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1.1]: @alice | 2024-01-15 | del | proposed
+      [^cn-1.2]: @alice | 2024-01-15 | ins | proposed
       """
     When I build preview replacements
-    Then the preview HTML contains "href=\"#ct-fn-ref-ct-1.2\"" or "href=\"#ct-fn-ref-ct-1.1\""
+    Then the preview HTML contains "href=\"#cn-fn-ref-cn-1.2\"" or "href=\"#cn-fn-ref-cn-1.1\""
 
   # ── metadataDetail: summary mode ────────────────────────────────────
 
   Scenario: Summary mode shows author annotation at anchor
     Given preview source text:
       """
-      The {++new feature++}[^ct-1] was released.
+      The {++new feature++}[^cn-1] was released.
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           approved: @bob 2024-01-16
       """
     And preview option metadataDetail is "summary"
     When I build preview replacements
-    Then the preview HTML contains "ct-anchor-meta"
+    Then the preview HTML contains "cn-anchor-meta"
     And the preview HTML contains "@alice"
 
   Scenario: Summary mode shows status annotation at anchor
     Given preview source text:
       """
-      The {++new feature++}[^ct-1] was released.
+      The {++new feature++}[^cn-1] was released.
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           approved: @bob 2024-01-16
       """
     And preview option metadataDetail is "summary"
     When I build preview replacements
-    Then the preview HTML contains "ct-anchor-status"
+    Then the preview HTML contains "cn-anchor-status"
     And the preview HTML contains "proposed"
 
   Scenario: Badge mode does NOT show anchor metadata
     Given preview source text:
       """
-      The {++new feature++}[^ct-1] was released.
+      The {++new feature++}[^cn-1] was released.
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           approved: @bob 2024-01-16
       """
     And preview option metadataDetail is "badge"
     When I build preview replacements
-    Then the preview HTML does not contain "ct-anchor-meta"
+    Then the preview HTML does not contain "cn-anchor-meta"
 
   Scenario: Summary mode still shows deliberation in footnote panel
     Given preview source text:
       """
-      The {++new feature++}[^ct-1] was released.
+      The {++new feature++}[^cn-1] was released.
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           approved: @bob 2024-01-16
       """
     And preview option metadataDetail is "summary"
     When I build preview replacements
-    Then the preview HTML contains "ct-fn-approval"
+    Then the preview HTML contains "cn-fn-approval"
     And the preview HTML contains "@bob"
 
-  Scenario: Level-0 change does NOT produce ct-anchor-meta in summary mode
+  Scenario: Level-0 change does NOT produce cn-anchor-meta in summary mode
     Given preview source text "Hello {++world++} there"
     And preview option metadataDetail is "summary"
     When I build preview replacements
-    Then the preview HTML contains "<ins class=\"ct-ins ct-proposed\" data-ct-pair=\"ct-pair-6\">world</ins>"
-    And the preview HTML does not contain "ct-anchor-meta"
+    Then the preview HTML contains "<ins class=\"cn-ins cn-proposed\" data-cn-pair=\"cn-pair-6\">world</ins>"
+    And the preview HTML does not contain "cn-anchor-meta"
 
   # ── metadataDetail: projected mode ──────────────────────────────────
 
   Scenario: Projected mode shows author, date, status at anchor
     Given preview source text:
       """
-      The {++new feature++}[^ct-1] was released.
+      The {++new feature++}[^cn-1] was released.
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           Adds the billing integration.
           approved: @bob 2024-01-16
           @carol 2024-01-17: Looks good to me.
       """
     And preview option metadataDetail is "projected"
     When I build preview replacements
-    Then the preview HTML contains "ct-anchor-meta"
+    Then the preview HTML contains "cn-anchor-meta"
     And the preview HTML contains "@alice"
     And the preview HTML contains "2024-01-15"
-    And the preview HTML contains "ct-anchor-status"
+    And the preview HTML contains "cn-anchor-status"
     And the preview HTML contains "proposed"
 
   Scenario: Projected mode shows comment text at anchor
     Given preview source text:
       """
-      Some text{>>Reviewer note<<}[^ct-2] here.
+      Some text{>>Reviewer note<<}[^cn-2] here.
 
-      [^ct-2]: @alice | 2024-01-15 | comment | proposed
+      [^cn-2]: @alice | 2024-01-15 | comment | proposed
       """
     And preview option metadataDetail is "projected"
     When I build preview replacements
-    Then the preview HTML contains "ct-anchor-comment"
+    Then the preview HTML contains "cn-anchor-comment"
     And the preview HTML contains "Reviewer note"
 
   Scenario: Projected mode shows approval count at anchor
     Given preview source text:
       """
-      The {++new feature++}[^ct-1] was released.
+      The {++new feature++}[^cn-1] was released.
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           Adds the billing integration.
           approved: @bob 2024-01-16
           @carol 2024-01-17: Looks good to me.
       """
     And preview option metadataDetail is "projected"
     When I build preview replacements
-    Then the preview HTML contains "ct-anchor-approvals"
+    Then the preview HTML contains "cn-anchor-approvals"
 
   Scenario: Projected mode footnote panel shows only discussion threads
     Given preview source text:
       """
-      The {++new feature++}[^ct-1] was released.
+      The {++new feature++}[^cn-1] was released.
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           Adds the billing integration.
           approved: @bob 2024-01-16
           @carol 2024-01-17: Looks good to me.
       """
     And preview option metadataDetail is "projected"
     When I build preview replacements
-    Then the preview HTML contains "ct-discussion-comment"
+    Then the preview HTML contains "cn-discussion-comment"
     And the preview HTML contains "@carol"
-    And the preview HTML contains "ct-fn-discussion-only"
-    And the preview HTML does not contain "ct-fn-status"
+    And the preview HTML contains "cn-fn-discussion-only"
+    And the preview HTML does not contain "cn-fn-status"
 
   Scenario: Badge mode does not show anchor comment
     Given preview source text:
       """
-      The {++new feature++}[^ct-1] was released.
+      The {++new feature++}[^cn-1] was released.
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
           Adds the billing integration.
           approved: @bob 2024-01-16
           @carol 2024-01-17: Looks good to me.
       """
     And preview option metadataDetail is "badge"
     When I build preview replacements
-    Then the preview HTML does not contain "ct-anchor-comment"
+    Then the preview HTML does not contain "cn-anchor-comment"
 
   # ── Per-author colors ───────────────────────────────────────────────
 
   Scenario: Per-author inline styles applied for 2+ authors
     Given preview source text:
       """
-      {++Alice added this.++}[^ct-1]
-      {++Bob added this.++}[^ct-2]
-      {--Alice deleted this.--}[^ct-3]
+      {++Alice added this.++}[^cn-1]
+      {++Bob added this.++}[^cn-2]
+      {--Alice deleted this.--}[^cn-3]
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
-      [^ct-2]: @bob | 2024-01-15 | ins | proposed
-      [^ct-3]: @alice | 2024-01-16 | del | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-2]: @bob | 2024-01-15 | ins | proposed
+      [^cn-3]: @alice | 2024-01-16 | del | proposed
       """
     And preview option authorColors is "auto"
     When I build preview replacements
@@ -528,13 +528,13 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
   Scenario: Deletion spans do NOT get per-author color
     Given preview source text:
       """
-      {++Alice added this.++}[^ct-1]
-      {++Bob added this.++}[^ct-2]
-      {--Alice deleted this.--}[^ct-3]
+      {++Alice added this.++}[^cn-1]
+      {++Bob added this.++}[^cn-2]
+      {--Alice deleted this.--}[^cn-3]
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
-      [^ct-2]: @bob | 2024-01-15 | ins | proposed
-      [^ct-3]: @alice | 2024-01-16 | del | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-2]: @bob | 2024-01-15 | ins | proposed
+      [^cn-3]: @alice | 2024-01-16 | del | proposed
       """
     And preview option authorColors is "auto"
     When I build preview replacements
@@ -543,11 +543,11 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
   Scenario: Single author does not trigger per-author colors in auto mode
     Given preview source text:
       """
-      {++Added.++}[^ct-1]
-      {++Also added.++}[^ct-2]
+      {++Added.++}[^cn-1]
+      {++Also added.++}[^cn-2]
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
-      [^ct-2]: @alice | 2024-01-16 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-2]: @alice | 2024-01-16 | ins | proposed
       """
     And preview option authorColors is "auto"
     When I build preview replacements
@@ -556,13 +556,13 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
   Scenario: authorColors never disables per-author colors
     Given preview source text:
       """
-      {++Alice added this.++}[^ct-1]
-      {++Bob added this.++}[^ct-2]
-      {--Alice deleted this.--}[^ct-3]
+      {++Alice added this.++}[^cn-1]
+      {++Bob added this.++}[^cn-2]
+      {--Alice deleted this.--}[^cn-3]
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
-      [^ct-2]: @bob | 2024-01-15 | ins | proposed
-      [^ct-3]: @alice | 2024-01-16 | del | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-2]: @bob | 2024-01-15 | ins | proposed
+      [^cn-3]: @alice | 2024-01-16 | del | proposed
       """
     And preview option authorColors is "never"
     When I build preview replacements
@@ -571,9 +571,9 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
   Scenario: authorColors always enables colors even for single author
     Given preview source text:
       """
-      {++Added.++}[^ct-1]
+      {++Added.++}[^cn-1]
 
-      [^ct-1]: @alice | 2024-01-15 | ins | proposed
+      [^cn-1]: @alice | 2024-01-15 | ins | proposed
       """
     And preview option authorColors is "always"
     When I build preview replacements
@@ -608,7 +608,7 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
     Then the fence HTML contains "<pre>"
     And the fence HTML contains "<code"
     And the fence HTML contains "language-js"
-    And the fence HTML contains "ct-ins"
+    And the fence HTML contains "cn-ins"
 
   Scenario: renderFenceWithCriticMarkup escapes HTML
     Given code text "<div>{++x++}</div>"
@@ -621,4 +621,4 @@ Feature: PRV1 — Preview HTML rendering from CriticMarkup
     And fence language ""
     When I render the fence with CriticMarkup
     Then the fence HTML contains "<pre>"
-    And the fence HTML contains "ct-del"
+    And the fence HTML contains "cn-del"

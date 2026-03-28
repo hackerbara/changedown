@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -14,11 +14,11 @@ const TS_RE = '\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z';
 describe('handleProposeChange', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-propose-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-propose-test-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -81,7 +81,7 @@ describe('handleProposeChange', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.type).toBe('sub');
     expect(data.file).toBe(path.relative(tmpDir, filePath));
     expect(data.document_state).toBeDefined();
@@ -92,8 +92,8 @@ describe('handleProposeChange', () => {
 
     // Verify file was actually modified on disk
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{~~quick brown~>slow red~~}[^ct-1]');
-    expect(modified).toContain(`[^ct-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`);
+    expect(modified).toContain('{~~quick brown~>slow red~~}[^cn-1]');
+    expect(modified).toContain(`[^cn-1]: @ai:claude-opus-4.6 | ${TODAY} | sub | proposed`);
   });
 
   it('happy path deletion: modifies file and returns type "del"', async () => {
@@ -108,11 +108,11 @@ describe('handleProposeChange', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.type).toBe('del');
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{-- brown--}[^ct-1]');
+    expect(modified).toContain('{-- brown--}[^cn-1]');
   });
 
   it('happy path insertion: modifies file and returns type "ins"', async () => {
@@ -127,11 +127,11 @@ describe('handleProposeChange', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.type).toBe('ins');
 
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('quick{++ brown++}[^ct-1]');
+    expect(modified).toContain('quick{++ brown++}[^cn-1]');
   });
 
   it('with reason: footnote includes reason line', async () => {
@@ -204,10 +204,10 @@ describe('handleProposeChange', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.type).toBe('sub');
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{~~quick brown~>slow red~~}[^ct-1]');
+    expect(modified).toContain('{~~quick brown~>slow red~~}[^cn-1]');
   });
 
   it('both old_text and new_text empty returns VALIDATION_ERROR with received keys', async () => {
@@ -242,19 +242,19 @@ describe('handleProposeChange', () => {
 
     expect(result.isError).toBeUndefined();
     const data = JSON.parse(result.content[0].text);
-    expect(data.change_id).toBe('ct-1');
+    expect(data.change_id).toBe('cn-1');
     expect(data.type).toBe('sub');
 
     // Verify the file was modified at the correct resolved path
     const modified = await fs.readFile(filePath, 'utf-8');
-    expect(modified).toContain('{~~Some~>My~~}[^ct-1]');
+    expect(modified).toContain('{~~Some~>My~~}[^cn-1]');
   });
 
   it('uses "unknown" as author when config.author.default is empty', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'Hello world.');
 
-    const emptyAuthorConfig: ChangeTracksConfig = {
+    const emptyAuthorConfig: ChangeDownConfig = {
       ...config,
       author: { default: '', enforcement: 'optional' },
     };
@@ -286,7 +286,7 @@ describe('handleProposeChange', () => {
 
     const modified = await fs.readFile(filePath, 'utf-8');
     // Should use the explicit author, not the config default (ai:claude-opus-4.6)
-    expect(modified).toContain(`[^ct-1]: @ai:claude-sonnet-4.5 | ${TODAY} | sub | proposed`);
+    expect(modified).toContain(`[^cn-1]: @ai:claude-sonnet-4.5 | ${TODAY} | sub | proposed`);
   });
 
   it('uses config default author when author parameter is omitted', async () => {
@@ -321,16 +321,16 @@ describe('handleProposeChange', () => {
 
       expect(result.isError).toBeUndefined();
       const modified = await fs.readFile(filePath, 'utf-8');
-      expect(modified).toContain('<!-- ctrcks.com/v1: tracked -->');
+      expect(modified).toContain('<!-- changedown.com/v1: tracked -->');
       // The change should also be present
-      expect(modified).toContain('{~~world~>earth~~}[^ct-1]');
+      expect(modified).toContain('{~~world~>earth~~}[^cn-1]');
     });
 
     it('propose_change on file that already has header does not duplicate it', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       await fs.writeFile(
         filePath,
-        '<!-- ctrcks.com/v1: tracked -->\nHello world.',
+        '<!-- changedown.com/v1: tracked -->\nHello world.',
       );
 
       const result = await handleProposeChange(
@@ -342,16 +342,16 @@ describe('handleProposeChange', () => {
       expect(result.isError).toBeUndefined();
       const modified = await fs.readFile(filePath, 'utf-8');
       // Should have exactly one header
-      const headerCount = (modified.match(/ctrcks.com\/v1/g) || []).length;
+      const headerCount = (modified.match(/changedown.com\/v1/g) || []).length;
       expect(headerCount).toBe(1);
-      expect(modified).toContain('{~~world~>earth~~}[^ct-1]');
+      expect(modified).toContain('{~~world~>earth~~}[^cn-1]');
     });
 
     it('auto_header=false does not insert header', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       await fs.writeFile(filePath, 'Hello world.');
 
-      const noAutoConfig: ChangeTracksConfig = {
+      const noAutoConfig: ChangeDownConfig = {
         ...config,
         tracking: { ...config.tracking, auto_header: false },
       };
@@ -365,8 +365,8 @@ describe('handleProposeChange', () => {
 
       expect(result.isError).toBeUndefined();
       const modified = await fs.readFile(filePath, 'utf-8');
-      expect(modified).not.toContain('ctrcks.com/v1');
-      expect(modified).toContain('{~~world~>earth~~}[^ct-1]');
+      expect(modified).not.toContain('changedown.com/v1');
+      expect(modified).toContain('{~~world~>earth~~}[^cn-1]');
     });
   });
 
@@ -377,7 +377,7 @@ describe('handleProposeChange', () => {
       const filePath = path.join(tmpDir, 'doc.md');
       await fs.writeFile(filePath, 'Hello world.');
 
-      const requiredConfig: ChangeTracksConfig = {
+      const requiredConfig: ChangeDownConfig = {
         ...config,
         author: { default: 'ai:claude-opus-4.6', enforcement: 'required' },
       };
@@ -401,7 +401,7 @@ describe('handleProposeChange', () => {
       const filePath = path.join(tmpDir, 'doc.md');
       await fs.writeFile(filePath, 'Hello world.');
 
-      const requiredConfig: ChangeTracksConfig = {
+      const requiredConfig: ChangeDownConfig = {
         ...config,
         author: { default: 'ai:claude-opus-4.6', enforcement: 'required' },
       };
@@ -415,7 +415,7 @@ describe('handleProposeChange', () => {
 
       expect(result.isError).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
-      expect(data.change_id).toBe('ct-1');
+      expect(data.change_id).toBe('cn-1');
 
       const modified = await fs.readFile(filePath, 'utf-8');
       expect(modified).toContain(`@ai:claude-sonnet-4.5`);
@@ -560,16 +560,16 @@ describe('handleProposeChange', () => {
     it('rejects propose where only refs differ (identity substitution)', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'some text[^ct-1] on a line.',
+        '<!-- changedown.com/v1: tracked -->',
+        'some text[^cn-1] on a line.',
         '',
-        '[^ct-1]: @ai:agent | 2026-02-28 | sub | accepted',
+        '[^cn-1]: @ai:agent | 2026-02-28 | sub | accepted',
         '    approved: @ai:agent 2026-02-28 "done"',
       ].join('\n');
       await fs.writeFile(filePath, content);
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'some text[^ct-1]', new_text: 'some text', author: 'ai:test' },
+        { file: filePath, old_text: 'some text[^cn-1]', new_text: 'some text', author: 'ai:test' },
         resolver,
         state,
       );
@@ -581,16 +581,16 @@ describe('handleProposeChange', () => {
     it('allows propose where prose actually differs despite refs', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'some text[^ct-1] on a line.',
+        '<!-- changedown.com/v1: tracked -->',
+        'some text[^cn-1] on a line.',
         '',
-        '[^ct-1]: @ai:agent | 2026-02-28 | sub | accepted',
+        '[^cn-1]: @ai:agent | 2026-02-28 | sub | accepted',
         '    approved: @ai:agent 2026-02-28 "done"',
       ].join('\n');
       await fs.writeFile(filePath, content);
 
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'some text[^ct-1]', new_text: 'different text', author: 'ai:test', reason: 'test' },
+        { file: filePath, old_text: 'some text[^cn-1]', new_text: 'different text', author: 'ai:test', reason: 'test' },
         resolver,
         state,
       );
@@ -613,19 +613,19 @@ describe('handleProposeChange', () => {
 
       expect(result.isError).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
-      expect(data.change_id).toBe('ct-1');
+      expect(data.change_id).toBe('cn-1');
       expect(data.type).toBe('ins');
 
       const content = await fs.readFile(filePath, 'utf-8');
       // Should have tracking header
-      expect(content).toContain('<!-- ctrcks.com/v1: tracked -->');
+      expect(content).toContain('<!-- changedown.com/v1: tracked -->');
       // Should have the content wrapped in insertion markup
-      expect(content).toContain('{++# New Document\n\nThis is new content.++}[^ct-1]');
+      expect(content).toContain('{++# New Document\n\nThis is new content.++}[^cn-1]');
     });
 
     it('new file creation without auto_header omits header', async () => {
       const filePath = path.join(tmpDir, 'brand-new.md');
-      const noAutoConfig: ChangeTracksConfig = {
+      const noAutoConfig: ChangeDownConfig = {
         ...config,
         tracking: { ...config.tracking, auto_header: false },
       };
@@ -639,8 +639,8 @@ describe('handleProposeChange', () => {
 
       expect(result.isError).toBeUndefined();
       const content = await fs.readFile(filePath, 'utf-8');
-      expect(content).not.toContain('ctrcks.com/v1');
-      expect(content).toContain('{++Hello world.++}[^ct-1]');
+      expect(content).not.toContain('changedown.com/v1');
+      expect(content).toContain('{++Hello world.++}[^cn-1]');
     });
 
     it('file not found with non-empty oldText still returns error', async () => {
@@ -661,10 +661,10 @@ describe('handleProposeChange', () => {
     it('matches prose, not footnote definition text', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
+        '<!-- changedown.com/v1: tracked -->',
         'The API uses REST for the external interface.',
         '',
-        '[^ct-1]: @ai:claude-opus-4.6 | 2026-02-28 | sub | accepted',
+        '[^cn-1]: @ai:claude-opus-4.6 | 2026-02-28 | sub | accepted',
         '    @ai:claude-opus-4.6 2026-02-28: REST to GraphQL migration',
       ].join('\n');
       await fs.writeFile(filePath, content);
@@ -683,7 +683,7 @@ describe('handleProposeChange', () => {
 
     it('searches full file when no footnotes exist', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
-      const content = '<!-- ctrcks.com/v1: tracked -->\nThe API uses REST.';
+      const content = '<!-- changedown.com/v1: tracked -->\nThe API uses REST.';
       await fs.writeFile(filePath, content);
 
       const result = await handleProposeChange(
@@ -699,11 +699,11 @@ describe('handleProposeChange', () => {
     it('ignores footnote-like text inside fenced code blocks', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
+        '<!-- changedown.com/v1: tracked -->',
         'The API uses REST.',
         '',
         '```markdown',
-        '[^ct-1]: This looks like a footnote but is inside a code block',
+        '[^cn-1]: This looks like a footnote but is inside a code block',
         '```',
         '',
         'More REST content here.',
@@ -726,13 +726,13 @@ describe('handleProposeChange', () => {
 
   describe('ref accumulation loop prevention', () => {
     it('agent can edit text on a line with settled refs without accumulating more refs', async () => {
-      // Setup: file with settled change on a line (has [^ct-1] ref)
+      // Setup: file with settled change on a line (has [^cn-1] ref)
       const filePath = path.join(tmpDir, 'doc.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'The latency is 10-20 milliseconds[^ct-1] in practice.',
+        '<!-- changedown.com/v1: tracked -->',
+        'The latency is 10-20 milliseconds[^cn-1] in practice.',
         '',
-        '[^ct-1]: @ai:agent | 2026-02-28 | sub | accepted',
+        '[^cn-1]: @ai:agent | 2026-02-28 | sub | accepted',
         '    @ai:agent 2026-02-28: previous edit',
         '    approved: @ai:agent 2026-02-28 "done"',
       ].join('\n');
@@ -750,28 +750,28 @@ describe('handleProposeChange', () => {
       // The CriticMarkup should wrap the prose, with refs OUTSIDE
       const disk = await fs.readFile(filePath, 'utf-8');
       expect(disk).toContain('{~~10-20 milliseconds~>10\u201320 milliseconds~~}');
-      expect(disk).toContain('[^ct-1]'); // original ref preserved
+      expect(disk).toContain('[^cn-1]'); // original ref preserved
       // No duplicate refs — the new change gets its own ref, original stays
-      const sc1Count = (disk.match(/\[\^ct-1\]/g) || []).length;
+      const sc1Count = (disk.match(/\[\^cn-1\]/g) || []).length;
       expect(sc1Count).toBeGreaterThanOrEqual(2); // once inline, once in footnote
     });
 
     it('rejects attempt to remove refs via substitution', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'The value[^ct-4][^ct-2.1] is correct.',
+        '<!-- changedown.com/v1: tracked -->',
+        'The value[^cn-4][^cn-2.1] is correct.',
         '',
-        '[^ct-4]: @ai:agent | 2026-02-28 | sub | accepted',
+        '[^cn-4]: @ai:agent | 2026-02-28 | sub | accepted',
         '    approved: @ai:agent 2026-02-28 "done"',
-        '[^ct-2.1]: @ai:agent | 2026-02-28 | sub | accepted',
+        '[^cn-2.1]: @ai:agent | 2026-02-28 | sub | accepted',
         '    approved: @ai:agent 2026-02-28 "done"',
       ].join('\n');
       await fs.writeFile(filePath, content);
 
       // Agent tries to "clean" refs by submitting text without them
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'The value[^ct-4][^ct-2.1] is correct.', new_text: 'The value is correct.', author: 'ai:test' },
+        { file: filePath, old_text: 'The value[^cn-4][^cn-2.1] is correct.', new_text: 'The value is correct.', author: 'ai:test' },
         resolver,
         state,
       );
@@ -783,17 +783,17 @@ describe('handleProposeChange', () => {
     it('allows real edits even when agent includes refs in old_text', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'The value[^ct-1] is approximately correct.',
+        '<!-- changedown.com/v1: tracked -->',
+        'The value[^cn-1] is approximately correct.',
         '',
-        '[^ct-1]: @ai:agent | 2026-02-28 | sub | accepted',
+        '[^cn-1]: @ai:agent | 2026-02-28 | sub | accepted',
         '    approved: @ai:agent 2026-02-28 "done"',
       ].join('\n');
       await fs.writeFile(filePath, content);
 
       // Agent includes ref in old_text but also makes a real prose change
       const result = await handleProposeChange(
-        { file: filePath, old_text: 'The value[^ct-1] is approximately correct.', new_text: 'The value is exactly correct.', author: 'ai:test', reason: 'test' },
+        { file: filePath, old_text: 'The value[^cn-1] is approximately correct.', new_text: 'The value is exactly correct.', author: 'ai:test', reason: 'test' },
         resolver,
         state,
       );
@@ -803,7 +803,7 @@ describe('handleProposeChange', () => {
       // Should contain substitution markup
       expect(disk).toContain('~>');
       // Original ref should still be present
-      expect(disk).toContain('[^ct-1]');
+      expect(disk).toContain('[^cn-1]');
     });
   });
 
@@ -811,10 +811,10 @@ describe('handleProposeChange', () => {
     it('auto-settles accepted substitution markup when propose targets settled text', async () => {
       const filePath = path.join(tmpDir, 'settle-on-demand.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'Hello {~~old~>new~~}[^ct-1] world',
+        '<!-- changedown.com/v1: tracked -->',
+        'Hello {~~old~>new~~}[^cn-1] world',
         '',
-        '[^ct-1]: @alice | 2026-03-04 | sub | accepted',
+        '[^cn-1]: @alice | 2026-03-04 | sub | accepted',
         '    approved: @bob 2026-03-04 "ok"',
       ].join('\n');
       await fs.writeFile(filePath, content);
@@ -839,16 +839,16 @@ describe('handleProposeChange', () => {
       // New proposal should exist wrapping the settled text "new"
       expect(fileAfter).toContain('{~~new~>newer~~}');
       // The accepted footnote definition should still be present (audit trail)
-      expect(fileAfter).toContain('[^ct-1]: @alice');
+      expect(fileAfter).toContain('[^cn-1]: @alice');
     });
 
     it('auto-settles accepted insertion markup when propose targets settled text', async () => {
       const filePath = path.join(tmpDir, 'settle-ins.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'Hello {++inserted++}[^ct-1] world',
+        '<!-- changedown.com/v1: tracked -->',
+        'Hello {++inserted++}[^cn-1] world',
         '',
-        '[^ct-1]: @alice | 2026-03-04 | ins | accepted',
+        '[^cn-1]: @alice | 2026-03-04 | ins | accepted',
         '    approved: @bob 2026-03-04 "ok"',
       ].join('\n');
       await fs.writeFile(filePath, content);
@@ -873,18 +873,18 @@ describe('handleProposeChange', () => {
       // New proposal wrapping settled text
       expect(fileAfter).toContain('{~~inserted world~>modified world~~}');
       // The accepted footnote definition should still be present
-      expect(fileAfter).toContain('[^ct-1]: @alice');
+      expect(fileAfter).toContain('[^cn-1]: @alice');
     });
 
     it('settle-on-demand preserves the accepted footnote ref inline after settling', async () => {
-      // After settle-on-demand: settleAcceptedChangesOnly produces `new[^ct-1]` inline.
-      // The subsequent proposal wraps `new` and should retain `[^ct-1]` next to the markup.
+      // After settle-on-demand: settleAcceptedChangesOnly produces `new[^cn-1]` inline.
+      // The subsequent proposal wraps `new` and should retain `[^cn-1]` next to the markup.
       const filePath = path.join(tmpDir, 'settle-ref-preservation.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'Hello {~~old~>new~~}[^ct-1] world',
+        '<!-- changedown.com/v1: tracked -->',
+        'Hello {~~old~>new~~}[^cn-1] world',
         '',
-        '[^ct-1]: @alice | 2026-03-04 | sub | accepted',
+        '[^cn-1]: @alice | 2026-03-04 | sub | accepted',
         '    approved: @bob 2026-03-04 "ok"',
       ].join('\n');
       await fs.writeFile(filePath, content);
@@ -903,16 +903,16 @@ describe('handleProposeChange', () => {
 
       expect(result.isError).toBeUndefined();
       const fileAfter = await fs.readFile(filePath, 'utf-8');
-      // Old markup settled: no CriticMarkup delimiters for ct-1
+      // Old markup settled: no CriticMarkup delimiters for cn-1
       expect(fileAfter).not.toContain('{~~old~>new~~}');
       // New proposal created on settled text
       expect(fileAfter).toContain('{~~new~>newer~~}');
-      // The settled ct-1 ref should still be adjacent to the markup (inline anchor preserved)
-      // After settle: `new[^ct-1]` — after proposal: `{~~new~>newer~~}[^ct-2][^ct-1]`
-      expect(fileAfter).toContain('[^ct-1]');
-      // The inline ct-1 anchor should be adjacent to the new proposal markup
-      const hasInlineRef = /\{~~new~>newer~~\}\[\^ct-2\]\[\^ct-1\]/.test(fileAfter) ||
-        /\{~~new~>newer~~\}\[\^ct-1\]\[\^ct-2\]/.test(fileAfter);
+      // The settled cn-1 ref should still be adjacent to the markup (inline anchor preserved)
+      // After settle: `new[^cn-1]` — after proposal: `{~~new~>newer~~}[^cn-2][^cn-1]`
+      expect(fileAfter).toContain('[^cn-1]');
+      // The inline cn-1 anchor should be adjacent to the new proposal markup
+      const hasInlineRef = /\{~~new~>newer~~\}\[\^cn-2\]\[\^cn-1\]/.test(fileAfter) ||
+        /\{~~new~>newer~~\}\[\^cn-1\]\[\^cn-2\]/.test(fileAfter);
       expect(hasInlineRef).toBe(true);
     });
   });
@@ -931,10 +931,10 @@ describe('handleProposeChange', () => {
     it('auto-settles accepted insertion markup when compact op targets settled text', async () => {
       const filePath = path.join(tmpDir, 'compact-settle-ins.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'Hello {++inserted++}[^ct-1] world',
+        '<!-- changedown.com/v1: tracked -->',
+        'Hello {++inserted++}[^cn-1] world',
         '',
-        '[^ct-1]: @alice | 2026-03-04 | ins | accepted',
+        '[^cn-1]: @alice | 2026-03-04 | ins | accepted',
         '    approved: @bob 2026-03-04 "ok"',
       ].join('\n');
       await fs.writeFile(filePath, content);
@@ -965,16 +965,16 @@ describe('handleProposeChange', () => {
       // New proposal should exist
       expect(fileAfter).toContain('{~~inserted~>modified~~}');
       // Accepted footnote preserved
-      expect(fileAfter).toContain('[^ct-1]: @alice');
+      expect(fileAfter).toContain('[^cn-1]: @alice');
     });
 
     it('auto-settles accepted substitution markup when compact op targets settled text', async () => {
       const filePath = path.join(tmpDir, 'compact-settle-sub.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'Hello {~~old~>new~~}[^ct-1] world',
+        '<!-- changedown.com/v1: tracked -->',
+        'Hello {~~old~>new~~}[^cn-1] world',
         '',
-        '[^ct-1]: @alice | 2026-03-04 | sub | accepted',
+        '[^cn-1]: @alice | 2026-03-04 | sub | accepted',
         '    approved: @bob 2026-03-04 "ok"',
       ].join('\n');
       await fs.writeFile(filePath, content);
@@ -1000,13 +1000,13 @@ describe('handleProposeChange', () => {
       const fileAfter = await fs.readFile(filePath, 'utf-8');
       expect(fileAfter).not.toContain('{~~old~>new~~}');
       expect(fileAfter).toContain('{~~new~>newer~~}');
-      expect(fileAfter).toContain('[^ct-1]: @alice');
+      expect(fileAfter).toContain('[^cn-1]: @alice');
     });
 
     it('skips settle-on-demand when target has no accepted/rejected markup', async () => {
       const filePath = path.join(tmpDir, 'compact-no-settle.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
+        '<!-- changedown.com/v1: tracked -->',
         'Hello world',
         '',
       ].join('\n');
@@ -1037,10 +1037,10 @@ describe('handleProposeChange', () => {
     it('preserves footnote ref inline after compact settle-on-demand', async () => {
       const filePath = path.join(tmpDir, 'compact-settle-ref.md');
       const content = [
-        '<!-- ctrcks.com/v1: tracked -->',
-        'Hello {~~old~>new~~}[^ct-1] world',
+        '<!-- changedown.com/v1: tracked -->',
+        'Hello {~~old~>new~~}[^cn-1] world',
         '',
-        '[^ct-1]: @alice | 2026-03-04 | sub | accepted',
+        '[^cn-1]: @alice | 2026-03-04 | sub | accepted',
         '    approved: @bob 2026-03-04 "ok"',
       ].join('\n');
       await fs.writeFile(filePath, content);
@@ -1064,10 +1064,10 @@ describe('handleProposeChange', () => {
 
       expect(result.isError).toBeUndefined();
       const fileAfter = await fs.readFile(filePath, 'utf-8');
-      // The settled ct-1 ref should be preserved inline
-      expect(fileAfter).toContain('[^ct-1]');
+      // The settled cn-1 ref should be preserved inline
+      expect(fileAfter).toContain('[^cn-1]');
       // New proposal ref should also be present
-      expect(fileAfter).toMatch(/\[\^ct-2\]/);
+      expect(fileAfter).toMatch(/\[\^cn-2\]/);
     });
   });
 });

@@ -1,14 +1,14 @@
-// config.ts — re-exports from changetracks/config
+// config.ts — re-exports from changedown/config
 //
-// All config loading logic lives in the changetracks package.
+// All config loading logic lives in the changedown package.
 // This module re-exports everything so existing imports within opencode-plugin
 // continue to work without changes.
 
 import * as path from 'node:path';
 import picomatch from 'picomatch';
-import type { ChangeTracksConfig } from 'changetracks/config';
+import type { ChangeDownConfig } from 'changedown/config';
 
-export type { ChangeTracksConfig, PolicyMode, CreationTracking } from 'changetracks/config';
+export type { ChangeDownConfig, PolicyMode, CreationTracking } from 'changedown/config';
 export {
   DEFAULT_CONFIG,
   loadConfig,
@@ -19,7 +19,7 @@ export {
   resolveProtocolMode,
   derivePolicyMode,
   asStringArray,
-} from 'changetracks/config';
+} from 'changedown/config';
 
 // ---------------------------------------------------------------------------
 // hooks-specific scope check (not part of the shared cli/config module)
@@ -32,7 +32,7 @@ export {
  */
 export function isFileExcludedFromHooks(
   filePath: string,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
   projectDir: string
 ): boolean {
   if (config.hooks.exclude.length === 0) return false;

@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import { computeSettledText, computeOriginalText } from '@changetracks/core';
+import { computeSettledText, computeOriginalText } from '@changedown/core';
 import * as fs from 'fs';
 import type { ViewMode } from './view-mode';
 
-const SWAP_EXTENSION = '.changetracks-swap';
+const SWAP_EXTENSION = '.changedown-swap';
 
 export class ProjectedView {
     private originalMarkup: string | null = null;

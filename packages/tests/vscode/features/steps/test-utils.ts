@@ -2,8 +2,8 @@
  * Shared test utilities for @fast step definitions.
  */
 
-import { CriticMarkupParser } from '@changetracks/core';
-import type { ChangeNode, TextEdit } from '@changetracks/core';
+import { CriticMarkupParser } from '@changedown/core';
+import type { ChangeNode, TextEdit } from '@changedown/core';
 
 /** Apply a single TextEdit to a string. */
 export function applyEdit(text: string, edit: TextEdit): string {
@@ -22,14 +22,14 @@ export function applyEditsReverse(text: string, edits: TextEdit[]): string {
 
 /**
  * Extract the status field from a footnote header line.
- * Footnote format: `[^ct-N]: @author | date | type | status`
+ * Footnote format: `[^cn-N]: @author | date | type | status`
  * Returns the status string (e.g., "proposed", "accepted", "rejected").
  */
 export function extractFootnoteStatus(text: string, changeId?: string): string {
     const lines = text.split('\n');
     const pattern = changeId
         ? new RegExp(`^\\[\\^${changeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\]:`)
-        : /^\[\^ct-\d+\]:/;
+        : /^\[\^cn-\d+\]:/;
     const headerLine = lines.find(l => pattern.test(l.trim()));
     if (!headerLine) {
         throw new Error(`No footnote header line found${changeId ? ` for ${changeId}` : ''}.\nText:\n${text}`);
@@ -44,7 +44,7 @@ export function extractFootnoteStatus(text: string, changeId?: string): string {
 /** Fixed test date for deterministic assertions across all @fast step files. */
 export const TEST_DATE = '2026-03-09';
 
-/** Find a ChangeNode by its ct-ID in parsed document text. */
+/** Find a ChangeNode by its cn-ID in parsed document text. */
 export function findChangeById(text: string, changeId: string): ChangeNode | null {
     const parser = new CriticMarkupParser();
     const vdoc = parser.parse(text);

@@ -4,7 +4,7 @@
  * Steps:
  * 1. Convert markdown to docx Paragraphs via tokens-to-docx
  * 2. Create a docx Document with tracked changes enabled
- * 3. Pack to buffer via Packer.toBuffer()
+ * 3. Pack to ArrayBuffer via Packer.toArrayBuffer()
  * 4. Apply patches if wordOnlineCompat is true (default)
  */
 
@@ -16,11 +16,11 @@ import { patchDocxForWordOnline } from './word-online-patch.js';
 export async function exportDocx(
   markdown: string,
   options?: ExportOptions
-): Promise<{ buffer: Buffer; stats: ExportStats }> {
+): Promise<{ buffer: Uint8Array; stats: ExportStats }> {
   const mode = options?.mode ?? 'settled';
   const comments = options?.comments ?? 'all';
   const wordOnlineCompat = options?.wordOnlineCompat ?? true;
-  const title = options?.title ?? 'ChangeTracks Export';
+  const title = options?.title ?? 'ChangeDown Export';
 
   const VALID_MODES = new Set(['tracked', 'settled', 'clean']);
   const VALID_COMMENTS = new Set(['all', 'none', 'unresolved']);
@@ -38,13 +38,14 @@ export async function exportDocx(
     mediaDir: options?.mediaDir,
     defaultDpi: options?.defaultDpi,
     maxWidthInches: options?.maxWidthInches,
+    fileReader: options?.fileReader,
   });
 
   // Step 2: Build Document
   const doc = new Document({
-    creator: 'ChangeTracks',
+    creator: 'ChangeDown',
     title,
-    description: 'Converted from CriticMarkup by @changetracks/docx',
+    description: 'Converted from CriticMarkup by @changedown/docx',
     features: {
       trackRevisions: mode !== 'clean',
     },
@@ -60,7 +61,7 @@ export async function exportDocx(
   });
 
   // Step 3: Pack to buffer
-  let buffer: Buffer = Buffer.from(await Packer.toBuffer(doc)) as Buffer;
+  let buffer: Uint8Array = new Uint8Array(await Packer.toArrayBuffer(doc));
 
   // Step 4: Post-process for Word Online compatibility
   if (wordOnlineCompat) {
@@ -68,11 +69,13 @@ export async function exportDocx(
       buffer,
       result.commentPatchInfos,
       result.imagePatchInfos,
-    ) as Buffer;
+      undefined,
+      result.hyperlinkPatchInfos,
+    );
   }
 
   return {
-    buffer: buffer as Buffer,
+    buffer,
     stats: {
       insertions: result.stats.insertions,
       deletions: result.stats.deletions,

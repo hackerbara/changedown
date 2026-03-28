@@ -5,7 +5,7 @@
  * Matches auto from profile and auto from available account.
  *
  * Resolution order:
- * 1. changetracks.author setting (explicit)
+ * 1. changedown.author setting (explicit)
  * 2. git config user.name (inferred)
  * 3. System username (last resort)
  * 4. 'unknown' (only if nothing else works)
@@ -26,8 +26,8 @@ const CACHE_TTL_MS = 30_000; // 30 seconds
 export function resolveAuthorIdentity(resource?: vscode.Uri): string {
     // 1. Explicit setting
     const config = resource
-        ? vscode.workspace.getConfiguration('changetracks', resource)
-        : vscode.workspace.getConfiguration('changetracks');
+        ? vscode.workspace.getConfiguration('changedown', resource)
+        : vscode.workspace.getConfiguration('changedown');
     const settingValue = config.get<string>('author', '').trim();
     if (settingValue) return settingValue;
 

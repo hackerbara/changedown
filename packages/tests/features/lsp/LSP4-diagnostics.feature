@@ -11,7 +11,7 @@ Feature: LSP4 - Diagnostics
     Then there is 1 diagnostic
     And diagnostic 1 has severity "Hint"
     And diagnostic 1 has message "Insertion: world"
-    And diagnostic 1 has source "changetracks"
+    And diagnostic 1 has source "changedown"
 
   Scenario: Deletion diagnostic message
     Given the document text "Hello {--world--}!"

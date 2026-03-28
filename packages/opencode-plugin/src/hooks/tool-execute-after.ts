@@ -71,7 +71,7 @@ export async function toolExecuteAfterHook(
     const patchText = patchTextCandidates.find((value) => typeof value === 'string') as string | undefined;
 
     if (!patchText) {
-      console.warn(`[ChangeTracks] Patch wrap enabled but no patch text found for ${filePath}.`);
+      console.warn(`[ChangeDown] Patch wrap enabled but no patch text found for ${filePath}.`);
       return;
     }
 
@@ -82,12 +82,12 @@ export async function toolExecuteAfterHook(
 
     if (parsed.warnings.length > 0) {
       for (const warning of parsed.warnings) {
-        console.warn(`[ChangeTracks] Patch wrap warning (${filePath}): ${warning}`);
+        console.warn(`[ChangeDown] Patch wrap warning (${filePath}): ${warning}`);
       }
     }
 
     if (parsed.edits.length > 0) {
-      console.log(`[ChangeTracks] Logged ${parsed.edits.length} patch-derived edits to ${filePath} in pending queue`);
+      console.log(`[ChangeDown] Logged ${parsed.edits.length} patch-derived edits to ${filePath} in pending queue`);
     }
     return;
   }
@@ -114,5 +114,5 @@ export async function toolExecuteAfterHook(
   // Append to pending queue
   await appendPendingEdit(projectDir, pendingEdit);
 
-  console.log(`[ChangeTracks] Logged edit to ${filePath} in pending queue`);
+  console.log(`[ChangeDown] Logged edit to ${filePath} in pending queue`);
 }

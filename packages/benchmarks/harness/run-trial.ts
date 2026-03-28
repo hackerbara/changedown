@@ -1,5 +1,5 @@
 /**
- * Single-episode trial: workflow A with ChangeTracks plugin disabled.
+ * Single-episode trial: workflow A with ChangeDown plugin disabled.
  * Run from repo root: node packages/benchmark-harness/dist/run-trial.js
  */
 import fs from "node:fs/promises";
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
     taskPrompt: prompts.taskDescription,
     workflow: "A",
     prompts,
-    disableChangeTracksPlugin: true,
+    disableChangeDownPlugin: true,
     timeoutMs: 300_000,
     logProgress: true,
     serverUrl: serverUrl || undefined,

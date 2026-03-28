@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — ChangeTracks
+# ARCHITECTURE.md — ChangeDown
 
 ## Package Dependency Graph
 
@@ -49,7 +49,7 @@ Highlights can attach comments with no whitespace: `{==text==}{>>comment<<}`
 ## L2 and L3 Formats
 
 **L2 (on-disk format):** Inline CriticMarkup with footnote metadata. This is the
-canonical, persisted format. All files on disk are L2. Footnotes (`[^ct-N]`)
+canonical, persisted format. All files on disk are L2. Footnotes (`[^cn-N]`)
 carry author, timestamp, status, and discussion metadata.
 
 **L3 (live editing projection):** L2 with deterministic line anchoring. L3 exists
@@ -71,7 +71,7 @@ Reverse: `convertL3ToL2()` in `packages/core/src/operations/l3-to-l2.ts`
 Six-level matching in `findUniqueMatch()` (`packages/core/src/file-ops.ts`):
 
 1. **Exact** — `text.indexOf(target)` with uniqueness check
-2. **Ref-transparent** — Strips `[^ct-N]` footnote refs from both haystack and needle
+2. **Ref-transparent** — Strips `[^cn-N]` footnote refs from both haystack and needle
 3. **Normalized** — NFKC unicode normalization
 4. **Whitespace-collapsed** — All whitespace runs → single space
 5. **Committed-text** — Strips pending proposals (accepted changes stay)
@@ -157,16 +157,16 @@ writing to disk. In the extension, this happens in `onWillSaveTextDocument`.
 
 L2 on disk:
 ```
-The team {++new ++}[^ct-1]prototype last week.
+The team {++new ++}[^cn-1]prototype last week.
 
-[^ct-1]: @alice | 2026-03-16 | ins | proposed
+[^cn-1]: @alice | 2026-03-16 | ins | proposed
 ```
 
 L3 in memory:
 ```
 The team new prototype last week.
 
-[^ct-1]: @alice | 2026-03-16 | ins | proposed
+[^cn-1]: @alice | 2026-03-16 | ins | proposed
     1:a3f {++new ++}
 ```
 
@@ -191,7 +191,7 @@ End-to-end trace from user action to rendered result.
         ↓
     Extension: acceptChangeAtCursor() → optional QuickPick for reason
         ↓
-    Extension: sendLifecycleRequest('changetracks/reviewChange', {
+    Extension: sendLifecycleRequest('changedown/reviewChange', {
         uri, changeId, decision, reason
     })
         ↓
@@ -243,7 +243,7 @@ The edit boundary groups rapid keystrokes into single tracked changes.
 - Safety-net timer exceeds `pauseThresholdMs` (default 30s, 0 = disabled)
 - Document save
 - Tracking mode toggled off (abandons pending, does not crystallize)
-- Manual flush via `changetracks/flushPending` notification
+- Manual flush via `changedown/flushPending` notification
 
 ## State Synchronization Protocol
 
@@ -315,27 +315,27 @@ View mode determines decoration behavior:
 
 ## CLI and Engine Layer
 
-**Two bin entries** from `packages/cli` (`changetracks` npm package):
-- `ctrk` — main agent + user CLI; routes to git diff driver / user commands / agent commands
-- `changetracks` — init wizard only (`changetracks init`)
+**Two bin entries** from `packages/cli` (`changedown` npm package):
+- `cdown` — main agent + user CLI; routes to git diff driver / user commands / agent commands
+- `changedown` — init wizard only (`changedown init`)
 
-**Three-path routing in `ctrk`:** git diff driver (7-arg detection) → user commands (Commander, `status|list|diff|…`) → agent commands (`runAgentCommands()` → `runCommand()`).
+**Three-path routing in `cdown`:** git diff driver (7-arg detection) → user commands (Commander, `status|list|diff|…`) → agent commands (`runAgentCommands()` → `runCommand()`).
 
-**Engine layer** (`packages/cli/src/engine/`, exported as `changetracks/engine`) is the shared contract consumed by both `ctrk` and the MCP server. Key components:
+**Engine layer** (`packages/cli/src/engine/`, exported as `changedown/engine`) is the shared contract consumed by both `cdown` and the MCP server. Key components:
 
 - **Handler signature contract:** All 16 engine handlers share:
   `(args: Record<string, unknown>, resolver: ConfigResolver, state: SessionState) => Promise<{ content: [...]; isError?: boolean }>`
   This is the MCP tool result format. The CLI wraps it via `handlerToCliResult()`. Adding a new operation: write handler → export from `engine/index.ts` → add to `agent-command-registry.ts` → add to MCP server's `CallToolRequestSchema`.
 
-- **`ConfigResolver`** — Session-scoped, lazy per-file config loader. Walks up to `.changetracks/config.toml`, caches by project root, file-watches for live reload. One instance per MCP stdio session; one per `ctrk` invocation (disposed after via `resolver.dispose()`).
+- **`ConfigResolver`** — Session-scoped, lazy per-file config loader. Walks up to `.changedown/config.toml`, caches by project root, file-watches for live reload. One instance per MCP stdio session; one per `cdown` invocation (disposed after via `resolver.dispose()`).
 
 - **`SessionState`** — Per-session ID counter and hash registry. Tracks `ct-N` allocation per file, manages change groups, records per-line hashes for staleness detection.
 
-- **Protocol mode** (`classic` vs `compact`) is read from `.changetracks/config.toml` via `resolveProtocolMode()`. `getListedToolsWithConfig()` selects between `classicProposeChangeSchema` (old_text/new_text) and `compactProposeChangeSchema` (LINE:HASH + CriticMarkup op) at tool-list time. The MCP client sees a different `propose_change` schema depending on the project's config.
+- **Protocol mode** (`classic` vs `compact`) is read from `.changedown/config.toml` via `resolveProtocolMode()`. `getListedToolsWithConfig()` selects between `classicProposeChangeSchema` (old_text/new_text) and `compactProposeChangeSchema` (LINE:HASH + CriticMarkup op) at tool-list time. The MCP client sees a different `propose_change` schema depending on the project's config.
 
 **The 6-tool MCP surface** (`engine/listed-tools.ts`): `read_tracked_file`, `propose_change`, `review_changes`, `amend_change`, `list_changes`, `supersede_change`. Additional backward-compat handlers exist (`raw_edit`, `propose_batch`, `respond_to_thread`, etc.) but are not in the listed surface.
 
-**LSP server CLI import** is narrow: only `parseConfigToml` and `DEFAULT_CONFIG` from `changetracks/config`. The LSP server does not use engine handlers — all change operations go through `@changetracks/core` directly.
+**LSP server CLI import** is narrow: only `parseConfigToml` and `DEFAULT_CONFIG` from `changedown/config`. The LSP server does not use engine handlers — all change operations go through `@changedown/core` directly.
 
 ## Key Invariants
 

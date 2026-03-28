@@ -8,22 +8,22 @@
 
 import { When, Then, Before } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { CriticMarkupParser } from '@changetracks/core';
-import { generateReviewHtml, buildCardData } from 'changetracks-vscode/internals';
-import type { ChangeCardData, ReviewPanelState } from 'changetracks-vscode/internals';
-import type { ChangeTracksWorld } from './world';
+import { CriticMarkupParser } from '@changedown/core';
+import { generateReviewHtml, buildCardData } from 'changedown-vscode/internals';
+import type { ChangeCardData, ReviewPanelState } from 'changedown-vscode/internals';
+import type { ChangeDownWorld } from './world';
 
 // ── Extend World with panel lifecycle state ─────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         panelCards?: ChangeCardData[];
     }
 }
 
 // ── Lifecycle ───────────────────────────────────────────────────────
 
-Before({ tags: '@fast and @PNL5' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @PNL5' }, function (this: ChangeDownWorld) {
     this.panelCards = undefined;
     this.settingsHtml = undefined;
 });
@@ -33,7 +33,7 @@ Before({ tags: '@fast and @PNL5' }, function (this: ChangeTracksWorld) {
 // Note: "Given a lifecycle document with text:" is defined in lifecycle-viewer.steps.ts
 // and sets this.lifecycleDocText. We reuse that Given step.
 
-When('I build the review panel state', function (this: ChangeTracksWorld) {
+When('I build the review panel state', function (this: ChangeDownWorld) {
     assert.ok(this.lifecycleDocText !== undefined, 'Document text not set — use "a lifecycle document with text:" first');
     const parser = new CriticMarkupParser();
     const vdoc = parser.parse(this.lifecycleDocText);
@@ -41,7 +41,7 @@ When('I build the review panel state', function (this: ChangeTracksWorld) {
     this.panelCards = buildCardData(changes, this.lifecycleDocText);
 });
 
-When('I build the review panel HTML', function (this: ChangeTracksWorld) {
+When('I build the review panel HTML', function (this: ChangeDownWorld) {
     assert.ok(this.lifecycleDocText !== undefined, 'Document text not set — use "a lifecycle document with text:" first');
     const parser = new CriticMarkupParser();
     const vdoc = parser.parse(this.lifecycleDocText);
@@ -62,35 +62,35 @@ When('I build the review panel HTML', function (this: ChangeTracksWorld) {
     this.settingsHtml = generateReviewHtml(state, 'test-nonce');
 });
 
-Then('the card for {word} shows type {string}', function (this: ChangeTracksWorld, cardId: string, expected: string) {
+Then('the card for {word} shows type {string}', function (this: ChangeDownWorld, cardId: string, expected: string) {
     assert.ok(this.panelCards, 'No panel cards built — call "I build the review panel state" first');
     const card = this.panelCards.find(c => c.id === cardId);
     assert.ok(card, `No card found for id "${cardId}". Available: ${this.panelCards.map(c => c.id).join(', ') || '(none)'}`);
     assert.strictEqual(card.type, expected, `Expected type "${expected}", got "${card.type}"`);
 });
 
-Then('the card for {word} shows status {string}', function (this: ChangeTracksWorld, cardId: string, expected: string) {
+Then('the card for {word} shows status {string}', function (this: ChangeDownWorld, cardId: string, expected: string) {
     assert.ok(this.panelCards, 'No panel cards built');
     const card = this.panelCards.find(c => c.id === cardId);
     assert.ok(card, `No card found for id "${cardId}"`);
     assert.strictEqual(card.status, expected, `Expected status "${expected}", got "${card.status}"`);
 });
 
-Then('the card for {word} shows author {string}', function (this: ChangeTracksWorld, cardId: string, expected: string) {
+Then('the card for {word} shows author {string}', function (this: ChangeDownWorld, cardId: string, expected: string) {
     assert.ok(this.panelCards, 'No panel cards built');
     const card = this.panelCards.find(c => c.id === cardId);
     assert.ok(card, `No card found for id "${cardId}"`);
     assert.strictEqual(card.author, expected, `Expected author "${expected}", got "${card.author}"`);
 });
 
-Then('the card for {word} shows reply count {int}', function (this: ChangeTracksWorld, cardId: string, expected: number) {
+Then('the card for {word} shows reply count {int}', function (this: ChangeDownWorld, cardId: string, expected: number) {
     assert.ok(this.panelCards, 'No panel cards built');
     const card = this.panelCards.find(c => c.id === cardId);
     assert.ok(card, `No card found for id "${cardId}"`);
     assert.strictEqual(card.replyCount, expected, `Expected reply count ${expected}, got ${card.replyCount}`);
 });
 
-Then('the HTML does not contain {string}', function (this: ChangeTracksWorld, unwanted: string) {
+Then('the HTML does not contain {string}', function (this: ChangeDownWorld, unwanted: string) {
     assert.ok(this.settingsHtml, 'No HTML generated');
     assert.ok(
         !this.settingsHtml.includes(unwanted),
@@ -98,7 +98,7 @@ Then('the HTML does not contain {string}', function (this: ChangeTracksWorld, un
     );
 });
 
-Then('the HTML has no reply badge', function (this: ChangeTracksWorld) {
+Then('the HTML has no reply badge', function (this: ChangeDownWorld) {
     assert.ok(this.settingsHtml, 'No HTML generated');
     // The reply badge uses class "card-replies" in a <span> element.
     // The CSS also contains .card-replies, so check for the element marker.

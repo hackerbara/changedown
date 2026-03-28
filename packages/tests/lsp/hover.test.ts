@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { ChangeNode, ChangeType, ChangeStatus, VirtualDocument } from '@changetracks/core';
-import { createHover, Position } from '@changetracks/lsp-server/internals';
+import { ChangeNode, ChangeType, ChangeStatus, VirtualDocument } from '@changedown/core';
+import { createHover, Position } from '@changedown/lsp-server/internals';
 
 describe('Hover Capability', () => {
   describe('createHover', () => {

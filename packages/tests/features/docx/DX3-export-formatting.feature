@@ -2,15 +2,15 @@
 Feature: DX3 - Export Formatting and Structure
   As a user exporting CriticMarkup containing inline formatting,
   I need the exported DOCX to preserve formatting within tracked changes
-  and strip ChangeTracks metadata from the output.
+  and strip ChangeDown metadata from the output.
 
   @export @fast
   Scenario: Bold text inside tracked change
     Given CriticMarkup markdown:
       """
-      {++**bold inserted text**++}[^ct-1]
+      {++**bold inserted text**++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -20,9 +20,9 @@ Feature: DX3 - Export Formatting and Structure
   Scenario: Italic text inside tracked change
     Given CriticMarkup markdown:
       """
-      {++*italic inserted text*++}[^ct-1]
+      {++*italic inserted text*++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -32,9 +32,9 @@ Feature: DX3 - Export Formatting and Structure
   Scenario: Code span inside tracked change
     Given CriticMarkup markdown:
       """
-      {++`code span`++}[^ct-1]
+      {++`code span`++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -44,15 +44,15 @@ Feature: DX3 - Export Formatting and Structure
   Scenario: Headings with tracked changes
     Given CriticMarkup markdown:
       """
-      # Title {++Added to Title++}[^ct-1]
+      # Title {++Added to Title++}[^cn-1]
 
-      ## Subtitle {--Removed from Subtitle--}[^ct-2]
+      ## Subtitle {--Removed from Subtitle--}[^cn-2]
 
-      ### Level 3 {~~old heading~>new heading~~}[^ct-3]
+      ### Level 3 {~~old heading~>new heading~~}[^cn-3]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @alice | 2026-01-15 | del | proposed
-      [^ct-3]: @alice | 2026-01-15 | sub | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @alice | 2026-01-15 | del | proposed
+      [^cn-3]: @alice | 2026-01-15 | sub | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -63,12 +63,12 @@ Feature: DX3 - Export Formatting and Structure
   Scenario: Bullet list with tracked changes
     Given CriticMarkup markdown:
       """
-      - Item one {++added++}[^ct-1]
-      - {--Removed item--}[^ct-2]
+      - Item one {++added++}[^cn-1]
+      - {--Removed item--}[^cn-2]
       - Item three
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-15 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-15 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -78,12 +78,12 @@ Feature: DX3 - Export Formatting and Structure
   Scenario: Ordered list with tracked changes
     Given CriticMarkup markdown:
       """
-      1. First {++new++}[^ct-1] item
+      1. First {++new++}[^cn-1] item
       2. Second item
-      3. {--Third item--}[^ct-2]
+      3. {--Third item--}[^cn-2]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-15 | del | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-15 | del | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -93,15 +93,15 @@ Feature: DX3 - Export Formatting and Structure
   Scenario: Multiple paragraphs with mixed change types
     Given CriticMarkup markdown:
       """
-      First paragraph has {++an insertion++}[^ct-1].
+      First paragraph has {++an insertion++}[^cn-1].
 
-      Second paragraph has {--a deletion--}[^ct-2].
+      Second paragraph has {--a deletion--}[^cn-2].
 
-      Third paragraph has {~~old text~>new text~~}[^ct-3].
+      Third paragraph has {~~old text~>new text~~}[^cn-3].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob | 2026-01-15 | del | proposed
-      [^ct-3]: @carol | 2026-01-15 | sub | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob | 2026-01-15 | del | proposed
+      [^cn-3]: @carol | 2026-01-15 | sub | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -112,29 +112,29 @@ Feature: DX3 - Export Formatting and Structure
   Scenario: Tracking header is stripped from exported DOCX
     Given CriticMarkup markdown:
       """
-      <!-- ctrcks.com/v1: tracked -->
+      <!-- changedown.com/v1: tracked -->
 
       # Document
 
-      {++inserted++}[^ct-1]
+      {++inserted++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
-    And the DOCX document.xml does not contain "ctrcks.com"
+    And the DOCX document.xml does not contain "changedown.com"
 
   @export @fast
   Scenario: Footnote block is stripped from exported DOCX
     Given CriticMarkup markdown:
       """
-      Text {++added++}[^ct-1].
+      Text {++added++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
-    And the DOCX document.xml does not contain "[^ct-1]"
+    And the DOCX document.xml does not contain "[^cn-1]"
 
   @export @fast
   Scenario: Bare insertion without footnote metadata

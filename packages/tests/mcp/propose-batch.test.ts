@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleProposeBatch } from '@changetracks/mcp/internals';
-import { computeLineHash } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleProposeBatch } from '@changedown/mcp/internals';
+import { computeLineHash } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -19,7 +19,7 @@ function hashForLine(content: string, lineNum: number): string {
 describe('propose_batch batch primitive', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeAll(async () => {
@@ -27,7 +27,7 @@ describe('propose_batch batch primitive', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-propose-batch-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-propose-batch-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -143,7 +143,7 @@ describe('propose_batch batch primitive', () => {
 
       expect(result.isError).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
-      expect(data.group_id).toMatch(/^ct-\d+$/);
+      expect(data.group_id).toMatch(/^cn-\d+$/);
       expect(data.applied).toHaveLength(3);
       const content = await fs.readFile(filePath, 'utf-8');
       expect(content).toContain('{~~First.~>One.~~}');
@@ -175,7 +175,7 @@ describe('propose_batch batch primitive', () => {
 
       expect(result.isError).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
-      expect(data.group_id).toMatch(/^ct-\d+$/);
+      expect(data.group_id).toMatch(/^cn-\d+$/);
       expect(data.applied).toHaveLength(3);
       const content = await fs.readFile(filePath, 'utf-8');
       expect(content).toContain('{++ after 1++}');
@@ -229,16 +229,16 @@ describe('propose_batch batch primitive', () => {
 
       expect(result.isError).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
-      expect(data.group_id).toMatch(/^ct-\d+$/);
+      expect(data.group_id).toMatch(/^cn-\d+$/);
       expect(data.document_state).toBeDefined();
       expect(data.document_state.total_changes).toBeGreaterThanOrEqual(1);
       expect(data.applied).toHaveLength(2);
       expect(data.applied.map((c: { change_id: string }) => c.change_id)).toEqual(
-        expect.arrayContaining([expect.stringMatching(/^ct-\d+\.1$/), expect.stringMatching(/^ct-\d+\.2$/)]),
+        expect.arrayContaining([expect.stringMatching(/^cn-\d+\.1$/), expect.stringMatching(/^cn-\d+\.2$/)]),
       );
       expect(state.hasActiveGroup()).toBe(false);
       const content = await fs.readFile(filePath, 'utf-8');
-      expect(content).toMatch(/\[\^ct-\d+\]:\s*@\S+\s*\|\s*\d{4}-\d{2}-\d{2}\s*\|\s*group\s*\|\s*proposed/);
+      expect(content).toMatch(/\[\^cn-\d+\]:\s*@\S+\s*\|\s*\d{4}-\d{2}-\d{2}\s*\|\s*group\s*\|\s*proposed/);
       expect(content).toContain('Align wording');
     });
 
@@ -298,7 +298,7 @@ describe('propose_batch batch primitive', () => {
 
       expect(result.isError).toBeUndefined();
       const data = JSON.parse(result.content[0].text);
-      expect(data.group_id).toMatch(/^ct-\d+$/);
+      expect(data.group_id).toMatch(/^cn-\d+$/);
       expect(data.applied).toHaveLength(5);
     });
 
@@ -339,7 +339,7 @@ describe('propose_batch batch primitive', () => {
 
     it('batch response includes affected_lines with content (not all-lines hashes)', async () => {
       const filePath = path.join(tmpDir, 'batch-preview.md');
-      await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\nLine one\nLine two\nLine three\nLine four\nLine five');
+      await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\nLine one\nLine two\nLine three\nLine four\nLine five');
       const content = await fs.readFile(filePath, 'utf-8');
 
       const result = await handleProposeBatch(
@@ -369,7 +369,7 @@ describe('propose_batch batch primitive', () => {
 
     it('batch applied entries include preview field', async () => {
       const filePath = path.join(tmpDir, 'batch-preview2.md');
-      await fs.writeFile(filePath, '<!-- ctrcks.com/v1: tracked -->\nLine one\nLine two\nLine three');
+      await fs.writeFile(filePath, '<!-- changedown.com/v1: tracked -->\nLine one\nLine two\nLine three');
       const content = await fs.readFile(filePath, 'utf-8');
 
       const result = await handleProposeBatch(
@@ -431,7 +431,7 @@ describe('propose_batch batch primitive', () => {
       expect(data.applied).toHaveLength(2);
 
       const written = await fs.readFile(filePath, 'utf-8');
-      expect(written).toContain('<!-- ctrcks.com/v1: tracked -->');
+      expect(written).toContain('<!-- changedown.com/v1: tracked -->');
       expect(written).toContain('{++After title++}');
       expect(written).toContain('{~~Line A~>Line Alpha~~}');
     });

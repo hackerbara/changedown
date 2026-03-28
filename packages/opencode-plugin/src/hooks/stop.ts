@@ -3,9 +3,9 @@ import { loadConfig } from '../config.js';
 import { readPendingEdits, clearAllEdits } from '../pending.js';
 import { findUniqueMatch, appendFootnote } from '../file-ops.js';
 import { SessionState } from '../state.js';
-import { defaultNormalizer, nowTimestamp } from '@changetracks/core';
-import { wrapInsertion, wrapDeletion, wrapSubstitution, TextEdit } from '@changetracks/core';
-import { generateFootnoteDefinition } from '@changetracks/core';
+import { defaultNormalizer, nowTimestamp } from '@changedown/core';
+import { wrapInsertion, wrapDeletion, wrapSubstitution, TextEdit } from '@changedown/core';
+import { generateFootnoteDefinition } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
@@ -97,7 +97,7 @@ export async function stopHook(
     return;
   }
 
-  console.log(`[ChangeTracks] Processing ${allEdits.length} pending edits for batch CriticMarkup application`);
+  console.log(`[ChangeDown] Processing ${allEdits.length} pending edits for batch CriticMarkup application`);
 
   const config = await loadConfig(projectDir);
   const sessionState = new SessionState();
@@ -115,14 +115,14 @@ export async function stopHook(
     try {
       await processFileEdits(filePath, edits, projectDir, sessionState, config);
     } catch (error) {
-      console.error(`[ChangeTracks] Error processing edits for ${filePath}:`, error);
+      console.error(`[ChangeDown] Error processing edits for ${filePath}:`, error);
     }
   }
 
   // Clear all pending edits (no session isolation without runtime session IDs)
   await clearAllEdits(projectDir);
 
-  console.log(`[ChangeTracks] Batch CriticMarkup application complete`);
+  console.log(`[ChangeDown] Batch CriticMarkup application complete`);
 }
 
 async function processFileEdits(
@@ -141,7 +141,7 @@ async function processFileEdits(
   try {
     content = await fs.readFile(absolutePath, 'utf-8');
   } catch (error) {
-    console.error(`[ChangeTracks] Cannot read file ${filePath}:`, error);
+    console.error(`[ChangeDown] Cannot read file ${filePath}:`, error);
     return;
   }
 
@@ -200,7 +200,7 @@ async function processFileEdits(
 
       textEdits.push(textEdit);
     } catch (error) {
-      console.error(`[ChangeTracks] Error processing edit for ${filePath}:`, error);
+      console.error(`[ChangeDown] Error processing edit for ${filePath}:`, error);
     }
   }
 
@@ -231,5 +231,5 @@ async function processFileEdits(
 
   // Write modified content back
   await fs.writeFile(absolutePath, modifiedContent, 'utf-8');
-  console.log(`[ChangeTracks] Applied ${footnoteIds.length} CriticMarkup changes to ${filePath}`);
+  console.log(`[ChangeDown] Applied ${footnoteIds.length} CriticMarkup changes to ${filePath}`);
 }

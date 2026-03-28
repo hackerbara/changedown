@@ -1,4 +1,4 @@
-import type { VirtualDocument, ViewName } from '@changetracks/core';
+import type { VirtualDocument, ViewName } from '@changedown/core';
 import type { CursorState } from './capabilities/code-lens';
 
 /**
@@ -24,6 +24,8 @@ export interface LspDocumentState {
   isPromoting: boolean;
   isBatchEditing: boolean;
   suppressRepromotion: boolean;
+  /** True after autoFoldLines has been sent for this document. Reset on view mode leave from review/changes. */
+  autoFoldSent: boolean;
 }
 
 export function createLspDocumentState(
@@ -41,5 +43,6 @@ export function createLspDocumentState(
     isPromoting: false,
     isBatchEditing: false,
     suppressRepromotion: false,
+    autoFoldSent: false,
   };
 }

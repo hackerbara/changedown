@@ -1,6 +1,6 @@
 ## Project Settings
 
-Settings live in `.changetracks/config.toml` and the **Project Settings** panel in the sidebar controls them visually.
+Settings live in `.changedown/config.toml` and the **Project Settings** panel in the sidebar controls them visually.
 
 | Group | What it controls |
 |-------|-----------------|

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import type { ChangeNode } from '@changetracks/core';
+import type { ChangeNode } from '@changedown/core';
 import { offsetToPosition } from './converters';
 
 export type GetChangesForDocument = (doc: vscode.TextDocument) => ChangeNode[];
@@ -24,12 +24,12 @@ export class MoveCodeLensProvider implements vscode.CodeLensProvider {
             if (change.moveRole === 'from') {
                 lenses.push(new vscode.CodeLens(range, {
                     title: '\u2192 Go to destination',
-                    command: 'changetracks.goToLinkedChange',
+                    command: 'changedown.goToLinkedChange',
                 }));
             } else if (change.moveRole === 'to') {
                 lenses.push(new vscode.CodeLens(range, {
                     title: '\u2190 Go to source',
-                    command: 'changetracks.goToLinkedChange',
+                    command: 'changedown.goToLinkedChange',
                 }));
             }
         }

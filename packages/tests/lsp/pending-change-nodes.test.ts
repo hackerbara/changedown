@@ -7,10 +7,10 @@ import { describe, it, expect } from 'vitest';
  * which are unavailable in vitest. Instead, we test the ChangeNode production
  * logic by replicating the pure mapping function.
  *
- * Note: ChangeType and ChangeStatus are string enums from @changetracks/core.
+ * Note: ChangeType and ChangeStatus are string enums from @changedown/core.
  * We mirror their values here because the 'diff' transitive dependency lacks
  * a CJS build in this vitest context (confirmed: all lsp/ tests that import
- * from @changetracks/core fail with the same error).
+ * from @changedown/core fail with the same error).
  *
  * IMPORTANT: pendingBufferToChangeNodes below must be kept in sync with
  * PendingEditManager.getPendingChangeNodes() in packages/vscode-extension/.
@@ -105,7 +105,7 @@ describe('getPendingChangeNodes logic', () => {
       cursorOffset: 5,
       startTime: Date.now(),
       lastEditTime: Date.now(),
-      scId: 'ct-5',
+      scId: 'cn-5',
     };
 
     const result = pendingBufferToChangeNodes(buf);
@@ -184,6 +184,6 @@ describe('getPendingChangeNodes logic', () => {
     // Both filtering conditions from the spec work:
     expect(result[0].id).toBe('');       // id === '' filter
     expect(result[0].level).toBe(0);     // level === 0 filter
-    // An LSP-sourced node would have id like 'ct-5' and level >= 1
+    // An LSP-sourced node would have id like 'cn-5' and level >= 1
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SidecarParser, ChangeType, ChangeStatus } from '@changetracks/core/internals';
+import { SidecarParser, ChangeType, ChangeStatus } from '@changedown/core/internals';
 
 describe('SidecarParser', () => {
   let parser: SidecarParser;
@@ -33,9 +33,9 @@ describe('SidecarParser', () => {
   describe('unsupported language', () => {
     it('returns empty document for markdown', () => {
       const lines = [
-        'x = 1  # ct-1',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: ins | pending',
+        'x = 1  # cn-1',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: ins | pending',
         '# ----------------------------------------------------------------',
       ];
       const doc = parser.parse(lines.join('\n'), 'markdown');
@@ -54,10 +54,10 @@ describe('SidecarParser', () => {
     it('parses a deletion line', () => {
       const lines = [
         'x = 1',
-        '# - y = 2  # ct-1',
+        '# - y = 2  # cn-1',
         'z = 3',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: del | pending',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: del | pending',
         '# ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -66,7 +66,7 @@ describe('SidecarParser', () => {
 
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.type).toBe(ChangeType.Deletion);
       expect(c.status).toBe(ChangeStatus.Proposed);
       expect(c.originalText).toBe('y = 2');
@@ -80,10 +80,10 @@ describe('SidecarParser', () => {
     it('parses an insertion line', () => {
       const lines = [
         'x = 1',
-        'z = 3  # ct-1',
+        'z = 3  # cn-1',
         'y = 2',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: ins | pending',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: ins | pending',
         '# ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -92,7 +92,7 @@ describe('SidecarParser', () => {
 
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.type).toBe(ChangeType.Insertion);
       expect(c.status).toBe(ChangeStatus.Proposed);
       expect(c.modifiedText).toBe('z = 3');
@@ -106,11 +106,11 @@ describe('SidecarParser', () => {
     it('parses a substitution (deletion + insertion with same tag)', () => {
       const lines = [
         'x = 1',
-        '# - results = []  # ct-1',
-        'results = {}  # ct-1',
+        '# - results = []  # cn-1',
+        'results = {}  # cn-1',
         'z = 3',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: sub | pending',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: sub | pending',
         '#     original: "results = []"',
         '# ----------------------------------------------------------------',
       ];
@@ -120,7 +120,7 @@ describe('SidecarParser', () => {
 
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.type).toBe(ChangeType.Substitution);
       expect(c.status).toBe(ChangeStatus.Proposed);
       expect(c.originalText).toBe('results = []');
@@ -134,10 +134,10 @@ describe('SidecarParser', () => {
     it('parses with // comment syntax', () => {
       const lines = [
         'const x = 1;',
-        'const z = 3;  // ct-1',
+        'const z = 3;  // cn-1',
         'const y = 2;',
-        '// -- ChangeTracks ---------------------------------------------',
-        '// [^ct-1]: ins | pending',
+        '// -- ChangeDown ---------------------------------------------',
+        '// [^cn-1]: ins | pending',
         '// ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -146,7 +146,7 @@ describe('SidecarParser', () => {
 
       expect(changes).toHaveLength(1);
       const c = changes[0];
-      expect(c.id).toBe('ct-1');
+      expect(c.id).toBe('cn-1');
       expect(c.type).toBe(ChangeType.Insertion);
       expect(c.modifiedText).toBe('const z = 3;');
     });
@@ -158,11 +158,11 @@ describe('SidecarParser', () => {
     it('parses multiple changes with different tags', () => {
       const lines = [
         'x = 1',
-        '# - y = 2  # ct-1',
-        'z = 3  # ct-2',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: del | pending',
-        '# [^ct-2]: ins | pending',
+        '# - y = 2  # cn-1',
+        'z = 3  # cn-2',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: del | pending',
+        '# [^cn-2]: ins | pending',
         '# ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -171,11 +171,11 @@ describe('SidecarParser', () => {
 
       expect(changes).toHaveLength(2);
 
-      expect(changes[0].id).toBe('ct-1');
+      expect(changes[0].id).toBe('cn-1');
       expect(changes[0].type).toBe(ChangeType.Deletion);
       expect(changes[0].originalText).toBe('y = 2');
 
-      expect(changes[1].id).toBe('ct-2');
+      expect(changes[1].id).toBe('cn-2');
       expect(changes[1].type).toBe(ChangeType.Insertion);
       expect(changes[1].modifiedText).toBe('z = 3');
     });
@@ -186,13 +186,13 @@ describe('SidecarParser', () => {
   describe('grouped changes', () => {
     it('parses grouped changes with dotted IDs', () => {
       const lines = [
-        '# - old_a  # ct-1.1',
-        'new_a  # ct-1.1',
-        '# - old_b  # ct-1.2',
-        'new_b  # ct-1.2',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1.1]: sub | pending',
-        '# [^ct-1.2]: sub | pending',
+        '# - old_a  # cn-1.1',
+        'new_a  # cn-1.1',
+        '# - old_b  # cn-1.2',
+        'new_b  # cn-1.2',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1.1]: sub | pending',
+        '# [^cn-1.2]: sub | pending',
         '# ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -200,12 +200,12 @@ describe('SidecarParser', () => {
       const changes = doc.getChanges();
 
       expect(changes).toHaveLength(2);
-      expect(changes[0].id).toBe('ct-1.1');
+      expect(changes[0].id).toBe('cn-1.1');
       expect(changes[0].type).toBe(ChangeType.Substitution);
       expect(changes[0].originalText).toBe('old_a');
       expect(changes[0].modifiedText).toBe('new_a');
 
-      expect(changes[1].id).toBe('ct-1.2');
+      expect(changes[1].id).toBe('cn-1.2');
       expect(changes[1].type).toBe(ChangeType.Substitution);
       expect(changes[1].originalText).toBe('old_b');
       expect(changes[1].modifiedText).toBe('new_b');
@@ -216,16 +216,16 @@ describe('SidecarParser', () => {
 
   describe('ranges', () => {
     it('sets ranges covering full annotated lines', () => {
-      // "x = 1\n# - y = 2  # ct-1\nz = 3\n..."
+      // "x = 1\n# - y = 2  # cn-1\nz = 3\n..."
       // Line 0: "x = 1" = 5 chars, \n at offset 5
-      // Line 1: "# - y = 2  # ct-1" = 17 chars, starts at offset 6, \n at offset 23
-      // Range end = lineOffset(1) + len("# - y = 2  # ct-1") + 1 = 6 + 17 + 1 = 24
+      // Line 1: "# - y = 2  # cn-1" = 17 chars, starts at offset 6, \n at offset 23
+      // Range end = lineOffset(1) + len("# - y = 2  # cn-1") + 1 = 6 + 17 + 1 = 24
       const lines = [
         'x = 1',
-        '# - y = 2  # ct-1',
+        '# - y = 2  # cn-1',
         'z = 3',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: del | pending',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: del | pending',
         '# ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -236,18 +236,18 @@ describe('SidecarParser', () => {
       const c = changes[0];
       // Line 1 starts at offset 6 (after "x = 1\n")
       expect(c.range.start).toBe(6);
-      // Line 1 is "# - y = 2  # ct-1" = 17 chars + 1 for \n = 24
+      // Line 1 is "# - y = 2  # cn-1" = 17 chars + 1 for \n = 24
       expect(c.range.end).toBe(24);
     });
 
     it('range spans multiple lines for multi-line deletion', () => {
       const lines = [
         'x = 1',
-        '# - a = 1  # ct-1',
-        '# - b = 2  # ct-1',
+        '# - a = 1  # cn-1',
+        '# - b = 2  # cn-1',
         'z = 3',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: del | pending',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: del | pending',
         '# ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -258,17 +258,17 @@ describe('SidecarParser', () => {
       const c = changes[0];
       // Line 1 starts at offset 6 (after "x = 1\n")
       expect(c.range.start).toBe(6);
-      // Line 1: "# - a = 1  # ct-1" = 17 chars + \n = offset 6..24
-      // Line 2: "# - b = 2  # ct-1" = 17 chars + \n = offset 24..42
+      // Line 1: "# - a = 1  # cn-1" = 17 chars + \n = offset 6..24
+      // Line 2: "# - b = 2  # cn-1" = 17 chars + \n = offset 24..42
       expect(c.range.end).toBe(42);
       expect(c.originalText).toBe('a = 1\nb = 2');
     });
 
     it('contentRange equals range', () => {
       const lines = [
-        'x = 1  # ct-1',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: ins | pending',
+        'x = 1  # cn-1',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: ins | pending',
         '# ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -284,9 +284,9 @@ describe('SidecarParser', () => {
   describe('metadata', () => {
     it('parses author from sidecar block', () => {
       const lines = [
-        '# - y = 2  # ct-1',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: del | pending',
+        '# - y = 2  # cn-1',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: del | pending',
         '#     author: jane',
         '# ----------------------------------------------------------------',
       ];
@@ -298,9 +298,9 @@ describe('SidecarParser', () => {
 
     it('parses date as timestamp', () => {
       const lines = [
-        '# - y = 2  # ct-1',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: del | pending',
+        '# - y = 2  # cn-1',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: del | pending',
         '#     date: 2026-02-08',
         '# ----------------------------------------------------------------',
       ];
@@ -312,9 +312,9 @@ describe('SidecarParser', () => {
 
     it('parses reason as comment', () => {
       const lines = [
-        '# - y = 2  # ct-1',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: del | pending',
+        '# - y = 2  # cn-1',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: del | pending',
         '#     reason: "removed unused variable"',
         '# ----------------------------------------------------------------',
       ];
@@ -326,9 +326,9 @@ describe('SidecarParser', () => {
 
     it('parses original field for deletion originalText', () => {
       const lines = [
-        '# - y = 2  # ct-1',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: del | pending',
+        '# - y = 2  # cn-1',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: del | pending',
         '#     original: "y = 2"',
         '# ----------------------------------------------------------------',
       ];
@@ -346,9 +346,9 @@ describe('SidecarParser', () => {
   describe('status parsing', () => {
     it('parses accepted status', () => {
       const lines = [
-        'z = 3  # ct-1',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: ins | accepted',
+        'z = 3  # cn-1',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: ins | accepted',
         '# ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -358,9 +358,9 @@ describe('SidecarParser', () => {
 
     it('parses rejected status', () => {
       const lines = [
-        'z = 3  # ct-1',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: ins | rejected',
+        'z = 3  # cn-1',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: ins | rejected',
         '# ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -374,10 +374,10 @@ describe('SidecarParser', () => {
   describe('type inference', () => {
     it('infers Substitution when both del and ins lines exist for same tag (even if sidecar says del)', () => {
       const lines = [
-        '# - old_val  # ct-1',
-        'new_val  # ct-1',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: sub | pending',
+        '# - old_val  # cn-1',
+        'new_val  # cn-1',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: sub | pending',
         '# ----------------------------------------------------------------',
       ];
       const text = lines.join('\n');
@@ -393,9 +393,9 @@ describe('SidecarParser', () => {
       // Edge case: sidecar has type=sub but only insertion lines visible
       // (deletion lines were removed). The original field preserves the old text.
       const lines = [
-        'new_val  # ct-1',
-        '# -- ChangeTracks ---------------------------------------------',
-        '# [^ct-1]: sub | pending',
+        'new_val  # cn-1',
+        '# -- ChangeDown ---------------------------------------------',
+        '# [^cn-1]: sub | pending',
         '#     original: "old_val"',
         '# ----------------------------------------------------------------',
       ];

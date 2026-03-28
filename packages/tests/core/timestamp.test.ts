@@ -5,7 +5,7 @@ import {
   compareTimestamps,
   formatTimestamp,
   type Timestamp,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 describe('parseTimestamp', () => {
   it('parses date-only', () => {

@@ -10,15 +10,15 @@ import { Given, When, Then, Before } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
 import {
     computeAmendEdits as coreComputeAmendEdits,
-} from '@changetracks/core';
-import type { AmendResult } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+} from '@changedown/core';
+import type { AmendResult } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 import { TEST_DATE } from './test-utils';
 
 // ── Extend World with amend state ────────────────────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         amendDocText?: string;
         amendResultText?: string;
         amendAuthor?: string;
@@ -28,7 +28,7 @@ declare module './world' {
 
 // ── Lifecycle ────────────────────────────────────────────────────────
 
-Before({ tags: '@fast and @LV5' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @LV5' }, function (this: ChangeDownWorld) {
     this.amendDocText = undefined;
     this.amendResultText = undefined;
     this.amendAuthor = undefined;
@@ -37,28 +37,28 @@ Before({ tags: '@fast and @LV5' }, function (this: ChangeTracksWorld) {
 
 // ── Constants ────────────────────────────────────────────────────────
 
-const PROPOSED_INSERTION_DOC = `Hello {++world++}[^ct-1]
+const PROPOSED_INSERTION_DOC = `Hello {++world++}[^cn-1]
 
-[^ct-1]: @alice | 2026-03-09 | insertion | proposed
+[^cn-1]: @alice | 2026-03-09 | insertion | proposed
     reason: Initial insertion`;
 
 // ── Step definitions ─────────────────────────────────────────────────
 
-Given('an amend document with text:', function (this: ChangeTracksWorld, docString: string) {
+Given('an amend document with text:', function (this: ChangeDownWorld, docString: string) {
     this.amendDocText = docString;
 });
 
-Given('current amend author is {string}', function (this: ChangeTracksWorld, author: string) {
+Given('current amend author is {string}', function (this: ChangeDownWorld, author: string) {
     this.amendAuthor = author;
 });
 
-Given('an amend document with a proposed insertion ct-1 by {string}', function (this: ChangeTracksWorld, _author: string) {
+Given('an amend document with a proposed insertion cn-1 by {string}', function (this: ChangeDownWorld, _author: string) {
     // Use the fixture with the given author (alice is the default fixture author)
     this.amendDocText = PROPOSED_INSERTION_DOC;
 });
 
 When('I amend {word} inline text to {string} with reason {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     newText: string,
     reason: string,
@@ -81,7 +81,7 @@ When('I amend {word} inline text to {string} with reason {string}', function (
     this.amendResultText = result.text;
 });
 
-When('I try to amend {word}', function (this: ChangeTracksWorld, changeId: string) {
+When('I try to amend {word}', function (this: ChangeDownWorld, changeId: string) {
     assert.ok(this.amendDocText !== undefined, 'Document text not set');
     assert.ok(this.amendAuthor, 'Amend author not set');
 
@@ -104,7 +104,7 @@ When('I try to amend {word}', function (this: ChangeTracksWorld, changeId: strin
 });
 
 When('I try to amend {word} with new text {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     newText: string,
 ) {
@@ -126,7 +126,7 @@ When('I try to amend {word} with new text {string}', function (
 });
 
 When('I amend {word} again to {string} with reason {string}', function (
-    this: ChangeTracksWorld,
+    this: ChangeDownWorld,
     changeId: string,
     newText: string,
     reason: string,
@@ -151,7 +151,7 @@ When('I amend {word} again to {string} with reason {string}', function (
     this.amendResultText = result.text;
 });
 
-Then('the amend result inline markup contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the amend result inline markup contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.amendResultText, 'No amend result — run an amend action first');
     assert.ok(
         this.amendResultText.includes(expected),
@@ -159,12 +159,12 @@ Then('the amend result inline markup contains {string}', function (this: ChangeT
     );
 });
 
-Then('the amend result footnote contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the amend result footnote contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.amendResultText, 'No amend result — run an amend action first');
 
-    // Extract footnote section (everything from first [^ct- definition onward)
+    // Extract footnote section (everything from first [^cn- definition onward)
     const lines = this.amendResultText.split('\n');
-    const footnoteStart = lines.findIndex(l => /^\[\^ct-\d+\]:/.test(l));
+    const footnoteStart = lines.findIndex(l => /^\[\^cn-\d+\]:/.test(l));
     assert.ok(footnoteStart >= 0, `No footnote found in amend result.\nResult:\n${this.amendResultText}`);
     const footnoteText = lines.slice(footnoteStart).join('\n');
     assert.ok(
@@ -173,7 +173,7 @@ Then('the amend result footnote contains {string}', function (this: ChangeTracks
     );
 });
 
-Then('the amend is rejected with {string}', function (this: ChangeTracksWorld, expectedError: string) {
+Then('the amend is rejected with {string}', function (this: ChangeDownWorld, expectedError: string) {
     assert.ok(this.amendError, 'Expected amend error but none was set');
     assert.ok(
         this.amendError.includes(expectedError),

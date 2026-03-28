@@ -33,7 +33,7 @@ export function buildViewSurfaceMap(raw: string): ViewSurfaceMap {
   while (i < raw.length) {
     // Check for footnote ref at current position
     const slice = raw.slice(i);
-    const refMatch = slice.match(/^\[\^ct-\d+(?:\.\d+)?\]/);
+    const refMatch = slice.match(/^\[\^cn-\d+(?:\.\d+)?\]/);
     if (refMatch) {
       i += refMatch[0].length; // Skip entire ref, emit nothing
       continue;
@@ -70,7 +70,7 @@ export function viewAwareFind(raw: string, target: string): ViewAwareMatch | nul
   const { surface, toRaw } = buildViewSurfaceMap(raw);
 
   // Also strip refs from target (agent may have included them from view output)
-  const cleanTarget = target.replace(/\[\^?ct-\d+(?:\.\d+)?\]/g, '');
+  const cleanTarget = target.replace(/\[\^?cn-\d+(?:\.\d+)?\]/g, '');
   const searchTarget = cleanTarget || target; // fallback if stripping empties it
 
   // Find target in stripped surface

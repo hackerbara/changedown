@@ -2,24 +2,24 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { initHashline, computeLineHash } from '@changetracks/core';
-import { handleProposeChange } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { initHashline, computeLineHash } from '@changedown/core';
+import { handleProposeChange } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { resolveAt } from '@changetracks/mcp/internals';
+import { resolveAt } from '@changedown/mcp/internals';
 
 describe('stale hash error messages', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
 
   beforeAll(async () => {
     await initHashline();
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-stale-hash-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-stale-hash-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -116,7 +116,7 @@ describe('stale hash error messages', () => {
 
     const contentLines = content.split('\n');
     const actualHash = computeLineHash(1, 'Line two', contentLines);
-    // Use a valid hex hash that doesn't match the actual hash
+    // Use a valid hex hash that doesn't match the actual hash and can't be found in any view
     const wrongHash = 'ff';
 
     const compactConfig = {
@@ -125,11 +125,14 @@ describe('stale hash error messages', () => {
     };
     const resolver = await createTestResolver(tmpDir, compactConfig);
 
+    // Use an insertion op (empty oldText) so Stage 3.5a is skipped.
+    // Stage 3.5b cannot find 'ff' in any view (file has no CriticMarkup, and
+    // no line hashes to 'ff'), so the error is still returned.
     const result = await handleProposeChange(
       {
         file: filePath,
         at: `2:${wrongHash}`,
-        op: `{~~Line two~>Line TWO~~}`,
+        op: `{++inserted text++}`,
         reason: 'test',
       },
       resolver,

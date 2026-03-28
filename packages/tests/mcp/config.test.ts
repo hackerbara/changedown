@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { loadConfig, resolveProjectDir, isFileInScope, type ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { loadConfig, resolveProjectDir, isFileInScope, type ChangeDownConfig } from '@changedown/mcp/internals';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -8,7 +8,7 @@ describe('loadConfig', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-config-test-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-config-test-'));
   });
 
   afterEach(async () => {
@@ -16,7 +16,7 @@ describe('loadConfig', () => {
   });
 
   it('parses a valid config file correctly', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -55,7 +55,7 @@ default = "ai:claude-opus-4.6"
 
   it('finds config in parent directory when started from subdirectory', async () => {
     // Create config in tmpDir (the "project root")
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -81,7 +81,7 @@ enabled = true
 
   it('prefers config in startDir over parent directory config', async () => {
     // Create config in parent (tmpDir)
-    const parentConfigDir = path.join(tmpDir, '.changetracks');
+    const parentConfigDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(parentConfigDir);
     await fs.writeFile(
       path.join(parentConfigDir, 'config.toml'),
@@ -92,7 +92,7 @@ default = "parent-author"
 
     // Create config in child
     const childDir = path.join(tmpDir, 'child');
-    const childConfigDir = path.join(childDir, '.changetracks');
+    const childConfigDir = path.join(childDir, '.changedown');
     await fs.mkdir(childConfigDir, { recursive: true });
     await fs.writeFile(
       path.join(childConfigDir, 'config.toml'),
@@ -112,7 +112,7 @@ default = "child-author"
     try {
       await loadConfig(tmpDir);
       expect(stderrSpy).toHaveBeenCalledWith(
-        expect.stringContaining('no .changetracks/config.toml found')
+        expect.stringContaining('no .changedown/config.toml found')
       );
     } finally {
       stderrSpy.mockRestore();
@@ -120,7 +120,7 @@ default = "child-author"
   });
 
   it('returns defaults for missing sections in a partial config', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -144,7 +144,7 @@ default = "human:alice"
   });
 
   it('parses config with all new fields', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -174,7 +174,7 @@ mode = "strict"
   });
 
   it('uses defaults for missing new fields in partial config (backward compat)', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     // Old-style config with no new fields
     await fs.writeFile(
@@ -202,7 +202,7 @@ default = "human:bob"
   });
 
   it('handles partial new fields (only some new fields present)', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -229,7 +229,7 @@ enforcement = "block"
   });
 
   it('parses author.enforcement = "required"', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -246,7 +246,7 @@ enforcement = "required"
   });
 
   it('parses author.enforcement = "optional"', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -262,7 +262,7 @@ enforcement = "optional"
   });
 
   it('defaults author.enforcement to "optional" when missing', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -277,7 +277,7 @@ default = "ai:claude-opus-4.6"
   });
 
   it('defaults author.enforcement to "optional" for invalid value', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -301,7 +301,7 @@ enforcement = "banana"
   });
 
   it('defaults hashline section when missing from config', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -316,7 +316,7 @@ default = "human:alice"
   });
 
   it('parses hashline.enabled = true', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -331,7 +331,7 @@ enabled = true
   });
 
   it('parses hashline.enabled = false', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -346,7 +346,7 @@ enabled = false
   });
 
   it('defaults hashline.enabled to false for non-boolean value', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -368,7 +368,7 @@ enabled = "yes"
   });
 
   it('parses settlement.auto_on_approve from [settlement] section', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -383,7 +383,7 @@ auto_on_approve = false
   });
 
   it('parses hashline alongside all other sections', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -418,7 +418,7 @@ enabled = true
 
   describe('policy section', () => {
     it('defaults to safety-net when [policy] is absent', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[tracking]\ninclude = ["**/*.md"]\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -426,7 +426,7 @@ enabled = true
     });
 
     it('parses policy.mode = "strict"', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\nmode = "strict"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -434,7 +434,7 @@ enabled = true
     });
 
     it('parses policy.mode = "permissive"', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\nmode = "permissive"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -442,7 +442,7 @@ enabled = true
     });
 
     it('parses policy.mode = "safety-net"', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\nmode = "safety-net"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -450,7 +450,7 @@ enabled = true
     });
 
     it('falls back to safety-net for invalid mode', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\nmode = "garbage"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -458,7 +458,7 @@ enabled = true
     });
 
     it('derives strict from legacy hooks.enforcement = "block" when no [policy]', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[hooks]\nenforcement = "block"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -466,7 +466,7 @@ enabled = true
     });
 
     it('derives safety-net from legacy hooks.enforcement = "warn" when no [policy]', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[hooks]\nenforcement = "warn"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -474,7 +474,7 @@ enabled = true
     });
 
     it('policy.mode takes precedence over hooks.enforcement', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\nmode = "permissive"\n\n[hooks]\nenforcement = "block"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -484,7 +484,7 @@ enabled = true
     // --- default_view and view_policy ---
 
     it('parses default_view and view_policy from config', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\nmode = "strict"\ndefault_view = "changes"\nview_policy = "require"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -493,7 +493,7 @@ enabled = true
     });
 
     it('defaults default_view to "review" when not specified', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\nmode = "strict"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -501,7 +501,7 @@ enabled = true
     });
 
     it('defaults view_policy to "suggest" when not specified', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\nmode = "strict"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -509,7 +509,7 @@ enabled = true
     });
 
     it('parses default_view = "settled"', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\ndefault_view = "settled"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -517,7 +517,7 @@ enabled = true
     });
 
     it('defaults default_view for invalid value', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\ndefault_view = "garbage"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -525,7 +525,7 @@ enabled = true
     });
 
     it('defaults view_policy for invalid value', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[policy]\nview_policy = "garbage"\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -533,7 +533,7 @@ enabled = true
     });
 
     it('defaults default_view and view_policy when [policy] is absent', async () => {
-      const configDir = path.join(tmpDir, '.changetracks');
+      const configDir = path.join(tmpDir, '.changedown');
       await fs.mkdir(configDir, { recursive: true });
       await fs.writeFile(path.join(configDir, 'config.toml'), '[tracking]\ninclude = ["**/*.md"]\n', 'utf-8');
       const config = await loadConfig(tmpDir);
@@ -547,19 +547,19 @@ describe('resolveProjectDir', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-resolve-project-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-resolve-project-'));
   });
 
   afterEach(async () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns directory containing .changetracks when config exists above startDir', async () => {
-    const configDir = path.join(tmpDir, '.changetracks');
+  it('returns directory containing .changedown when config exists above startDir', async () => {
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir);
     await fs.writeFile(path.join(configDir, 'config.toml'), '[tracking]\ninclude = ["**/*.md"]\n');
 
-    const nestedScriptDir = path.join(tmpDir, 'changetracks-plugin', 'mcp-server', 'dist');
+    const nestedScriptDir = path.join(tmpDir, 'changedown-plugin', 'mcp-server', 'dist');
     await fs.mkdir(nestedScriptDir, { recursive: true });
 
     const resolved = await resolveProjectDir(nestedScriptDir);
@@ -580,7 +580,7 @@ describe('resolveProjectDir', () => {
 describe('isFileInScope', () => {
   const projectDir = '/projects/my-project';
 
-  const defaultConfig: ChangeTracksConfig = {
+  const defaultConfig: ChangeDownConfig = {
     tracking: {
       include: ['**/*.md'],
       exclude: ['node_modules/**', 'dist/**'],
@@ -667,7 +667,7 @@ describe('isFileInScope', () => {
   });
 
   it('works with multiple include patterns', () => {
-    const config: ChangeTracksConfig = {
+    const config: ChangeDownConfig = {
       tracking: {
         include: ['**/*.md', '**/*.txt'],
         exclude: ['node_modules/**'],

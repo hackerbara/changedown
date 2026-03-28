@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tryParseArgs, parseIntFlag, usageError, invalidJsonError, hasHelpFlag, helpResult } from 'changetracks/cli-helpers';
+import { tryParseArgs, parseIntFlag, usageError, invalidJsonError, hasHelpFlag, helpResult } from 'changedown/cli-helpers';
 
 describe('CLI helpers', () => {
   it('tryParseArgs returns null on unknown flags', () => {

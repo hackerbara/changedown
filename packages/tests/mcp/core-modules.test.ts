@@ -5,7 +5,7 @@ import {
   insertTrackingHeader,
   defaultNormalizer,
   normalizedIndexOf,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 // ──────────────────────────────────────────────
 // parseTrackingHeader
@@ -13,18 +13,18 @@ import {
 
 describe('parseTrackingHeader', () => {
   it('parses a valid tracked header', () => {
-    const text = '<!-- ctrcks.com/v1: tracked -->\n# Hello';
+    const text = '<!-- changedown.com/v1: tracked -->\n# Hello';
     const result = parseTrackingHeader(text);
     expect(result).not.toBeNull();
     expect(result!.version).toBe(1);
     expect(result!.status).toBe('tracked');
     expect(result!.line).toBe(0);
     expect(result!.offset).toBe(0);
-    expect(result!.length).toBe('<!-- ctrcks.com/v1: tracked -->'.length);
+    expect(result!.length).toBe('<!-- changedown.com/v1: tracked -->'.length);
   });
 
   it('parses a valid untracked header', () => {
-    const text = '<!-- ctrcks.com/v1: untracked -->\n# Hello';
+    const text = '<!-- changedown.com/v1: untracked -->\n# Hello';
     const result = parseTrackingHeader(text);
     expect(result).not.toBeNull();
     expect(result!.version).toBe(1);
@@ -44,7 +44,7 @@ describe('parseTrackingHeader', () => {
   });
 
   it('returns null for invalid format (wrong status)', () => {
-    const text = '<!-- ctrcks.com/v1: enabled -->\n';
+    const text = '<!-- changedown.com/v1: enabled -->\n';
     const result = parseTrackingHeader(text);
     expect(result).toBeNull();
   });
@@ -55,7 +55,7 @@ describe('parseTrackingHeader', () => {
       'title: My Doc',
       'date: 2026-02-11',
       '---',
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
       '# Content',
     ].join('\n');
     const result = parseTrackingHeader(text);
@@ -75,7 +75,7 @@ describe('parseTrackingHeader', () => {
       'line 2',
       'line 3',
       'line 4',
-      '<!-- ctrcks.com/v1: tracked -->',
+      '<!-- changedown.com/v1: tracked -->',
     ].join('\n');
     const result = parseTrackingHeader(text);
     // Header is on line 5 (0-indexed), which is the 6th line
@@ -83,23 +83,23 @@ describe('parseTrackingHeader', () => {
   });
 
   it('returns correct offset and length', () => {
-    const text = '\n<!-- ctrcks.com/v1: untracked -->\n# Title';
+    const text = '\n<!-- changedown.com/v1: untracked -->\n# Title';
     const result = parseTrackingHeader(text);
     expect(result).not.toBeNull();
     expect(result!.line).toBe(1);
     expect(result!.offset).toBe(1); // after the first \n
-    expect(result!.length).toBe('<!-- ctrcks.com/v1: untracked -->'.length);
+    expect(result!.length).toBe('<!-- changedown.com/v1: untracked -->'.length);
   });
 
   it('handles extra whitespace in the header comment', () => {
-    const text = '<!--  ctrcks.com/v1:  tracked  -->\n';
+    const text = '<!--  changedown.com/v1:  tracked  -->\n';
     const result = parseTrackingHeader(text);
     expect(result).not.toBeNull();
     expect(result!.status).toBe('tracked');
   });
 
   it('does NOT treat legacy breadcrumb as a tracking header', () => {
-    const text = '<!-- changetracks: https://changetracks.dev/spec -->\n# Doc';
+    const text = '<!-- changedown: https://changedown.dev/spec -->\n# Doc';
     const result = parseTrackingHeader(text);
     expect(result).toBeNull();
   });
@@ -112,13 +112,13 @@ describe('parseTrackingHeader', () => {
 describe('generateTrackingHeader', () => {
   it('generates correct tracked string', () => {
     expect(generateTrackingHeader('tracked')).toBe(
-      '<!-- ctrcks.com/v1: tracked -->'
+      '<!-- changedown.com/v1: tracked -->'
     );
   });
 
   it('generates correct untracked string', () => {
     expect(generateTrackingHeader('untracked')).toBe(
-      '<!-- ctrcks.com/v1: untracked -->'
+      '<!-- changedown.com/v1: untracked -->'
     );
   });
 });
@@ -133,7 +133,7 @@ describe('insertTrackingHeader', () => {
     const result = insertTrackingHeader(text);
     expect(result.headerInserted).toBe(true);
     expect(result.newText).toBe(
-      '<!-- ctrcks.com/v1: tracked -->\n# Hello World\n\nSome content.'
+      '<!-- changedown.com/v1: tracked -->\n# Hello World\n\nSome content.'
     );
   });
 
@@ -142,12 +142,12 @@ describe('insertTrackingHeader', () => {
     const result = insertTrackingHeader(text);
     expect(result.headerInserted).toBe(true);
     expect(result.newText).toBe(
-      '---\ntitle: Test\n---\n<!-- ctrcks.com/v1: tracked -->\n# Content'
+      '---\ntitle: Test\n---\n<!-- changedown.com/v1: tracked -->\n# Content'
     );
   });
 
   it('returns headerInserted: false if header already exists', () => {
-    const text = '<!-- ctrcks.com/v1: tracked -->\n# Hello';
+    const text = '<!-- changedown.com/v1: tracked -->\n# Hello';
     const result = insertTrackingHeader(text);
     expect(result.headerInserted).toBe(false);
     expect(result.newText).toBe(text);
@@ -157,11 +157,11 @@ describe('insertTrackingHeader', () => {
     const text = '';
     const result = insertTrackingHeader(text);
     expect(result.headerInserted).toBe(true);
-    expect(result.newText).toBe('<!-- ctrcks.com/v1: tracked -->\n');
+    expect(result.newText).toBe('<!-- changedown.com/v1: tracked -->\n');
   });
 
   it('returns headerInserted: false if untracked header exists', () => {
-    const text = '<!-- ctrcks.com/v1: untracked -->\n# Hello';
+    const text = '<!-- changedown.com/v1: untracked -->\n# Hello';
     const result = insertTrackingHeader(text);
     expect(result.headerInserted).toBe(false);
     expect(result.newText).toBe(text);

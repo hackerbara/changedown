@@ -1,5 +1,5 @@
 #!/bin/bash
-# Post-production for ChangeTracks demo videos.
+# Post-production for ChangeDown demo videos.
 # Trims, crops, and converts raw screencapture recordings.
 #
 # Usage: ./postprocess.sh <video-name>

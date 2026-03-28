@@ -9,8 +9,8 @@ import { ConfigResolver } from '../config-resolver.js';
 /** CriticMarkup opening delimiters (insertion, deletion, substitution). */
 const MARKUP_OPENERS = [/\{\+\+/g, /\{\-\-/g, /\{\~\~/g];
 
-/** Inline footnote refs: [^ct-N] or [^ct-N.M]. */
-const FOOTNOTE_REF = /\[\^ct-\d+(?:\.\d+)?\]/g;
+/** Inline footnote refs: [^cn-N] or [^cn-N.M]. */
+const FOOTNOTE_REF = /\[\^cn-\d+(?:\.\d+)?\]/g;
 
 /**
  * Counts CriticMarkup annotations and footnote refs in text.
@@ -120,7 +120,7 @@ export async function handleRawEdit(
     const modifiedText = replaceUnique(fileContent, oldText, newText);
     await fs.writeFile(filePath, modifiedText, 'utf-8');
 
-    console.error(`[changetracks] raw_edit bypassed tracking: ${reason}`);
+    console.error(`[changedown] raw_edit bypassed tracking: ${reason}`);
 
     const { annotations, footnotes } = countMarkupInText(oldText);
     const baseWarning = 'This edit is untracked.';

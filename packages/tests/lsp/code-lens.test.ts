@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createCodeLenses, Position, Range } from '@changetracks/lsp-server/internals';
-import type { CodeLens, Command } from '@changetracks/lsp-server/internals';
-import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
+import { createCodeLenses, Position, Range } from '@changedown/lsp-server/internals';
+import type { CodeLens, Command } from '@changedown/lsp-server/internals';
+import { ChangeNode, ChangeType, ChangeStatus } from '@changedown/core';
 
 describe('Code Lens', () => {
   describe('createCodeLenses', () => {
@@ -39,10 +39,10 @@ describe('Code Lens', () => {
       const acceptLens = result.find(l => l.command?.title === 'Accept');
       const rejectLens = result.find(l => l.command?.title === 'Reject');
 
-      expect(acceptLens?.command?.command).toBe('changetracks.acceptChange');
+      expect(acceptLens?.command?.command).toBe('changedown.acceptChange');
       expect(acceptLens?.command?.arguments).toStrictEqual(['change-1']);
 
-      expect(rejectLens?.command?.command).toBe('changetracks.rejectChange');
+      expect(rejectLens?.command?.command).toBe('changedown.rejectChange');
       expect(rejectLens?.command?.arguments).toStrictEqual(['change-1']);
     });
 
@@ -123,8 +123,8 @@ describe('Code Lens', () => {
 
       // Check that we have per-change lenses
       const perChangeLenses = result.filter(lens =>
-        lens.command?.command === 'changetracks.acceptChange' ||
-        lens.command?.command === 'changetracks.rejectChange'
+        lens.command?.command === 'changedown.acceptChange' ||
+        lens.command?.command === 'changedown.rejectChange'
       );
       expect(perChangeLenses).toHaveLength(4);
     });
@@ -224,8 +224,8 @@ describe('Code Lens', () => {
 
       // Per-change lenses should be at line 0, char 0
       const perChangeLenses = result.filter(l =>
-        l.command?.command === 'changetracks.acceptChange' ||
-        l.command?.command === 'changetracks.rejectChange'
+        l.command?.command === 'changedown.acceptChange' ||
+        l.command?.command === 'changedown.rejectChange'
       );
       expect(perChangeLenses[0].range.start.line).toBe(0);
       expect(perChangeLenses[0].range.start.character).toBe(0);
@@ -233,7 +233,7 @@ describe('Code Lens', () => {
     it('excludes consumed ops from actionable change count', () => {
       const changes: ChangeNode[] = [
         {
-          id: 'ct-1',
+          id: 'cn-1',
           type: ChangeType.Insertion,
           status: ChangeStatus.Proposed,
           range: { start: 0, end: 15 },
@@ -242,17 +242,17 @@ describe('Code Lens', () => {
           anchored: true,
         },
         {
-          id: 'ct-2',
+          id: 'cn-2',
           type: ChangeType.Insertion,
           status: ChangeStatus.Proposed,
           range: { start: 16, end: 31 },
           contentRange: { start: 19, end: 29 },
           level: 2,
           anchored: true,
-          consumedBy: 'ct-3',
+          consumedBy: 'cn-3',
         },
         {
-          id: 'ct-3',
+          id: 'cn-3',
           type: ChangeType.Insertion,
           status: ChangeStatus.Proposed,
           range: { start: 32, end: 47 },
@@ -264,19 +264,19 @@ describe('Code Lens', () => {
       const text = '{++first change++} {++consumed op++} {++third change++}';
       const lenses = createCodeLenses(changes, text, 'review', 'always');
 
-      // ct-2 is consumed — should not generate a per-change lens
+      // cn-2 is consumed — should not generate a per-change lens
       const perChangeLenses = lenses.filter(
-        l => l.command?.command === 'changetracks.acceptChange' ||
-             l.command?.command === 'changetracks.rejectChange'
+        l => l.command?.command === 'changedown.acceptChange' ||
+             l.command?.command === 'changedown.rejectChange'
       );
       const lensChangeIds = perChangeLenses
         .map(l => l.command?.arguments?.[0])
         .filter(Boolean);
 
-      // Only ct-1 and ct-3 should have lenses (not ct-2)
-      expect(lensChangeIds).not.toContain('ct-2');
-      expect(lensChangeIds).toContain('ct-1');
-      expect(lensChangeIds).toContain('ct-3');
+      // Only cn-1 and cn-3 should have lenses (not cn-2)
+      expect(lensChangeIds).not.toContain('cn-2');
+      expect(lensChangeIds).toContain('cn-1');
+      expect(lensChangeIds).toContain('cn-3');
       // 2 actionable changes × 2 lenses each = 4 per-change lenses
       expect(perChangeLenses).toHaveLength(4);
     });

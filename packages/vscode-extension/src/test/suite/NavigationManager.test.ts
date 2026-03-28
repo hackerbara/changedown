@@ -166,8 +166,8 @@ suite('NavigationManager', () => {
 
     suite('footnote pattern matching', () => {
         test('finds footnote definition by changeId', () => {
-            const text = 'Some text\n\n[^ct-1]: type=insertion; author=Alice; date=2026-03-23\n';
-            const pattern = `[^ct-1]:`;
+            const text = 'Some text\n\n[^cn-1]: type=insertion; author=Alice; date=2026-03-23\n';
+            const pattern = `[^cn-1]:`;
             const idx = text.indexOf(pattern);
             assert.ok(idx >= 0, 'should find footnote pattern');
             assert.strictEqual(idx, 11); // after 'Some text\n\n'
@@ -175,7 +175,7 @@ suite('NavigationManager', () => {
 
         test('returns -1 when footnote not found', () => {
             const text = 'Some text with no footnotes';
-            const pattern = `[^ct-99]:`;
+            const pattern = `[^cn-99]:`;
             const idx = text.indexOf(pattern);
             assert.strictEqual(idx, -1);
         });

@@ -1,10 +1,10 @@
 {
   "name": "hackerbara",
-  "owner": { "name": "ChangeTracks" },
+  "owner": { "name": "ChangeDown" },
   "plugins": [
     {
-      "name": "changetracks",
-      "source": "./changetracks-plugin",
+      "name": "changedown",
+      "source": "./changedown-plugin",
       "description": "Durable change tracking with reasoning for AI agents"
     }
   ]

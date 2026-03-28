@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sendCoherenceStatus } from '@changetracks/lsp-server/internals';
+import { sendCoherenceStatus } from '@changedown/lsp-server/internals';
 
 describe('coherence status notification', () => {
   it('sends coherence status with rate and unresolved count', () => {
@@ -11,7 +11,7 @@ describe('coherence status notification', () => {
     sendCoherenceStatus(mockConnection as any, 'file:///test.md', 85, 3, 98);
 
     expect(sent).toHaveLength(1);
-    expect(sent[0].method).toBe('changetracks/coherenceStatus');
+    expect(sent[0].method).toBe('changedown/coherenceStatus');
     expect(sent[0].params).toEqual({
       uri: 'file:///test.md',
       coherenceRate: 85,

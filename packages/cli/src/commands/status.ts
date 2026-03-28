@@ -1,4 +1,4 @@
-import { CriticMarkupParser, ChangeStatus } from '@changetracks/core';
+import { CriticMarkupParser, ChangeStatus } from '@changedown/core';
 
 export interface StatusResult {
   proposed: number;

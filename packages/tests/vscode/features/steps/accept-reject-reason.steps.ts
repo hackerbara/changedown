@@ -11,15 +11,15 @@
 
 import { Given, When, Then, Before } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import { computeApprovalLineEdit, computeFootnoteStatusEdits } from '@changetracks/core';
-import type { ChangeTracksWorld } from './world';
+import { computeApprovalLineEdit, computeFootnoteStatusEdits } from '@changedown/core';
+import type { ChangeDownWorld } from './world';
 import { applyEditsReverse, extractFootnoteStatus } from './test-utils';
 
 // ── Extend World with review-reason state ────────────────────────────
 // Note: reviewerIdentity is already declared in operation.steps.ts
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         reasonRequired?: boolean;
         reviewResultText?: string;
         reviewDocText?: string;
@@ -28,7 +28,7 @@ declare module './world' {
 
 // ── Lifecycle ────────────────────────────────────────────────────────
 
-Before({ tags: '@fast and @LV2' }, function (this: ChangeTracksWorld) {
+Before({ tags: '@fast and @LV2' }, function (this: ChangeDownWorld) {
     this.reviewerIdentity = undefined;
     this.reasonRequired = undefined;
     this.reviewResultText = undefined;
@@ -37,9 +37,9 @@ Before({ tags: '@fast and @LV2' }, function (this: ChangeTracksWorld) {
 
 // ── Fixture document ─────────────────────────────────────────────────
 
-const PROPOSED_INSERTION_DOC = `Hello {++world++}[^ct-1]
+const PROPOSED_INSERTION_DOC = `Hello {++world++}[^cn-1]
 
-[^ct-1]: @alice | 2026-03-09 | insertion | proposed`;
+[^cn-1]: @alice | 2026-03-09 | insertion | proposed`;
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -76,19 +76,19 @@ function performReview(
 // ── Step definitions ─────────────────────────────────────────────────
 // "reviewer identity is {string}" is reused from operation.steps.ts.
 
-Given('a review document with a proposed insertion {word}', function (this: ChangeTracksWorld, _changeId: string) {
+Given('a review document with a proposed insertion {word}', function (this: ChangeDownWorld, _changeId: string) {
     this.reviewDocText = PROPOSED_INSERTION_DOC;
 });
 
-Given('reason is not required for human harness', function (this: ChangeTracksWorld) {
+Given('reason is not required for human harness', function (this: ChangeDownWorld) {
     this.reasonRequired = false;
 });
 
-Given('changetracks.reviewerIdentity is set to {string}', function (this: ChangeTracksWorld, identity: string) {
+Given('changedown.reviewerIdentity is set to {string}', function (this: ChangeDownWorld, identity: string) {
     this.reviewerIdentity = identity.startsWith('@') ? identity : `@${identity}`;
 });
 
-When('I accept {word} with reason {string}', function (this: ChangeTracksWorld, changeId: string, reason: string) {
+When('I accept {word} with reason {string}', function (this: ChangeDownWorld, changeId: string, reason: string) {
     assert.ok(this.reviewDocText, 'Document text not set');
     assert.ok(this.reviewerIdentity, 'Reviewer identity not set');
     this.reviewResultText = performReview(
@@ -96,7 +96,7 @@ When('I accept {word} with reason {string}', function (this: ChangeTracksWorld, 
     );
 });
 
-When('I accept {word} without reason', function (this: ChangeTracksWorld, changeId: string) {
+When('I accept {word} without reason', function (this: ChangeDownWorld, changeId: string) {
     assert.ok(this.reviewDocText, 'Document text not set');
     assert.ok(this.reviewerIdentity, 'Reviewer identity not set');
     assert.ok(
@@ -108,7 +108,7 @@ When('I accept {word} without reason', function (this: ChangeTracksWorld, change
     );
 });
 
-When('I reject {word} with reason {string}', function (this: ChangeTracksWorld, changeId: string, reason: string) {
+When('I reject {word} with reason {string}', function (this: ChangeDownWorld, changeId: string, reason: string) {
     assert.ok(this.reviewDocText, 'Document text not set');
     assert.ok(this.reviewerIdentity, 'Reviewer identity not set');
     this.reviewResultText = performReview(
@@ -116,7 +116,7 @@ When('I reject {word} with reason {string}', function (this: ChangeTracksWorld, 
     );
 });
 
-When('I request changes on {word} with reason {string}', function (this: ChangeTracksWorld, changeId: string, reason: string) {
+When('I request changes on {word} with reason {string}', function (this: ChangeDownWorld, changeId: string, reason: string) {
     assert.ok(this.reviewDocText, 'Document text not set');
     assert.ok(this.reviewerIdentity, 'Reviewer identity not set');
     this.reviewResultText = performReview(
@@ -124,7 +124,7 @@ When('I request changes on {word} with reason {string}', function (this: ChangeT
     );
 });
 
-Then('the review result footnote contains {string}', function (this: ChangeTracksWorld, expected: string) {
+Then('the review result footnote contains {string}', function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.reviewResultText, 'No review result — run a review action first');
     assert.ok(
         this.reviewResultText.includes(expected),
@@ -132,7 +132,7 @@ Then('the review result footnote contains {string}', function (this: ChangeTrack
     );
 });
 
-Then('the review result footnote does not contain quotes', function (this: ChangeTracksWorld) {
+Then('the review result footnote does not contain quotes', function (this: ChangeDownWorld) {
     assert.ok(this.reviewResultText, 'No review result — run a review action first');
     const lines = this.reviewResultText.split('\n');
     const reviewLine = lines.find(l => l.trim().startsWith('approved:') || l.trim().startsWith('rejected:'));
@@ -143,7 +143,7 @@ Then('the review result footnote does not contain quotes', function (this: Chang
     );
 });
 
-Then('the review result footnote status is {string}', function (this: ChangeTracksWorld, expectedStatus: string) {
+Then('the review result footnote status is {string}', function (this: ChangeDownWorld, expectedStatus: string) {
     assert.ok(this.reviewResultText, 'No review result — run a review action first');
     const actual = extractFootnoteStatus(this.reviewResultText);
     assert.strictEqual(
@@ -153,7 +153,7 @@ Then('the review result footnote status is {string}', function (this: ChangeTrac
     );
 });
 
-Then('the review result approval line author is {string}', function (this: ChangeTracksWorld, expectedAuthor: string) {
+Then('the review result approval line author is {string}', function (this: ChangeDownWorld, expectedAuthor: string) {
     assert.ok(this.reviewResultText, 'No review result — run a review action first');
     const lines = this.reviewResultText.split('\n');
     const approvalLine = lines.find(l => l.trim().startsWith('approved:') || l.trim().startsWith('rejected:'));

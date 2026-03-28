@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { createServer } from '@changetracks/lsp-server/internals';
-import type { InitializeParams } from '@changetracks/lsp-server/internals';
+import { ChangedownServer } from '@changedown/lsp-server/internals';
+import type { InitializeParams } from '@changedown/lsp-server/internals';
 
 function createMockConnection() {
   const handlers: Record<string, Function> = {};
@@ -18,6 +18,7 @@ function createMockConnection() {
     onDidSaveTextDocument: (handler: any) => { handlers.didSave = handler; },
     onHover: (handler: any) => { handlers.hover = handler; },
     onCodeLens: (handler: any) => { handlers.codeLens = handler; },
+    onFoldingRanges: (handler: any) => { handlers.foldingRanges = handler; },
     onCodeAction: (handler: any) => { handlers.codeAction = handler; },
     onDocumentLinks: (handler: any) => { handlers.documentLinks = handler; },
     onRequest: (method: string, handler: any) => { handlers[`request:${method}`] = handler; },
@@ -39,7 +40,7 @@ function createMockConnection() {
  * (populating TextDocuments so write-back can read lineCount).
  */
 async function createInitializedServer(conn: ReturnType<typeof createMockConnection>) {
-  const server = createServer(conn as any);
+  const server = new ChangedownServer(conn as any);
   await server.handleInitialize({ capabilities: {} } as InitializeParams);
   return {
     server,
@@ -57,8 +58,8 @@ async function createInitializedServer(conn: ReturnType<typeof createMockConnect
 
 describe('write-back mechanism', () => {
   it('concept: resolvedText !== text triggers write-back', () => {
-    const inputText = 'body\n\n[^ct-1]: ... 5:old ...';
-    const resolvedText = 'body\n\n[^ct-1]: ... 5:new ...';
+    const inputText = 'body\n\n[^cn-1]: ... 5:old ...';
+    const resolvedText = 'body\n\n[^cn-1]: ... 5:new ...';
     expect(inputText).not.toBe(resolvedText);
     const inputBody = inputText.split('\n\n')[0];
     const resolvedBody = resolvedText.split('\n\n')[0];
@@ -80,14 +81,14 @@ describe('write-back LSP integration', () => {
     const conn = createMockConnection();
     const { openDocument } = await createInitializedServer(conn);
 
-    // ct-1 has wrong hash ff — replay resolves it → resolvedText is defined → write-back fires
+    // cn-1 has wrong hash ff — replay resolves it → resolvedText is defined → write-back fires
     const l3 = [
       'The very very sleepy dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:ff The {++very ++}very lazy dog.',
       '',
-      '[^ct-2]: @bob | 2026-03-21 | sub | proposed',
+      '[^cn-2]: @bob | 2026-03-21 | sub | proposed',
       '    1:ee The very very {~~lazy~>sleepy~~} dog.',
     ].join('\n');
 
@@ -106,8 +107,8 @@ describe('write-back LSP integration', () => {
     const edit = edits[0];
     expect(edit.range.start.line).toBe(2);
     // The newText should contain updated anchors (not the original stale hashes)
-    expect(edit.newText).toContain('[^ct-1]:');
-    expect(edit.newText).toContain('[^ct-2]:');
+    expect(edit.newText).toContain('[^cn-1]:');
+    expect(edit.newText).toContain('[^cn-2]:');
   });
 
   it('write-back edit replaces only footnote section, preserving body', async () => {
@@ -118,10 +119,10 @@ describe('write-back LSP integration', () => {
     const l3 = [
       'The very very sleepy dog.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:ff The {++very ++}very lazy dog.',
       '',
-      '[^ct-2]: @bob | 2026-03-21 | sub | proposed',
+      '[^cn-2]: @bob | 2026-03-21 | sub | proposed',
       '    1:ee The very very {~~lazy~>sleepy~~} dog.',
     ].join('\n');
 
@@ -142,8 +143,8 @@ describe('write-back LSP integration', () => {
     // End should be the last line of the document
     expect(edit.range.end.line).toBeGreaterThanOrEqual(6);
     // The replacement text should contain both footnotes with updated hashes
-    expect(edit.newText).toContain('[^ct-1]:');
-    expect(edit.newText).toContain('[^ct-2]:');
+    expect(edit.newText).toContain('[^cn-1]:');
+    expect(edit.newText).toContain('[^cn-2]:');
     // The replacement text should NOT contain body content
     expect(edit.newText).not.toContain('The very very sleepy dog.');
   });
@@ -156,7 +157,7 @@ describe('write-back LSP integration', () => {
     const l3 = [
       'Hello world.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:7b {++Hello ++}',
     ].join('\n');
 
@@ -175,7 +176,7 @@ describe('write-back LSP integration', () => {
     const l3 = [
       'Hello world.',
       '',
-      '[^ct-1]: @alice | 2026-03-20 | ins | proposed',
+      '[^cn-1]: @alice | 2026-03-20 | ins | proposed',
       '    1:7b {++Hello ++}',
     ].join('\n');
 

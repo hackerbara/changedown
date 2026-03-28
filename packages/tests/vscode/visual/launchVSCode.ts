@@ -19,7 +19,7 @@ export interface LaunchOptions {
 }
 
 /**
- * Launch VS Code with the ChangeTracks extension loaded.
+ * Launch VS Code with the ChangeDown extension loaded.
  * Returns handles for controlling the editor via Playwright.
  * 
  * Includes retry logic (max 3 attempts) for flaky VS Code launches.
@@ -78,7 +78,7 @@ async function launchVSCodeInternal(
         "problems.decorations.enabled": false,
         "editor.codeLens": false,
         // Show CriticMarkup delimiters so D1/D2 decoration tests can distinguish view modes
-        "changetracks.showDelimiters": true,
+        "changedown.showDelimiters": true,
         // Suppress walkthroughs
         "workbench.welcomePage.walkthroughs.openOnInstall": false,
         "workbench.startupEditor": "none",
@@ -214,14 +214,14 @@ export async function executeCommand(page: Page, command: string): Promise<void>
  * Toggle smart view mode.
  */
 export async function toggleSmartView(page: Page): Promise<void> {
-    await executeCommand(page, 'ChangeTracks: Toggle Smart View');
+    await executeCommand(page, 'ChangeDown: Toggle Smart View');
 }
 
 /**
  * Toggle tracking mode.
  */
 export async function toggleTracking(page: Page): Promise<void> {
-    await executeCommand(page, 'ChangeTracks: Toggle Tracking Mode');
+    await executeCommand(page, 'ChangeDown: Toggle Tracking Mode');
 }
 
 /**

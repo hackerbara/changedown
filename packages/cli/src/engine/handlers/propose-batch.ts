@@ -5,10 +5,10 @@ import {
   parseTrackingHeader,
   insertTrackingHeader,
   generateFootnoteDefinition,
-  scanMaxCtId,
+  scanMaxCnId,
   nowTimestamp,
   findFootnoteBlockStart,
-} from '@changetracks/core';
+} from '@changedown/core';
 import { validateOrAutoRemap, type RelocationEntry, type AutoRemapResult } from './hashline-relocate.js';
 import { resolveCoordinates, applyCompactOp, type NormalizedCompactOp, type ResolvedCoordinates } from './resolve-and-apply.js';
 import { resolveAuthor } from '../author.js';
@@ -19,7 +19,7 @@ import { computeAffectedLines, type AffectedLineEntry } from './propose-utils.js
 import { toRelativePath } from '../path-utils.js';
 import { resolveTrackingStatus } from '../scope.js';
 import { SessionState } from '../state.js';
-import { parseOp, parseAt } from '@changetracks/core';
+import { parseOp, parseAt } from '@changedown/core';
 import { resolveProtocolMode } from '../config.js';
 import { rerecordState } from '../state-utils.js';
 
@@ -286,7 +286,7 @@ export async function handleProposeBatch(
     const hasHashlineInBatch = changesRaw.some((op: Record<string, unknown>) => hasHashlineParams(op));
     if (hasHashlineInBatch && !config.hashline.enabled) {
       return errorResult(
-        'Hashline addressing in batch requires [hashline] enabled = true in .changetracks/config.toml',
+        'Hashline addressing in batch requires [hashline] enabled = true in .changedown/config.toml',
         { file: relativePath },
       );
     }
@@ -511,7 +511,7 @@ export async function handleProposeBatch(
                 endOffset: rangeResult.startOffset + match.index + match.length,
               });
             } catch (err) {
-              console.error(`[changetracks] overlap detection: match failed, deferring to apply phase: ${err}`);
+              console.error(`[changedown] overlap detection: match failed, deferring to apply phase: ${err}`);
             }
           } else {
             const rangeResult = extractLineRange(fileLines, resolved.startLine!, resolved.endLine!);
@@ -596,7 +596,7 @@ export async function handleProposeBatch(
     }
 
     // 7. Begin group and apply operations in order with coordinate adjustment
-    const knownMaxId = scanMaxCtId(fileContent);
+    const knownMaxId = scanMaxCnId(fileContent);
     const groupId = state.beginGroup(reasoning ?? 'propose_batch', reasoning, knownMaxId);
     let currentText = fileContent;
     let cumulativeDelta = 0;
@@ -785,10 +785,10 @@ export async function handleProposeBatch(
       }
     }
 
-    const footnoteCount = (currentText.match(/^\[\^ct-\d+(?:\.\d+)?\]:/gm) || []).length;
+    const footnoteCount = (currentText.match(/^\[\^cn-\d+(?:\.\d+)?\]:/gm) || []).length;
     const proposedCount = (currentText.match(/\|\s*proposed\s*$/gm) || []).length;
     const acceptedCount = (currentText.match(/\|\s*accepted\s*$/gm) || []).length;
-    const authorMatches = currentText.match(/^\[\^ct-\d+(?:\.\d+)?\]:\s*@([^\s|]+)/gm) || [];
+    const authorMatches = currentText.match(/^\[\^cn-\d+(?:\.\d+)?\]:\s*@([^\s|]+)/gm) || [];
     const uniqueAuthors = new Set(
       authorMatches.map((m) => m.match(/@([^\s|]+)/)?.[1]).filter(Boolean)
     );

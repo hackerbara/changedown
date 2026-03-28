@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatPlainText, ThreeZoneDocument } from '@changetracks/core/internals';
+import { formatPlainText, ThreeZoneDocument } from '@changedown/core/internals';
 
 describe('formatPlainText', () => {
   const baseHeader = {
@@ -26,18 +26,18 @@ describe('formatPlainText', () => {
           { type: 'sub_arrow', text: '~>' },
           { type: 'sub_new', text: 'GraphQL' },
           { type: 'delimiter', text: '~~}' },
-          { type: 'anchor', text: '[^ct-1]' },
+          { type: 'anchor', text: '[^cn-1]' },
           { type: 'plain', text: '.' },
         ],
-        metadata: [{ changeId: 'ct-1', author: '@alice', reason: 'paradigm', status: 'proposed' }],
+        metadata: [{ changeId: 'cn-1', author: '@alice', reason: 'paradigm', status: 'proposed' }],
         rawLineNumber: 1,
       }],
     };
     const output = formatPlainText(doc);
     expect(output.includes('1:a3 P|')).toBeTruthy();
     expect(output.includes('{~~REST~>GraphQL~~}')).toBeTruthy();
-    expect(output.includes('[^ct-1]')).toBeTruthy();
-    expect(output.includes('{>>ct-1 @alice: paradigm<<}')).toBeTruthy();
+    expect(output.includes('[^cn-1]')).toBeTruthy();
+    expect(output.includes('{>>cn-1 @alice: paradigm<<}')).toBeTruthy();
   });
 
   it('formats changes view with committed text + change IDs only', () => {
@@ -47,14 +47,14 @@ describe('formatPlainText', () => {
       lines: [{
         margin: { lineNumber: 1, hash: 'a3', flags: ['P'] },
         content: [{ type: 'plain', text: 'Use REST.' }],
-        metadata: [{ changeId: 'ct-1' }],
+        metadata: [{ changeId: 'cn-1' }],
         rawLineNumber: 1,
       }],
     };
     const output = formatPlainText(doc);
     expect(output.includes('1:a3 P|')).toBeTruthy();
     expect(output.includes('Use REST.')).toBeTruthy();
-    expect(output.includes('{>>ct-1<<}')).toBeTruthy();
+    expect(output.includes('{>>cn-1<<}')).toBeTruthy();
   });
 
   it('formats settled view with clean text and no metadata', () => {
@@ -98,23 +98,23 @@ describe('formatPlainText', () => {
           { type: 'delimiter', text: '{++' },
           { type: 'insertion', text: 'world' },
           { type: 'delimiter', text: '++}' },
-          { type: 'anchor', text: '[^ct-1]' },
+          { type: 'anchor', text: '[^cn-1]' },
           { type: 'plain', text: ' ' },
           { type: 'delimiter', text: '{--' },
           { type: 'deletion', text: 'old' },
           { type: 'delimiter', text: '--}' },
-          { type: 'anchor', text: '[^ct-2]' },
+          { type: 'anchor', text: '[^cn-2]' },
         ],
         metadata: [
-          { changeId: 'ct-1', author: '@alice', reason: 'add greeting', status: 'proposed' },
-          { changeId: 'ct-2', author: '@bob', reason: 'remove cruft', status: 'proposed' },
+          { changeId: 'cn-1', author: '@alice', reason: 'add greeting', status: 'proposed' },
+          { changeId: 'cn-2', author: '@bob', reason: 'remove cruft', status: 'proposed' },
         ],
         rawLineNumber: 1,
       }],
     };
     const output = formatPlainText(doc);
-    expect(output.includes('{>>ct-1 @alice: add greeting<<}')).toBeTruthy();
-    expect(output.includes('{>>ct-2 @bob: remove cruft<<}')).toBeTruthy();
+    expect(output.includes('{>>cn-1 @alice: add greeting<<}')).toBeTruthy();
+    expect(output.includes('{>>cn-2 @bob: remove cruft<<}')).toBeTruthy();
   });
 
   it('includes reply count in review view metadata', () => {
@@ -124,7 +124,7 @@ describe('formatPlainText', () => {
       lines: [{
         margin: { lineNumber: 1, hash: 'c2', flags: ['P'] },
         content: [{ type: 'plain', text: 'Some text.' }],
-        metadata: [{ changeId: 'ct-1', author: '@alice', reason: 'fix typo', replyCount: 3, status: 'proposed' }],
+        metadata: [{ changeId: 'cn-1', author: '@alice', reason: 'fix typo', replyCount: 3, status: 'proposed' }],
         rawLineNumber: 1,
       }],
     };
@@ -196,7 +196,7 @@ describe('formatPlainText', () => {
       lines: [{
         margin: { lineNumber: 1, hash: 'd4', flags: ['P'] },
         content: [{ type: 'plain', text: 'Text.' }],
-        metadata: [{ changeId: 'ct-1', author: '@alice', reason: 'note', replyCount: 1, status: 'proposed' }],
+        metadata: [{ changeId: 'cn-1', author: '@alice', reason: 'note', replyCount: 1, status: 'proposed' }],
         rawLineNumber: 1,
       }],
     };

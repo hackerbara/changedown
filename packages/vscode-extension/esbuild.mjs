@@ -36,7 +36,7 @@ await esbuild.build({
     target: 'ES2020',
     sourcemap: !production,
     minify: production,
-    // Resolve from lsp-server so vscode-languageserver and @changetracks/core are found
+    // Resolve from lsp-server so vscode-languageserver and @changedown/core are found
     absWorkingDir: path.join(__dirname, '..', 'lsp-server'),
 });
 

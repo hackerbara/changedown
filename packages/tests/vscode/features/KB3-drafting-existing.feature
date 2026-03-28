@@ -11,7 +11,7 @@ Feature: Realistic typing session — drafting alongside existing text
   Background:
     Given I open "kb3-existing-prose.md" in VS Code
     And the editor is reset to the fixture
-    And the ChangeTracks extension is active
+    And the ChangeDown extension is active
     And tracking mode is definitely enabled
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

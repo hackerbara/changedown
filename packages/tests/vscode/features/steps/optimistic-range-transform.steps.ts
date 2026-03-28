@@ -10,7 +10,7 @@ installVscodeMock();
 
 import { Given, When, Then } from '@cucumber/cucumber';
 import { strict as assert } from 'assert';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 
 // Import via the internals barrel (the only way test package resolves extension modules).
 // transformRange and transformCachedDecorations live in range-transform.ts which has
@@ -21,13 +21,13 @@ import {
     setCachedDecorationData,
     getCachedDecorationData,
     invalidateDecorationCache,
-} from 'changetracks-vscode/internals';
+} from 'changedown-vscode/internals';
 
 // ---------------------------------------------------------------------------
 // State for transformRange unit tests
 // ---------------------------------------------------------------------------
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         ortRange?: { start: number; end: number };
         ortTransformResult?: boolean;
     }
@@ -35,14 +35,14 @@ declare module './world' {
 
 Given(
     'a range from offset {int} to {int}',
-    function (this: ChangeTracksWorld, start: number, end: number) {
+    function (this: ChangeDownWorld, start: number, end: number) {
         this.ortRange = { start, end };
     }
 );
 
 When(
     'an edit inserts {int} characters at offset {int}',
-    function (this: ChangeTracksWorld, count: number, offset: number) {
+    function (this: ChangeDownWorld, count: number, offset: number) {
         assert.ok(this.ortRange, 'Range not set');
         // Insert: rangeLength=0, text.length=count → delta=count
         transformRange(this.ortRange!, offset, offset, count);
@@ -51,7 +51,7 @@ When(
 
 When(
     'an edit deletes {int} characters at offset {int}',
-    function (this: ChangeTracksWorld, count: number, offset: number) {
+    function (this: ChangeDownWorld, count: number, offset: number) {
         assert.ok(this.ortRange, 'Range not set');
         // Delete: rangeLength=count, text.length=0 → delta=-count
         const editEnd = offset + count;
@@ -61,7 +61,7 @@ When(
 
 Then(
     'the range is from offset {int} to {int}',
-    function (this: ChangeTracksWorld, expectedStart: number, expectedEnd: number) {
+    function (this: ChangeDownWorld, expectedStart: number, expectedEnd: number) {
         assert.ok(this.ortRange, 'Range not set');
         assert.strictEqual(this.ortRange!.start, expectedStart,
             `start: expected ${expectedStart}, got ${this.ortRange!.start}`);
@@ -76,7 +76,7 @@ Then(
 
 Given(
     'cached decoration data for {string} with ranges {int}-{int} and {int}-{int}',
-    function (this: ChangeTracksWorld, uri: string, s1: number, e1: number, s2: number, e2: number) {
+    function (this: ChangeDownWorld, uri: string, s1: number, e1: number, s2: number, e2: number) {
         const nodes = [
             { id: 'test-1', type: 0, status: 0, range: { start: s1, end: e1 }, contentRange: { start: s1, end: e1 }, level: 0 as const, anchored: false },
             { id: 'test-2', type: 0, status: 0, range: { start: s2, end: e2 }, contentRange: { start: s2, end: e2 }, level: 0 as const, anchored: false },
@@ -87,14 +87,14 @@ Given(
 
 Given(
     'no cached decoration data for {string}',
-    function (this: ChangeTracksWorld, uri: string) {
+    function (this: ChangeDownWorld, uri: string) {
         invalidateDecorationCache(uri);
     }
 );
 
 When(
     'transformCachedDecorations is called with an insert of {int} chars at offset {int}',
-    function (this: ChangeTracksWorld, count: number, offset: number) {
+    function (this: ChangeDownWorld, count: number, offset: number) {
         const uri = 'file:///test.md';
         // Simulate a TextDocumentContentChangeEvent for an insert
         const contentChanges = [{
@@ -109,7 +109,7 @@ When(
 
 When(
     'transformCachedDecorations is called with a delete of {int} chars at offset {int}',
-    function (this: ChangeTracksWorld, count: number, offset: number) {
+    function (this: ChangeDownWorld, count: number, offset: number) {
         const uri = 'file:///test.md';
         const contentChanges = [{
             rangeOffset: offset,
@@ -123,7 +123,7 @@ When(
 
 Then(
     'the cached ranges are {int}-{int} and {int}-{int}',
-    function (this: ChangeTracksWorld, s1: number, e1: number, s2: number, e2: number) {
+    function (this: ChangeDownWorld, s1: number, e1: number, s2: number, e2: number) {
         const cached = getCachedDecorationData('file:///test.md');
         assert.ok(cached, 'No cached data');
         const changes = cached!.changes;
@@ -137,7 +137,7 @@ Then(
 
 Then(
     'transformCachedDecorations returns false',
-    function (this: ChangeTracksWorld) {
+    function (this: ChangeDownWorld) {
         assert.strictEqual(this.ortTransformResult, false);
     }
 );

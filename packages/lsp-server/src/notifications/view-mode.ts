@@ -2,12 +2,12 @@
  * View Mode Notifications
  *
  * Custom LSP notifications for synchronizing view mode between client and server:
- * - changetracks/setViewMode (client -> server): Client requests view mode change
- * - changetracks/viewModeChanged (server -> client): Server confirms mode change
+ * - changedown/setViewMode (client -> server): Client requests view mode change
+ * - changedown/viewModeChanged (server -> client): Server confirms mode change
  */
 
 import { Connection } from 'vscode-languageserver';
-import type { ViewName } from '@changetracks/core';
+import type { ViewName } from '@changedown/core';
 
 /**
  * Parameters for setViewMode notification (client -> server)
@@ -44,5 +44,5 @@ export function sendViewModeChanged(
     textDocument: { uri },
     viewMode
   };
-  connection.sendNotification('changetracks/viewModeChanged', params);
+  connection.sendNotification('changedown/viewModeChanged', params);
 }

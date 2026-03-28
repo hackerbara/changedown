@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { initHashline, buildChangesDocument, buildSettledDocument, buildReviewDocument, buildRawDocument } from '@changetracks/core/internals';
+import { initHashline, buildChangesDocument, buildSettledDocument, buildReviewDocument, buildRawDocument } from '@changedown/core/internals';
 
 const FIXTURE = [
-  'Hello {++world++}[^ct-1] and {--old--}[^ct-2]',
+  'Hello {++world++}[^cn-1] and {--old--}[^cn-2]',
   '',
-  '[^ct-1]: @alice | 2026-03-23 | ins | proposed',
-  '[^ct-2]: @bob | 2026-03-23 | del | accepted',
+  '[^cn-1]: @alice | 2026-03-23 | ins | proposed',
+  '[^cn-2]: @bob | 2026-03-23 | del | accepted',
 ].join('\n');
 
 beforeAll(async () => { await initHashline(); });

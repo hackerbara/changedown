@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { composeGuide } from '@changetracks/mcp/internals';
-import { DEFAULT_CONFIG } from '@changetracks/mcp/internals';
+import { composeGuide } from '@changedown/mcp/internals';
+import { DEFAULT_CONFIG } from '@changedown/mcp/internals';
 
 describe('composeGuide', () => {
   describe('protocol section', () => {

@@ -36,10 +36,10 @@ Feature: Parser — Deletions
     And change 1 has original text ""
 
   Scenario: Deletion with footnote ref
-    Given the text "{--removed--}[^ct-2]"
+    Given the text "{--removed--}[^cn-2]"
     When I parse the text
     Then there is 1 change
-    And change 1 has id "ct-2"
+    And change 1 has id "cn-2"
     And change 1 is type "Deletion"
     And change 1 has original text "removed"
     And change 1 has range 0 to 20
@@ -55,9 +55,9 @@ Feature: Parser — Deletions
   Scenario: Deletion generates correct ID prefix
     Given the text "{--x--}{--y--}{--z--}"
     When I parse the text
-    Then change 1 has id "ct-1"
-    And change 2 has id "ct-2"
-    And change 3 has id "ct-3"
+    Then change 1 has id "cn-1"
+    And change 2 has id "cn-2"
+    And change 3 has id "cn-3"
 
   Scenario: Three consecutive deletions
     Given the text "{--x--}{--y--}{--z--}"

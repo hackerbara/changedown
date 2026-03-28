@@ -1,11 +1,11 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { resolveAuthor } from '@changetracks/mcp/internals';
-import type { ChangeTracksConfig } from '@changetracks/mcp/internals';
+import { resolveAuthor } from '@changedown/mcp/internals';
+import type { ChangeDownConfig } from '@changedown/mcp/internals';
 
 function makeConfig(overrides: {
   authorDefault?: string;
   authorEnforcement?: 'optional' | 'required';
-} = {}): ChangeTracksConfig {
+} = {}): ChangeDownConfig {
   return {
     tracking: {
       include: ['**/*.md'],
@@ -95,8 +95,8 @@ describe('resolveAuthor', () => {
     expect(result.error!.message).toContain('author');
   });
 
-  describe('CHANGETRACKS_AUTHOR env', () => {
-    const envKey = 'CHANGETRACKS_AUTHOR';
+  describe('CHANGEDOWN_AUTHOR env', () => {
+    const envKey = 'CHANGEDOWN_AUTHOR';
 
     afterEach(() => {
       delete process.env[envKey];
@@ -219,13 +219,13 @@ describe('resolveAuthor', () => {
     });
 
     it('validates env-sourced author format', () => {
-      process.env['CHANGETRACKS_AUTHOR'] = 'bad!!!format';
+      process.env['CHANGEDOWN_AUTHOR'] = 'bad!!!format';
       const config = makeConfig({ authorEnforcement: 'required' });
       const result = resolveAuthor(undefined, config, 'propose_change');
 
       expect(result.error).toBeDefined();
       expect(result.error!.message).toContain('Invalid author format');
-      delete process.env['CHANGETRACKS_AUTHOR'];
+      delete process.env['CHANGEDOWN_AUTHOR'];
     });
 
     it('validates config default author format', () => {

@@ -1,13 +1,13 @@
-// changetracks/config/loader — canonical config loading from .changetracks/config.toml
+// changedown/config/loader — canonical config loading from .changedown/config.toml
 //
 // All packages (mcp-server, hooks-impl, opencode-plugin) should import from
-// changetracks/config instead of maintaining their own TOML parsing logic.
+// changedown/config instead of maintaining their own TOML parsing logic.
 
 import { parse } from 'smol-toml';
 import picomatch from 'picomatch';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { ChangeTracksConfig, PolicyMode } from './index.js';
+import type { ChangeDownConfig, PolicyMode } from './index.js';
 import { DEFAULT_CONFIG } from './index.js';
 
 // ---------------------------------------------------------------------------
@@ -44,18 +44,18 @@ function parseHumanAgentSplit(
 }
 
 // ---------------------------------------------------------------------------
-// TOML → ChangeTracksConfig (pure parsing, no I/O)
+// TOML → ChangeDownConfig (pure parsing, no I/O)
 // ---------------------------------------------------------------------------
 
 /**
- * Parses an already-read TOML string into a fully populated ChangeTracksConfig.
+ * Parses an already-read TOML string into a fully populated ChangeDownConfig.
  * Missing sections are filled from DEFAULT_CONFIG.
  *
  * This is the single canonical implementation of the TOML→config mapping.
  * Consumers that need custom I/O (e.g. walk-up directory search) can call
  * this after reading the file themselves.
  */
-export function parseConfigToml(raw: string): ChangeTracksConfig {
+export function parseConfigToml(raw: string): ChangeDownConfig {
   const parsed = parse(raw) as Record<string, unknown>;
 
   const tracking = parsed['tracking'] as Record<string, unknown> | undefined;
@@ -193,7 +193,7 @@ export function parseConfigToml(raw: string): ChangeTracksConfig {
     response: {
       affected_lines: typeof response?.['affected_lines'] === 'boolean'
         ? response['affected_lines']
-        : false,
+        : true,
     },
   };
 }
@@ -203,7 +203,7 @@ export function parseConfigToml(raw: string): ChangeTracksConfig {
 // ---------------------------------------------------------------------------
 
 /**
- * Walks up from `startDir` looking for `.changetracks/config.toml`.
+ * Walks up from `startDir` looking for `.changedown/config.toml`.
  * Returns the path to the config file if found, or undefined.
  */
 export async function findConfigFile(startDir: string): Promise<string | undefined> {
@@ -211,7 +211,7 @@ export async function findConfigFile(startDir: string): Promise<string | undefin
   const root = path.parse(dir).root;
 
   while (true) {
-    const candidate = path.join(dir, '.changetracks', 'config.toml');
+    const candidate = path.join(dir, '.changedown', 'config.toml');
     try {
       await fs.access(candidate);
       return candidate;
@@ -228,8 +228,8 @@ export async function findConfigFile(startDir: string): Promise<string | undefin
 }
 
 /**
- * Resolves the project root by finding `.changetracks/config.toml` starting from
- * `startDir`. Returns the directory that contains `.changetracks/`, or undefined.
+ * Resolves the project root by finding `.changedown/config.toml` starting from
+ * `startDir`. Returns the directory that contains `.changedown/`, or undefined.
  */
 export async function resolveProjectDir(startDir: string): Promise<string | undefined> {
   const configPath = await findConfigFile(startDir);
@@ -242,18 +242,18 @@ export async function resolveProjectDir(startDir: string): Promise<string | unde
 // ---------------------------------------------------------------------------
 
 /**
- * Loads ChangeTracks configuration from `.changetracks/config.toml`.
+ * Loads ChangeDown configuration from `.changedown/config.toml`.
  *
  * First checks the given project directory, then walks up parent directories
  * (like git does for `.git/`). Returns default values if no config file is
  * found. Missing sections in a partial config file are filled with defaults.
  */
-export async function loadConfig(projectDir: string): Promise<ChangeTracksConfig> {
+export async function loadConfig(projectDir: string): Promise<ChangeDownConfig> {
   const configPath = await findConfigFile(projectDir);
 
   if (!configPath) {
     console.error(
-      `changetracks: no .changetracks/config.toml found (searched from ${projectDir} to /), using defaults`
+      `changedown: no .changedown/config.toml found (searched from ${projectDir} to /), using defaults`
     );
     return structuredClone(DEFAULT_CONFIG);
   }
@@ -263,7 +263,7 @@ export async function loadConfig(projectDir: string): Promise<ChangeTracksConfig
     raw = await fs.readFile(configPath, 'utf-8');
   } catch {
     console.error(
-      `changetracks: found ${configPath} but could not read it, using defaults`
+      `changedown: found ${configPath} but could not read it, using defaults`
     );
     return structuredClone(DEFAULT_CONFIG);
   }
@@ -272,7 +272,7 @@ export async function loadConfig(projectDir: string): Promise<ChangeTracksConfig
     return parseConfigToml(raw);
   } catch (err) {
     console.error(
-      `changetracks: ${configPath} contains invalid TOML (${err instanceof Error ? err.message : String(err)}), using defaults`
+      `changedown: ${configPath} contains invalid TOML (${err instanceof Error ? err.message : String(err)}), using defaults`
     );
     return structuredClone(DEFAULT_CONFIG);
   }
@@ -283,13 +283,13 @@ export async function loadConfig(projectDir: string): Promise<ChangeTracksConfig
 // ---------------------------------------------------------------------------
 
 /**
- * Resolves the effective protocol mode by checking the CHANGETRACKS_PROTOCOL_MODE
+ * Resolves the effective protocol mode by checking the CHANGEDOWN_PROTOCOL_MODE
  * environment variable first. If set to a valid value, it overrides config.
  */
 export function resolveProtocolMode(
   configMode: 'classic' | 'compact',
 ): 'classic' | 'compact' {
-  const envVal = process.env['CHANGETRACKS_PROTOCOL_MODE'];
+  const envVal = process.env['CHANGEDOWN_PROTOCOL_MODE'];
   if (envVal === 'classic' || envVal === 'compact') return envVal;
   return configMode;
 }
@@ -307,7 +307,7 @@ export function resolveProtocolMode(
  */
 export function isFileInScope(
   filePath: string,
-  config: ChangeTracksConfig,
+  config: ChangeDownConfig,
   projectDir: string,
 ): boolean {
   let relative: string;

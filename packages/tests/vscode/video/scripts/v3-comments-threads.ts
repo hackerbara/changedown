@@ -11,8 +11,8 @@
 import { registerVideoScript, beat, command, positionCursor } from '../record';
 
 registerVideoScript('v3-comments-threads', 'v3-comments-threads.md', async ({ page }) => {
-    // 1. Open the ChangeTracks sidebar panel
-    await command(page, 'changetracksReview.focus');
+    // 1. Open the ChangeDown sidebar panel
+    await command(page, 'changedownReview.focus');
     await beat(page, 300);
 
     // Click editor to regain focus (sidebar steals it)
@@ -31,4 +31,4 @@ registerVideoScript('v3-comments-threads', 'v3-comments-threads.md', async ({ pa
 
     // 4. Final beat — thread visible with alice/bob conversation + sidebar
     await beat(page, 1500);
-}, { 'changetracks.clickToShowComments': false });
+}, { 'changedown.clickToShowComments': false });

@@ -1,8 +1,8 @@
-# ChangeTracks Format Specification
+# ChangeDown Format Specification
 
-ChangeTracks encodes change tracking and deliberation directly into text files. Changes, discussion, approvals, and revision history live in the file itself — readable by any text editor, parseable by any tool. No external database. No proprietary format.
+ChangeDown encodes change tracking and deliberation directly into text files. Changes, discussion, approvals, and revision history live in the file itself — readable by any text editor, parseable by any tool. No external database. No proprietary format.
 
-The inline change syntax is [CriticMarkup](http://criticmarkup.com), created by Gabe Weatherhead and Erik Hess in 2013. ChangeTracks extends it with identity, lifecycle metadata, and threaded deliberation using standard markdown footnotes.
+The inline change syntax is [CriticMarkup](http://criticmarkup.com), created by Gabe Weatherhead and Erik Hess in 2013. ChangeDown extends it with identity, lifecycle metadata, and threaded deliberation using standard markdown footnotes.
 
 ## Inline Change Syntax
 
@@ -32,12 +32,12 @@ Each change has a footnote reference linking it to structured metadata:
 The API should use GraphQL for the public interface.
 ```
 
-`[^ct-1]` is a standard markdown footnote reference. All IDs use the `ct-` prefix. IDs are document-unique and monotonically increasing — new changes always use the next integer after the highest existing ID, even if earlier IDs have been removed by compaction.
+`[^cn-1]` is a standard markdown footnote reference. All IDs use the `ct-` prefix. IDs are document-unique and monotonically increasing — new changes always use the next integer after the highest existing ID, even if earlier IDs have been removed by compaction.
 
 The footnote definition carries author, date, type, and status:
 
 ```
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
 ```
 
 | Field | Values | Notes |
@@ -56,7 +56,7 @@ Discussion lives in the footnote body as indented lines.
 Comments start with `@author date:` and replies indent 2 spaces deeper than their parent:
 
 ```
-[^ct-1]: @alice | 2024-01-15 | sub | proposed
+[^cn-1]: @alice | 2024-01-15 | sub | proposed
     @dave 2024-01-16: GraphQL increases client complexity.
       @alice 2024-01-16: But reduces over-fetching. See PR #42.
         @dave 2024-01-17: Fair point. Benchmarks are convincing.
@@ -94,9 +94,9 @@ moved text
 ```
 
 ```
-[^ct-17]: @alice | 2024-02-10 | move | proposed
-[^ct-17.1]: @alice | 2024-02-10 | del | proposed
-[^ct-17.2]: @alice | 2024-02-10 | ins | proposed
+[^cn-17]: @alice | 2024-02-10 | move | proposed
+[^cn-17.1]: @alice | 2024-02-10 | del | proposed
+[^cn-17.2]: @alice | 2024-02-10 | ins | proposed
 ```
 
 Parent `ct-17` is the logical operation. Children `ct-17.1` and `ct-17.2` are its components. One level of nesting only — `ct-17.1.1` is never valid.
@@ -110,7 +110,7 @@ Accept/reject works at both levels: accept `ct-17` resolves all children; reject
 **Amend.** The original author updates their proposal. Inline markup shows the latest text. Revision history is preserved in the footnote:
 
 ```
-[^ct-3]: @alice | 2024-01-15 | ins | proposed
+[^cn-3]: @alice | 2024-01-15 | ins | proposed
     revisions:
       r1 @alice 2024-01-16: "OAuth 2.0"
       r2 @alice 2024-01-18: "OAuth 2.0 with JWT tokens"
@@ -119,10 +119,10 @@ Accept/reject works at both levels: accept `ct-17` resolves all children; reject
 **Supersede.** A different author proposes an alternative to an existing change. The original is rejected and a new change is created with a cross-reference:
 
 ```
-[^ct-1]: @alice | 2024-01-15 | sub | rejected
+[^cn-1]: @alice | 2024-01-15 | sub | rejected
     superseded-by: ct-4
 
-[^ct-4]: @bob | 2024-01-17 | sub | proposed
+[^cn-4]: @bob | 2024-01-17 | sub | proposed
     supersedes: ct-1
     @bob 2024-01-17: gRPC is better suited for internal services.
 ```
@@ -134,14 +134,14 @@ The cross-references (`supersedes:` / `superseded-by:`) link the two changes so 
 An HTML comment on the first line declares tracking status:
 
 ```
-<!-- ctrcks.com/v1: tracked -->
+<!-- changedown.com/v1: tracked -->
 ```
 
 Tools auto-insert this on the first tracked edit. If the file has YAML frontmatter, the header goes after the closing `---`.
 
 ## How Concurrent Edits Work
 
-ChangeTracks is designed for asynchronous collaboration, not real-time co-editing.
+ChangeDown is designed for asynchronous collaboration, not real-time co-editing.
 
 **What merges cleanly without coordination:**
 
@@ -162,7 +162,7 @@ Resolved changes can be trimmed from the file. Accepted insertions become plain 
 Git preserves everything removed. Reconstruction is standard VCS archaeology:
 
 ```bash
-git log -p --all -S '[^ct-' -- document.md
+git log -p --all -S '[^cn-' -- document.md
 ```
 
 No special archive syntax. Compaction is just editing — a tool can offer "clean up changes older than 30 days" as a convenience, but it generates a normal edit for the user to review and commit.
@@ -176,9 +176,9 @@ The API should use GraphQL for the public interface
 and gRPC for internal service communication.
 
 Authentication uses OAuth 2.0 with JWT tokens for
-all endpoints. {==Rate limiting is set to 100 req/min==}{>>seems low<<}[^ct-3].
+all endpoints. {==Rate limiting is set to 100 req/min==}{>>seems low<<}[^cn-3].
 
-[^ct-1]: @alice | 2024-01-15 | sub | accepted
+[^cn-1]: @alice | 2024-01-15 | sub | accepted
     approved: @eve 2024-01-20
     approved: @bob 2024-01-21
     context: "The API should use {REST} for the public interface"
@@ -187,13 +187,13 @@ all endpoints. {==Rate limiting is set to 100 req/min==}{>>seems low<<}[^ct-3].
       @dave 2024-01-17: Fair point. Benchmarks are convincing.
     resolved @dave 2024-01-17
 
-[^ct-2]: @alice | 2024-01-15 | ins | accepted
+[^cn-2]: @alice | 2024-01-15 | ins | accepted
     approved: @eve 2024-01-20
     @bob 2024-01-16: What about latency for gRPC?
       @alice 2024-01-17: Sub-millisecond on our test cluster.
     resolved @bob 2024-01-18
 
-[^ct-3]: @carol | 2024-01-17 | highlight | proposed
+[^cn-3]: @carol | 2024-01-17 | highlight | proposed
     @carol 2024-01-17: 100/min is low. Our traffic averages 80/min with spikes to 200.
       @alice 2024-01-18: Depends on infrastructure costs. @dave can you model this?
       @dave 2024-01-19: I can run load tests next week.

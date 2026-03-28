@@ -5,7 +5,7 @@ import * as path from 'node:path';
  * --- Fork divergence from hooks-impl PendingEdit ---
  *
  * A sibling PendingEdit implementation exists at:
- *   `changetracks-plugin/hooks-impl/src/pending.ts`
+ *   `changedown-plugin/hooks-impl/src/pending.ts`
  *
  * The hooks-impl version has additional fields that this version does NOT need:
  *   - `tool_name?: string`  — the Claude Code tool that produced the edit
@@ -25,7 +25,7 @@ import * as path from 'node:path';
  *
  * If you modify the core read/write/append logic, check both files:
  *   - packages/opencode-plugin/src/pending.ts          (this file)
- *   - changetracks-plugin/hooks-impl/src/pending.ts     (Claude Code hooks)
+ *   - changedown-plugin/hooks-impl/src/pending.ts     (Claude Code hooks)
  */
 export interface PendingEdit {
   file: string;
@@ -38,7 +38,7 @@ export interface PendingEdit {
 }
 
 function pendingPath(projectDir: string): string {
-  return path.join(projectDir, '.changetracks', 'pending.json');
+  return path.join(projectDir, '.changedown', 'pending.json');
 }
 
 export async function readPendingEdits(projectDir: string): Promise<PendingEdit[]> {

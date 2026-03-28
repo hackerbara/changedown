@@ -1,4 +1,5 @@
-import { toChangeTracksAuthor } from '../shared/author-mapper.js';
+import { toChangeDownAuthor } from '../shared/author-mapper.js';
+import { basename } from '../shared/basename.js';
 import { toShortDate } from '../shared/date-utils.js';
 import type { ImportStats } from '../types.js';
 import type { EnrichmentMap, RevisionEnrichment } from './correlation-engine.js';
@@ -49,7 +50,7 @@ export function astToMarkup(
   options: AstToMarkupOptions
 ): { markdown: string; stats: ImportStats } {
   // Per-call mutable state
-  let ctIdCounter = 0;
+  let cnIdCounter = 0;
   const footnotes: Footnote[] = [];
   let currentBlockPath: number[] = [];
   let currentSpanIndex = 0;
@@ -64,8 +65,8 @@ export function astToMarkup(
   const consumedCommentIds = new Set<string>();
   const consumedCommentScId = new Map<string, number>();
 
-  function nextCtId(): number {
-    return ++ctIdCounter;
+  function nextCnId(): number {
+    return ++cnIdCounter;
   }
 
   function addChangeFootnote(
@@ -75,10 +76,10 @@ export function astToMarkup(
     status: string,
     imageDimensions?: { width: string; height: string },
   ): number {
-    const id = nextCtId();
+    const id = nextCnId();
     const fn: Footnote = {
       id,
-      author: toChangeTracksAuthor(author),
+      author: toChangeDownAuthor(author),
       date: toShortDate(date),
       type,
       status: status || 'proposed',
@@ -92,16 +93,16 @@ export function astToMarkup(
   }
 
   function addCommentToFootnote(
-    ctId: number,
+    cnId: number,
     author: string,
     date: string,
     text: string,
     depth: number
   ): void {
-    const fn = footnotes.find((f) => f.id === ctId);
+    const fn = footnotes.find((f) => f.id === cnId);
     if (fn) {
       fn.comments.push({
-        author: toChangeTracksAuthor(author),
+        author: toChangeDownAuthor(author),
         date: toShortDate(date),
         text,
         depth: depth || 0,
@@ -114,16 +115,16 @@ export function astToMarkup(
     date: string,
     text: string
   ): number {
-    const id = nextCtId();
+    const id = nextCnId();
     footnotes.push({
       id,
-      author: toChangeTracksAuthor(author),
+      author: toChangeDownAuthor(author),
       date: toShortDate(date),
       type: 'comment',
       status: 'proposed',
       comments: [
         {
-          author: toChangeTracksAuthor(author),
+          author: toChangeDownAuthor(author),
           date: toShortDate(date),
           text,
           depth: 0,
@@ -133,8 +134,8 @@ export function astToMarkup(
     return id;
   }
 
-  function addFootnoteExtraLines(ctId: number, lines: string[]): void {
-    const fn = footnotes.find((f) => f.id === ctId);
+  function addFootnoteExtraLines(cnId: number, lines: string[]): void {
+    const fn = footnotes.find((f) => f.id === cnId);
     if (fn) {
       if (!fn.extraLines) fn.extraLines = [];
       fn.extraLines.push(...lines);
@@ -180,11 +181,11 @@ export function astToMarkup(
     return lines;
   }
 
-  function addImagePositionMetadata(ctId: number, src: string): void {
-    const basename = src.split('/').pop() || '';
-    const imgEnrichment = options.enrichment?.getImageEnrichment(basename);
+  function addImagePositionMetadata(cnId: number, src: string): void {
+    const imgBasename = basename(src);
+    const imgEnrichment = options.enrichment?.getImageEnrichment(imgBasename);
     if (imgEnrichment && !imgEnrichment.inline) {
-      addFootnoteExtraLines(ctId, buildImagePositionLines(imgEnrichment));
+      addFootnoteExtraLines(cnId, buildImagePositionLines(imgEnrichment));
     }
   }
 
@@ -300,12 +301,12 @@ export function astToMarkup(
             const src = imageNodeDel.c[2][0];
             const widthAttr = imgAttrs.find(([k]: [string, string]) => k === 'width');
             const heightAttr = imgAttrs.find(([k]: [string, string]) => k === 'height');
-            const ctId = addChangeFootnote(
+            const cnId = addChangeFootnote(
               meta.author, meta.date, 'del', 'proposed',
               widthAttr && heightAttr ? { width: widthAttr[1], height: heightAttr[1] } : undefined,
             );
-            addImagePositionMetadata(ctId, src);
-            result += `{--![${alt}](${src})--}[^ct-${ctId}]`;
+            addImagePositionMetadata(cnId, src);
+            result += `{--![${alt}](${src})--}[^cn-${cnId}]`;
             currentSpanIndex++;
             i++;
             continue;
@@ -317,13 +318,13 @@ export function astToMarkup(
             // Emit one CriticMarkup span per boundary element
             for (const boundary of delEnrichment.splitBoundaries) {
               const text = renderFormattedText(boundary.runs);
-              const ctId = addChangeFootnote(
+              const cnId = addChangeFootnote(
                 boundary.author,
                 boundary.date,
                 'del',
                 'proposed'
               );
-              result += `{--${text}--}[^ct-${ctId}]`;
+              result += `{--${text}--}[^cn-${cnId}]`;
             }
             currentSpanIndex++;
             i++;
@@ -333,16 +334,16 @@ export function astToMarkup(
           // Check for merge-detected diagnostic
           if (delEnrichment && delEnrichment.mergeDetected) {
             const delText = renderFormattedText(delEnrichment.runs);
-            const ctId = addChangeFootnote(
+            const cnId = addChangeFootnote(
               meta.author,
               meta.date,
               'del',
               'proposed'
             );
-            addFootnoteExtraLines(ctId, [
+            addFootnoteExtraLines(cnId, [
               `merge-detected: ${delEnrichment.mergeDetected} original revisions`,
             ]);
-            result += `{--${delText}--}[^ct-${ctId}]`;
+            result += `{--${delText}--}[^cn-${cnId}]`;
             currentSpanIndex++;
             i++;
             continue;
@@ -365,13 +366,13 @@ export function astToMarkup(
                 const insText = getEnrichedText(
                   getSpanContent(insNode)
                 );
-                const ctId = addChangeFootnote(
+                const cnId = addChangeFootnote(
                   meta.author,
                   meta.date,
                   'sub',
                   'proposed'
                 );
-                result += `{~~${delText}~>${insText}~~}[^ct-${ctId}]`;
+                result += `{~~${delText}~>${insText}~~}[^cn-${cnId}]`;
                 currentSpanIndex++;
 
                 // Process skipped comment spans
@@ -384,14 +385,14 @@ export function astToMarkup(
                         getSpanContent(cNode)
                       );
                       addCommentToFootnote(
-                        ctId,
+                        cnId,
                         cMeta.author,
                         cMeta.date,
                         commentText,
                         0
                       );
                       consumedCommentIds.add(cMeta.id);
-                      consumedCommentScId.set(cMeta.id, ctId);
+                      consumedCommentScId.set(cMeta.id, cnId);
                     }
                     if (cCls.includes('comment-end')) {
                       const cMeta = getSpanKvs(cNode);
@@ -407,13 +408,13 @@ export function astToMarkup(
           }
 
           // Standalone deletion
-          const ctId = addChangeFootnote(
+          const cnId = addChangeFootnote(
             meta.author,
             meta.date,
             'del',
             'proposed'
           );
-          result += `{--${delText}--}[^ct-${ctId}]`;
+          result += `{--${delText}--}[^cn-${cnId}]`;
           currentSpanIndex++;
           i++;
           continue;
@@ -432,12 +433,12 @@ export function astToMarkup(
             const src = imageNodeIns.c[2][0];
             const widthAttr = imgAttrs.find(([k]: [string, string]) => k === 'width');
             const heightAttr = imgAttrs.find(([k]: [string, string]) => k === 'height');
-            const ctId = addChangeFootnote(
+            const cnId = addChangeFootnote(
               meta.author, meta.date, 'ins', 'proposed',
               widthAttr && heightAttr ? { width: widthAttr[1], height: heightAttr[1] } : undefined,
             );
-            addImagePositionMetadata(ctId, src);
-            result += `{++![${alt}](${src})++}[^ct-${ctId}]`;
+            addImagePositionMetadata(cnId, src);
+            result += `{++![${alt}](${src})++}[^cn-${cnId}]`;
             currentSpanIndex++;
             i++;
             continue;
@@ -449,13 +450,13 @@ export function astToMarkup(
             // Emit one CriticMarkup span per boundary element
             for (const boundary of enrichment.splitBoundaries) {
               const text = renderFormattedText(boundary.runs);
-              const ctId = addChangeFootnote(
+              const cnId = addChangeFootnote(
                 boundary.author,
                 boundary.date,
                 'ins',
                 'proposed'
               );
-              result += `{++${text}++}[^ct-${ctId}]`;
+              result += `{++${text}++}[^cn-${cnId}]`;
             }
             currentSpanIndex++;
             i++;
@@ -465,29 +466,29 @@ export function astToMarkup(
           // Check for merge-detected diagnostic
           if (enrichment && enrichment.mergeDetected) {
             const text = renderFormattedText(enrichment.runs);
-            const ctId = addChangeFootnote(
+            const cnId = addChangeFootnote(
               meta.author,
               meta.date,
               'ins',
               'proposed'
             );
-            addFootnoteExtraLines(ctId, [
+            addFootnoteExtraLines(cnId, [
               `merge-detected: ${enrichment.mergeDetected} original revisions`,
             ]);
-            result += `{++${text}++}[^ct-${ctId}]`;
+            result += `{++${text}++}[^cn-${cnId}]`;
             currentSpanIndex++;
             i++;
             continue;
           }
 
           const text = getEnrichedText(content);
-          const ctId = addChangeFootnote(
+          const cnId = addChangeFootnote(
             meta.author,
             meta.date,
             'ins',
             'proposed'
           );
-          result += `{++${text}++}[^ct-${ctId}]`;
+          result += `{++${text}++}[^cn-${cnId}]`;
           currentSpanIndex++;
           i++;
           continue;
@@ -513,7 +514,7 @@ export function astToMarkup(
             const commentFromXml = options.commentData?.allComments.get(meta.id);
             const commentText = commentFromXml?.text
               || renderInlineContent(children);
-            const ctId = addStandaloneCommentFootnote(
+            const cnId = addStandaloneCommentFootnote(
               meta.author || commentFromXml?.author || 'Unknown',
               meta.date || commentFromXml?.date || '',
               commentText
@@ -525,7 +526,7 @@ export function astToMarkup(
                 const reply = options.commentData?.allComments.get(replyId);
                 if (reply) {
                   addCommentToFootnote(
-                    ctId,
+                    cnId,
                     reply.author,
                     reply.date,
                     reply.text,
@@ -534,9 +535,9 @@ export function astToMarkup(
                 }
               }
             }
-            result += `[^ct-${ctId}]`;
+            result += `[^cn-${cnId}]`;
             consumedCommentIds.add(meta.id);
-            consumedCommentScId.set(meta.id, ctId);
+            consumedCommentScId.set(meta.id, cnId);
           } else {
             // Normal case: store and wait for sibling comment-end
             const commentText = renderInlineContent(children);
@@ -560,14 +561,14 @@ export function astToMarkup(
           const meta = getSpanKvs(node);
           if (consumedCommentIds.has(meta.id)) {
             // Attach replies to the consumed footnote
-            const parentCtId = consumedCommentScId.get(meta.id);
+            const parentCnId = consumedCommentScId.get(meta.id);
             const replies = options.commentData?.replies.get(meta.id);
-            if (replies && replies.length > 0 && parentCtId) {
+            if (replies && replies.length > 0 && parentCnId) {
               for (const replyId of replies) {
                 const reply = options.commentData?.allComments.get(replyId);
                 if (reply) {
                   addCommentToFootnote(
-                    parentCtId,
+                    parentCnId,
                     reply.author,
                     reply.date,
                     reply.text,
@@ -581,7 +582,7 @@ export function astToMarkup(
           }
           const commentInfo = wordComments.get(meta.id);
           if (commentInfo) {
-            const ctId = addStandaloneCommentFootnote(
+            const cnId = addStandaloneCommentFootnote(
               commentInfo.author,
               commentInfo.date,
               commentInfo.text
@@ -593,7 +594,7 @@ export function astToMarkup(
                 const reply = options.commentData?.allComments.get(replyId);
                 if (reply) {
                   addCommentToFootnote(
-                    ctId,
+                    cnId,
                     reply.author,
                     reply.date,
                     reply.text,
@@ -602,7 +603,7 @@ export function astToMarkup(
                 }
               }
             }
-            result += `[^ct-${ctId}]`;
+            result += `[^cn-${cnId}]`;
           }
           activeRanges.delete(meta.id);
           i++;
@@ -620,17 +621,17 @@ export function astToMarkup(
 
         // Check if there's any metadata worth preserving
         const hasDimensions = !!(widthAttr && heightAttr);
-        const basename = src.split('/').pop() || '';
-        const imgEnrichment = options.enrichment?.getImageEnrichment(basename);
+        const imgBasename = basename(src);
+        const imgEnrichment = options.enrichment?.getImageEnrichment(imgBasename);
         const hasPositionMetadata = !!(imgEnrichment && !imgEnrichment.inline);
 
         if (hasDimensions || hasPositionMetadata) {
-          const ctId = addChangeFootnote(
+          const cnId = addChangeFootnote(
             '@system', new Date().toISOString(), 'image', 'proposed',
             hasDimensions ? { width: widthAttr![1], height: heightAttr![1] } : undefined,
           );
-          addImagePositionMetadata(ctId, src);
-          result += `{==![${alt}](${src})==}[^ct-${ctId}]`;
+          addImagePositionMetadata(cnId, src);
+          result += `{==![${alt}](${src})==}[^cn-${cnId}]`;
         } else {
           result += `![${alt}](${src})`;
         }
@@ -906,7 +907,7 @@ export function astToMarkup(
     const lines: string[] = [];
     for (const fn of footnotes) {
       lines.push(
-        `[^ct-${fn.id}]: ${fn.author} | ${fn.date} | ${fn.type} | ${fn.status}`
+        `[^cn-${fn.id}]: ${fn.author} | ${fn.date} | ${fn.type} | ${fn.status}`
       );
 
       if (fn.imageDimensions) {
@@ -936,7 +937,7 @@ export function astToMarkup(
   // Execute
   // -------------------------------------------------------------------------
 
-  const header = '<!-- ctrcks.com/v1: tracked -->\n\n';
+  const header = '<!-- changedown.com/v1: tracked -->\n\n';
   const markdown = renderBlocks(ast.blocks);
   const footnotesText = renderFootnotes();
 

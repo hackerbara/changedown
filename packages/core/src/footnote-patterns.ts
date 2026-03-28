@@ -1,39 +1,39 @@
 import { findCodeZones } from './parser/code-zones.js';
 
 /**
- * Shared footnote regex patterns for ChangeTracks.
+ * Shared footnote regex patterns for ChangeDown.
  *
- * Single source of truth for all patterns matching `[^ct-N]` references
- * and `[^ct-N]: ...` definitions. Consumers import the specific pattern
+ * Single source of truth for all patterns matching `[^cn-N]` references
+ * and `[^cn-N]: ...` definitions. Consumers import the specific pattern
  * they need rather than re-inventing it inline.
  *
  * Pattern naming conventions:
  *   - `FOOTNOTE_ID_PATTERN` — the raw ID pattern string (not a RegExp), for composition
- *   - `FOOTNOTE_REF_*` — patterns for inline references `[^ct-N]`
- *   - `FOOTNOTE_DEF_*` — patterns for definition lines `[^ct-N]: ...`
+ *   - `FOOTNOTE_REF_*` — patterns for inline references `[^cn-N]`
+ *   - `FOOTNOTE_DEF_*` — patterns for definition lines `[^cn-N]: ...`
  *   - Functions returning RegExp — for /g patterns (fresh instance each call)
  */
 
 // ─── Building blocks ────────────────────────────────────────────────────────
 
 /**
- * Raw pattern string matching a footnote ID: `ct-N` or `ct-N.M`.
+ * Raw pattern string matching a footnote ID: `cn-N` or `cn-N.M`.
  * Not a RegExp — use for composing larger patterns.
  */
-export const FOOTNOTE_ID_PATTERN = 'ct-\\d+(?:\\.\\d+)?';
+export const FOOTNOTE_ID_PATTERN = 'cn-\\d+(?:\\.\\d+)?';
 
 /**
  * Raw pattern string matching the numeric portion of a footnote ID.
  * Captures the parent number in group 1: `(\\d+)`.
- * Used by scanMaxCtId to find the highest-numbered change.
+ * Used by scanMaxCnId to find the highest-numbered change.
  */
-export const FOOTNOTE_ID_NUMERIC_PATTERN = 'ct-(\\d+)(?:\\.\\d+)?';
+export const FOOTNOTE_ID_NUMERIC_PATTERN = 'cn-(\\d+)(?:\\.\\d+)?';
 
 // ─── Inline reference patterns ──────────────────────────────────────────────
 
 /**
- * Anchored footnote reference. Matches `[^ct-N]` or `[^ct-N.M]` at the
- * start of a string. Captures the ID (e.g. "ct-1", "ct-2.3") in group 1.
+ * Anchored footnote reference. Matches `[^cn-N]` or `[^cn-N.M]` at the
+ * start of a string. Captures the ID (e.g. "cn-1", "cn-2.3") in group 1.
  *
  * Used by the parser to detect refs immediately after CriticMarkup or
  * as standalone refs in the text.
@@ -43,7 +43,7 @@ export const FOOTNOTE_ID_NUMERIC_PATTERN = 'ct-(\\d+)(?:\\.\\d+)?';
 export const FOOTNOTE_REF_ANCHORED = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]`);
 
 /**
- * Returns a global regex matching inline footnote refs `[^ct-N]` or `[^ct-N.M]`.
+ * Returns a global regex matching inline footnote refs `[^cn-N]` or `[^cn-N.M]`.
  * No capture groups — used for stripping refs from text.
  *
  * Returns fresh RegExp each call (/g flag has mutable lastIndex).
@@ -53,8 +53,8 @@ export function footnoteRefGlobal(): RegExp {
 }
 
 /**
- * Returns a global regex matching `[^ct-(N)]` with the numeric parent ID
- * captured in group 1. Used by scanMaxCtId.
+ * Returns a global regex matching `[^cn-(N)]` with the numeric parent ID
+ * captured in group 1. Used by scanMaxCnId.
  *
  * Returns fresh RegExp each call (/g flag has mutable lastIndex).
  */
@@ -66,7 +66,7 @@ export function footnoteRefNumericGlobal(): RegExp {
 
 /**
  * Simple detection: does a line start with a footnote definition?
- * Matches `[^ct-N]:` at column 0. Used for finding/skipping footnote blocks.
+ * Matches `[^cn-N]:` at column 0. Used for finding/skipping footnote blocks.
  *
  * More permissive than the full header parser — matches even if the
  * rest of the header line is malformed.
@@ -76,22 +76,22 @@ export function footnoteRefNumericGlobal(): RegExp {
 export const FOOTNOTE_DEF_START = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:`);
 
 /**
- * Even simpler detection: does a line start with `[^ct-` followed by digits?
+ * Even simpler detection: does a line start with `[^cn-` followed by digits?
  * Used by committed-text.ts findFootnoteLineIndices for fast scanning.
- * Matches lines like `[^ct-1]:` and also `[^ct-1.2]:`.
+ * Matches lines like `[^cn-1]:` and also `[^cn-1.2]:`.
  *
  * Non-global, no capture groups.
  */
-export const FOOTNOTE_DEF_START_QUICK = /^\[\^ct-\d+/;
+export const FOOTNOTE_DEF_START_QUICK = /^\[\^cn-\d+/;
 
 /**
  * Full footnote definition header with lenient whitespace (`\s*` around pipes).
  * Requires `@` prefix on author field.
  *
- * Format: `[^ct-N]: @author | date | type | status`
+ * Format: `[^cn-N]: @author | date | type | status`
  *
  * Captures:
- *   1: ID (e.g. "ct-1", "ct-2.3")
+ *   1: ID (e.g. "cn-1", "cn-2.3")
  *   2: author without @ (e.g. "alice", "ai:claude-opus-4.6")
  *   3: date (e.g. "2026-02-17")
  *   4: type (e.g. "sub", "ins")
@@ -109,11 +109,11 @@ export const FOOTNOTE_DEF_LENIENT = new RegExp(
  * Full footnote definition header with strict whitespace (`\s+` around pipes).
  * Author field is optional (captured when present with `@` prefix).
  *
- * Format: `[^ct-N]: @author | date | type | status`
- *    or:  `[^ct-N]: date | type | status`
+ * Format: `[^cn-N]: @author | date | type | status`
+ *    or:  `[^cn-N]: date | type | status`
  *
  * Captures:
- *   1: ID (e.g. "ct-1", "ct-2.3")
+ *   1: ID (e.g. "cn-1", "cn-2.3")
  *   2: author with @ prefix or undefined (e.g. "@alice")
  *   3: date (e.g. "2026-02-17")
  *   4: type word (e.g. "sub", "ins")
@@ -132,10 +132,10 @@ export const FOOTNOTE_DEF_STRICT = new RegExp(
  * Author/date/type fields are matched but not captured.
  * Uses `\s+` whitespace.
  *
- * Format: `[^ct-N]: @author | date | type | status`
+ * Format: `[^cn-N]: @author | date | type | status`
  *
  * Captures:
- *   1: ID (e.g. "ct-1")
+ *   1: ID (e.g. "cn-1")
  *   2: status word (e.g. "proposed", "accepted", "rejected", "pending")
  *
  * Used by accept-reject.ts for updating footnote status fields.
@@ -181,7 +181,7 @@ export const FOOTNOTE_L3_EDIT_OP = /^ {4}(\d+):([0-9a-fA-F]{2,}) (.*)/;
  * Auto-detect whether text is in L3 (footnote-native) format.
  *
  * L3 format has:
- * 1. At least one `[^ct-N]:` footnote definition
+ * 1. At least one `[^cn-N]:` footnote definition
  * 2. No inline CriticMarkup delimiters in the body (before footnotes)
  * 3. At least one footnote body line with LINE:HASH {edit-op} format
  *
@@ -247,7 +247,7 @@ export function unescapeCtxString(s: string): string {
 /**
  * Split a document's lines into body and footnote sections.
  *
- * Finds the first footnote definition line (`[^ct-N]:`), trims trailing
+ * Finds the first footnote definition line (`[^cn-N]:`), trims trailing
  * blank lines from the body, and returns both sections as line arrays.
  * If no footnotes exist, all lines go to body (with trailing blanks trimmed).
  *

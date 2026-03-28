@@ -7,7 +7,7 @@ export interface ExtDocumentState {
   /** Previous document text for deletion extraction during tracking */
   shadow: string;
 
-  /** Per-document ct-ID allocator */
+  /** Per-document cn-ID allocator */
   nextScId: number;
 
   /** LSP-sourced tracking state */
@@ -28,6 +28,9 @@ export interface ExtDocumentState {
    * Cross-process invariant: if LSP crashes between start/complete, stays true.
    */
   isConverting: boolean;
+
+  /** Cached L3 format detection. Updated on promotion and text changes. */
+  isL3: boolean;
 }
 
 export function createExtDocumentState(version: number, text: string): ExtDocumentState {
@@ -40,5 +43,6 @@ export function createExtDocumentState(version: number, text: string): ExtDocume
     userTrackingOverride: undefined,
     lastCursorOffset: 0,
     isConverting: false,
+    isL3: false,
   };
 }

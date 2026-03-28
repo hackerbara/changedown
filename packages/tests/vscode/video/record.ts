@@ -1,5 +1,5 @@
 /**
- * Video Recording Harness for ChangeTracks Demo Videos
+ * Video Recording Harness for ChangeDown Demo Videos
  *
  * Launches VS Code Electron via Playwright with video-optimized settings
  * (1920x1080, smooth cursor, dark theme) and provides human-speed helpers
@@ -96,8 +96,8 @@ export async function beat(page: Page, ms: number = 800): Promise<void> {
  * Returns true if the command acknowledged successfully within 5 seconds.
  */
 export async function command(page: Page, commandId: string): Promise<boolean> {
-    const inputPath = path.join(os.tmpdir(), 'changetracks-test-exec-input.json');
-    const resultPath = path.join(os.tmpdir(), 'changetracks-test-exec.json');
+    const inputPath = path.join(os.tmpdir(), 'changedown-test-exec-input.json');
+    const resultPath = path.join(os.tmpdir(), 'changedown-test-exec.json');
 
     // Clean stale result
     try { fs.unlinkSync(resultPath); } catch { /* ignore */ }
@@ -137,9 +137,9 @@ export async function positionCursor(
     target: string,
     position: 'before' | 'after' = 'before'
 ): Promise<boolean> {
-    const inputPath = path.join(os.tmpdir(), 'changetracks-test-position-cursor-input.json');
+    const inputPath = path.join(os.tmpdir(), 'changedown-test-position-cursor-input.json');
     fs.writeFileSync(inputPath, JSON.stringify({ target, position }));
-    return command(page, 'changetracks._testPositionCursor');
+    return command(page, 'changedown._testPositionCursor');
 }
 
 /**
@@ -149,9 +149,9 @@ export async function positionCursor(
  * @param target - The text string to find and select in the document
  */
 export async function selectText(page: Page, target: string): Promise<boolean> {
-    const inputPath = path.join(os.tmpdir(), 'changetracks-test-select-text-input.json');
+    const inputPath = path.join(os.tmpdir(), 'changedown-test-select-text-input.json');
     fs.writeFileSync(inputPath, JSON.stringify({ target }));
-    return command(page, 'changetracks._testSelectText');
+    return command(page, 'changedown._testSelectText');
 }
 
 // ─── VS Code Launch ──────────────────────────────────────────────
@@ -181,14 +181,14 @@ const VIDEO_SETTINGS: Record<string, unknown> = {
     'update.mode': 'none',
     'extensions.autoCheckUpdates': false,
     'editor.codeLens': true,
-    'changetracks.authorColors': 'auto',
-    'changetracks.author': 'you',
-    'changetracks.clickToShowComments': true,
-    'changetracks.trackingMode': true,
-    'changetracks.editBoundary.pauseThresholdMs': 2000,
-    'changetracks.showWalkthroughOnStartup': 'never',
-    'changetracks.confirmBulkThreshold': 0,
-    'changetracks.showDelimiters': true,
+    'changedown.authorColors': 'auto',
+    'changedown.author': 'you',
+    'changedown.clickToShowComments': true,
+    'changedown.trackingMode': true,
+    'changedown.editBoundary.pauseThresholdMs': 2000,
+    'changedown.showWalkthroughOnStartup': 'never',
+    'changedown.confirmBulkThreshold': 0,
+    'changedown.showDelimiters': true,
 };
 
 /**
@@ -279,7 +279,7 @@ export async function launchForVideo(fixtureName: string, settingsOverrides?: Re
         env: {
             ...process.env,
             VSCODE_SKIP_PRELAUNCH: '1',
-            CHANGETRACKS_TEST_INSTANCE_ID: instanceId,
+            CHANGEDOWN_TEST_INSTANCE_ID: instanceId,
         },
     });
 

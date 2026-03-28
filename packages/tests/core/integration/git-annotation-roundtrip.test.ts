@@ -4,7 +4,7 @@ import {
   annotateSidecar,
   Workspace,
   TextEdit,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 /**
  * Applies TextEdits to a string. Edits are applied in reverse offset order
@@ -97,8 +97,8 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       // Step 1: Annotate
       const annotated = annotateSidecar(oldText, newText, 'python');
       expect(annotated !== undefined).toBeTruthy();
-      expect(annotated!.includes('# ct-')).toBeTruthy();
-      expect(annotated!.includes('# -- ChangeTracks')).toBeTruthy();
+      expect(annotated!.includes('# cn-')).toBeTruthy();
+      expect(annotated!.includes('# -- ChangeDown')).toBeTruthy();
 
       // Step 2: Parse
       const doc = ws.parse(annotated!, 'python');
@@ -124,8 +124,8 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
       // Step 1: Annotate
       const annotated = annotateSidecar(oldText, newText, 'python');
       expect(annotated !== undefined).toBeTruthy();
-      expect(annotated!.includes('# ct-')).toBeTruthy();
-      expect(annotated!.includes('# -- ChangeTracks')).toBeTruthy();
+      expect(annotated!.includes('# cn-')).toBeTruthy();
+      expect(annotated!.includes('# -- ChangeDown')).toBeTruthy();
 
       // Step 2: Parse
       const doc = ws.parse(annotated!, 'python');
@@ -238,7 +238,7 @@ describe('Git Annotation Roundtrip - End-to-End Integration', () => {
 
       const annotated = annotateSidecar(oldText, newText, 'typescript');
       expect(annotated !== undefined).toBeTruthy();
-      expect(annotated!.includes('// ct-')).toBeTruthy();
+      expect(annotated!.includes('// cn-')).toBeTruthy();
 
       const doc = ws.parse(annotated!, 'typescript');
       const edits = ws.acceptAll(doc, annotated!, 'typescript');

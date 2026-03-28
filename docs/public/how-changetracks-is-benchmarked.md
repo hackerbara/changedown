@@ -1,10 +1,10 @@
-# How ChangeTracks Is Benchmarked
+# How ChangeDown Is Benchmarked
 
 These are exploratory findings from early benchmarking, not confirmatory evidence. Sample sizes are small (1--3 runs per cell). Two models were tested. The benchmarks measured agent editing efficiency and accuracy across different interaction surfaces (each surface is a distinct interface an agent uses to read and edit a tracked file; see [glossary](glossary.md)) -- they did not measure the protocol's primary value proposition, which is human-reviewable change traces with attached reasoning.
 
 ## What We Measured and Why
 
-ChangeTracks provides multiple ways for an AI agent to interact with a tracked file. We call each way a **surface**. The benchmark suite tests 8 surfaces (A through H) that represent different levels of integration with the ChangeTracks tracking protocol, from no protocol at all (raw editing) to full hash-addressed change tracking:
+ChangeDown provides multiple ways for an AI agent to interact with a tracked file. We call each way a **surface**. The benchmark suite tests 8 surfaces (A through H) that represent different levels of integration with the ChangeDown tracking protocol, from no protocol at all (raw editing) to full hash-addressed change tracking:
 
 | Surface | Description |
 |---------|-------------|
@@ -149,7 +149,7 @@ This section is intentionally longer and more prominent than the headline findin
 
 The benchmark data supports shipping both the [Classic and Compact protocols](glossary.md) rather than choosing one.
 
-**Classic (F)** achieved the highest reliability across all tasks tested. No quality failures observed on Sonnet (N=1 per task except task8). 100% accuracy on the cleanest benchmark (task8, single verified run). The `old_text`/`new_text` interface carries natural disambiguation context and requires no spatial parsing from the agent. It uses more tokens and tool calls than Compact, but the overhead is predictable. Classic is configured via `[protocol] mode = "classic"` in [`.changetracks/config.toml`](glossary.md).
+**Classic (F)** achieved the highest reliability across all tasks tested. No quality failures observed on Sonnet (N=1 per task except task8). 100% accuracy on the cleanest benchmark (task8, single verified run). The `old_text`/`new_text` interface carries natural disambiguation context and requires no spatial parsing from the agent. It uses more tokens and tool calls than Compact, but the overhead is predictable. Classic is configured via `[protocol] mode = "classic"` in [`.changedown/config.toml`](glossary.md).
 
 **Compact (G)** achieved the highest efficiency in the tested scenarios. On task8, it used ~8x fewer tool calls and completed ~3x faster than the baseline. The hash-addressed `at`+`op` interface is concise and rewards capable models. It requires stronger spatial parsing and is less forgiving of server-side edge cases. Compact is configured via `[protocol] mode = "compact"`.
 
@@ -175,4 +175,4 @@ npx tsx packages/benchmarks/harness/verify.ts --results <results-dir> --all
 
 The verifier regex-matches seeded errors against golden answer files, computes per-category accuracy breakdowns, and detects regressions (unexpected line differences vs golden). Assertion definitions: `packages/benchmarks/fixtures/<task>/assertions.json`. Golden files exist for task4, task5, and task8.
 
-Prerequisites: Node.js 20+, an OpenCode-compatible API key, and the ChangeTracks plugin installed (for surfaces B through H). The harness creates isolated temp workspaces with their own git repos; runs do not modify the source tree.
+Prerequisites: Node.js 20+, an OpenCode-compatible API key, and the ChangeDown plugin installed (for surfaces B through H). The harness creates isolated temp workspaces with their own git repos; runs do not modify the source tree.

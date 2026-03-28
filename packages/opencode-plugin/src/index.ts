@@ -8,16 +8,16 @@ import { toolExecuteBeforeHook } from './hooks/tool-execute-before.js';
 import { toolExecuteAfterHook } from './hooks/tool-execute-after.js';
 import { stopHook } from './hooks/stop.js';
 
-const ChangeTracksPlugin: Plugin = async (ctx) => {
+const ChangeDownPlugin: Plugin = async (ctx) => {
   const { directory, worktree, project, client } = ctx;
 
-  const loadMessage = `ChangeTracks plugin loaded (project: ${project?.name ?? 'unknown'}, directory: ${directory})`;
+  const loadMessage = `ChangeDown plugin loaded (project: ${project?.name ?? 'unknown'}, directory: ${directory})`;
   if (client?.app?.log) {
     await client.app.log({
-      body: { service: 'changetracks', level: 'info', message: loadMessage, extra: { directory, project: project?.name } },
+      body: { service: 'changedown', level: 'info', message: loadMessage, extra: { directory, project: project?.name } },
     });
   } else {
-    console.log(`[ChangeTracks] ${loadMessage}`);
+    console.log(`[ChangeDown] ${loadMessage}`);
   }
 
   return {
@@ -62,20 +62,20 @@ const ChangeTracksPlugin: Plugin = async (ctx) => {
       );
     },
 
-    // Hook: Add ChangeTracks MCP server, skills, and instructions to OpenCode config (explicit by default; opt-out via .opencode/changetracks.json)
+    // Hook: Add ChangeDown MCP server, skills, and instructions to OpenCode config (explicit by default; opt-out via .opencode/changedown.json)
     config: async (input: ConfigInput) => {
       const pluginConfig = await loadOpencodePluginConfig(directory);
       const pluginRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 
       if (!input.mcp) input.mcp = {};
-      if (!(input.mcp as Record<string, unknown>)['changetracks']) {
+      if (!(input.mcp as Record<string, unknown>)['changedown']) {
         const require = createRequire(import.meta.url);
-        const pkgRoot = path.dirname(require.resolve('@changetracks/mcp/package.json'));
+        const pkgRoot = path.dirname(require.resolve('@changedown/mcp/package.json'));
         const resolvedPath = path.join(pkgRoot, 'dist', 'index.js');
-        (input.mcp as Record<string, unknown>)['changetracks'] = {
+        (input.mcp as Record<string, unknown>)['changedown'] = {
           type: 'local',
           command: ['node', resolvedPath],
-          environment: { CHANGETRACKS_PROJECT_DIR: directory },
+          environment: { CHANGEDOWN_PROJECT_DIR: directory },
         };
       }
 
@@ -102,8 +102,8 @@ const ChangeTracksPlugin: Plugin = async (ctx) => {
   };
 };
 
-export default ChangeTracksPlugin;
-export { ChangeTracksPlugin };
+export default ChangeDownPlugin;
+export { ChangeDownPlugin };
 
 // Re-export types for consumers
 export type { Plugin, HookContext } from './types/opencode-plugin.js';

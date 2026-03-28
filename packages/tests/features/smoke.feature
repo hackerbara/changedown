@@ -15,7 +15,7 @@ Feature: Smoke test
       | new_text   | A new paragraph.         |
       | insert_after | This is a test document. |
       | reasoning  | Add introductory content |
-    Then the response contains change_id "ct-1"
+    Then the response contains change_id "cn-1"
     And the response type is "ins"
     And the file contains "{++A new paragraph.++}"
-    And the file contains a footnote "[^ct-1]" with status "proposed"
+    And the file contains a footnote "[^cn-1]" with status "proposed"

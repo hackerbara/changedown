@@ -1,11 +1,11 @@
 import * as fs from 'node:fs/promises';
-import { parseForFormat, ChangeType, ChangeNode } from '@changetracks/core';
-import type { VirtualDocument } from '@changetracks/core';
+import { parseForFormat, ChangeType, ChangeNode } from '@changedown/core';
+import type { VirtualDocument } from '@changedown/core';
 import { errorResult } from '../shared/error-result.js';
 import { isFileInScope } from '../config.js';
 import { ConfigResolver } from '../config-resolver.js';
 import { SessionState } from '../state.js';
-import { findFootnoteBlock, parseFootnoteHeader } from '@changetracks/core';
+import { findFootnoteBlock, parseFootnoteHeader } from '@changedown/core';
 import { toRelativePath } from '../path-utils.js';
 
 /**
@@ -46,12 +46,12 @@ export const listChangesTool = {
       },
       change_id: {
         type: 'string',
-        description: "Single change ID to fetch details for (e.g., 'ct-7'). Implies detail=full if not set.",
+        description: "Single change ID to fetch details for (e.g., 'cn-7'). Implies detail=full if not set.",
       },
       change_ids: {
         type: 'array',
         items: { type: 'string' },
-        description: "Batch of change IDs to fetch details for (e.g., ['ct-5', 'ct-7']). Implies detail=full if not set.",
+        description: "Batch of change IDs to fetch details for (e.g., ['cn-5', 'cn-7']). Implies detail=full if not set.",
       },
     },
     required: ['file'],
@@ -274,7 +274,7 @@ export async function handleListChanges(
 
     if (!isFileInScope(filePath, config, projectDir)) {
       return errorResult(
-        `File is not in scope for tracking: "${filePath}". Check .changetracks/config.toml include/exclude patterns.`
+        `File is not in scope for tracking: "${filePath}". Check .changedown/config.toml include/exclude patterns.`
       );
     }
 

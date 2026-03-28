@@ -1,8 +1,8 @@
-# AGENTS.md — ChangeTracks
+# AGENTS.md — ChangeDown
 
 ## What This Is
 
-ChangeTracks brings track-changes to markdown using CriticMarkup syntax.
+ChangeDown brings track-changes to markdown using CriticMarkup syntax.
 A VS Code extension with inline decorations, accept/reject workflows,
 navigation, commenting, and smart view mode. Activates on markdown files.
 
@@ -32,12 +32,12 @@ Packages consume each other in a strict dependency chain:
 
     config-types    Shared TypeScript types (consumed by all packages)
     docx            DOCX import/export (consumes core)
-    cli             `ctrk` bin + `changetracks init` wizard; exports shared engine layer (consumes core + docx)
+    cli             `cdown` bin + `changedown init` wizard; exports shared engine layer (consumes core + docx)
     tests           Cross-package integration tests (Playwright, Gherkin, Vitest)
 
     benchmarks      LLM quality harness — tests AI agents against MCP surface via OpenCode
 
-    Other packages (cursor-preview, changetracks-sublime, neovim-plugin,
+    Other packages (cursor-preview, changedown-sublime, neovim-plugin,
     opencode-plugin) exist but are less actively developed.
     They inherit from root and get their own AGENTS.md when needed.
 
@@ -96,7 +96,7 @@ tests. Agents creating worktrees should run this script after `git worktree add`
 
 ## Skills
 
-- `changetracks-testing` — Activate before writing any test code. Covers the
+- `changedown-testing` — Activate before writing any test code. Covers the
   two-tier testing model, directory map, bridge commands, and run commands.
 - `code-based-research` — Activate for deep research tasks. Guides progressive
   documentation checking, verification, and knowledge preservation.

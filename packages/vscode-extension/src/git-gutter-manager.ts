@@ -6,7 +6,7 @@ import type { Repository } from './git-integration';
 
 const execFile = promisify(execFileCb);
 
-/** Valid values for the changetracks.gutterStrategy config setting. */
+/** Valid values for the changedown.gutterStrategy config setting. */
 export const GUTTER_STRATEGY = {
   AUTO: 'auto',
   ASSUME_UNCHANGED: 'assume-unchanged',
@@ -20,7 +20,7 @@ export type GutterStrategy = typeof GUTTER_STRATEGY[keyof typeof GUTTER_STRATEGY
  * by setting `git update-index --assume-unchanged` on those files.
  *
  * When Git thinks a file hasn't changed, it contributes zero gutter decorations,
- * leaving only ChangeTracks' QuickDiffProvider decorations visible.
+ * leaving only ChangeDown' QuickDiffProvider decorations visible.
  *
  * ⚠️ Trade-off: flagged files are also invisible to git status, git add .,
  * git stash, and git diff. Flags are cleared when change count drops to 0
@@ -145,14 +145,14 @@ export class GitGutterManager implements vscode.Disposable {
     if (toFlagUris.length > 0 && !this.warningShown) {
       this.warningShown = true;
       vscode.window.showInformationMessage(
-        'ChangeTracks is managing gutter indicators for markdown files. ' +
+        'ChangeDown is managing gutter indicators for markdown files. ' +
         'Flagged files are hidden from git status/add until changes are settled. ' +
-        'Disable via changetracks.gutterStrategy setting.',
+        'Disable via changedown.gutterStrategy setting.',
         'Got it',
         'Disable'
       ).then(choice => {
         if (choice === 'Disable') {
-          vscode.workspace.getConfiguration('changetracks')
+          vscode.workspace.getConfiguration('changedown')
             .update('gutterStrategy', GUTTER_STRATEGY.OFF, vscode.ConfigurationTarget.Workspace);
         }
       });

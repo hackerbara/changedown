@@ -8,9 +8,9 @@ Feature: DX7 - Author Name Mapping
   Scenario: Hyphenated handle converts to display name
     Given CriticMarkup markdown:
       """
-      {++text++}[^ct-1]
+      {++text++}[^cn-1]
 
-      [^ct-1]: @alice-chen | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice-chen | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export stats list author "Alice Chen"
@@ -19,9 +19,9 @@ Feature: DX7 - Author Name Mapping
   Scenario: AI author handle converts correctly
     Given CriticMarkup markdown:
       """
-      {++ai text++}[^ct-1]
+      {++ai text++}[^cn-1]
 
-      [^ct-1]: @ai:claude-opus-4.6 | 2026-01-15 | ins | proposed
+      [^cn-1]: @ai:claude-opus-4.6 | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -30,9 +30,9 @@ Feature: DX7 - Author Name Mapping
   Scenario: Unknown author handle included in author stats
     Given CriticMarkup markdown:
       """
-      {++mystery text++}[^ct-1]
+      {++mystery text++}[^cn-1]
 
-      [^ct-1]: @unknown | 2026-01-15 | ins | proposed
+      [^cn-1]: @unknown | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds
@@ -43,9 +43,9 @@ Feature: DX7 - Author Name Mapping
   Scenario: Multiple hyphenated name parts
     Given CriticMarkup markdown:
       """
-      {++text++}[^ct-1]
+      {++text++}[^cn-1]
 
-      [^ct-1]: @jean-paul-sartre | 2026-01-15 | ins | proposed
+      [^cn-1]: @jean-paul-sartre | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export stats list author "Jean Paul Sartre"
@@ -54,9 +54,9 @@ Feature: DX7 - Author Name Mapping
   Scenario: Single-name author
     Given CriticMarkup markdown:
       """
-      {++text++}[^ct-1]
+      {++text++}[^cn-1]
 
-      [^ct-1]: @alice | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export stats list author "Alice"
@@ -65,9 +65,9 @@ Feature: DX7 - Author Name Mapping
   Scenario: Author preserved through export and re-import
     Given CriticMarkup markdown:
       """
-      {++hello++}[^ct-1]
+      {++hello++}[^cn-1]
 
-      [^ct-1]: @alice-chen | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice-chen | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     And I import the exported DOCX file
@@ -77,11 +77,11 @@ Feature: DX7 - Author Name Mapping
   Scenario: Multiple distinct authors in one document
     Given CriticMarkup markdown:
       """
-      {++alice text++}[^ct-1] {--bob text--}[^ct-2] {~~carol old~>carol new~~}[^ct-3]
+      {++alice text++}[^cn-1] {--bob text--}[^cn-2] {~~carol old~>carol new~~}[^cn-3]
 
-      [^ct-1]: @alice-chen | 2026-01-15 | ins | proposed
-      [^ct-2]: @bob-smith | 2026-01-15 | del | proposed
-      [^ct-3]: @carol-jones | 2026-01-15 | sub | proposed
+      [^cn-1]: @alice-chen | 2026-01-15 | ins | proposed
+      [^cn-2]: @bob-smith | 2026-01-15 | del | proposed
+      [^cn-3]: @carol-jones | 2026-01-15 | sub | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export stats list author "Alice Chen"
@@ -92,10 +92,10 @@ Feature: DX7 - Author Name Mapping
   Scenario: AI author initials differ from human initials
     Given CriticMarkup markdown:
       """
-      {++human text++}[^ct-1] {++ai text++}[^ct-2]
+      {++human text++}[^cn-1] {++ai text++}[^cn-2]
 
-      [^ct-1]: @alice-chen | 2026-01-15 | ins | proposed
-      [^ct-2]: @ai:claude-opus-4.6 | 2026-01-15 | ins | proposed
+      [^cn-1]: @alice-chen | 2026-01-15 | ins | proposed
+      [^cn-2]: @ai:claude-opus-4.6 | 2026-01-15 | ins | proposed
       """
     When I export to DOCX with mode "tracked"
     Then the export succeeds

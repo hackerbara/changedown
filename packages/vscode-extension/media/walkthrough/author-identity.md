@@ -7,7 +7,7 @@ Your author name appears in footnotes whenever you accept, reject, or comment on
 Use your name or handle:
 
 ```
-[^ct-1]: @alice | 2026-02-27 | insertion | proposed
+[^cn-1]: @alice | 2026-02-27 | insertion | proposed
     @alice 2026-02-27: Added the error handling section.
 ```
 
@@ -16,7 +16,7 @@ Use your name or handle:
 Use the `@ai:` namespace with the model name:
 
 ```
-[^ct-2]: @ai:claude-opus-4.6 | 2026-02-27 | substitution | proposed
+[^cn-2]: @ai:claude-opus-4.6 | 2026-02-27 | substitution | proposed
     @ai:claude-opus-4.6 2026-02-27: Changed REST to GraphQL for consistency.
 ```
 

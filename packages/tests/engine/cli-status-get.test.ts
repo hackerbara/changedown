@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { initHashline } from '@changetracks/core';
-import { runCommand } from 'changetracks/cli-runner';
+import { initHashline } from '@changedown/core';
+import { runCommand } from 'changedown/cli-runner';
 
 describe('sc status', () => {
   let tmpDir: string;
@@ -13,8 +13,8 @@ describe('sc status', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-status-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-status-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -69,8 +69,8 @@ describe('sc get', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cli-get-'));
-    const configDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cli-get-'));
+    const configDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(configDir, { recursive: true });
     await fs.writeFile(
       path.join(configDir, 'config.toml'),
@@ -108,14 +108,14 @@ describe('sc get', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      'The {++quick++}[^ct-1] brown fox\n\n[^ct-1]: @alice | 2026-02-15 | ins | proposed\n    reason: test change\n',
+      'The {++quick++}[^cn-1] brown fox\n\n[^cn-1]: @alice | 2026-02-15 | ins | proposed\n    reason: test change\n',
     );
-    const result = await runCommand('get', [filePath, 'ct-1'], {
+    const result = await runCommand('get', [filePath, 'cn-1'], {
       outputFormat: 'json',
       projectDir: tmpDir,
     });
     expect(result.success).toBe(true);
-    expect(result.data).toHaveProperty('change_id', 'ct-1');
+    expect(result.data).toHaveProperty('change_id', 'cn-1');
     expect(result.data).toHaveProperty('type', 'ins');
   });
 
@@ -123,9 +123,9 @@ describe('sc get', () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(
       filePath,
-      'line1\nline2\nThe {++quick++}[^ct-1] brown fox\nline4\nline5\n\n[^ct-1]: @alice | 2026-02-15 | ins | proposed\n',
+      'line1\nline2\nThe {++quick++}[^cn-1] brown fox\nline4\nline5\n\n[^cn-1]: @alice | 2026-02-15 | ins | proposed\n',
     );
-    const result = await runCommand('get', [filePath, 'ct-1', '--context', '1'], {
+    const result = await runCommand('get', [filePath, 'cn-1', '--context', '1'], {
       outputFormat: 'json',
       projectDir: tmpDir,
     });
@@ -142,7 +142,7 @@ describe('sc get', () => {
   it('returns error for nonexistent change', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, '# No changes here\n');
-    const result = await runCommand('get', [filePath, 'ct-99'], {
+    const result = await runCommand('get', [filePath, 'cn-99'], {
       outputFormat: 'json',
       projectDir: tmpDir,
     });

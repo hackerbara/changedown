@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createCodeActions, CodeActionKind, DiagnosticSeverity } from '@changetracks/lsp-server/internals';
-import type { Diagnostic } from '@changetracks/lsp-server/internals';
-import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
+import { createCodeActions, CodeActionKind, DiagnosticSeverity } from '@changedown/lsp-server/internals';
+import type { Diagnostic } from '@changedown/lsp-server/internals';
+import { ChangeNode, ChangeType, ChangeStatus } from '@changedown/core';
 
 describe('Code Actions', () => {
   describe('createCodeActions - Insertions', () => {
@@ -21,7 +21,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 6 }, end: { line: 0, character: 17 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Insertion: world',
         code: 'change-1',
         data: { changeId: 'change-1', changeType: ChangeType.Insertion }
@@ -41,7 +41,7 @@ describe('Code Actions', () => {
       expect(acceptAction.title).toBe('Accept insertion');
       expect(acceptAction.kind).toBe(CodeActionKind.QuickFix);
       expect(acceptAction.command).toBeDefined();
-      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.command!.command).toBe('changedown.acceptChange');
       expect(acceptAction.command!.arguments).toContain('change-1');
       expect(acceptAction.edit).toBeUndefined();
 
@@ -50,7 +50,7 @@ describe('Code Actions', () => {
       expect(rejectAction.title).toBe('Reject insertion');
       expect(rejectAction.kind).toBe(CodeActionKind.QuickFix);
       expect(rejectAction.command).toBeDefined();
-      expect(rejectAction.command!.command).toBe('changetracks.rejectChange');
+      expect(rejectAction.command!.command).toBe('changedown.rejectChange');
       expect(rejectAction.command!.arguments).toContain('change-1');
       expect(rejectAction.edit).toBeUndefined();
     });
@@ -73,7 +73,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 6 }, end: { line: 0, character: 17 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Deletion: world',
         code: 'change-2',
         data: { changeId: 'change-2', changeType: ChangeType.Deletion }
@@ -89,14 +89,14 @@ describe('Code Actions', () => {
       const acceptAction = perChangeActions[0];
       expect(acceptAction.title).toBe('Accept deletion');
       expect(acceptAction.command).toBeDefined();
-      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.command!.command).toBe('changedown.acceptChange');
       expect(acceptAction.edit).toBeUndefined();
 
       // Reject action
       const rejectAction = perChangeActions[1];
       expect(rejectAction.title).toBe('Reject deletion');
       expect(rejectAction.command).toBeDefined();
-      expect(rejectAction.command!.command).toBe('changetracks.rejectChange');
+      expect(rejectAction.command!.command).toBe('changedown.rejectChange');
       expect(rejectAction.edit).toBeUndefined();
     });
   });
@@ -121,7 +121,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 6 }, end: { line: 0, character: 27 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Substitution: world → universe',
         code: 'change-3',
         data: { changeId: 'change-3', changeType: ChangeType.Substitution }
@@ -137,14 +137,14 @@ describe('Code Actions', () => {
       const acceptAction = perChangeActions[0];
       expect(acceptAction.title).toBe('Accept substitution');
       expect(acceptAction.command).toBeDefined();
-      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.command!.command).toBe('changedown.acceptChange');
       expect(acceptAction.edit).toBeUndefined();
 
       // Reject action
       const rejectAction = perChangeActions[1];
       expect(rejectAction.title).toBe('Reject substitution');
       expect(rejectAction.command).toBeDefined();
-      expect(rejectAction.command!.command).toBe('changetracks.rejectChange');
+      expect(rejectAction.command!.command).toBe('changedown.rejectChange');
       expect(rejectAction.edit).toBeUndefined();
     });
 
@@ -167,7 +167,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 6 }, end: { line: 0, character: 20 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Substitution: old → new',
         code: 'change-4',
         data: { changeId: 'change-4', changeType: ChangeType.Substitution }
@@ -179,9 +179,9 @@ describe('Code Actions', () => {
       const perChangeActions = actions.filter(a => a.kind === CodeActionKind.QuickFix);
       expect(perChangeActions).toHaveLength(4);
 
-      expect(perChangeActions[0].command!.command).toBe('changetracks.acceptChange');
+      expect(perChangeActions[0].command!.command).toBe('changedown.acceptChange');
       expect(perChangeActions[0].command!.arguments).toContain('change-4');
-      expect(perChangeActions[1].command!.command).toBe('changetracks.rejectChange');
+      expect(perChangeActions[1].command!.command).toBe('changedown.rejectChange');
       expect(perChangeActions[1].command!.arguments).toContain('change-4');
     });
   });
@@ -203,7 +203,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 6 }, end: { line: 0, character: 17 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Highlight: world',
         code: 'change-5',
         data: { changeId: 'change-5', changeType: ChangeType.Highlight }
@@ -219,7 +219,7 @@ describe('Code Actions', () => {
       const acceptAction = perChangeActions[0];
       expect(acceptAction.title).toBe('Remove highlight');
       expect(acceptAction.command).toBeDefined();
-      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.command!.command).toBe('changedown.acceptChange');
       expect(acceptAction.edit).toBeUndefined();
     });
 
@@ -238,7 +238,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 6 }, end: { line: 0, character: 16 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Comment: note',
         code: 'change-6',
         data: { changeId: 'change-6', changeType: ChangeType.Comment }
@@ -254,7 +254,7 @@ describe('Code Actions', () => {
       const acceptAction = perChangeActions[0];
       expect(acceptAction.title).toBe('Remove comment');
       expect(acceptAction.command).toBeDefined();
-      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.command!.command).toBe('changedown.acceptChange');
       expect(acceptAction.edit).toBeUndefined();
     });
   });
@@ -285,7 +285,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 12 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Insertion: insert',
         code: 'change-7',
         data: { changeId: 'change-7', changeType: ChangeType.Insertion }
@@ -301,7 +301,7 @@ describe('Code Actions', () => {
       expect(bulkAccept).toBeTruthy();
       expect(bulkAccept!.kind).toBe(CodeActionKind.Source);
       expect(bulkAccept!.command).toBeDefined();
-      expect(bulkAccept!.command!.command).toBe('changetracks.acceptAll');
+      expect(bulkAccept!.command!.command).toBe('changedown.acceptAll');
       expect(bulkAccept!.edit).toBeUndefined();
     });
 
@@ -330,7 +330,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 12 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Insertion: insert',
         code: 'change-9',
         data: { changeId: 'change-9', changeType: ChangeType.Insertion }
@@ -343,7 +343,7 @@ describe('Code Actions', () => {
       expect(bulkReject).toBeTruthy();
       expect(bulkReject!.kind).toBe(CodeActionKind.Source);
       expect(bulkReject!.command).toBeDefined();
-      expect(bulkReject!.command!.command).toBe('changetracks.rejectAll');
+      expect(bulkReject!.command!.command).toBe('changedown.rejectAll');
       expect(bulkReject!.edit).toBeUndefined();
     });
 
@@ -366,7 +366,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 14 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Substitution: old → new',
         code: 'change-11',
         data: { changeId: 'change-11', changeType: ChangeType.Substitution }
@@ -377,7 +377,7 @@ describe('Code Actions', () => {
       const bulkAccept = actions.find(a => a.title === 'Accept all changes');
       expect(bulkAccept).toBeTruthy();
       expect(bulkAccept!.command).toBeDefined();
-      expect(bulkAccept!.command!.command).toBe('changetracks.acceptAll');
+      expect(bulkAccept!.command!.command).toBe('changedown.acceptAll');
       expect(bulkAccept!.edit).toBeUndefined();
     });
   });
@@ -397,7 +397,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 6 }, end: { line: 0, character: 17 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Insertion: world',
         code: 'change-1',
         data: { changeId: 'change-1' }
@@ -405,7 +405,7 @@ describe('Code Actions', () => {
       const actions = createCodeActions(diagnostic, [change], text, 'file:///test.md');
       const rcAction = actions.find(a => a.title === 'Request changes');
       expect(rcAction).toBeDefined();
-      expect(rcAction!.command!.command).toBe('changetracks.requestChanges');
+      expect(rcAction!.command!.command).toBe('changedown.requestChanges');
       expect(rcAction!.command!.arguments).toContain('change-1');
     });
   });
@@ -425,7 +425,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 6 }, end: { line: 0, character: 17 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Insertion: world',
         code: 'change-1',
         data: { changeId: 'change-1' }
@@ -433,7 +433,7 @@ describe('Code Actions', () => {
       const actions = createCodeActions(diagnostic, [change], text, 'file:///test.md');
       const withdrawAction = actions.find(a => a.title === 'Withdraw request');
       expect(withdrawAction).toBeDefined();
-      expect(withdrawAction!.command!.command).toBe('changetracks.withdrawRequest');
+      expect(withdrawAction!.command!.command).toBe('changedown.withdrawRequest');
       expect(withdrawAction!.command!.arguments).toContain('change-1');
     });
   });
@@ -444,12 +444,12 @@ describe('Code Actions', () => {
 
     it('offers navigate and compact actions for consumed op diagnostic', () => {
       const changes: ChangeNode[] = [{
-        id: 'ct-3',
+        id: 'cn-3',
         type: ChangeType.Insertion,
         status: ChangeStatus.Proposed,
         anchored: false,
         level: 2,
-        consumedBy: 'ct-5',
+        consumedBy: 'cn-5',
         range: { start: 100, end: 120 },
         contentRange: { start: 103, end: 117 },
         modifiedText: 'some text',
@@ -457,16 +457,16 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
-        message: 'Consumed by ct-5',
-        code: 'ct-3',
-        data: { changeId: 'ct-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'ct-5' },
+        source: 'changedown',
+        message: 'Consumed by cn-5',
+        code: 'cn-3',
+        data: { changeId: 'cn-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'cn-5' },
       };
       const actions = createCodeActions(diagnostic, changes, text, uri);
       const titles = actions.map(a => a.title);
 
       // Should offer navigation to consuming change
-      expect(titles.some(t => /Go to.*ct-5/.test(t))).toBe(true);
+      expect(titles.some(t => /Go to.*cn-5/.test(t))).toBe(true);
       // Should offer compact action
       expect(titles.some(t => /Compact/i.test(t))).toBe(true);
       // No per-change accept/reject for consumed ops (bulk actions excluded from check)
@@ -478,12 +478,12 @@ describe('Code Actions', () => {
 
     it('omits compact action when change has active discussion thread', () => {
       const changes: ChangeNode[] = [{
-        id: 'ct-3',
+        id: 'cn-3',
         type: ChangeType.Insertion,
         status: ChangeStatus.Proposed,
         anchored: false,
         level: 2,
-        consumedBy: 'ct-5',
+        consumedBy: 'cn-5',
         replyCount: 2,
         range: { start: 100, end: 120 },
         contentRange: { start: 103, end: 117 },
@@ -492,28 +492,28 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
-        message: 'Consumed by ct-5',
-        code: 'ct-3',
-        data: { changeId: 'ct-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'ct-5' },
+        source: 'changedown',
+        message: 'Consumed by cn-5',
+        code: 'cn-3',
+        data: { changeId: 'cn-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'cn-5' },
       };
       const actions = createCodeActions(diagnostic, changes, text, uri);
       const titles = actions.map(a => a.title);
 
       // Should still offer navigation
-      expect(titles.some(t => /Go to.*ct-5/.test(t))).toBe(true);
+      expect(titles.some(t => /Go to.*cn-5/.test(t))).toBe(true);
       // Should NOT offer compact when thread is active
       expect(titles.some(t => /Compact/i.test(t))).toBe(false);
     });
 
     it('routes consumed op through navigate command to consuming change', () => {
       const changes: ChangeNode[] = [{
-        id: 'ct-3',
+        id: 'cn-3',
         type: ChangeType.Insertion,
         status: ChangeStatus.Proposed,
         anchored: false,
         level: 2,
-        consumedBy: 'ct-5',
+        consumedBy: 'cn-5',
         range: { start: 100, end: 120 },
         contentRange: { start: 103, end: 117 },
         modifiedText: 'some text',
@@ -521,27 +521,27 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
-        message: 'Consumed by ct-5',
-        code: 'ct-3',
-        data: { changeId: 'ct-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'ct-5' },
+        source: 'changedown',
+        message: 'Consumed by cn-5',
+        code: 'cn-3',
+        data: { changeId: 'cn-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'cn-5' },
       };
       const actions = createCodeActions(diagnostic, changes, text, uri);
       const navigateAction = actions.find(a => /Go to/.test(a.title));
 
       expect(navigateAction).toBeDefined();
-      expect(navigateAction!.command!.command).toBe('changetracks.jumpToFootnote');
-      expect(navigateAction!.command!.arguments).toContain('ct-5');
+      expect(navigateAction!.command!.command).toBe('changedown.jumpToFootnote');
+      expect(navigateAction!.command!.arguments).toContain('cn-5');
     });
 
     it('routes compact action to compactChange command', () => {
       const changes: ChangeNode[] = [{
-        id: 'ct-3',
+        id: 'cn-3',
         type: ChangeType.Insertion,
         status: ChangeStatus.Proposed,
         anchored: false,
         level: 2,
-        consumedBy: 'ct-5',
+        consumedBy: 'cn-5',
         range: { start: 100, end: 120 },
         contentRange: { start: 103, end: 117 },
         modifiedText: 'some text',
@@ -549,17 +549,17 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 10 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
-        message: 'Consumed by ct-5',
-        code: 'ct-3',
-        data: { changeId: 'ct-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'ct-5' },
+        source: 'changedown',
+        message: 'Consumed by cn-5',
+        code: 'cn-3',
+        data: { changeId: 'cn-3', changeType: ChangeType.Insertion, consumed: true, consumedBy: 'cn-5' },
       };
       const actions = createCodeActions(diagnostic, changes, text, uri);
       const compactAction = actions.find(a => /Compact/i.test(a.title));
 
       expect(compactAction).toBeDefined();
-      expect(compactAction!.command!.command).toBe('changetracks.compactChange');
-      expect(compactAction!.command!.arguments).toContain('ct-3');
+      expect(compactAction!.command!.command).toBe('changedown.compactChange');
+      expect(compactAction!.command!.arguments).toContain('cn-3');
     });
   });
 
@@ -580,7 +580,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 1, character: 0 }, end: { line: 2, character: 9 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Insertion: Line 2\nLine 3',
         code: 'change-12',
         data: { changeId: 'change-12', changeType: ChangeType.Insertion }
@@ -594,7 +594,7 @@ describe('Code Actions', () => {
 
       const acceptAction = perChangeActions[0];
       expect(acceptAction.command).toBeDefined();
-      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.command!.command).toBe('changedown.acceptChange');
       expect(acceptAction.command!.arguments).toContain('change-12');
       expect(acceptAction.edit).toBeUndefined();
     });
@@ -615,7 +615,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 1, character: 0 }, end: { line: 1, character: 12 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Insertion: Line 2',
         code: 'change-13',
         data: { changeId: 'change-13', changeType: ChangeType.Insertion }
@@ -629,7 +629,7 @@ describe('Code Actions', () => {
 
       const acceptAction = perChangeActions[0];
       expect(acceptAction.command).toBeDefined();
-      expect(acceptAction.command!.command).toBe('changetracks.acceptChange');
+      expect(acceptAction.command!.command).toBe('changedown.acceptChange');
       expect(acceptAction.edit).toBeUndefined();
     });
 
@@ -639,7 +639,7 @@ describe('Code Actions', () => {
       const diagnostic: Diagnostic = {
         range: { start: { line: 0, character: 0 }, end: { line: 0, character: 5 } },
         severity: DiagnosticSeverity.Information,
-        source: 'changetracks',
+        source: 'changedown',
         message: 'Unknown change',
         code: 'change-14',
         data: { changeId: 'change-14', changeType: 'Unknown' as any }
@@ -653,8 +653,8 @@ describe('Code Actions', () => {
       const bulkReject = actions.find(a => a.title === 'Reject all changes');
       expect(bulkAccept).toBeTruthy();
       expect(bulkReject).toBeTruthy();
-      expect(bulkAccept!.command!.command).toBe('changetracks.acceptAll');
-      expect(bulkReject!.command!.command).toBe('changetracks.rejectAll');
+      expect(bulkAccept!.command!.command).toBe('changedown.acceptAll');
+      expect(bulkReject!.command!.command).toBe('changedown.rejectAll');
     });
   });
 });

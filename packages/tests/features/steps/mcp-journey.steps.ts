@@ -7,7 +7,7 @@
 import { Given, When, Then } from '@cucumber/cucumber';
 import assert from 'node:assert/strict';
 import * as fs from 'node:fs/promises';
-import { ChangeTracksWorld } from './world.js';
+import { ChangeDownWorld } from './world.js';
 
 // =============================================================================
 // AJ1: Background — config has multiple settings
@@ -15,7 +15,7 @@ import { ChangeTracksWorld } from './world.js';
 
 Given(
   'the config has:',
-  async function (this: ChangeTracksWorld, table: any) {
+  async function (this: ChangeDownWorld, table: any) {
     const rows: string[][] = table.rawTable;
     const overrides: Record<string, Record<string, unknown>> = {};
     for (const [key, value] of rows) {
@@ -46,7 +46,7 @@ Given(
 
 Then(
   'the response shows {int} proposed changes',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     if (count === 0) {
@@ -60,7 +60,7 @@ Then(
 
 Then(
   'the document content is returned',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.length > 0, 'Expected non-empty document content');
@@ -69,7 +69,7 @@ Then(
 
 When(
   'I call propose_change with a changes array:',
-  async function (this: ChangeTracksWorld, table: any) {
+  async function (this: ChangeDownWorld, table: any) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -93,23 +93,23 @@ When(
 );
 
 Then(
-  'the response contains grouped IDs ct-1.1, ct-1.2, ct-1.3',
-  function (this: ChangeTracksWorld) {
+  'the response contains grouped IDs cn-1.1, cn-1.2, cn-1.3',
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
-    assert.equal(data.group_id, 'ct-1');
+    assert.equal(data.group_id, 'cn-1');
     const changes = data.applied as Array<{ change_id: string }>;
     assert.ok(changes, 'Expected applied array');
     const ids = changes.map(c => c.change_id);
-    assert.ok(ids.includes('ct-1.1'), 'Expected ct-1.1');
-    assert.ok(ids.includes('ct-1.2'), 'Expected ct-1.2');
-    assert.ok(ids.includes('ct-1.3'), 'Expected ct-1.3');
+    assert.ok(ids.includes('cn-1.1'), 'Expected cn-1.1');
+    assert.ok(ids.includes('cn-1.2'), 'Expected cn-1.2');
+    assert.ok(ids.includes('cn-1.3'), 'Expected cn-1.3');
   },
 );
 
 Then(
   'the file contains {int} CriticMarkup substitutions',
-  async function (this: ChangeTracksWorld, count: number) {
+  async function (this: ChangeDownWorld, count: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -120,11 +120,11 @@ Then(
 
 Then(
   'all {int} footnotes exist with status {string}',
-  async function (this: ChangeTracksWorld, count: number, status: string) {
+  async function (this: ChangeDownWorld, count: number, status: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     for (let i = 1; i <= count; i++) {
-      await this.ctx.assertFootnoteStatus(filePath, `ct-1.${i}`, status);
+      await this.ctx.assertFootnoteStatus(filePath, `cn-1.${i}`, status);
     }
   },
 );
@@ -133,27 +133,27 @@ Then(
 
 Then(
   'the inline annotations show each change at its location',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
-    assert.ok(text.includes('ct-1.1'), 'Expected ct-1.1 inline annotation');
-    assert.ok(text.includes('ct-1.2'), 'Expected ct-1.2 inline annotation');
-    assert.ok(text.includes('ct-1.3'), 'Expected ct-1.3 inline annotation');
+    assert.ok(text.includes('cn-1.1'), 'Expected cn-1.1 inline annotation');
+    assert.ok(text.includes('cn-1.2'), 'Expected cn-1.2 inline annotation');
+    assert.ok(text.includes('cn-1.3'), 'Expected cn-1.3 inline annotation');
   },
 );
 
 When(
-  'I call review_changes approving ct-1.1, ct-1.2, ct-1.3',
-  async function (this: ChangeTracksWorld) {
+  'I call review_changes approving cn-1.1, cn-1.2, cn-1.3',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
       this.lastResult = await this.ctx.review(filePath, {
         reviews: [
-          { change_id: 'ct-1.1', decision: 'approve', reason: 'Good improvement' },
-          { change_id: 'ct-1.2', decision: 'approve', reason: 'Confirmed latency improvement' },
-          { change_id: 'ct-1.3', decision: 'approve', reason: 'Security best practice' },
+          { change_id: 'cn-1.1', decision: 'approve', reason: 'Good improvement' },
+          { change_id: 'cn-1.2', decision: 'approve', reason: 'Confirmed latency improvement' },
+          { change_id: 'cn-1.3', decision: 'approve', reason: 'Security best practice' },
         ],
       });
     } catch (err) {
@@ -164,7 +164,7 @@ When(
 
 Then(
   'all {int} changes are accepted',
-  function (this: ChangeTracksWorld, _count: number) {
+  function (this: ChangeDownWorld, _count: number) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true);
   },
@@ -172,7 +172,7 @@ Then(
 
 Then(
   'auto-settlement removes inline markup \\(Layer 1)',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
     assert.ok(data.settled, 'Expected settled array');
@@ -181,7 +181,7 @@ Then(
 
 Then(
   'the document contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes(expected), `Expected output to contain "${expected}"`);
@@ -190,7 +190,7 @@ Then(
 
 Then(
   'no CriticMarkup delimiters appear in the body',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.assertNoMarkupInBody(filePath);
@@ -199,16 +199,16 @@ Then(
 
 Then(
   '{int} footnotes persist with status {string}',
-  async function (this: ChangeTracksWorld, count: number, status: string) {
+  async function (this: ChangeDownWorld, count: number, status: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     // Check the first group of footnotes
     for (let i = 1; i <= count; i++) {
       // Try dotted ID first, then plain ID
       try {
-        await this.ctx.assertFootnoteStatus(filePath, `ct-1.${i}`, status);
+        await this.ctx.assertFootnoteStatus(filePath, `cn-1.${i}`, status);
       } catch {
-        await this.ctx.assertFootnoteStatus(filePath, `ct-${i}`, status);
+        await this.ctx.assertFootnoteStatus(filePath, `cn-${i}`, status);
       }
     }
   },
@@ -220,7 +220,7 @@ Then(
 
 Then(
   'LINE:HASH coordinates are present',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.match(text, /\d+:[0-9a-f]{2}/, 'Expected LINE:HASH coordinates');
@@ -229,7 +229,7 @@ Then(
 
 Then(
   'no CriticMarkup delimiters appear',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     const delims = ['{~~', '~~}', '{++', '++}', '{--', '--}'];
@@ -241,7 +241,7 @@ Then(
 
 When(
   'I propose a substitution using line:hash from the read',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -267,7 +267,7 @@ When(
 
 Then(
   'the change is applied correctly',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true, 'Expected success');
   },
@@ -275,7 +275,7 @@ Then(
 
 Then(
   'the pending change appears with [P] marker',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.match(text, /P\|/, 'Expected [P] marker');
@@ -284,7 +284,7 @@ Then(
 
 Then(
   'the original text is shown \\(pending reverted)',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes('no caching'), 'Expected original text');
@@ -293,13 +293,13 @@ Then(
 
 When(
   'I approve and settle the change',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
       this.lastResult = await this.ctx.review(filePath, {
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'Looks good' }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'Looks good' }],
       });
     } catch (err) {
       this.lastError = err as Error;
@@ -309,7 +309,7 @@ When(
 
 Then(
   'the committed view shows the new text without markers',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const result = await this.ctx.read(filePath, { view: 'committed' });
@@ -325,7 +325,7 @@ Then(
 
 When(
   'I propose change {int} \\(substitution)',
-  async function (this: ChangeTracksWorld, _num: number) {
+  async function (this: ChangeDownWorld, _num: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -343,7 +343,7 @@ When(
 
 When(
   'I read the file to verify',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -353,7 +353,7 @@ When(
 
 When(
   'I propose change {int} \\(insertion)',
-  async function (this: ChangeTracksWorld, _num: number) {
+  async function (this: ChangeDownWorld, _num: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -371,15 +371,15 @@ When(
 
 When(
   'I approve both changes',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
       this.lastResult = await this.ctx.review(filePath, {
         reviews: [
-          { change_id: 'ct-1', decision: 'approve', reason: 'Good' },
-          { change_id: 'ct-2', decision: 'approve', reason: 'Good' },
+          { change_id: 'cn-1', decision: 'approve', reason: 'Good' },
+          { change_id: 'cn-2', decision: 'approve', reason: 'Good' },
         ],
       });
     } catch (err) {
@@ -390,18 +390,18 @@ When(
 
 Then(
   'the file has {int} accepted footnotes',
-  async function (this: ChangeTracksWorld, count: number) {
+  async function (this: ChangeDownWorld, count: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     for (let i = 1; i <= count; i++) {
-      await this.ctx.assertFootnoteStatus(filePath, `ct-${i}`, 'accepted');
+      await this.ctx.assertFootnoteStatus(filePath, `cn-${i}`, 'accepted');
     }
   },
 );
 
 Then(
   'the settled text reflects both changes',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -416,7 +416,7 @@ Then(
 
 When(
   'agent {string} proposes changing {string} to {string} with reasoning {string}',
-  async function (this: ChangeTracksWorld, author: string, oldText: string, newText: string, reasoning: string) {
+  async function (this: ChangeDownWorld, author: string, oldText: string, newText: string, reasoning: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -434,24 +434,24 @@ When(
 );
 
 Then(
-  'ct-1 is created as a substitution',
-  function (this: ChangeTracksWorld) {
+  'cn-1 is created as a substitution',
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
-    assert.equal(data.change_id, 'ct-1');
+    assert.equal(data.change_id, 'cn-1');
     assert.equal(data.type, 'sub');
   },
 );
 
 When(
-  'agent {string} responds to ct-1 thread with {string} label {string}',
-  async function (this: ChangeTracksWorld, author: string, response: string, label: string) {
+  'agent {string} responds to cn-1 thread with {string} label {string}',
+  async function (this: ChangeDownWorld, author: string, response: string, label: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
       this.lastResult = await this.ctx.review(filePath, {
-        responses: [{ change_id: 'ct-1', response, label }],
+        responses: [{ change_id: 'cn-1', response, label }],
         author,
       });
     } catch (err) {
@@ -461,8 +461,8 @@ When(
 );
 
 Then(
-  'the footnote for ct-1 has {int} discussion entries \\(original + response)',
-  async function (this: ChangeTracksWorld, _count: number) {
+  'the footnote for cn-1 has {int} discussion entries \\(original + response)',
+  async function (this: ChangeDownWorld, _count: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -472,13 +472,13 @@ Then(
 );
 
 When(
-  'agent {string} amends ct-1 with new_text {string} and reasoning {string}',
-  async function (this: ChangeTracksWorld, author: string, newText: string, reasoning: string) {
+  'agent {string} amends cn-1 with new_text {string} and reasoning {string}',
+  async function (this: ChangeDownWorld, author: string, newText: string, reasoning: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
-      this.lastResult = await this.ctx.amend(filePath, 'ct-1', {
+      this.lastResult = await this.ctx.amend(filePath, 'cn-1', {
         new_text: newText,
         reason: reasoning,
         author,
@@ -491,7 +491,7 @@ When(
 
 Then(
   'the amend created a new superseding change',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
     assert.equal(data.amended, true);
@@ -503,7 +503,7 @@ Then(
 
 Then(
   'the original change {word} is now rejected',
-  async function (this: ChangeTracksWorld, changeId: string) {
+  async function (this: ChangeDownWorld, changeId: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.assertFootnoteStatus(filePath, changeId, 'rejected');
@@ -512,7 +512,7 @@ Then(
 
 Then(
   'the superseding change has {string} in its footnote',
-  async function (this: ChangeTracksWorld, expected: string) {
+  async function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -522,7 +522,7 @@ Then(
     assert.ok(idx >= 0, `Footnote ${ref} not found in file`);
     const section = disk.slice(idx);
     // Limit to this footnote section (until next footnote or end)
-    const nextFootnote = section.indexOf('\n[^ct-', 1);
+    const nextFootnote = section.indexOf('\n[^cn-', 1);
     const footnoteText = nextFootnote >= 0 ? section.slice(0, nextFootnote) : section;
     assert.ok(
       footnoteText.includes(expected),
@@ -533,26 +533,26 @@ Then(
 
 Then(
   'the original change has {string} in its footnote',
-  async function (this: ChangeTracksWorld, expected: string) {
+  async function (this: ChangeDownWorld, expected: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    const ref = '[^ct-1]:';
+    const ref = '[^cn-1]:';
     const idx = disk.indexOf(ref);
     assert.ok(idx >= 0, `Footnote ${ref} not found in file`);
     const section = disk.slice(idx);
-    const nextFootnote = section.indexOf('\n[^ct-', 1);
+    const nextFootnote = section.indexOf('\n[^cn-', 1);
     const footnoteText = nextFootnote >= 0 ? section.slice(0, nextFootnote) : section;
     assert.ok(
       footnoteText.includes(expected),
-      `Expected "${expected}" in ct-1 footnote but got:\n${footnoteText}`,
+      `Expected "${expected}" in cn-1 footnote but got:\n${footnoteText}`,
     );
   },
 );
 
 When(
   'agent {string} approves the superseding change with reasoning {string}',
-  async function (this: ChangeTracksWorld, author: string, reasoning: string) {
+  async function (this: ChangeDownWorld, author: string, reasoning: string) {
     if (!this.ctx) await this.setupContext();
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
@@ -570,7 +570,7 @@ When(
 
 When(
   'agent {string} approves the superseding change',
-  async function (this: ChangeTracksWorld, author: string) {
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
@@ -588,7 +588,7 @@ When(
 
 Then(
   'the superseding change has status {string}',
-  async function (this: ChangeTracksWorld, status: string) {
+  async function (this: ChangeDownWorld, status: string) {
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -598,7 +598,7 @@ Then(
 
 Then(
   'the footnote shows previous text {string}',
-  async function (this: ChangeTracksWorld, prevText: string) {
+  async function (this: ChangeDownWorld, prevText: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -610,24 +610,24 @@ Then(
 );
 
 Then(
-  'the change ID is still ct-1',
-  async function (this: ChangeTracksWorld) {
+  'the change ID is still cn-1',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    assert.ok(disk.includes('[^ct-1]'), 'Expected ct-1 change ID');
+    assert.ok(disk.includes('[^cn-1]'), 'Expected cn-1 change ID');
   },
 );
 
 When(
-  'agent {string} approves ct-1 with reasoning {string}',
-  async function (this: ChangeTracksWorld, author: string, reasoning: string) {
+  'agent {string} approves cn-1 with reasoning {string}',
+  async function (this: ChangeDownWorld, author: string, reasoning: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
       this.lastResult = await this.ctx.review(filePath, {
-        reviews: [{ change_id: 'ct-1', decision: 'approve', reason: reasoning }],
+        reviews: [{ change_id: 'cn-1', decision: 'approve', reason: reasoning }],
         author,
       });
     } catch (err) {
@@ -641,8 +641,8 @@ When(
 // =============================================================================
 
 When(
-  'agent {string} proposes a change \\(ct-1)',
-  async function (this: ChangeTracksWorld, author: string) {
+  'agent {string} proposes a change \\(cn-1)',
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -656,13 +656,13 @@ When(
 );
 
 When(
-  'agent {string} requests changes on ct-1',
-  async function (this: ChangeTracksWorld, author: string) {
+  'agent {string} requests changes on cn-1',
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'request_changes', reason: 'Token auth is too vague' }],
+      reviews: [{ change_id: 'cn-1', decision: 'request_changes', reason: 'Token auth is too vague' }],
       author,
     });
   },
@@ -670,13 +670,13 @@ When(
 
 When(
   'agent {string} amends the latest change \\(round {int} supersede)',
-  async function (this: ChangeTracksWorld, author: string, round: number) {
+  async function (this: ChangeDownWorld, author: string, round: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const newText = round === 1 ? 'JWT authentication' : 'JWT with RS256 signing';
     // Amend the latest change in the supersede chain
-    const targetId = this.lastSupersedeNewId || 'ct-1';
+    const targetId = this.lastSupersedeNewId || 'cn-1';
     this.lastResult = await this.ctx.amend(filePath, targetId, {
       new_text: newText,
       reason: `Amendment round ${round}`,
@@ -691,7 +691,7 @@ When(
 
 When(
   'agent {string} requests changes on the latest superseding change',
-  async function (this: ChangeTracksWorld, author: string) {
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
@@ -705,7 +705,7 @@ When(
 
 When(
   'agent {string} approves the latest superseding change',
-  async function (this: ChangeTracksWorld, author: string) {
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
@@ -719,7 +719,7 @@ When(
 
 Then(
   'the supersede chain has {int} rejected predecessors',
-  async function (this: ChangeTracksWorld, count: number) {
+  async function (this: ChangeDownWorld, count: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -731,7 +731,7 @@ Then(
 
 Then(
   'the latest superseding change has status {string}',
-  async function (this: ChangeTracksWorld, status: string) {
+  async function (this: ChangeDownWorld, status: string) {
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -741,13 +741,13 @@ Then(
 
 // Keep old steps for AJ2 Scenario 3 and other non-supersede scenarios
 When(
-  'agent {string} approves ct-1',
-  async function (this: ChangeTracksWorld, author: string) {
+  'agent {string} approves cn-1',
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'Approved' }],
+      reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'Approved' }],
       author,
     });
   },
@@ -755,7 +755,7 @@ When(
 
 Then(
   'the footnote contains {int} {string} entries',
-  async function (this: ChangeTracksWorld, count: number, entryType: string) {
+  async function (this: ChangeDownWorld, count: number, entryType: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -767,7 +767,7 @@ Then(
 
 Then(
   'the final inline text reflects round 2 amendment',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -780,8 +780,8 @@ Then(
 // =============================================================================
 
 When(
-  'agent {string} proposes ct-1',
-  async function (this: ChangeTracksWorld, author: string) {
+  'agent {string} proposes cn-1',
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -816,30 +816,30 @@ When(
 );
 
 When(
-  'agent {string} rejects ct-1 with reasoning {string}',
-  async function (this: ChangeTracksWorld, author: string, reasoning: string) {
+  'agent {string} rejects cn-1 with reasoning {string}',
+  async function (this: ChangeDownWorld, author: string, reasoning: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'reject', reason: reasoning }],
+      reviews: [{ change_id: 'cn-1', decision: 'reject', reason: reasoning }],
       author,
     });
   },
 );
 
 Then(
-  'ct-1 status is {string}',
-  async function (this: ChangeTracksWorld, status: string) {
+  'cn-1 status is {string}',
+  async function (this: ChangeDownWorld, status: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-1', status);
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-1', status);
   },
 );
 
 When(
-  'agent {string} proposes a new change ct-2 with different approach',
-  async function (this: ChangeTracksWorld, author: string) {
+  'agent {string} proposes a new change cn-2 with different approach',
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -853,24 +853,24 @@ When(
 );
 
 Then(
-  'ct-2 is independent from ct-1',
-  async function (this: ChangeTracksWorld) {
+  'cn-2 is independent from cn-1',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    assert.ok(disk.includes('[^ct-1]:'), 'Expected ct-1 footnote');
-    assert.ok(disk.includes('[^ct-2]:'), 'Expected ct-2 footnote');
+    assert.ok(disk.includes('[^cn-1]:'), 'Expected cn-1 footnote');
+    assert.ok(disk.includes('[^cn-2]:'), 'Expected cn-2 footnote');
   },
 );
 
 Then(
   'both footnotes exist in the file',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    assert.ok(disk.includes('[^ct-1]:'), 'Expected ct-1 footnote');
-    assert.ok(disk.includes('[^ct-2]:'), 'Expected ct-2 footnote');
+    assert.ok(disk.includes('[^cn-1]:'), 'Expected cn-1 footnote');
+    assert.ok(disk.includes('[^cn-2]:'), 'Expected cn-2 footnote');
   },
 );
 
@@ -880,7 +880,7 @@ Then(
 
 Given(
   'a tracked file {string}',
-  async function (this: ChangeTracksWorld, name: string) {
+  async function (this: ChangeDownWorld, name: string) {
     if (!this.ctx) await this.setupContext();
     // Content supports multiple scenarios:
     // - "PostgreSQL" for scenario 1 (propose/discuss/amend)
@@ -893,23 +893,23 @@ Given(
 
 Given(
   'three agent identities: {string}, {string}, {string}',
-  function (this: ChangeTracksWorld, _a1: string, _a2: string, _a3: string) {
+  function (this: ChangeDownWorld, _a1: string, _a2: string, _a3: string) {
     // Documentation step — agent identities are passed per-call
   },
 );
 
 Then(
-  'ct-1 is created by ai:architect',
-  function (this: ChangeTracksWorld) {
+  'cn-1 is created by ai:architect',
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
-    assert.equal(data.change_id, 'ct-1');
+    assert.equal(data.change_id, 'cn-1');
   },
 );
 
 Then(
   'the footnote has a discussion entry by ai:security',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -919,20 +919,20 @@ Then(
 
 Then(
   'the footnote has {int} entries total \\(reasoning + {int} responses)',
-  async function (this: ChangeTracksWorld, _total: number, _responses: number) {
+  async function (this: ChangeDownWorld, _total: number, _responses: number) {
     // Verification that entries exist — already covered by individual checks
     assert.ok(this.lastResult, 'No MCP result available');
   },
 );
 
 When(
-  'agent {string} tries to amend ct-1',
-  async function (this: ChangeTracksWorld, author: string) {
+  'agent {string} tries to amend cn-1',
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
-      this.lastResult = await this.ctx.amend(filePath, 'ct-1', {
+      this.lastResult = await this.ctx.amend(filePath, 'cn-1', {
         new_text: 'PostgreSQL with sharding',
         reason: 'I want to amend',
         author,
@@ -945,7 +945,7 @@ When(
 
 Then(
   'the cross-author amend succeeds as a supersede',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true, 'Expected success for cross-author supersede');
     const data = this.ctx.parseResult(this.lastResult);
@@ -955,13 +955,13 @@ Then(
 );
 
 When(
-  'agent {string} amends ct-1 to {string}',
-  async function (this: ChangeTracksWorld, author: string, newText: string) {
+  'agent {string} amends cn-1 to {string}',
+  async function (this: ChangeDownWorld, author: string, newText: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
-      this.lastResult = await this.ctx.amend(filePath, 'ct-1', {
+      this.lastResult = await this.ctx.amend(filePath, 'cn-1', {
         new_text: newText,
         reason: 'Amended based on feedback',
         author,
@@ -974,7 +974,7 @@ When(
 
 Then(
   'the amended text is reflected',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true);
   },
@@ -982,7 +982,7 @@ Then(
 
 Then(
   'the footnote contains {int} approval entries',
-  async function (this: ChangeTracksWorld, count: number) {
+  async function (this: ChangeDownWorld, count: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -997,7 +997,7 @@ Then(
 
 Then(
   'the footnote contains {int} approval entries for the superseding change',
-  async function (this: ChangeTracksWorld, count: number) {
+  async function (this: ChangeDownWorld, count: number) {
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1007,7 +1007,7 @@ Then(
     const idx = disk.indexOf(ref);
     assert.ok(idx >= 0, `Footnote ${ref} not found in file`);
     const section = disk.slice(idx);
-    const nextFootnote = section.indexOf('\n[^ct-', 1);
+    const nextFootnote = section.indexOf('\n[^cn-', 1);
     const footnoteText = nextFootnote >= 0 ? section.slice(0, nextFootnote) : section;
     const approvalMatches = footnoteText.match(/approved:|approval|accepted/gi);
     assert.ok(approvalMatches, 'Expected approval entries in superseding change footnote');
@@ -1018,8 +1018,8 @@ Then(
 // --- AJ3 Scenario 2: Competing proposals ---
 
 When(
-  'agent {string} proposes ct-1: change {string} to {string}',
-  async function (this: ChangeTracksWorld, author: string, oldText: string, newText: string) {
+  'agent {string} proposes cn-1: change {string} to {string}',
+  async function (this: ChangeDownWorld, author: string, oldText: string, newText: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1036,8 +1036,8 @@ When(
 );
 
 When(
-  'agent {string} proposes ct-2: change {string} to {string}',
-  async function (this: ChangeTracksWorld, author: string, oldText: string, newText: string) {
+  'agent {string} proposes cn-2: change {string} to {string}',
+  async function (this: ChangeDownWorld, author: string, oldText: string, newText: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1054,15 +1054,15 @@ When(
 );
 
 When(
-  'agent {string} approves ct-2 and rejects ct-1',
-  async function (this: ChangeTracksWorld, author: string) {
+  'agent {string} approves cn-2 and rejects cn-1',
+  async function (this: ChangeDownWorld, author: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-2', decision: 'approve', reason: 'Better approach' },
-        { change_id: 'ct-1', decision: 'reject', reason: 'Prefer ct-2' },
+        { change_id: 'cn-2', decision: 'approve', reason: 'Better approach' },
+        { change_id: 'cn-1', decision: 'reject', reason: 'Prefer cn-2' },
       ],
       author,
     });
@@ -1070,38 +1070,38 @@ When(
 );
 
 Then(
-  'ct-1 status is {string} and ct-2 status is {string}',
-  async function (this: ChangeTracksWorld, s1: string, s2: string) {
+  'cn-1 status is {string} and cn-2 status is {string}',
+  async function (this: ChangeDownWorld, s1: string, s2: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-1', s1);
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-2', s2);
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-1', s1);
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-2', s2);
   },
 );
 
 Then(
   'both footnotes preserve their full deliberation history',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    assert.ok(disk.includes('[^ct-1]:'), 'Expected ct-1 footnote');
-    assert.ok(disk.includes('[^ct-2]:'), 'Expected ct-2 footnote');
+    assert.ok(disk.includes('[^cn-1]:'), 'Expected cn-1 footnote');
+    assert.ok(disk.includes('[^cn-2]:'), 'Expected cn-2 footnote');
   },
 );
 
 // --- AJ3 Scenario 3: Discussion thread depth ---
 
 When(
-  '{int} agents each respond to ct-1\'s thread',
-  async function (this: ChangeTracksWorld, count: number) {
+  '{int} agents each respond to cn-1\'s thread',
+  async function (this: ChangeDownWorld, count: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
 
     // First create a change if none exists
     const disk = await this.ctx.readDisk(filePath);
-    if (!disk.includes('[^ct-1]:')) {
+    if (!disk.includes('[^cn-1]:')) {
       await this.ctx.propose(filePath, {
         old_text: 'PostgreSQL',
         new_text: 'CockroachDB',
@@ -1114,7 +1114,7 @@ When(
     for (let i = 0; i < count; i++) {
       const author = `ai:agent-${i + 1}`;
       await this.ctx.review(filePath, {
-        responses: [{ change_id: 'ct-1', response: `Comment from ${author}`, label: 'thought' }],
+        responses: [{ change_id: 'cn-1', response: `Comment from ${author}`, label: 'thought' }],
         author,
       });
     }
@@ -1123,13 +1123,13 @@ When(
 
 Then(
   'the footnote contains {int} discussion entries \\(plus original reasoning = {int} total)',
-  async function (this: ChangeTracksWorld, _entries: number, total: number) {
+  async function (this: ChangeDownWorld, _entries: number, total: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    // Count indented lines in the ct-1 footnote (each entry starts with indent)
-    const footnoteIdx = disk.indexOf('[^ct-1]:');
-    assert.ok(footnoteIdx >= 0, 'ct-1 footnote not found');
+    // Count indented lines in the cn-1 footnote (each entry starts with indent)
+    const footnoteIdx = disk.indexOf('[^cn-1]:');
+    assert.ok(footnoteIdx >= 0, 'cn-1 footnote not found');
     const afterFootnote = disk.slice(footnoteIdx);
     const lines = afterFootnote.split('\n');
     let count = 0;
@@ -1143,7 +1143,7 @@ Then(
 
 Then(
   'threading indentation reflects reply depth',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -1153,11 +1153,11 @@ Then(
 );
 
 Then(
-  'get_change for ct-{int} returns discussion_count = {int}',
-  async function (this: ChangeTracksWorld, changeNum: number, expectedCount: number) {
+  'get_change for cn-{int} returns discussion_count = {int}',
+  async function (this: ChangeDownWorld, changeNum: number, expectedCount: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    const result = await this.ctx.getChange(filePath, `ct-${changeNum}`);
+    const result = await this.ctx.getChange(filePath, `cn-${changeNum}`);
     const data = this.ctx.parseResult(result) as any;
     // discussion_count is nested under footnote in get_change response
     const count = data.footnote?.discussion_count ?? data.discussion_count ?? 0;
@@ -1171,7 +1171,7 @@ Then(
 
 When(
   'I read the committed view and record hashes',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1182,7 +1182,7 @@ When(
 
 When(
   'the file is externally rewritten \\(another agent replaces all content)',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await fs.writeFile(filePath, '# Rewritten\n\nCompletely different content.\ngoodbye universe.', 'utf-8');
@@ -1191,7 +1191,7 @@ When(
 
 When(
   'I try to propose a change with the recorded stale hashes',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const prevText = this.ctx.resultText(this.lastResult!);
@@ -1213,7 +1213,7 @@ When(
 
 Then(
   'the response is an error \\(old_text not found at stale line reference)',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.equal(this.lastResult.isError, true, 'Expected an error');
   },
@@ -1221,7 +1221,7 @@ Then(
 
 When(
   'I re-read the committed view to get fresh hashes',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.read(filePath, { view: 'committed' });
@@ -1231,7 +1231,7 @@ When(
 
 When(
   'I retry the propose with updated coordinates',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const text = this.ctx.resultText(this.lastResult!);
@@ -1254,7 +1254,7 @@ When(
 
 Then(
   'the change is applied successfully',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true, 'Expected success');
   },
@@ -1262,7 +1262,7 @@ Then(
 
 When(
   'I read the file successfully',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1273,7 +1273,7 @@ When(
 
 When(
   'the file is deleted from disk',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await fs.unlink(filePath);
@@ -1282,7 +1282,7 @@ When(
 
 When(
   'I try to propose a change',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
@@ -1299,7 +1299,7 @@ When(
 
 Then(
   'the error mentions the file not being found',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult).toLowerCase();
     assert.ok(
@@ -1311,7 +1311,7 @@ Then(
 
 When(
   'agent B proposes a change on a phrase in the document',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1326,7 +1326,7 @@ When(
 
 When(
   'agent A proposes a change on overlapping text \\(resolved via committed-text cascade)',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
@@ -1345,32 +1345,32 @@ When(
 
 Then(
   'both changes coexist in the document',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true, 'Expected success for cascade-resolved match');
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
     // Both CriticMarkup substitutions should exist
-    assert.ok(disk.includes('[^ct-1]'), 'Expected ct-1 change');
-    assert.ok(disk.includes('[^ct-2]'), 'Expected ct-2 change');
+    assert.ok(disk.includes('[^cn-1]'), 'Expected cn-1 change');
+    assert.ok(disk.includes('[^cn-2]'), 'Expected cn-2 change');
   },
 );
 
 Then(
   'the document has {int} footnotes',
-  async function (this: ChangeTracksWorld, count: number) {
+  async function (this: ChangeDownWorld, count: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    const footnoteMatches = disk.match(/\[\^ct-\d+\]:/g) || [];
+    const footnoteMatches = disk.match(/\[\^cn-\d+\]:/g) || [];
     assert.equal(footnoteMatches.length, count, `Expected ${count} footnotes, found ${footnoteMatches.length}`);
   },
 );
 
 When(
   'I try to use raw = true on propose_change',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1389,7 +1389,7 @@ When(
 
 Then(
   'the response is an error mentioning {string} and {string}',
-  function (this: ChangeTracksWorld, word1: string, word2: string) {
+  function (this: ChangeDownWorld, word1: string, word2: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.equal(this.lastResult.isError, true, 'Expected error');
     const text = this.ctx.resultText(this.lastResult).toLowerCase();
@@ -1400,7 +1400,7 @@ Then(
 
 When(
   'I retry without raw = true',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
@@ -1417,7 +1417,7 @@ When(
 
 Then(
   'the change is applied normally with CriticMarkup',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true);
     const filePath = this.files.values().next().value;
@@ -1428,8 +1428,8 @@ Then(
 );
 
 Given(
-  'a proposed change ct-1 exists',
-  async function (this: ChangeTracksWorld) {
+  'a proposed change cn-1 exists',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1445,28 +1445,28 @@ Given(
 
 Then(
   'the response contains a per-change error \\(not a top-level crash)',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     // review_changes returns partial success, not top-level error
     const text = this.ctx.resultText(this.lastResult);
-    assert.ok(text.includes('ct-999') || text.includes('not found'), 'Expected per-change error for ct-999');
+    assert.ok(text.includes('cn-999') || text.includes('not found'), 'Expected per-change error for cn-999');
   },
 );
 
 When(
-  'I review the valid change ct-1',
-  async function (this: ChangeTracksWorld) {
+  'I review the valid change cn-1',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'Valid approval' }],
+      reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'Valid approval' }],
     });
   },
 );
 
 Then(
   'the review succeeds',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true);
   },
@@ -1480,7 +1480,7 @@ Then(
 
 When(
   'I call propose_change without an author parameter',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1498,7 +1498,7 @@ When(
 
 Then(
   'the response is an error mentioning {string}',
-  function (this: ChangeTracksWorld, mention: string) {
+  function (this: ChangeDownWorld, mention: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.equal(this.lastResult.isError, true, 'Expected error');
     const text = this.ctx.resultText(this.lastResult).toLowerCase();
@@ -1508,7 +1508,7 @@ Then(
 
 When(
   'I retry with an explicit author',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     try {
@@ -1526,7 +1526,7 @@ When(
 
 Then(
   'the change is applied with the specified author in the footnote',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true);
     const filePath = this.files.values().next().value;
@@ -1538,7 +1538,7 @@ Then(
 
 Given(
   'the file contains an en-dash \\(U+2013) in place of ASCII hyphen',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     // Rewrite the Background file so it contains an en-dash character (U+2013)
     const filePath = this.files.values().next().value;
@@ -1551,14 +1551,14 @@ Given(
 
 When(
   'I call propose_change with old_text using ASCII hyphen \\(U+002D)',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     // This is a narrative documentation step; the actual test handles it
   },
 );
 
 When(
   'I call propose_change with old_text using the exact en-dash \\(U+2013)',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1577,14 +1577,14 @@ When(
 
 Then(
   'the match succeeds via normalized matching \\(defaultNormalizer confusables map)',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     // Documentation step
   },
 );
 
 Then(
   'the match succeeds via exact matching',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(
       this.lastResult.isError,
@@ -1596,7 +1596,7 @@ Then(
 
 Then(
   'the change is applied with the original Unicode text preserved in markup',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -1613,11 +1613,11 @@ Then(
 // AJ5: Agent-human collaboration across surfaces
 // =============================================================================
 
-import { CriticMarkupParser } from '@changetracks/core';
+import { CriticMarkupParser } from '@changedown/core';
 
 When(
   'agent {string} proposes changing {string} to {string}',
-  async function (this: ChangeTracksWorld, author: string, oldText: string, newText: string) {
+  async function (this: ChangeDownWorld, author: string, oldText: string, newText: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1631,19 +1631,19 @@ When(
 );
 
 Then(
-  'the file contains CriticMarkup substitution with footnote ct-1',
-  async function (this: ChangeTracksWorld) {
+  'the file contains CriticMarkup substitution with footnote cn-1',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
     assert.ok(disk.includes('{~~'), 'Expected substitution markup');
-    assert.ok(disk.includes('[^ct-1]:'), 'Expected ct-1 footnote');
+    assert.ok(disk.includes('[^cn-1]:'), 'Expected cn-1 footnote');
   },
 );
 
 When(
   'the VS Code extension parses the file',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -1655,7 +1655,7 @@ When(
 
 Then(
   'the parser finds {int} substitution change',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     assert.ok(this.lastDoc, 'No parsed document');
     const subs = this.lastDoc.getChanges().filter((c: any) =>
       c.type === 'Substitution' || c.type === 'substitution' || c.type === 2);
@@ -1665,7 +1665,7 @@ Then(
 
 Then(
   'the change has id {string}',
-  function (this: ChangeTracksWorld, _expectedId: string) {
+  function (this: ChangeDownWorld, _expectedId: string) {
     // The VS Code parser doesn't extract footnote IDs directly -- this is a documentation step.
     // The change exists, which we verified in the previous step.
     assert.ok(this.lastDoc, 'No parsed document');
@@ -1675,7 +1675,7 @@ Then(
 
 Then(
   'the Change Explorer shows {int} proposed change',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     // The Change Explorer is a VS Code UI component. We verify via file state.
     assert.ok(this.lastDoc, 'No parsed document');
     assert.equal(this.lastDoc.getChanges().length, count, `Expected ${count} change(s) in parsed document`);
@@ -1683,14 +1683,14 @@ Then(
 );
 
 When(
-  'the human accepts ct-1 via the core accept function',
-  async function (this: ChangeTracksWorld) {
+  'the human accepts cn-1 via the core accept function',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     // Approve via review_changes then settle
     await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'Human accepts' }],
+      reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'Human accepts' }],
     });
     // Settle to remove inline markup
     this.lastResult = await this.ctx.review(filePath, { settle: true });
@@ -1699,11 +1699,11 @@ When(
 
 Then(
   'the file contains {string} without CriticMarkup delimiters',
-  async function (this: ChangeTracksWorld, expected: string) {
+  async function (this: ChangeDownWorld, expected: string) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    const footnoteStart = disk.indexOf('\n[^ct-');
+    const footnoteStart = disk.indexOf('\n[^cn-');
     const body = footnoteStart >= 0 ? disk.slice(0, footnoteStart) : disk;
     assert.ok(body.includes(expected), `Expected "${expected}" in body`);
     assert.ok(!body.includes('{~~'), 'Expected no CriticMarkup in body');
@@ -1712,7 +1712,7 @@ Then(
 
 When(
   'agent reads the file with view = {string}',
-  async function (this: ChangeTracksWorld, view: string) {
+  async function (this: ChangeDownWorld, view: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1722,7 +1722,7 @@ When(
 
 Then(
   'the meta view shows {int} proposed, {int} accepted',
-  function (this: ChangeTracksWorld, proposed: number, accepted: number) {
+  function (this: ChangeDownWorld, proposed: number, accepted: number) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     if (proposed === 0) {
@@ -1741,7 +1741,7 @@ Then(
 
 Given(
   'the file has human-authored tracking markup:',
-  async function (this: ChangeTracksWorld, content: string) {
+  async function (this: ChangeDownWorld, content: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1753,7 +1753,7 @@ Given(
 
 When(
   'agent {string} reads with view = {string}',
-  async function (this: ChangeTracksWorld, _author: string, view: string) {
+  async function (this: ChangeDownWorld, _author: string, view: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -1763,7 +1763,7 @@ When(
 
 Then(
   'the meta view shows {int} proposed changes by @human-editor',
-  function (this: ChangeTracksWorld, count: number) {
+  function (this: ChangeDownWorld, count: number) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     assert.ok(text.includes(`${count} proposed`) || text.includes('proposed'),
@@ -1772,18 +1772,18 @@ Then(
 );
 
 When(
-  'agent {string} calls get_change for ct-1',
-  async function (this: ChangeTracksWorld, _author: string) {
+  'agent {string} calls get_change for cn-1',
+  async function (this: ChangeDownWorld, _author: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    this.lastResult = await this.ctx.getChange(filePath, 'ct-1');
+    this.lastResult = await this.ctx.getChange(filePath, 'cn-1');
   },
 );
 
 Then(
   'the response contains the reasoning {string}',
-  async function (this: ChangeTracksWorld, expected: string) {
+  async function (this: ChangeDownWorld, expected: string) {
     assert.ok(this.lastResult, 'No MCP result available');
     const text = this.ctx.resultText(this.lastResult);
     // The reasoning text might be in the JSON's reasoning field or in the raw footnote.
@@ -1795,7 +1795,7 @@ Then(
       // Try re-reading with include_raw_footnote
       const filePath = this.files.values().next().value;
       if (filePath) {
-        const r = await this.ctx.getChange(filePath, 'ct-1', { include_raw_footnote: true });
+        const r = await this.ctx.getChange(filePath, 'cn-1', { include_raw_footnote: true });
         const rawText = this.ctx.resultText(r);
         found = rawText.includes(expected);
       }
@@ -1813,31 +1813,31 @@ Then(
 );
 
 When(
-  'agent {string} responds to ct-2 with {string} label {string}',
-  async function (this: ChangeTracksWorld, author: string, response: string, label: string) {
+  'agent {string} responds to cn-2 with {string} label {string}',
+  async function (this: ChangeDownWorld, author: string, response: string, label: string) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
-      responses: [{ change_id: 'ct-2', response, label }],
+      responses: [{ change_id: 'cn-2', response, label }],
       author,
     });
   },
 );
 
 Then(
-  'ct-2 has a new discussion entry from ai:reviewer',
-  async function (this: ChangeTracksWorld) {
+  'cn-2 has a new discussion entry from ai:reviewer',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    assert.ok(disk.includes('ai:reviewer'), 'Expected ai:reviewer in ct-2 discussion');
+    assert.ok(disk.includes('ai:reviewer'), 'Expected ai:reviewer in cn-2 discussion');
   },
 );
 
 When(
   'the VS Code extension parses the updated file',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -1848,34 +1848,34 @@ When(
 );
 
 Then(
-  'ct-1 shows as accepted',
-  async function (this: ChangeTracksWorld) {
+  'cn-1 shows as accepted',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
   },
 );
 
 Then(
-  'ct-2\'s comment thread contains the agent\'s suggestion',
-  async function (this: ChangeTracksWorld) {
+  'cn-2\'s comment thread contains the agent\'s suggestion',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    assert.ok(disk.includes('Consider also adding Datadog APM'), 'Expected agent suggestion in ct-2 footnote');
+    assert.ok(disk.includes('Consider also adding Datadog APM'), 'Expected agent suggestion in cn-2 footnote');
   },
 );
 
 // --- AJ5 Scenario 3: Round-trip ---
 
 When(
-  'human adds a comment to ct-1 footnote',
-  async function (this: ChangeTracksWorld) {
+  'human adds a comment to cn-1 footnote',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.review(filePath, {
-      responses: [{ change_id: 'ct-1', response: 'Could you also add rollback mechanism?', label: 'suggestion' }],
+      responses: [{ change_id: 'cn-1', response: 'Could you also add rollback mechanism?', label: 'suggestion' }],
       author: 'human:editor',
     });
   },
@@ -1883,12 +1883,12 @@ When(
 
 When(
   'agent reads the file and sees the comment via get_change',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     // Use include_raw_footnote to get the full footnote text including discussion
-    this.lastResult = await this.ctx.getChange(filePath, 'ct-1', { include_raw_footnote: true });
+    this.lastResult = await this.ctx.getChange(filePath, 'cn-1', { include_raw_footnote: true });
     const text = this.ctx.resultText(this.lastResult);
     // Also check the file directly since the comment is in the footnote
     const disk = await this.ctx.readDisk(filePath);
@@ -1900,12 +1900,12 @@ When(
 );
 
 When(
-  'agent amends ct-1 incorporating feedback \\(supersede)',
-  async function (this: ChangeTracksWorld) {
+  'agent amends cn-1 incorporating feedback \\(supersede)',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    this.lastResult = await this.ctx.amend(filePath, 'ct-1', {
+    this.lastResult = await this.ctx.amend(filePath, 'cn-1', {
       new_text: 'CI/CD pipeline with rollback support',
       reason: 'Incorporated human feedback about rollback',
       author: 'ai:assistant',
@@ -1918,8 +1918,8 @@ When(
 );
 
 Then(
-  'the amend created a new superseding change for ct-1',
-  function (this: ChangeTracksWorld) {
+  'the amend created a new superseding change for cn-1',
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true, 'Expected success');
@@ -1928,7 +1928,7 @@ Then(
 
 When(
   'human accepts the superseding change via core accept',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     const filePath = this.files.values().next().value;
@@ -1943,11 +1943,11 @@ When(
 
 Then(
   'the file is clean with the final amended text',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    const footnoteStart = disk.indexOf('\n[^ct-');
+    const footnoteStart = disk.indexOf('\n[^cn-');
     const body = footnoteStart >= 0 ? disk.slice(0, footnoteStart) : disk;
     assert.ok(body.includes('CI/CD pipeline'), 'Expected amended text in body');
     assert.ok(!body.includes('{~~'), 'Expected no CriticMarkup in body');
@@ -1956,11 +1956,11 @@ Then(
 
 Then(
   'the footnote contains the full deliberation trail for the supersede chain',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    assert.ok(disk.includes('[^ct-1]:'), 'Expected ct-1 footnote');
+    assert.ok(disk.includes('[^cn-1]:'), 'Expected cn-1 footnote');
     assert.ok(this.lastSupersedeNewId, 'No superseding change ID recorded');
     assert.ok(disk.includes(`[^${this.lastSupersedeNewId}]:`), `Expected ${this.lastSupersedeNewId} footnote`);
     assert.ok(disk.includes('ai:assistant'), 'Expected ai:assistant in trail');
@@ -1971,11 +1971,11 @@ Then(
 // Keep the old deliberation trail step for other scenarios that still reference it
 Then(
   'the footnote contains the full deliberation trail',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    assert.ok(disk.includes('[^ct-1]:'), 'Expected ct-1 footnote');
+    assert.ok(disk.includes('[^cn-1]:'), 'Expected cn-1 footnote');
     assert.ok(disk.includes('ai:assistant') || disk.includes('ai:proposer'), 'Expected agent in trail');
   },
 );
@@ -1999,8 +1999,8 @@ Fifth paragraph covers monitoring.
 Sixth paragraph on deployment.`;
 
 Given(
-  'a tracked file with {int} proposed changes \\(ct-1 through ct-5)',
-  async function (this: ChangeTracksWorld, count: number) {
+  'a tracked file with {int} proposed changes \\(cn-1 through cn-5)',
+  async function (this: ChangeDownWorld, count: number) {
     if (!this.ctx) await this.setupContext();
     const filePath = await this.ctx.createFile('doc.md', AJ6_CONTENT);
     this.files.set('doc.md', filePath);
@@ -2020,33 +2020,33 @@ Given(
 );
 
 Then(
-  'ct-1 is settled \\(inline markup removed)',
-  async function (this: ChangeTracksWorld) {
+  'cn-1 is settled \\(inline markup removed)',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    // ct-1 was an insertion -- after settlement, inline markup removed
-    assert.ok(!disk.includes('{++Added line'), 'Expected ct-1 inline markup to be removed');
+    // cn-1 was an insertion -- after settlement, inline markup removed
+    assert.ok(!disk.includes('{++Added line'), 'Expected cn-1 inline markup to be removed');
   },
 );
 
 Then(
-  'ct-2 through ct-5 remain as proposed inline markup',
-  async function (this: ChangeTracksWorld) {
+  'cn-2 through cn-5 remain as proposed inline markup',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    // At least some of ct-2-5 markup should remain
+    // At least some of cn-2-5 markup should remain
     assert.ok(
       disk.includes('{--') || disk.includes('{~~') || disk.includes('{++'),
-      'Expected remaining inline markup for ct-2 through ct-5',
+      'Expected remaining inline markup for cn-2 through cn-5',
     );
   },
 );
 
 Then(
   'the file has {int} accepted footnote and {int} proposed footnotes',
-  async function (this: ChangeTracksWorld, accepted: number, proposed: number) {
+  async function (this: ChangeDownWorld, accepted: number, proposed: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -2058,76 +2058,76 @@ Then(
 );
 
 When(
-  'I approve ct-2 and ct-3',
-  async function (this: ChangeTracksWorld) {
+  'I approve cn-2 and cn-3',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-2', decision: 'approve', reason: 'approved' },
-        { change_id: 'ct-3', decision: 'approve', reason: 'approved' },
+        { change_id: 'cn-2', decision: 'approve', reason: 'approved' },
+        { change_id: 'cn-3', decision: 'approve', reason: 'approved' },
       ],
     });
   },
 );
 
 Then(
-  'ct-2 and ct-3 are settled',
-  async function (this: ChangeTracksWorld) {
+  'cn-2 and cn-3 are settled',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-2', 'accepted');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-3', 'accepted');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-2', 'accepted');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-3', 'accepted');
   },
 );
 
 Then(
-  'ct-4 and ct-5 remain',
-  async function (this: ChangeTracksWorld) {
+  'cn-4 and cn-5 remain',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-4', 'proposed');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-5', 'proposed');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-4', 'proposed');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-5', 'proposed');
   },
 );
 
 When(
-  'I reject ct-4',
-  async function (this: ChangeTracksWorld) {
+  'I reject cn-4',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-4', decision: 'reject', reason: 'not needed' }],
+      reviews: [{ change_id: 'cn-4', decision: 'reject', reason: 'not needed' }],
     });
   },
 );
 
 Then(
-  'ct-4 is settled \\(text removed for insertion, kept for deletion)',
-  async function (this: ChangeTracksWorld) {
+  'cn-4 is settled \\(text removed for insertion, kept for deletion)',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-4', 'rejected');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-4', 'rejected');
   },
 );
 
 When(
-  'I approve ct-5',
-  async function (this: ChangeTracksWorld) {
+  'I approve cn-5',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-5', decision: 'approve', reason: 'good' }],
+      reviews: [{ change_id: 'cn-5', decision: 'approve', reason: 'good' }],
     });
   },
 );
 
 Then(
   'only footnotes remain in the file',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.assertNoMarkupInBody(filePath);
@@ -2136,7 +2136,7 @@ Then(
 
 Then(
   'the document body is clean CriticMarkup-free text',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.assertNoMarkupInBody(filePath);
@@ -2145,13 +2145,13 @@ Then(
 
 Then(
   'each footnote reflects its final status',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
     // Each footnote should have either accepted or rejected status
     for (let i = 1; i <= 5; i++) {
-      assert.ok(disk.includes(`[^ct-${i}]:`), `Expected ct-${i} footnote`);
+      assert.ok(disk.includes(`[^cn-${i}]:`), `Expected cn-${i} footnote`);
     }
   },
 );
@@ -2159,31 +2159,31 @@ Then(
 // --- AJ6 Scenario 2: Batch settle ---
 
 When(
-  'I approve ct-1, ct-2, ct-3 \\(markup persists)',
-  async function (this: ChangeTracksWorld) {
+  'I approve cn-1, cn-2, cn-3 \\(markup persists)',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-1', decision: 'approve', reason: 'ok' },
-        { change_id: 'ct-2', decision: 'approve', reason: 'ok' },
-        { change_id: 'ct-3', decision: 'approve', reason: 'ok' },
+        { change_id: 'cn-1', decision: 'approve', reason: 'ok' },
+        { change_id: 'cn-2', decision: 'approve', reason: 'ok' },
+        { change_id: 'cn-3', decision: 'approve', reason: 'ok' },
       ],
     });
   },
 );
 
 When(
-  'I reject ct-4, ct-5 \\(markup persists)',
-  async function (this: ChangeTracksWorld) {
+  'I reject cn-4, cn-5 \\(markup persists)',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
       reviews: [
-        { change_id: 'ct-4', decision: 'reject', reason: 'no' },
-        { change_id: 'ct-5', decision: 'reject', reason: 'no' },
+        { change_id: 'cn-4', decision: 'reject', reason: 'no' },
+        { change_id: 'cn-5', decision: 'reject', reason: 'no' },
       ],
     });
   },
@@ -2191,7 +2191,7 @@ When(
 
 Then(
   'all {int} changes have decisions but inline markup remains',
-  async function (this: ChangeTracksWorld, _count: number) {
+  async function (this: ChangeDownWorld, _count: number) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -2205,7 +2205,7 @@ Then(
 
 Then(
   'all decided changes are compacted',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.assertNoMarkupInBody(filePath);
@@ -2214,7 +2214,7 @@ Then(
 
 Then(
   'the document body is clean',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.assertNoMarkupInBody(filePath);
@@ -2223,11 +2223,11 @@ Then(
 
 Then(
   'footnotes persist',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    assert.ok(disk.includes('[^ct-1]:'), 'Expected footnotes to persist');
+    assert.ok(disk.includes('[^cn-1]:'), 'Expected footnotes to persist');
   },
 );
 
@@ -2235,7 +2235,7 @@ Then(
 
 Given(
   'the {int} changes include:',
-  function (this: ChangeTracksWorld, _count: number, _table: any) {
+  function (this: ChangeDownWorld, _count: number, _table: any) {
     // Documentation step describing the change types.
     // The actual changes are created in the Background step.
   },
@@ -2243,13 +2243,13 @@ Given(
 
 When(
   'all are approved and settled',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     for (let i = 1; i <= 5; i++) {
       await this.ctx.review(filePath, {
-        reviews: [{ change_id: `ct-${i}`, decision: 'approve', reason: 'ok' }],
+        reviews: [{ change_id: `cn-${i}`, decision: 'approve', reason: 'ok' }],
       });
     }
     this.lastResult = await this.ctx.review(filePath, { settle: true });
@@ -2258,7 +2258,7 @@ When(
 
 Then(
   'the document has correct line structure \\(no orphaned newlines)',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
@@ -2269,11 +2269,11 @@ Then(
 
 Then(
   'footnotes are at the end of the file',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    const bodyEnd = disk.indexOf('\n[^ct-');
+    const bodyEnd = disk.indexOf('\n[^cn-');
     assert.ok(bodyEnd > 0, 'Expected footnotes to be at end of file');
     const afterFootnotes = disk.slice(bodyEnd);
     assert.ok(!afterFootnotes.includes('# '), 'Expected no body content after footnotes');
@@ -2282,7 +2282,7 @@ Then(
 
 Then(
   'no CriticMarkup delimiters remain in the body',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.assertNoMarkupInBody(filePath);
@@ -2292,23 +2292,23 @@ Then(
 // --- AJ6 Scenario 4: Mixed auto-settle and manual settle ---
 
 When(
-  'I approve ct-1 \\(auto-settled) and approve ct-2 \\(auto-settled)',
-  async function (this: ChangeTracksWorld) {
+  'I approve cn-1 \\(auto-settled) and approve cn-2 \\(auto-settled)',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-1', decision: 'approve', reason: 'ok' }],
+      reviews: [{ change_id: 'cn-1', decision: 'approve', reason: 'ok' }],
     });
     this.lastResult = await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-2', decision: 'approve', reason: 'ok' }],
+      reviews: [{ change_id: 'cn-2', decision: 'approve', reason: 'ok' }],
     });
   },
 );
 
 When(
   'I change config to settlement.auto_on_approve = false',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     this.configOverrides.settlement = { ...this.configOverrides.settlement, auto_on_approve: false };
     if (this.ctx) {
       await this.ctx.reconfigure({ settlement: { auto_on_approve: false, auto_on_reject: this.configOverrides.settlement?.auto_on_reject ?? true } });
@@ -2317,37 +2317,37 @@ When(
 );
 
 When(
-  'I approve ct-3 \\(NOT auto-settled, markup persists)',
-  async function (this: ChangeTracksWorld) {
+  'I approve cn-3 \\(NOT auto-settled, markup persists)',
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     this.lastResult = await this.ctx.review(filePath, {
-      reviews: [{ change_id: 'ct-3', decision: 'approve', reason: 'ok' }],
+      reviews: [{ change_id: 'cn-3', decision: 'approve', reason: 'ok' }],
     });
   },
 );
 
 Then(
-  'ct-1 and ct-2 are settled, ct-3 has markup',
-  async function (this: ChangeTracksWorld) {
+  'cn-1 and cn-2 are settled, cn-3 has markup',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
     const disk = await this.ctx.readDisk(filePath);
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-1', 'accepted');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-2', 'accepted');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-3', 'accepted');
-    // ct-3 markup should persist (not auto-settled)
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-1', 'accepted');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-2', 'accepted');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-3', 'accepted');
+    // cn-3 markup should persist (not auto-settled)
     assert.ok(
-      disk.includes('{~~') || disk.includes('[^ct-3]'),
-      'Expected ct-3 to still have footnote reference',
+      disk.includes('{~~') || disk.includes('[^cn-3]'),
+      'Expected cn-3 to still have footnote reference',
     );
   },
 );
 
 When(
   'I explicitly settle via review_changes settle = true',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
@@ -2356,11 +2356,11 @@ When(
 );
 
 Then(
-  'ct-3 is now settled too',
-  async function (this: ChangeTracksWorld) {
+  'cn-3 is now settled too',
+  async function (this: ChangeDownWorld) {
     const filePath = this.files.values().next().value;
     assert.ok(filePath, 'No file in this scenario');
-    await this.ctx.assertFootnoteStatus(filePath, 'ct-3', 'accepted');
+    await this.ctx.assertFootnoteStatus(filePath, 'cn-3', 'accepted');
     await this.ctx.assertNoMarkupInBody(filePath);
   },
 );
@@ -2373,11 +2373,11 @@ Then(
 const LARGE_FILE_LINE_COUNT = 60;
 
 /** Store the total line count for affected_lines assertions */
-const totalLineCount: WeakMap<ChangeTracksWorld, number> = new WeakMap();
+const totalLineCount: WeakMap<ChangeDownWorld, number> = new WeakMap();
 
 Given(
   'a tracked file with {int}+ lines',
-  async function (this: ChangeTracksWorld, _minLines: number) {
+  async function (this: ChangeDownWorld, _minLines: number) {
     if (!this.ctx) await this.setupContext();
     const lines: string[] = ['# Large Test Document', ''];
     for (let i = 1; i <= LARGE_FILE_LINE_COUNT; i++) {
@@ -2392,7 +2392,7 @@ Given(
 
 When(
   'I call propose_change substituting one word in the middle of the file',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     if (!this.ctx) await this.setupContext();
     // Use the large-doc.md created by "Given a tracked file with 50+ lines"
     const filePath = this.files.get('large-doc.md') ?? this.files.values().next().value;
@@ -2411,7 +2411,7 @@ When(
 
 Then(
   'affected_lines contains fewer than {int} entries',
-  function (this: ChangeTracksWorld, maxEntries: number) {
+  function (this: ChangeDownWorld, maxEntries: number) {
     assert.ok(this.lastResult, 'No MCP result available');
     assert.notEqual(this.lastResult.isError, true, 'Expected success response');
     const data = this.ctx.parseResult(this.lastResult);
@@ -2426,7 +2426,7 @@ Then(
 
 Then(
   'affected_lines includes the edit region with context',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
     const affectedLines = data.affected_lines as Array<{ line: number; content: string }>;
@@ -2444,7 +2444,7 @@ Then(
 
 Then(
   'affected_lines does NOT contain the entire file',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     assert.ok(this.lastResult, 'No MCP result available');
     const data = this.ctx.parseResult(this.lastResult);
     const affectedLines = data.affected_lines as Array<unknown>;

@@ -1,5 +1,5 @@
 Feature: E1 - Config Resolution
-  Config loading from .changetracks/config.toml with defaults, overrides, and merging.
+  Config loading from .changedown/config.toml with defaults, overrides, and merging.
 
   Background:
     Given a fresh ScenarioContext

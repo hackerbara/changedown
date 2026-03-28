@@ -4,7 +4,7 @@ import {
   nextChange,
   previousChange,
   VirtualDocument,
-} from '@changetracks/core/internals';
+} from '@changedown/core/internals';
 
 describe('Navigation', () => {
   const parser = new CriticMarkupParser();

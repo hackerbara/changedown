@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createDiagnostics, DiagnosticSeverity } from '@changetracks/lsp-server/internals';
-import { ChangeNode, ChangeType, ChangeStatus } from '@changetracks/core';
+import { createDiagnostics, DiagnosticSeverity } from '@changedown/lsp-server/internals';
+import { ChangeNode, ChangeType, ChangeStatus } from '@changedown/core';
 
 describe('Diagnostics', () => {
   describe('createDiagnostics', () => {
@@ -23,7 +23,7 @@ describe('Diagnostics', () => {
       const diag = diagnostics[0];
 
       expect(diag.severity).toBe(DiagnosticSeverity.Hint);
-      expect(diag.source).toBe('changetracks');
+      expect(diag.source).toBe('changedown');
       expect(diag.code).toBe('change-1');
       expect(diag.message).toBe('Insertion: world');
       expect(diag.data).toStrictEqual({ changeId: 'change-1', changeType: ChangeType.Insertion });
@@ -263,15 +263,15 @@ describe('Diagnostics', () => {
     });
 
     it('emits Information diagnostic for consumed change', () => {
-      const text = 'Some document text.\n\n[^ct-3]: {++inserted text++}';
+      const text = 'Some document text.\n\n[^cn-3]: {++inserted text++}';
       const changes: ChangeNode[] = [
         {
-          id: 'ct-3',
+          id: 'cn-3',
           type: ChangeType.Insertion,
           status: ChangeStatus.Proposed,
           anchored: false,
           level: 2,
-          consumedBy: 'ct-5',
+          consumedBy: 'cn-5',
           range: { start: 21, end: 49 }, // footnote block range
           contentRange: { start: 31, end: 44 }, // inserted text
         }
@@ -281,20 +281,20 @@ describe('Diagnostics', () => {
 
       expect(diagnostics).toHaveLength(1);
       expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Information);
-      expect(diagnostics[0].message).toContain('Consumed by ct-5');
-      expect(diagnostics[0].data).toMatchObject({ consumed: true, consumedBy: 'ct-5' });
+      expect(diagnostics[0].message).toContain('Consumed by cn-5');
+      expect(diagnostics[0].data).toMatchObject({ consumed: true, consumedBy: 'cn-5' });
     });
 
     it('emits Information diagnostic with partial consumption label', () => {
-      const text = 'Some document text.\n\n[^ct-7]: {++partial text++}';
+      const text = 'Some document text.\n\n[^cn-7]: {++partial text++}';
       const changes: ChangeNode[] = [
         {
-          id: 'ct-7',
+          id: 'cn-7',
           type: ChangeType.Insertion,
           status: ChangeStatus.Proposed,
           anchored: false,
           level: 2,
-          consumedBy: 'ct-9',
+          consumedBy: 'cn-9',
           consumptionType: 'partial',
           range: { start: 21, end: 48 },
           contentRange: { start: 31, end: 43 },
@@ -305,7 +305,7 @@ describe('Diagnostics', () => {
 
       expect(diagnostics).toHaveLength(1);
       expect(diagnostics[0].severity).toBe(DiagnosticSeverity.Information);
-      expect(diagnostics[0].message).toContain('Partially consumed by ct-9');
+      expect(diagnostics[0].message).toContain('Partially consumed by cn-9');
     });
   });
 });

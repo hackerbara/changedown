@@ -2,15 +2,15 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import { handleBeforeMcpExecution } from 'changetracks-hooks/internals';
-import type { HookInput } from 'changetracks-hooks/internals';
+import { handleBeforeMcpExecution } from 'changedown-hooks/internals';
+import type { HookInput } from 'changedown-hooks/internals';
 
 describe('Cursor beforeMCPExecution handler', () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-cursor-mcp-'));
-    const scDir = path.join(tmpDir, '.changetracks');
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-cursor-mcp-'));
+    const scDir = path.join(tmpDir, '.changedown');
     await fs.mkdir(scDir, { recursive: true });
     // Default config: author enforcement optional
     await fs.writeFile(
@@ -24,7 +24,7 @@ describe('Cursor beforeMCPExecution handler', () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('passes through non-ChangeTracks tools', async () => {
+  it('passes through non-ChangeDown tools', async () => {
     const input: HookInput = {
       hook_event_name: 'beforeMCPExecution',
       tool_name: 'some_other_tool',
@@ -62,7 +62,7 @@ describe('Cursor beforeMCPExecution handler', () => {
 
   it('blocks propose_change without author when enforcement is required', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[author]\ndefault = "ai:claude"\nenforcement = "required"\n',
       'utf-8',
     );
@@ -81,7 +81,7 @@ describe('Cursor beforeMCPExecution handler', () => {
 
   it('allows propose_change with author when enforcement is required', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[author]\ndefault = "ai:claude"\nenforcement = "required"\n',
       'utf-8',
     );
@@ -126,7 +126,7 @@ describe('Cursor beforeMCPExecution handler', () => {
     const input: HookInput = {
       hook_event_name: 'beforeMCPExecution',
       tool_name: 'get_change',
-      tool_input: { file: 'readme.md', change_id: 'ct-1' },
+      tool_input: { file: 'readme.md', change_id: 'cn-1' },
       workspace_roots: [tmpDir],
     };
     const result = await handleBeforeMcpExecution(input);
@@ -136,7 +136,7 @@ describe('Cursor beforeMCPExecution handler', () => {
 
   it('validates review_changes for author when enforcement required', async () => {
     await fs.writeFile(
-      path.join(tmpDir, '.changetracks', 'config.toml'),
+      path.join(tmpDir, '.changedown', 'config.toml'),
       '[tracking]\ninclude = ["**/*.md"]\n\n[author]\nenforcement = "required"\n',
       'utf-8',
     );

@@ -6,8 +6,8 @@ import { rerecordState } from '../state-utils.js';
 import { isFileInScope } from '../config.js';
 import {
   compact, compactL2, analyzeCompactionCandidates, isL3Format,
-} from '@changetracks/core';
-import type { CompactionRequest } from '@changetracks/core';
+} from '@changedown/core';
+import type { CompactionRequest } from '@changedown/core';
 
 /**
  * Tool definition for the compact_changes MCP tool.
@@ -32,7 +32,7 @@ export const compactChangesTool = {
           {
             type: 'array',
             items: { type: 'string' },
-            description: 'Footnote IDs to compact (e.g. ["ct-1", "ct-3"])',
+            description: 'Footnote IDs to compact (e.g. ["cn-1", "cn-3"])',
           },
           {
             type: 'string',
@@ -115,7 +115,7 @@ export async function handleCompactChanges(
     if (!isFileInScope(filePath, config, projectDir)) {
       return errorResult(
         `File is not in scope for tracking: "${filePath}". ` +
-          'Check .changetracks/config.toml include/exclude patterns.',
+          'Check .changedown/config.toml include/exclude patterns.',
       );
     }
 

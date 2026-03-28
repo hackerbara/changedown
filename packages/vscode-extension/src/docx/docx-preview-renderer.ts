@@ -1,10 +1,10 @@
 import MarkdownIt = require('markdown-it');
-import { parseForFormat, ChangeType } from '@changetracks/core';
-import { changetracksPlugin, PluginConfig } from '../preview/plugin';
+import { parseForFormat, ChangeType } from '@changedown/core';
+import { changedownPlugin, PluginConfig } from '@changedown/preview';
 
 /**
  * Renders markdown (with CriticMarkup) to HTML using markdown-it
- * and the changetracks preview plugin. Runs in the extension host.
+ * and the changedown preview plugin. Runs in the extension host.
  *
  * @param viewMode Controls how changes are rendered:
  *   - 'allMarkup' (default): full CriticMarkup rendering with colors
@@ -32,7 +32,7 @@ export function renderMarkdownToHtml(
         isDarkTheme,
     };
 
-    md.use(changetracksPlugin, () => config);
+    md.use(changedownPlugin, () => config);
 
     let src = markdown;
 

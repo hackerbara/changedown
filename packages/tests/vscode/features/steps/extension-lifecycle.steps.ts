@@ -16,13 +16,13 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import type { Page } from 'playwright';
-import type { ChangeTracksWorld } from './world';
+import type { ChangeDownWorld } from './world';
 import { getOrCreateInstance } from './world';
 
 // ── Extend World with extension lifecycle state ──────────────────────
 
 declare module './world' {
-    interface ChangeTracksWorld {
+    interface ChangeDownWorld {
         packageJson?: any;
         extensionActive?: boolean;
         extensionApiResult?: any;
@@ -43,7 +43,7 @@ function loadPackageJson(): any {
 }
 
 /** Path where the _testExtensionState command writes its state JSON. */
-const EXT_STATE_PATH = path.join(os.tmpdir(), 'changetracks-test-ext-state.json');
+const EXT_STATE_PATH = path.join(os.tmpdir(), 'changedown-test-ext-state.json');
 
 /** Shape of the state written by _testExtensionState. */
 interface ExtensionState {
@@ -74,7 +74,7 @@ async function importExecuteCommandViaBridge(): Promise<typeof import('../../jou
 /**
  * Query extension state via the bridge command.
  *
- * Triggers `changetracks._testExtensionState` through the command palette
+ * Triggers `changedown._testExtensionState` through the command palette
  * (the command has a title registered in package.json), waits for the
  * extension host to write the state file, and reads it back.
  */
@@ -82,7 +82,7 @@ async function queryExtensionState(page: Page): Promise<ExtensionState | null> {
     const executeCommand = await importExecuteCommand();
     const beforeTs = Date.now();
 
-    await executeCommand(page, 'ChangeTracks: Test Extension State');
+    await executeCommand(page, 'ChangeDown: Test Extension State');
     // Allow the extension host time to write the file (getCommands is async)
     await page.waitForTimeout(500);
 
@@ -100,14 +100,14 @@ async function queryExtensionState(page: Page): Promise<ExtensionState | null> {
 
 // ── Given steps ──────────────────────────────────────────────────────
 
-Given('the extension package.json', function (this: ChangeTracksWorld) {
+Given('the extension package.json', function (this: ChangeDownWorld) {
     this.packageJson = loadPackageJson();
 });
 
 Given(
     'VS Code is launched with a markdown fixture',
     { timeout: 60000 },
-    async function (this: ChangeTracksWorld) {
+    async function (this: ChangeDownWorld) {
         const { launchWithJourneyFixture } = await import('../../journeys/playwrightHarness');
         this.instance = await getOrCreateInstance(
             'extension-lifecycle-test.md',
@@ -122,7 +122,7 @@ Given(
 When(
     'the extension {string} is activated',
     { timeout: 30000 },
-    async function (this: ChangeTracksWorld, _extensionId: string) {
+    async function (this: ChangeDownWorld, _extensionId: string) {
         assert.ok(this.page, 'Page not available — launch VS Code first');
 
         // The extension auto-activates on markdown files. Query its state
@@ -143,17 +143,17 @@ When(
 When(
     'a markdown document with content {string} is opened',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, content: string) {
+    async function (this: ChangeDownWorld, content: string) {
         assert.ok(this.page, 'Page not available');
 
         // Use the _testResetDocument bridge command to set editor content.
         // The extension-lifecycle-test.md fixture is already open; we replace
         // its content via the bridge command which calls editor.edit() in the
         // extension host (reliable, unlike window.monaco which is often undefined).
-        const inputPath = path.join(os.tmpdir(), 'changetracks-test-reset-input.json');
+        const inputPath = path.join(os.tmpdir(), 'changedown-test-reset-input.json');
         fs.writeFileSync(inputPath, JSON.stringify({ content }));
         const executeCommandViaBridge = await importExecuteCommandViaBridge();
-        await executeCommandViaBridge(this.page!, 'ChangeTracks: Test Reset Document');
+        await executeCommandViaBridge(this.page!, 'ChangeDown: Test Reset Document');
         await this.page!.waitForTimeout(500);
     }
 );
@@ -161,7 +161,7 @@ When(
 When(
     'a plaintext document with content {string} is opened',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, content: string) {
+    async function (this: ChangeDownWorld, content: string) {
         assert.ok(this.page, 'Page not available');
 
         // Open a new untitled text file via command palette, then set content
@@ -171,10 +171,10 @@ When(
         await executeCommand(this.page!, 'File: New Untitled Text File');
         await this.page!.waitForTimeout(500);
 
-        const inputPath = path.join(os.tmpdir(), 'changetracks-test-reset-input.json');
+        const inputPath = path.join(os.tmpdir(), 'changedown-test-reset-input.json');
         fs.writeFileSync(inputPath, JSON.stringify({ content }));
         const executeCommandViaBridge = await importExecuteCommandViaBridge();
-        await executeCommandViaBridge(this.page!, 'ChangeTracks: Test Reset Document');
+        await executeCommandViaBridge(this.page!, 'ChangeDown: Test Reset Document');
         await this.page!.waitForTimeout(500);
     }
 );
@@ -184,7 +184,7 @@ When(
 Then(
     'the extension {string} is present',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, _extensionId: string) {
+    async function (this: ChangeDownWorld, _extensionId: string) {
         assert.ok(this.page, 'Page not available');
         const state = await queryExtensionState(this.page!);
         assert.ok(state, 'Failed to read extension state via bridge command');
@@ -192,14 +192,14 @@ Then(
     }
 );
 
-Then('the extension is active', function (this: ChangeTracksWorld) {
+Then('the extension is active', function (this: ChangeDownWorld) {
     assert.ok(this.extensionActive, 'Extension should be active after activation');
 });
 
 Then(
     'the extension {string} is active',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, _extensionId: string) {
+    async function (this: ChangeDownWorld, _extensionId: string) {
         assert.ok(this.page, 'Page not available');
         const state = await queryExtensionState(this.page!);
         assert.ok(state, 'Failed to read extension state via bridge command');
@@ -207,7 +207,7 @@ Then(
     }
 );
 
-Then('the extension API has an {string} function', function (this: ChangeTracksWorld, funcName: string) {
+Then('the extension API has an {string} function', function (this: ChangeDownWorld, funcName: string) {
     assert.ok(this.extensionApiResult, 'No extension API result');
     if (funcName === 'extendMarkdownIt') {
         assert.ok(
@@ -220,7 +220,7 @@ Then('the extension API has an {string} function', function (this: ChangeTracksW
 Then(
     'the following commands are registered:',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, dataTable: any) {
+    async function (this: ChangeDownWorld, dataTable: any) {
         assert.ok(this.page, 'Page not available');
         const state = await queryExtensionState(this.page!);
         assert.ok(state, 'Failed to read extension state via bridge command');
@@ -238,7 +238,7 @@ Then(
 Then(
     'exactly {int} commands in the {string} namespace are registered',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, expectedCount: number, namespace: string) {
+    async function (this: ChangeDownWorld, expectedCount: number, namespace: string) {
         assert.ok(this.page, 'Page not available');
         const state = await queryExtensionState(this.page!);
         assert.ok(state, 'Failed to read extension state via bridge command');
@@ -256,19 +256,19 @@ Then(
 Then(
     'all {int} declared commands exist in the {string} namespace',
     { timeout: 15000 },
-    async function (this: ChangeTracksWorld, _count: number, namespace: string) {
+    async function (this: ChangeDownWorld, _count: number, namespace: string) {
         assert.ok(this.page, 'Page not available');
 
         const DECLARED_COMMANDS = [
-            'changetracks.toggleTracking',
-            'changetracks.acceptChange',
-            'changetracks.rejectChange',
-            'changetracks.acceptAll',
-            'changetracks.rejectAll',
-            'changetracks.nextChange',
-            'changetracks.previousChange',
-            'changetracks.addComment',
-            'changetracks.toggleView',
+            'changedown.toggleTracking',
+            'changedown.acceptChange',
+            'changedown.rejectChange',
+            'changedown.acceptAll',
+            'changedown.rejectAll',
+            'changedown.nextChange',
+            'changedown.previousChange',
+            'changedown.addComment',
+            'changedown.toggleView',
         ];
 
         const state = await queryExtensionState(this.page!);
@@ -287,7 +287,7 @@ Then(
 Then(
     'executing {string} does not throw',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, command: string) {
+    async function (this: ChangeDownWorld, command: string) {
         assert.ok(this.page, 'Page not available');
 
         // Use the command palette to execute the command by its palette title.
@@ -298,15 +298,15 @@ Then(
         // executing via a keyboard shortcut workaround. The command palette
         // approach is the most reliable for bridge commands.
         const COMMAND_TITLES: Record<string, string> = {
-            'changetracks.toggleTracking': 'ChangeTracks: Toggle Tracking Mode',
-            'changetracks.acceptChange': 'ChangeTracks: Accept Change at Cursor',
-            'changetracks.rejectChange': 'ChangeTracks: Reject Change at Cursor',
-            'changetracks.acceptAll': 'ChangeTracks: Accept All Changes',
-            'changetracks.rejectAll': 'ChangeTracks: Reject All Changes',
-            'changetracks.nextChange': 'ChangeTracks: Go to Next Change',
-            'changetracks.previousChange': 'ChangeTracks: Go to Previous Change',
-            'changetracks.addComment': 'ChangeTracks: Insert Comment',
-            'changetracks.toggleView': 'ChangeTracks: Toggle Smart View',
+            'changedown.toggleTracking': 'ChangeDown: Toggle Tracking Mode',
+            'changedown.acceptChange': 'ChangeDown: Accept Change at Cursor',
+            'changedown.rejectChange': 'ChangeDown: Reject Change at Cursor',
+            'changedown.acceptAll': 'ChangeDown: Accept All Changes',
+            'changedown.rejectAll': 'ChangeDown: Reject All Changes',
+            'changedown.nextChange': 'ChangeDown: Go to Next Change',
+            'changedown.previousChange': 'ChangeDown: Go to Previous Change',
+            'changedown.addComment': 'ChangeDown: Insert Comment',
+            'changedown.toggleView': 'ChangeDown: Toggle Smart View',
         };
 
         const title = COMMAND_TITLES[command];
@@ -329,21 +329,21 @@ Then(
 Then(
     'executing each of the {int} declared commands does not throw',
     { timeout: 30000 },
-    async function (this: ChangeTracksWorld, _count: number) {
+    async function (this: ChangeDownWorld, _count: number) {
         assert.ok(this.page, 'Page not available');
 
         const executeCommand = await importExecuteCommand();
 
         const DECLARED_COMMAND_TITLES = [
-            'ChangeTracks: Toggle Tracking Mode',
-            'ChangeTracks: Accept Change at Cursor',
-            'ChangeTracks: Reject Change at Cursor',
-            'ChangeTracks: Accept All Changes',
-            'ChangeTracks: Reject All Changes',
-            'ChangeTracks: Go to Next Change',
-            'ChangeTracks: Go to Previous Change',
-            'ChangeTracks: Insert Comment',
-            'ChangeTracks: Toggle Smart View',
+            'ChangeDown: Toggle Tracking Mode',
+            'ChangeDown: Accept Change at Cursor',
+            'ChangeDown: Reject Change at Cursor',
+            'ChangeDown: Accept All Changes',
+            'ChangeDown: Reject All Changes',
+            'ChangeDown: Go to Next Change',
+            'ChangeDown: Go to Previous Change',
+            'ChangeDown: Insert Comment',
+            'ChangeDown: Toggle Smart View',
         ];
 
         for (const title of DECLARED_COMMAND_TITLES) {
@@ -360,7 +360,7 @@ Then(
 Then(
     'the extension module exports a {string} function',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, funcName: string) {
+    async function (this: ChangeDownWorld, funcName: string) {
         assert.ok(this.page, 'Page not available');
 
         if (funcName === 'deactivate') {
@@ -381,7 +381,7 @@ Then(
 Then(
     'the extension module exports {string}',
     { timeout: 10000 },
-    async function (this: ChangeTracksWorld, _exportName: string) {
+    async function (this: ChangeDownWorld, _exportName: string) {
         assert.ok(this.page, 'Page not available');
 
         // Verify the extension is active — outputChannel and other named exports
@@ -395,7 +395,7 @@ Then(
 
 // ── Then steps (@fast — package.json assertions) ─────────────────────
 
-Then('the editor\\/title menu has an entry for {string}', function (this: ChangeTracksWorld, command: string) {
+Then('the editor\\/title menu has an entry for {string}', function (this: ChangeDownWorld, command: string) {
     assert.ok(this.packageJson, 'No package.json loaded');
     const entries = this.packageJson.contributes?.menus?.['editor/title'] ?? [];
     const match = entries.find((e: any) => e.command === command);
@@ -403,7 +403,7 @@ Then('the editor\\/title menu has an entry for {string}', function (this: Change
 });
 
 Then('all editor\\/title menu entries have {string} conditions containing {string}', function (
-    this: ChangeTracksWorld, field: string, expected: string
+    this: ChangeDownWorld, field: string, expected: string
 ) {
     assert.ok(this.packageJson, 'No package.json loaded');
     const entries = this.packageJson.contributes?.menus?.['editor/title'] ?? [];
@@ -417,7 +417,7 @@ Then('all editor\\/title menu entries have {string} conditions containing {strin
     }
 });
 
-Then('the package.json commands section includes:', function (this: ChangeTracksWorld, dataTable: any) {
+Then('the package.json commands section includes:', function (this: ChangeDownWorld, dataTable: any) {
     assert.ok(this.packageJson, 'No package.json loaded');
     const declaredCommands = this.packageJson.contributes?.commands?.map((c: any) => c.command) ?? [];
     const expectedCommands = dataTable.hashes().map((row: any) => row.command);

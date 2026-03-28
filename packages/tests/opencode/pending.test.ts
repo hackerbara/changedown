@@ -7,8 +7,8 @@ import {
   appendPendingEdit,
   clearSessionEdits,
   clearAllEdits,
-} from '@changetracks/opencode-plugin/internals';
-import type { PendingEdit } from '@changetracks/opencode-plugin/internals';
+} from '@changedown/opencode-plugin/internals';
+import type { PendingEdit } from '@changedown/opencode-plugin/internals';
 
 describe('Pending Edit Queue', () => {
   let tempDir: string;
@@ -57,7 +57,7 @@ describe('Pending Edit Queue', () => {
       expect(result[1]).toEqual(edit2);
     });
 
-    it('creates .changetracks directory if it does not exist', async () => {
+    it('creates .changedown directory if it does not exist', async () => {
       const edit: PendingEdit = {
         file: 'test.ts',
         old_text: 'old',
@@ -68,7 +68,7 @@ describe('Pending Edit Queue', () => {
 
       await appendPendingEdit(tempDir, edit);
 
-      const stats = await fs.stat(path.join(tempDir, '.changetracks'));
+      const stats = await fs.stat(path.join(tempDir, '.changedown'));
       expect(stats.isDirectory()).toBe(true);
     });
   });
@@ -122,7 +122,7 @@ describe('Pending Edit Queue', () => {
       await appendPendingEdit(tempDir, edit);
       await clearSessionEdits(tempDir, 'session-1');
 
-      const filePath = path.join(tempDir, '.changetracks', 'pending.json');
+      const filePath = path.join(tempDir, '.changedown', 'pending.json');
       await expect(fs.access(filePath)).rejects.toThrow();
     });
   });
@@ -140,7 +140,7 @@ describe('Pending Edit Queue', () => {
       await appendPendingEdit(tempDir, edit);
       await clearAllEdits(tempDir);
 
-      const filePath = path.join(tempDir, '.changetracks', 'pending.json');
+      const filePath = path.join(tempDir, '.changedown', 'pending.json');
       await expect(fs.access(filePath)).rejects.toThrow();
     });
 

@@ -1,4 +1,4 @@
-# @changetracks/opencode-plugin
+# @changedown/opencode-plugin
 
 An OpenCode plugin that provides durable change tracking with CriticMarkup support for AI agents.
 
@@ -26,7 +26,7 @@ OpenCode loads plugins in two ways ([official docs](https://open-code.ai/en/docs
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@changetracks/opencode-plugin"]
+  "plugin": ["@changedown/opencode-plugin"]
 }
 ```
 
@@ -37,18 +37,18 @@ OpenCode loads plugins in two ways ([official docs](https://open-code.ai/en/docs
 1. Build the plugin and ensure the project has a **local plugin loader** so OpenCode can load it:
 
 ```bash
-cd changetracks
+cd changedown
 npm install
 npm run build:plugin-opencode
 ```
 
-2. This repo includes **`opencode.json`** (project root), **`.opencode/plugins/changetracks.mjs`**, and **`.opencode/package.json`** with a `file:` dependency on `packages/opencode-plugin`. So OpenCode treats this repo as a project and loads `.opencode/plugins/`. OpenCode runs `bun install` in `.opencode/` at startup; to avoid first-run resolution errors, install once from project root: **`cd .opencode && bun install`**. Then **run OpenCode from the changetracks project root** (e.g. `opencode` or `opencode run "test"`). Plugins load when a **session** starts, not when you run `opencode --print-logs` (that only loads config and exits).
+2. This repo includes **`opencode.json`** (project root), **`.opencode/plugins/changedown.mjs`**, and **`.opencode/package.json`** with a `file:` dependency on `packages/opencode-plugin`. So OpenCode treats this repo as a project and loads `.opencode/plugins/`. OpenCode runs `bun install` in `.opencode/` at startup; to avoid first-run resolution errors, install once from project root: **`cd .opencode && bun install`**. Then **run OpenCode from the changedown project root** (e.g. `opencode` or `opencode run "test"`). Plugins load when a **session** starts, not when you run `opencode --print-logs` (that only loads config and exits).
 
-3. If you added `.opencode/` yourself: create `.opencode/plugins/changetracks.mjs` that exports the plugin (see that file in the repo), and in `.opencode/package.json` add `"@changetracks/opencode-plugin": "file:../packages/opencode-plugin"` (path relative to `.opencode/`).
+3. If you added `.opencode/` yourself: create `.opencode/plugins/changedown.mjs` that exports the plugin (see that file in the repo), and in `.opencode/package.json` add `"@changedown/opencode-plugin": "file:../packages/opencode-plugin"` (path relative to `.opencode/`).
 
 ## Configuration
 
-Create `.changetracks/config.toml` in your project root:
+Create `.changedown/config.toml` in your project root:
 
 ```toml
 [tracking]
@@ -83,12 +83,12 @@ ignore = ["**/node_modules/**", "**/.git/**"]
 
 ## Verifying the plugin in OpenCode
 
-The plugin adds the ChangeTracks MCP server via its **config** hook at runtime. The OpenCode TUI may show **MCPs as blank** if it only displays config from the config file (before plugin merge). To make the ChangeTracks MCP server appear in the TUI and in `opencode mcp list`, add it explicitly to your project’s **`opencode.json`** (see the repo root `opencode.json` for an example). The plugin will not override an existing `changetracks` entry. Verification is also done via **logs** and a **practical test**.
+The plugin adds the ChangeDown MCP server via its **config** hook at runtime. The OpenCode TUI may show **MCPs as blank** if it only displays config from the config file (before plugin merge). To make the ChangeDown MCP server appear in the TUI and in `opencode mcp list`, add it explicitly to your project’s **`opencode.json`** (see the repo root `opencode.json` for an example). The plugin will not override an existing `changedown` entry. Verification is also done via **logs** and a **practical test**.
 
 ### 1. Confirm the plugin is in your config
 
-- **npm**: You have `"plugin": ["@changetracks/opencode-plugin"]` in `opencode.json` (project or global).
-- **From source**: You have `.opencode/opencode.json`, `.opencode/plugins/changetracks.js` (or `.mjs`), and `.opencode/package.json` with the local `file:../packages/opencode-plugin` dependency; run `cd .opencode && bun install` once so the plugin resolves.
+- **npm**: You have `"plugin": ["@changedown/opencode-plugin"]` in `opencode.json` (project or global).
+- **From source**: You have `.opencode/opencode.json`, `.opencode/plugins/changedown.js` (or `.mjs`), and `.opencode/package.json` with the local `file:../packages/opencode-plugin` dependency; run `cd .opencode && bun install` once so the plugin resolves.
 
 ### 2. Check that the plugin loaded (logs)
 
@@ -101,7 +101,7 @@ To view logs:
 
 - **Easiest:** run a short session with logs in the terminal:  
   `opencode run "say hi" --print-logs`  
-  Then look for `service=changetracks` or "ChangeTracks plugin loaded" in the output.
+  Then look for `service=changedown` or "ChangeDown plugin loaded" in the output.
 
 - **From the log directory:** OpenCode uses timestamped files (e.g. `2026-02-13T014615.log`). List the dir, then tail the newest file by name:
   ```bash
@@ -110,12 +110,12 @@ To view logs:
   ```
   (Avoid storing `ls` output in a variable and passing it to `tail`/`grep` — some shells or aliases can inject extra text and break the path.)
 
-Look for a line like **"ChangeTracks plugin loaded"** or a structured log entry with `service: "changetracks"`. If you see that, the plugin is loaded. **Plugins are only loaded when a session starts** (e.g. you run `opencode` or `opencode run "..."`), not when you run `opencode --print-logs` (that only loads config and exits). If you never see the message: (1) ensure you have **`opencode.json`** in the project root so OpenCode treats the repo as a project and loads `.opencode/`; (2) run **`cd .opencode && bun install`** once so the plugin dependency resolves; (3) start a real session from the project root and check the latest log file in `~/.local/share/opencode/log/`.
+Look for a line like **"ChangeDown plugin loaded"** or a structured log entry with `service: "changedown"`. If you see that, the plugin is loaded. **Plugins are only loaded when a session starts** (e.g. you run `opencode` or `opencode run "..."`), not when you run `opencode --print-logs` (that only loads config and exits). If you never see the message: (1) ensure you have **`opencode.json`** in the project root so OpenCode treats the repo as a project and loads `.opencode/`; (2) run **`cd .opencode && bun install`** once so the plugin dependency resolves; (3) start a real session from the project root and check the latest log file in `~/.local/share/opencode/log/`.
 
 ### 3. Practical check with a markdown file
 
-1. Ensure `.changetracks/config.toml` exists and its `tracking.include` (or equivalent) includes some `.md` path (e.g. `["**/*.md"]`).
-2. Create or open a tracked `.md` file (or add the tracking header `<!-- ctrcks.com/v1: tracked -->`).
+1. Ensure `.changedown/config.toml` exists and its `tracking.include` (or equivalent) includes some `.md` path (e.g. `["**/*.md"]`).
+2. Create or open a tracked `.md` file (or add the tracking header `<!-- changedown.com/v1: tracked -->`).
 3. In the chat, ask the agent to **edit** that file. If the file is tracked, the plugin’s `tool.execute.before` hook should trigger: you should get a **warning or block** about tracked files (depending on `hooks.enforcement` in config).
 4. Ask the agent to **use propose_change** on that file. If the plugin is loaded, the agent can call the tool and the file will get CriticMarkup.
 
@@ -123,7 +123,7 @@ If the agent could edit tracked files with no warning, the plugin was not interc
 
 ### 4. If something fails
 
-Restart OpenCode and check the log directory (or run `opencode run "test" --print-logs`) for errors mentioning the plugin or `ChangeTracks`. See [OpenCode Troubleshooting](https://open-code.ai/en/docs/troubleshooting#logs) for log and storage paths.
+Restart OpenCode and check the log directory (or run `opencode run "test" --print-logs`) for errors mentioning the plugin or `ChangeDown`. See [OpenCode Troubleshooting](https://open-code.ai/en/docs/troubleshooting#logs) for log and storage paths.
 
 ### References (verified setup)
 
@@ -137,7 +137,7 @@ Restart OpenCode and check the log directory (or run `opencode run "test" --prin
 
 1. **Track a file** (adds tracking header):
    ```
-   <!-- ctrcks.com/v1: tracked -->
+   <!-- changedown.com/v1: tracked -->
    ```
 
 2. **Read tracked file** with hashlines:
@@ -169,7 +169,7 @@ Restart OpenCode and check the log directory (or run `opencode run "test" --prin
 
 ### CriticMarkup Syntax
 
-ChangeTracks uses CriticMarkup syntax for inline changes:
+ChangeDown uses CriticMarkup syntax for inline changes:
 
 | Type | Syntax | Example |
 |------|--------|---------|
@@ -196,7 +196,7 @@ The plugin registers four hooks with OpenCode:
    - Consolidates multiple changes
    - Updates footnotes and references
 
-4. **`experimental.chat.system.transform`**: Auto-injects ChangeTracks rules
+4. **`experimental.chat.system.transform`**: Auto-injects ChangeDown rules
    - Adds skill context to system prompt
    - Ensures agents follow best practices
 
@@ -264,10 +264,10 @@ Returns array of open threads with metadata, status, and discussion.
         │                    │
         ▼                    ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              ChangeTracksPlugin (index.ts)                    │
+│              ChangeDownPlugin (index.ts)                    │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
 │  │   Hooks     │  │ MCP Tools   │  │   Config Manager    │  │
-│  │  (4 hooks)  │  │(3 tools)    │  │  (.changetracks/)    │  │
+│  │  (4 hooks)  │  │(3 tools)    │  │  (.changedown/)    │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -346,7 +346,7 @@ packages/opencode-plugin/
 │       ├── dedup.test.ts
 │       └── file-ops.test.ts
 ├── skills/
-│   └── changetracks/
+│   └── changedown/
 │       └── SKILL.md          # Agent instructions
 ├── dist/                     # Compiled output
 ├── package.json
@@ -354,14 +354,14 @@ packages/opencode-plugin/
 └── vitest.config.ts
 ```
 
-## Integration with ChangeTracks Ecosystem
+## Integration with ChangeDown Ecosystem
 
-This plugin is part of the ChangeTracks monorepo:
+This plugin is part of the ChangeDown monorepo:
 
-- **`@changetracks/core`**: Core CriticMarkup parser and utilities
-- **`@changetracks/lsp-server`**: Language server for editor integration
-- **`@changetracks/vscode-extension`**: VS Code extension
-- **`@changetracks/opencode-plugin`**: This OpenCode plugin
+- **`@changedown/core`**: Core CriticMarkup parser and utilities
+- **`@changedown/lsp-server`**: Language server for editor integration
+- **`@changedown/vscode-extension`**: VS Code extension
+- **`@changedown/opencode-plugin`**: This OpenCode plugin
 
 ## License
 
@@ -373,5 +373,5 @@ Contributions welcome! Please read our [Contributing Guide](../../CONTRIBUTING.m
 
 ## Support
 
-- **Issues**: [GitHub Issues](https://github.com/hackerbara/changetracks/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/hackerbara/changetracks/discussions)
+- **Issues**: [GitHub Issues](https://github.com/hackerbara/changedown/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/hackerbara/changedown/discussions)

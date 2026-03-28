@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateRawEdit, evaluateRawRead, evaluateMcpCall, DEFAULT_CONFIG } from 'changetracks-hooks/internals';
-import type { ChangeTracksConfig } from 'changetracks-hooks/internals';
+import { evaluateRawEdit, evaluateRawRead, evaluateMcpCall, DEFAULT_CONFIG } from 'changedown-hooks/internals';
+import type { ChangeDownConfig } from 'changedown-hooks/internals';
 
-function makeConfig(overrides: Partial<ChangeTracksConfig> = {}): ChangeTracksConfig {
+function makeConfig(overrides: Partial<ChangeDownConfig> = {}): ChangeDownConfig {
   return { ...structuredClone(DEFAULT_CONFIG), ...overrides };
 }
 
@@ -75,7 +75,7 @@ describe('evaluateMcpCall', () => {
   });
 
   it('always allows get_change', () => {
-    const result = evaluateMcpCall('get_change', { file: 'test.md', change_id: 'ct-1' }, makeConfig());
+    const result = evaluateMcpCall('get_change', { file: 'test.md', change_id: 'cn-1' }, makeConfig());
     expect(result.action).toBe('allow');
   });
 
@@ -105,7 +105,7 @@ describe('evaluateMcpCall', () => {
 
   it('denies amend_change without author when required', () => {
     const config = makeConfig({ author: { default: 'unknown', enforcement: 'required' } });
-    const result = evaluateMcpCall('amend_change', { file: 'test.md', change_id: 'ct-1' }, config);
+    const result = evaluateMcpCall('amend_change', { file: 'test.md', change_id: 'cn-1' }, config);
     expect(result.action).toBe('deny');
   });
 

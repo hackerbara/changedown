@@ -1,10 +1,10 @@
-# ChangeTracks
+# ChangeDown
 
 Track changes in markdown — for humans and AI agents.
 
-![ChangeTracks in VS Code — smart view with markdown preview and comment threads](docs/images/readme-deliberation.png)
+![ChangeDown in VS Code — smart view with markdown preview and comment threads](docs/images/readme-deliberation.png)
 
-ChangeTracks brings popular editor-style track changes to markdown. Edits are inline [CriticMarkup](https://criticmarkup.com/) with metadata in standard markdown footnotes — visible in any text editor, diffable in git, readable by any AI agent. A VS Code extension and AI agent plugins enforce author, timestamp, and rationale on every change. Discussion threads capture disagreement and resolution inline.
+ChangeDown brings popular editor-style track changes to markdown. Edits are inline [CriticMarkup](https://criticmarkup.com/) with metadata in standard markdown footnotes — visible in any text editor, diffable in git, readable by any AI agent. A VS Code extension and AI agent plugins enforce author, timestamp, and rationale on every change. Discussion threads capture disagreement and resolution inline.
 
 **One format, everywhere** — CriticMarkup is plain text. Readable in any editor, diffable in git, parseable by any agent. No proprietary format, no lock-in.
 
@@ -18,7 +18,7 @@ ChangeTracks brings popular editor-style track changes to markdown. Edits are in
 
 Today, if you want to understand *why* a line looks the way it does, you have to leave the file. `git log` tells you what changed. `git blame` tells you who. But the reasoning — the discussion, the alternatives considered, the decision — lives in PR comments, Slack threads, issue trackers. Each hop requires a different tool, different auth, different search. For an LLM reading the file, most of those hops are impossible.
 
-ChangeTracks closes this gap. The file carries its own deliberation history. Anyone reading it — a new team member, a code reviewer, an AI agent — sees not just the current state but the reasoning that produced it.
+ChangeDown closes this gap. The file carries its own deliberation history. Anyone reading it — a new team member, a code reviewer, an AI agent — sees not just the current state but the reasoning that produced it.
 
 ---
 
@@ -35,49 +35,49 @@ ChangeTracks closes this gap. The file carries its own deliberation history. Any
 | **Export to DOCX** — share tracked documents with Word users | **Skill file** — workflow guidance loaded into agent context |
 | **Four view modes** — all markup, simple, final, original | **Three platforms** — Claude Code plugin, OpenCode plugin, Cursor MCP |
 
-Quick start guide: [`docs/public/DEMO.md`](docs/public/DEMO.md) | Deep dive: [ChangeTracks and Hashlines Explained](docs/public/changetracks-and-hashlines-explained.md)
+Quick start guide: [`docs/public/DEMO.md`](docs/public/DEMO.md) | Deep dive: [ChangeDown and Hashlines Explained](docs/public/changedown-and-hashlines-explained.md)
 
 ## Install
 
 ### Quick start
 
 ```
-npx changetracks init
+npx changedown init
 ```
 
-Interactive setup: detects your editors and agents, creates `.changetracks/config.toml`, installs extensions, and opens a getting-started tutorial.
+Interactive setup: detects your editors and agents, creates `.changedown/config.toml`, installs extensions, and opens a getting-started tutorial.
 
 ### For humans
 
-**VS Code** — search `ChangeTracks` in the Extensions marketplace
+**VS Code** — search `ChangeDown` in the Extensions marketplace
 
-**Cursor** — search `ChangeTracks` in the Extensions panel
+**Cursor** — search `ChangeDown` in the Extensions panel
 
 > _Marketplace listing coming soon._ For now, install manually:
 
 ```bash
-git clone https://github.com/hackerbara/changetracks.git
-cd changetracks
+git clone https://github.com/hackerbara/changedown.git
+cd changedown
 npm install && node scripts/build.mjs
 
 # VS Code
-code --install-extension packages/vscode-extension/changetracks-*.vsix
+code --install-extension packages/vscode-extension/changedown-*.vsix
 
 # Cursor
-cursor --install-extension packages/vscode-extension/changetracks-*.vsix
+cursor --install-extension packages/vscode-extension/changedown-*.vsix
 ```
 
 ### For agents
 
 **Claude Code**
 ```
-/plugin install changetracks@hackerbara
+/plugin install changedown@hackerbara
 ```
 
 **OpenCode** — add to your project's `opencode.json`:
 ```json
 {
-  "plugin": ["@changetracks/opencode-plugin"]
+  "plugin": ["@changedown/opencode-plugin"]
 }
 ```
 
@@ -89,8 +89,8 @@ node scripts/install.mjs
 ### From source
 
 ```bash
-git clone https://github.com/hackerbara/changetracks.git
-cd changetracks
+git clone https://github.com/hackerbara/changedown.git
+cd changedown
 npm install
 node scripts/build.mjs
 node scripts/install.mjs
@@ -111,7 +111,7 @@ Changes carry metadata in markdown footnotes:
 ```markdown
 The API should use gRPC for internal services.
 
-[^ct-1]: @ai:claude-sonnet-4-5 | 2026-02-17 | sub | proposed
+[^cn-1]: @ai:claude-sonnet-4-5 | 2026-02-17 | sub | proposed
     @ai:claude-sonnet-4-5 2026-02-17: gRPC reduces serialization
     overhead for internal service-to-service calls.
     approved: @james 2026-02-17 "agreed, REST is wasteful here"
@@ -137,11 +137,11 @@ The compact protocol (LINE:HASH coordinates + edit DSL) is an experimental mode 
 
 Without tool instruction overhead, the compact protocol completes **3× faster** with **6.5× fewer tokens** than baseline file editing. These results vary by agent, model, and task — treat them as directional rather than guaranteed.
 
-**Deep dive:** [Tool-Shaping Benchmarks](docs/public/tool-shaping-benchmarks.md) — how three editing surfaces compare across benchmark runs | **Methodology:** [How ChangeTracks Is Benchmarked](docs/public/how-changetracks-is-benchmarked.md) | **Source:** [`packages/benchmarks/`](packages/benchmarks/)
+**Deep dive:** [Tool-Shaping Benchmarks](docs/public/tool-shaping-benchmarks.md) — how three editing surfaces compare across benchmark runs | **Methodology:** [How ChangeDown Is Benchmarked](docs/public/how-changedown-is-benchmarked.md) | **Source:** [`packages/benchmarks/`](packages/benchmarks/)
 
 ## Configuration
 
-`npx changetracks init` creates `.changetracks/config.toml`:
+`npx changedown init` creates `.changedown/config.toml`:
 
 ```toml
 [tracking]
@@ -156,7 +156,7 @@ enforcement = "optional"    # or "required"
 mode = "safety-net"         # "strict", "safety-net", or "permissive"
 ```
 
-**Policy modes:** `strict` — agents cannot write tracked files without going through ChangeTracks tools. `safety-net` — hooks intercept raw edits and wrap them in CriticMarkup automatically. `permissive` — no enforcement, tracking is opt-in.
+**Policy modes:** `strict` — agents cannot write tracked files without going through ChangeDown tools. `safety-net` — hooks intercept raw edits and wrap them in CriticMarkup automatically. `permissive` — no enforcement, tracking is opt-in.
 
 ## Building from Source
 
@@ -173,9 +173,9 @@ Builds all packages (core → cli → lsp-server → extension → mcp-server �
 | `packages/core` | Single-pass CriticMarkup parser and operations library |
 | `packages/lsp-server` | Language Server Protocol server — semantic tokens, diagnostics, code actions |
 | `packages/vscode-extension` | VS Code / Cursor extension — decorations, smart view, tracking, review panel |
-| `packages/cli` | CLI, `npx changetracks init`, and the change-tracking engine |
+| `packages/cli` | CLI, `npx changedown init`, and the change-tracking engine |
 | `packages/docx` | DOCX export with tracked changes |
-| `changetracks-plugin` | Claude Code plugin — MCP server + hooks + skill |
+| `changedown-plugin` | Claude Code plugin — MCP server + hooks + skill |
 | `packages/opencode-plugin` | OpenCode plugin — tools + hooks + instructions |
 | `packages/benchmarks` | Agent efficiency benchmarks across editing surfaces |
 
@@ -184,18 +184,18 @@ Builds all packages (core → cli → lsp-server → extension → mcp-server �
 ### How it works
 
 - [How Track Changes Works](docs/public/how-track-changes-works.md) — CriticMarkup, the VS Code experience, agent tools, footnotes and threading
-- [ChangeTracks and Hashlines Explained](docs/public/changetracks-and-hashlines-explained.md) — From-zero introduction for newcomers
+- [ChangeDown and Hashlines Explained](docs/public/changedown-and-hashlines-explained.md) — From-zero introduction for newcomers
 - [How Views and Addressing Work](docs/public/how-views-and-addressing-work.md) — Four views, hash-addressed coordinates, the three-zone format
 
 ### Reference
 
 - [Glossary](docs/public/glossary.md) — Term definitions
-- [Format Specification](docs/public/changetracks-format.md) — Formal spec
+- [Format Specification](docs/public/changedown-format.md) — Formal spec
 
 ### Benchmarks
 
 - [Tool-Shaping Benchmarks](docs/public/tool-shaping-benchmarks.md) — Three editing surfaces compared across 400+ runs: token counts, tool calls, and what broke
-- [How ChangeTracks Is Benchmarked](docs/public/how-changetracks-is-benchmarked.md) — Methodology, agent harness, scoring
+- [How ChangeDown Is Benchmarked](docs/public/how-changedown-is-benchmarked.md) — Methodology, agent harness, scoring
 
 ### Perspectives
 
@@ -203,7 +203,7 @@ Builds all packages (core → cli → lsp-server → extension → mcp-server �
 
 ## Status
 
-ChangeTracks is in active development. The VS Code extension, MCP tools, CLI, and agent plugins are functional and used daily in development. The format specification is at v0.3.0 draft. The protocol and file format are stabilizing but not yet frozen — expect refinements. Feedback, bug reports, and contributions are welcome.
+ChangeDown is in active development. The VS Code extension, MCP tools, CLI, and agent plugins are functional and used daily in development. The format specification is at v0.3.0 draft. The protocol and file format are stabilizing but not yet frozen — expect refinements. Feedback, bug reports, and contributions are welcome.
 
 ## License
 

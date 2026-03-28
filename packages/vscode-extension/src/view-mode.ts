@@ -18,7 +18,7 @@ import {
     resolveViewName,
     type ChangeNode,
     ChangeType,
-} from '@changetracks/core';
+} from '@changedown/core';
 
 /** ViewMode is an alias for the canonical ViewName from core. */
 export type ViewMode = ViewName;

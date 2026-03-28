@@ -6,46 +6,46 @@ Feature: Review changes via Surface B (classic MCP)
   Background:
     Given a tracked file "doc.md" with two proposed changes:
       | id   | type | old_text | new_text |
-      | ct-1 | sub  | REST     | GraphQL  |
-      | ct-2 | ins  |          | caching layer |
+      | cn-1 | sub  | REST     | GraphQL  |
+      | cn-2 | ins  |          | caching layer |
     And the config has settlement.auto_on_approve = false
 
   # --- Single review ---
 
   Scenario: Approve a change records decision in footnote
     When I call review_changes with:
-      | reviews | [{"change_id": "ct-1", "decision": "approve", "reasoning": "verified"}] |
-    Then the response shows ct-1 approved
-    And the footnote for ct-1 contains "approved: @ai:test-agent"
+      | reviews | [{"change_id": "cn-1", "decision": "approve", "reasoning": "verified"}] |
+    Then the response shows cn-1 approved
+    And the footnote for cn-1 contains "approved: @ai:test-agent"
     And the footnote status is updated to "accepted"
     And the inline markup is still present (no settlement)
 
   Scenario: Reject a change records decision in footnote
     When I call review_changes with:
-      | reviews | [{"change_id": "ct-2", "decision": "reject", "reasoning": "not needed"}] |
-    Then the footnote for ct-2 contains "rejected: @ai:test-agent"
+      | reviews | [{"change_id": "cn-2", "decision": "reject", "reasoning": "not needed"}] |
+    Then the footnote for cn-2 contains "rejected: @ai:test-agent"
     And the footnote status is updated to "rejected"
 
   Scenario: Request changes records without changing status
     When I call review_changes with:
-      | reviews | [{"change_id": "ct-1", "decision": "request_changes", "reasoning": "needs benchmark data"}] |
-    Then the footnote for ct-1 contains "request-changes: @ai:test-agent"
+      | reviews | [{"change_id": "cn-1", "decision": "request_changes", "reasoning": "needs benchmark data"}] |
+    Then the footnote for cn-1 contains "request-changes: @ai:test-agent"
     And the footnote status remains "proposed"
 
   # --- Batch review ---
 
   Scenario: Review multiple changes atomically
-    When I call review_changes with reviews for both ct-1 (approve) and ct-2 (reject)
+    When I call review_changes with reviews for both cn-1 (approve) and cn-2 (reject)
     Then both decisions are recorded
-    And ct-1 footnote status is "accepted"
-    And ct-2 footnote status is "rejected"
+    And cn-1 footnote status is "accepted"
+    And cn-2 footnote status is "rejected"
 
   # --- Thread responses ---
 
   Scenario: Respond to a change thread
     When I call review_changes with:
-      | responses | [{"change_id": "ct-1", "response": "Have you benchmarked this?", "label": "question"}] |
-    Then the footnote for ct-1 contains a new discussion entry
+      | responses | [{"change_id": "cn-1", "response": "Have you benchmarked this?", "label": "question"}] |
+    Then the footnote for cn-1 contains a new discussion entry
     And the entry has label "question"
     And the entry has the response text
 
@@ -58,6 +58,6 @@ Feature: Review changes via Surface B (classic MCP)
   # --- Error cases ---
 
   Scenario: Review nonexistent change_id returns per-change error
-    When I call review_changes with change_id "ct-999"
-    Then the response contains an error for ct-999
+    When I call review_changes with change_id "cn-999"
+    Then the response contains an error for cn-999
     And other valid reviews in the same call succeed

@@ -60,26 +60,26 @@ export async function configureAgents(
       const settingsPath = path.join(os.homedir(), '.claude', 'settings.json');
       const mergePayload = {
         extraKnownMarketplaces: {
-          'changetracks': {
-            source: { source: 'github', repo: 'hackerbara/changetracks' },
+          'changedown': {
+            source: { source: 'github', repo: 'hackerbara/changedown' },
           },
         },
-        enabledPlugins: { 'changetracks@changetracks': true },
+        enabledPlugins: { 'changedown@changedown': true },
       };
       try {
         mergeJsonFile(settingsPath, mergePayload);
-        results.push('Claude Code: marketplace registered in ~/.claude/settings.json — run /plugin install changetracks in your next session');
+        results.push('Claude Code: marketplace registered in ~/.claude/settings.json — run /plugin install changedown in your next session');
       } catch {
-        results.push('Claude Code: run /plugin marketplace add hackerbara/changetracks in your next session');
+        results.push('Claude Code: run /plugin marketplace add hackerbara/changedown in your next session');
       }
     }
 
     if (agent.name === 'cursor') {
-      results.push('Cursor: install the ChangeTracks extension (.vsix) and enable MCP in Settings → Features → MCP');
+      results.push('Cursor: install the ChangeDown extension (.vsix) and enable MCP in Settings → Features → MCP');
     }
 
     if (agent.name === 'opencode') {
-      results.push('OpenCode: add @changetracks/opencode-plugin to your opencode.json');
+      results.push('OpenCode: add @changedown/opencode-plugin to your opencode.json');
     }
   }
 
@@ -102,7 +102,7 @@ function hasClaudePlugin(): boolean {
     if (!fs.existsSync(settingsPath)) return false;
     const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
     const plugins = settings.plugins || [];
-    return plugins.some((p: string) => p.includes('changetracks'));
+    return plugins.some((p: string) => p.includes('changedown'));
   } catch {
     return false;
   }

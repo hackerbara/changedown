@@ -4,38 +4,38 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import { execSync } from 'node:child_process';
-import { ChangeTracksWorld } from './world.js';
-import { runInit, type ClackAdapter } from 'changetracks/init/runner';
+import { ChangeDownWorld } from './world.js';
+import { runInit, type ClackAdapter } from 'changedown/init/runner';
 import { MockClack, responseMapHandler } from './mock-clack.js';
 
 // Import the init module (will fail during RED phase — that's expected)
 import {
   resolveIdentity,
-} from 'changetracks/init/identity';
+} from 'changedown/init/identity';
 import {
   generateDefaultConfig,
   parseConfigSummary,
   type InitConfigOptions,
   type ConfigSummary,
-} from 'changetracks/init/config';
+} from 'changedown/init/config';
 import {
   copyExamples,
-} from 'changetracks/init/examples';
+} from 'changedown/init/examples';
 import {
   detectAgents,
   type AgentStatus,
-} from 'changetracks/init/agents';
+} from 'changedown/init/agents';
 import {
   ensureGitignoreEntries,
   createGitignore,
   hasGitignore,
   type GitignoreResult,
-} from 'changetracks/init/gitignore';
+} from 'changedown/init/gitignore';
 import {
   detectEnvironment,
   type EnvironmentInfo,
   type DetectEnvironmentOptions,
-} from 'changetracks/init/environment';
+} from 'changedown/init/environment';
 
 // =============================================================================
 // Shared state per scenario
@@ -61,7 +61,7 @@ interface InitState {
 
 const initKey = Symbol('init');
 
-function getInit(world: ChangeTracksWorld): InitState {
+function getInit(world: ChangeDownWorld): InitState {
   if (!(world as any)[initKey]) {
     (world as any)[initKey] = {
       tmpDir: '',
@@ -83,7 +83,7 @@ function getInit(world: ChangeTracksWorld): InitState {
   return (world as any)[initKey];
 }
 
-After(async function (this: ChangeTracksWorld) {
+After(async function (this: ChangeDownWorld) {
   const state = (this as any)[initKey] as InitState | undefined;
   if (state?.tmpDir) {
     fs.rmSync(state.tmpDir, { recursive: true, force: true });
@@ -106,16 +106,16 @@ After(async function (this: ChangeTracksWorld) {
 
 Given(
   'a temporary directory with git initialized',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
-    state.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-i1-'));
+    state.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cn-i1-'));
     execSync('git init', { cwd: state.tmpDir, stdio: 'pipe' });
   },
 );
 
 Given(
   'git config user.name is set to {string}',
-  function (this: ChangeTracksWorld, name: string) {
+  function (this: ChangeDownWorld, name: string) {
     const state = getInit(this);
     execSync(`git config user.name "${name}"`, { cwd: state.tmpDir, stdio: 'pipe' });
   },
@@ -123,7 +123,7 @@ Given(
 
 Given(
   'git config user.name is not set',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     try {
       execSync('git config --unset user.name', { cwd: state.tmpDir, stdio: 'pipe' });
@@ -141,16 +141,16 @@ Given(
 
 Given(
   'a temporary directory without git',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
-    state.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-i1-nogit-'));
+    state.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cn-i1-nogit-'));
     // No git init — this directory has no git
   },
 );
 
 Given(
   'the system username environment variables are cleared',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     state.savedEnv.USER = process.env.USER;
     state.savedEnv.USERNAME = process.env.USERNAME;
@@ -161,7 +161,7 @@ Given(
 
 When(
   'I resolve identity in that directory',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     state.resolvedIdentity = resolveIdentity(state.tmpDir);
   },
@@ -169,7 +169,7 @@ When(
 
 Then(
   'the resolved identity is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     assert.equal(state.resolvedIdentity, expected);
   },
@@ -177,7 +177,7 @@ Then(
 
 Then(
   'the resolved identity is the system username',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     const expected = os.userInfo().username;
     assert.equal(state.resolvedIdentity, expected);
@@ -186,7 +186,7 @@ Then(
 
 Then(
   'the resolved identity is not empty',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     assert.ok(state.resolvedIdentity.length > 0, 'Expected non-empty identity');
     assert.notEqual(state.resolvedIdentity, 'unknown');
@@ -199,7 +199,7 @@ Then(
 
 When(
   'I generate config with author {string}',
-  function (this: ChangeTracksWorld, author: string) {
+  function (this: ChangeDownWorld, author: string) {
     const state = getInit(this);
     state.generatedConfig = generateDefaultConfig({ author });
   },
@@ -207,7 +207,7 @@ When(
 
 When(
   'I generate config with author {string} and custom include patterns',
-  function (this: ChangeTracksWorld, author: string, table: any) {
+  function (this: ChangeDownWorld, author: string, table: any) {
     const state = getInit(this);
     const include = table.hashes().map((row: { pattern: string }) => row.pattern);
     state.generatedConfig = generateDefaultConfig({ author, trackingInclude: include });
@@ -216,7 +216,7 @@ When(
 
 When(
   'I generate config with author {string} and enforcement {string}',
-  function (this: ChangeTracksWorld, author: string, enforcement: string) {
+  function (this: ChangeDownWorld, author: string, enforcement: string) {
     const state = getInit(this);
     state.generatedConfig = generateDefaultConfig({
       author,
@@ -227,7 +227,7 @@ When(
 
 When(
   'I generate config with author {string} and custom exclude patterns',
-  function (this: ChangeTracksWorld, author: string, table: any) {
+  function (this: ChangeDownWorld, author: string, table: any) {
     const state = getInit(this);
     const exclude = table.hashes().map((row: { pattern: string }) => row.pattern);
     state.generatedConfig = generateDefaultConfig({ author, trackingExclude: exclude });
@@ -236,7 +236,7 @@ When(
 
 When(
   'I generate config with author {string} and policyMode {string}',
-  function (this: ChangeTracksWorld, author: string, policyMode: string) {
+  function (this: ChangeDownWorld, author: string, policyMode: string) {
     const state = getInit(this);
     state.generatedConfig = generateDefaultConfig({
       author,
@@ -247,7 +247,7 @@ When(
 
 When(
   'I generate config with author {string} and protocolMode {string} and reasoning {string}',
-  function (this: ChangeTracksWorld, author: string, protocolMode: string, reasoning: string) {
+  function (this: ChangeDownWorld, author: string, protocolMode: string, reasoning: string) {
     const state = getInit(this);
     state.generatedConfig = generateDefaultConfig({
       author,
@@ -259,7 +259,7 @@ When(
 
 When(
   'I generate config with author {string} and autoSettleOnReject {word}',
-  function (this: ChangeTracksWorld, author: string, value: string) {
+  function (this: ChangeDownWorld, author: string, value: string) {
     const state = getInit(this);
     state.generatedConfig = generateDefaultConfig({
       author,
@@ -270,7 +270,7 @@ When(
 
 Then(
   'the generated config contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     assert.ok(
       state.generatedConfig.includes(expected),
@@ -285,15 +285,15 @@ Then(
 
 Given(
   'a temporary empty directory',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
-    state.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-i3-'));
+    state.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cn-i3-'));
   },
 );
 
 Given(
   'the file {string} already exists with content {string}',
-  function (this: ChangeTracksWorld, relativePath: string, content: string) {
+  function (this: ChangeDownWorld, relativePath: string, content: string) {
     const state = getInit(this);
     const fullPath = path.join(state.tmpDir, relativePath);
     fs.mkdirSync(path.dirname(fullPath), { recursive: true });
@@ -303,7 +303,7 @@ Given(
 
 When(
   'I copy examples to that directory',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getInit(this);
     await copyExamples(state.tmpDir);
   },
@@ -311,7 +311,7 @@ When(
 
 Then(
   'the file {string} exists in that directory',
-  function (this: ChangeTracksWorld, relativePath: string) {
+  function (this: ChangeDownWorld, relativePath: string) {
     const state = getInit(this);
     const fullPath = path.join(state.tmpDir, relativePath);
     assert.ok(fs.existsSync(fullPath), `Expected file ${fullPath} to exist`);
@@ -320,7 +320,7 @@ Then(
 
 Then(
   'the example file contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     const examplesDir = path.join(state.tmpDir, 'examples');
     const gettingStarted = path.join(examplesDir, 'getting-started.md');
@@ -334,7 +334,7 @@ Then(
 
 Then(
   'the init file {string} contains {string}',
-  function (this: ChangeTracksWorld, relativePath: string, expected: string) {
+  function (this: ChangeDownWorld, relativePath: string, expected: string) {
     const state = getInit(this);
     const fullPath = path.join(state.tmpDir, relativePath);
     const content = fs.readFileSync(fullPath, 'utf8');
@@ -347,7 +347,7 @@ Then(
 
 Then(
   'the directory {string} exists in that directory',
-  function (this: ChangeTracksWorld, dirName: string) {
+  function (this: ChangeDownWorld, dirName: string) {
     const state = getInit(this);
     const fullPath = path.join(state.tmpDir, dirName);
     assert.ok(fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory(),
@@ -362,7 +362,7 @@ Then(
 
 When(
   'I detect agents',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     state.detectedAgents = detectAgents();
   },
@@ -370,7 +370,7 @@ When(
 
 Then(
   'the agent list includes an entry for {string}',
-  function (this: ChangeTracksWorld, agentName: string) {
+  function (this: ChangeDownWorld, agentName: string) {
     const state = getInit(this);
     const found = state.detectedAgents.find(a => a.name === agentName);
     assert.ok(found, `Expected agent list to include "${agentName}"`);
@@ -379,7 +379,7 @@ Then(
 
 Then(
   'each agent entry has a {string} boolean',
-  function (this: ChangeTracksWorld, field: string) {
+  function (this: ChangeDownWorld, field: string) {
     const state = getInit(this);
     for (const agent of state.detectedAgents) {
       assert.equal(typeof (agent as any)[field], 'boolean',
@@ -390,7 +390,7 @@ Then(
 
 Then(
   'each agent has name, detected, and configured fields',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     for (const agent of state.detectedAgents) {
       assert.ok(typeof agent.name === 'string', 'Expected name to be a string');
@@ -406,7 +406,7 @@ Then(
 
 Given(
   'the environment variable {word} is set to {string}',
-  function (this: ChangeTracksWorld, varName: string, value: string) {
+  function (this: ChangeDownWorld, varName: string, value: string) {
     const state = getInit(this);
     if (!state.envOptions.env) state.envOptions.env = { ...process.env };
     state.envOptions.env[varName] = value;
@@ -416,7 +416,7 @@ Given(
 
 Given(
   'the environment variable {word} is not set',
-  function (this: ChangeTracksWorld, varName: string) {
+  function (this: ChangeDownWorld, varName: string) {
     const state = getInit(this);
     if (!state.envOptions.env) state.envOptions.env = { ...process.env };
     delete state.envOptions.env[varName];
@@ -426,7 +426,7 @@ Given(
 
 Given(
   'the command {string} is available on PATH',
-  function (this: ChangeTracksWorld, cmd: string) {
+  function (this: ChangeDownWorld, cmd: string) {
     const state = getInit(this);
     const previousChecker = state.envOptions.commandChecker;
     state.envOptions.commandChecker = (c: string) =>
@@ -437,7 +437,7 @@ Given(
 
 Given(
   'no agent commands are available on PATH',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     state.envOptions.commandChecker = () => false;
     if (state.envOptions.isTTY === undefined) state.envOptions.isTTY = true;
@@ -446,7 +446,7 @@ Given(
 
 Given(
   'stdout is not a TTY',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     state.envOptions.isTTY = false;
   },
@@ -454,7 +454,7 @@ Given(
 
 When(
   'I call detectEnvironment',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     state.environmentResult = detectEnvironment(state.envOptions);
   },
@@ -462,7 +462,7 @@ When(
 
 Then(
   'the environment type is {string}',
-  function (this: ChangeTracksWorld, expectedType: string) {
+  function (this: ChangeDownWorld, expectedType: string) {
     const state = getInit(this);
     assert.ok(state.environmentResult, 'Expected environmentResult to be set');
     assert.equal(state.environmentResult!.type, expectedType);
@@ -475,10 +475,10 @@ Then(
 
 Given(
   'a project directory with a .gitignore containing {string}',
-  function (this: ChangeTracksWorld, content: string) {
+  function (this: ChangeDownWorld, content: string) {
     const state = getInit(this);
     if (!state.tmpDir) {
-      state.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-i6-'));
+      state.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cn-i6-'));
     }
     fs.writeFileSync(path.join(state.tmpDir, '.gitignore'), content + '\n', 'utf8');
   },
@@ -486,10 +486,10 @@ Given(
 
 Given(
   'a project directory with no .gitignore',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     if (!state.tmpDir) {
-      state.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ct-i6-'));
+      state.tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cn-i6-'));
     }
     const gitignorePath = path.join(state.tmpDir, '.gitignore');
     if (fs.existsSync(gitignorePath)) fs.unlinkSync(gitignorePath);
@@ -498,7 +498,7 @@ Given(
 
 When(
   'I call ensureGitignoreEntries on the project directory',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     state.gitignoreResult = ensureGitignoreEntries(state.tmpDir);
   },
@@ -506,7 +506,7 @@ When(
 
 When(
   'I call createGitignore on the project directory',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     state.gitignoreResult = createGitignore(state.tmpDir);
   },
@@ -514,7 +514,7 @@ When(
 
 Then(
   'the .gitignore contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     const content = fs.readFileSync(path.join(state.tmpDir, '.gitignore'), 'utf8');
     assert.ok(content.includes(expected), `Expected .gitignore to contain "${expected}", got:\n${content}`);
@@ -523,7 +523,7 @@ Then(
 
 Then(
   'the .gitignore still contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     const content = fs.readFileSync(path.join(state.tmpDir, '.gitignore'), 'utf8');
     assert.ok(content.includes(expected), `Expected .gitignore to still contain "${expected}", got:\n${content}`);
@@ -532,7 +532,7 @@ Then(
 
 Then(
   'the .gitignore contains exactly {int} line matching {string}',
-  function (this: ChangeTracksWorld, count: number, pattern: string) {
+  function (this: ChangeDownWorld, count: number, pattern: string) {
     const state = getInit(this);
     const content = fs.readFileSync(path.join(state.tmpDir, '.gitignore'), 'utf8');
     const matches = content.split('\n').filter(line => line.includes(pattern));
@@ -542,7 +542,7 @@ Then(
 
 Then(
   'a .gitignore file exists',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     assert.ok(fs.existsSync(path.join(state.tmpDir, '.gitignore')), '.gitignore should exist');
   },
@@ -550,7 +550,7 @@ Then(
 
 Then(
   'the result action is {string}',
-  function (this: ChangeTracksWorld, expectedAction: string) {
+  function (this: ChangeDownWorld, expectedAction: string) {
     const state = getInit(this);
     assert.ok(state.gitignoreResult, 'Expected gitignoreResult to be set');
     assert.equal(state.gitignoreResult!.action, expectedAction);
@@ -563,7 +563,7 @@ Then(
 
 When(
   'I run the setupProject flow in that directory',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getInit(this);
     const dir = state.tmpDir;
 
@@ -575,7 +575,7 @@ When(
     const configToml = generateDefaultConfig({ author });
 
     // 3. Write config
-    const configDir = path.join(dir, '.changetracks');
+    const configDir = path.join(dir, '.changedown');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(path.join(configDir, 'config.toml'), configToml, 'utf8');
 
@@ -597,7 +597,7 @@ When(
 
 When(
   'I parse the config summary in that directory',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     state.configSummary = parseConfigSummary(state.tmpDir);
   },
@@ -605,9 +605,9 @@ When(
 
 When(
   'I write the generated config to that directory',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
-    const configDir = path.join(state.tmpDir, '.changetracks');
+    const configDir = path.join(state.tmpDir, '.changedown');
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(path.join(configDir, 'config.toml'), state.generatedConfig, 'utf8');
   },
@@ -615,7 +615,7 @@ When(
 
 Then(
   'the config summary author is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     assert.ok(state.configSummary, 'Expected configSummary to be set');
     assert.equal(state.configSummary!.author, expected);
@@ -624,7 +624,7 @@ Then(
 
 Then(
   'the config summary tracking is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     assert.ok(state.configSummary, 'Expected configSummary to be set');
     assert.equal(state.configSummary!.tracking, expected);
@@ -633,7 +633,7 @@ Then(
 
 Then(
   'the config summary policy is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     assert.ok(state.configSummary, 'Expected configSummary to be set');
     assert.equal(state.configSummary!.policy, expected);
@@ -642,7 +642,7 @@ Then(
 
 Then(
   'the config summary protocol is {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     assert.ok(state.configSummary, 'Expected configSummary to be set');
     assert.equal(state.configSummary!.protocol, expected);
@@ -651,7 +651,7 @@ Then(
 
 Then(
   'the config summary is null',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     assert.equal(state.configSummary, null);
   },
@@ -663,7 +663,7 @@ Then(
 
 When(
   'I run runInit with args {string}',
-  async function (this: ChangeTracksWorld, argsStr: string) {
+  async function (this: ChangeDownWorld, argsStr: string) {
     const state = getInit(this);
     const args = argsStr.split(/\s+/).filter(Boolean);
     state.consoleOutput = [];
@@ -694,7 +694,7 @@ When(
 
 Then(
   'the console output contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     const all = state.consoleOutput.join('\n');
     assert.ok(
@@ -710,7 +710,7 @@ Then(
 
 Given(
   'the user answers {string} with {string}',
-  function (this: ChangeTracksWorld, promptSubstr: string, answer: string) {
+  function (this: ChangeDownWorld, promptSubstr: string, answer: string) {
     const state = getInit(this);
     state.promptResponses.set(promptSubstr, answer);
   },
@@ -718,7 +718,7 @@ Given(
 
 Given(
   'the user selects {string} as {string}',
-  function (this: ChangeTracksWorld, promptSubstr: string, value: string) {
+  function (this: ChangeDownWorld, promptSubstr: string, value: string) {
     const state = getInit(this);
     state.promptResponses.set(promptSubstr, value);
   },
@@ -726,7 +726,7 @@ Given(
 
 Given(
   'the user confirms {string} with {string}',
-  function (this: ChangeTracksWorld, promptSubstr: string, yesNo: string) {
+  function (this: ChangeDownWorld, promptSubstr: string, yesNo: string) {
     const state = getInit(this);
     state.promptResponses.set(promptSubstr, yesNo === 'yes');
   },
@@ -734,7 +734,7 @@ Given(
 
 Given(
   'the user cancels at {string}',
-  function (this: ChangeTracksWorld, promptSubstr: string) {
+  function (this: ChangeDownWorld, promptSubstr: string) {
     const state = getInit(this);
     state.promptResponses.set(promptSubstr, MockClack.CANCEL);
   },
@@ -742,7 +742,7 @@ Given(
 
 Given(
   'the user answers all basic prompts with defaults',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     // All handled by responseMapHandler's initialValue fallback.
     // No explicit entries needed.
@@ -751,7 +751,7 @@ Given(
 
 Given(
   'the detected environment is {string}',
-  function (this: ChangeTracksWorld, envType: string) {
+  function (this: ChangeDownWorld, envType: string) {
     const state = getInit(this);
     state.envOverride = {
       type: envType as any,
@@ -763,7 +763,7 @@ Given(
 
 Given(
   'the detected environment is {string} with agent {string}',
-  function (this: ChangeTracksWorld, envType: string, agent: string) {
+  function (this: ChangeDownWorld, envType: string, agent: string) {
     const state = getInit(this);
     state.envOverride = {
       type: envType as any,
@@ -775,7 +775,7 @@ Given(
 
 When(
   'I run runInit interactively',
-  async function (this: ChangeTracksWorld) {
+  async function (this: ChangeDownWorld) {
     const state = getInit(this);
     state.consoleOutput = [];
     state.exitCode = null;
@@ -801,7 +801,7 @@ When(
 
 Then(
   'the prompt {string} was shown',
-  function (this: ChangeTracksWorld, promptSubstr: string) {
+  function (this: ChangeDownWorld, promptSubstr: string) {
     const state = getInit(this);
     assert.ok(state.mockClack, 'MockClack not initialized');
     assert.ok(
@@ -815,7 +815,7 @@ Then(
 
 Then(
   'the outro contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     assert.ok(state.mockClack, 'MockClack not initialized');
     const all = state.mockClack!.outros.join('\n');
@@ -828,7 +828,7 @@ Then(
 
 Then(
   'the intro was shown',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
     assert.ok(state.mockClack, 'MockClack not initialized');
     assert.ok(
@@ -840,7 +840,7 @@ Then(
 
 Then(
   'the clack log contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     assert.ok(state.mockClack, 'MockClack not initialized');
     assert.ok(
@@ -854,7 +854,7 @@ Then(
 
 Then(
   'a {string} note was shown',
-  function (this: ChangeTracksWorld, titleSubstr: string) {
+  function (this: ChangeDownWorld, titleSubstr: string) {
     const state = getInit(this);
     assert.ok(state.mockClack, 'MockClack not initialized');
     assert.ok(
@@ -868,7 +868,7 @@ Then(
 
 Then(
   'the {string} note contains {string}',
-  function (this: ChangeTracksWorld, titleSubstr: string, contentSubstr: string) {
+  function (this: ChangeDownWorld, titleSubstr: string, contentSubstr: string) {
     const state = getInit(this);
     assert.ok(state.mockClack, 'MockClack not initialized');
     const note = state.mockClack!.notes.find(
@@ -884,7 +884,7 @@ Then(
 
 Then(
   'exit was called with code {int}',
-  function (this: ChangeTracksWorld, expected: number) {
+  function (this: ChangeDownWorld, expected: number) {
     const state = getInit(this);
     assert.equal(state.exitCode, expected,
       `Expected exit code ${expected}, got ${state.exitCode}`,
@@ -894,7 +894,7 @@ Then(
 
 Then(
   'the cancel message contains {string}',
-  function (this: ChangeTracksWorld, expected: string) {
+  function (this: ChangeDownWorld, expected: string) {
     const state = getInit(this);
     assert.ok(state.mockClack, 'MockClack not initialized');
     const all = state.mockClack!.cancels.join('\n');
@@ -907,9 +907,9 @@ Then(
 
 Then(
   'no config was created',
-  function (this: ChangeTracksWorld) {
+  function (this: ChangeDownWorld) {
     const state = getInit(this);
-    const configPath = path.join(state.tmpDir, '.changetracks', 'config.toml');
+    const configPath = path.join(state.tmpDir, '.changedown', 'config.toml');
     assert.ok(
       !fs.existsSync(configPath),
       `Expected no config at ${configPath}, but it exists`,

@@ -1,4 +1,4 @@
-<!-- ctrcks.com/v1: tracked -->
+<!-- changedown.com/v1: tracked -->
 
 # HTTP/3 Protocol Implementation Guide for Edge Computing Networks
 
@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-This document provides a comprehensive implementation[^ct-1.1] guide for deploying HTTP/3 across our edge computing infrastructure. The migration from HTTP/2[^ct-1.2] to HTTP/3 is motivated by the need for improved connection establishment times, better handling of packet loss in mobile networks, and native support for connection migration.
+This document provides a comprehensive implementation[^cn-1.1] guide for deploying HTTP/3 across our edge computing infrastructure. The migration from HTTP/2[^cn-1.2] to HTTP/3 is motivated by the need for improved connection establishment times, better handling of packet loss in mobile networks, and native support for connection migration.
 
 The protocol stack replaces TCP+TLS with QUIC, a UDP-based transport protocol that integrates encryption at the transport layer. Initial testing shows a reduction in page load times of 15-30% for users on high-latency mobile networks, with negligible impact on datacenter-to-datacenter communication.
 
@@ -20,7 +20,7 @@ Deployment will proceed in three phases across our 14 edge locations, with full 
 
 ### 1.1 Transport Layer
 
-HTTP/3 uses QUIC (Quick UDP Internet Connections) as its transport protocol. Unlike TCP, QUIC provides built-in encryption using TLS 1.3[^ct-1.3] and supports multiplexed streams without head-of-line blocking. Each stream operates independently — a lost packet on one stream does not block other streams.
+HTTP/3 uses QUIC (Quick UDP Internet Connections) as its transport protocol. Unlike TCP, QUIC provides built-in encryption using TLS 1.3[^cn-1.3] and supports multiplexed streams without head-of-line blocking. Each stream operates independently — a lost packet on one stream does not block other streams.
 
 The Maximum Transmission Unit (MTU) for QUIC packets is set to 1280 bytes to avoid fragmentation on most network paths. This is smaller than the typical TCP Maximum Segment Size (MSS) of 1460 bytes, but the reduction in head-of-line blocking more than compensates for the smaller payload size.
 
@@ -28,13 +28,13 @@ Connection establishment requires a single round trip (1-RTT) for new connection
 
 ### 1.2 Stream Multiplexing
 
-QUIC supports up to 2^62 concurrent streams per connection. In practice, our edge proxies limit this to 256 concurrent streams per client connection. Each stream has independent flow control with a default window size of 256 KB[^ct-1.4].
+QUIC supports up to 2^62 concurrent streams per connection. In practice, our edge proxies limit this to 256 concurrent streams per client connection. Each stream has independent flow control with a default window size of 256 KB[^cn-1.4].
 
 Stream priorities follow the Extensible Priority Scheme (RFC 9218) with 8 urgency levels (0-7) and an incremental flag. Priority signals are advisory — the server can override client priorities based on server-side policies configured in the edge proxy.
 
 ### 1.3 Performance Characteristics
 
-Under controlled testing conditions, HTTP/3 shows the following throughput[^ct-1.5] characteristics compared to HTTP/2:
+Under controlled testing conditions, HTTP/3 shows the following throughput[^cn-1.5] characteristics compared to HTTP/2:
 
 | Metric | HTTP/2 | HTTP/3 | Improvement |
 |---|---|---|---|
@@ -45,7 +45,7 @@ Under controlled testing conditions, HTTP/3 shows the following throughput[^ct-1
 | Goodput at 5% packet loss | 82% | 94% | +12 points |
 | Goodput at 0.1% packet loss | 99.2% | 99.5% | +0.3 points |
 
-Tests were conducted with 1500 ms[^ct-1.6] connection timeout on a simulated network with variable latency. Sample size was approximately 500[^ct-1.7] requests per configuration.
+Tests were conducted with 1500 ms[^cn-1.6] connection timeout on a simulated network with variable latency. Sample size was approximately 500[^cn-1.7] requests per configuration.
 
 ## 2. Architecture Requirements
 
@@ -58,9 +58,9 @@ Each edge location runs a QUIC-capable reverse proxy (Envoy 1.29+ with QUIC list
 - Rate limiting per client IP and per authenticated identity
 - Request routing based on Host header and path prefix
 - Health checking of upstream services (active and passive)
-- Logging of all connection[^ct-1.8] metrics to the telemetry pipeline
+- Logging of all connection[^cn-1.8] metrics to the telemetry pipeline
 
-The proxy exposes both TCP (ports 80/443) and UDP[^ct-1.9] (port 443) listeners. Clients that do not support HTTP/3 fall back to HTTP/2 over TCP automatically via the Alt-Svc header mechanism.
+The proxy exposes both TCP (ports 80/443) and UDP[^cn-1.9] (port 443) listeners. Clients that do not support HTTP/3 fall back to HTTP/2 over TCP automatically via the Alt-Svc header mechanism.
 
 ### 2.2 Certificate Requirements
 
@@ -70,7 +70,7 @@ QUIC mandates TLS 1.3 with specific cipher suites. Our deployment uses:
 - **Signature:** ECDSA with P-256 or Ed25519
 - **Encryption:** AES-128-GCM or ChaCha20-Poly1305
 - **Certificate chain:** Maximum 3 certificates, total size under 4 KiB
-- **Key size:** Minimum 2048 bits[^ct-1.10] for RSA (legacy only), 256 bits for ECDSA
+- **Key size:** Minimum 2048 bits[^cn-1.10] for RSA (legacy only), 256 bits for ECDSA
 
 Certificates are rotated every 30 days. The proxy supports both ECDSA and RSA certificates simultaneously during the migration period, preferring ECDSA when the client supports it.
 
@@ -88,9 +88,9 @@ QUIC relies on UDP, which introduces specific network requirements:
 
 ## 3. Security Considerations
 
-### 3.1 Authentication[^ct-1.11] and Authorization
+### 3.1 Authentication[^cn-1.11] and Authorization
 
-All client connections require authentication[^ct-1.12] via one of three mechanisms:
+All client connections require authentication[^cn-1.12] via one of three mechanisms:
 
 1. **Mutual TLS (mTLS):** Client presents a certificate signed by our internal CA. Used for service-to-service communication.
 2. **JWT bearer tokens:** Issued by the identity provider, validated at the edge proxy. Token lifetime is 1 hour with sliding refresh.
@@ -115,7 +115,7 @@ QUIC connections survive IP address changes (e.g., WiFi to cellular handoff). Th
 
 Our implementation restricts connection migration as follows:
 
-- Migration is only allowed for persistent[^ct-1.13] connections with mTLS client certificates
+- Migration is only allowed for persistent[^cn-1.13] connections with mTLS client certificates
 - The server validates the new path using a PATH_CHALLENGE/PATH_RESPONSE exchange
 - Migration events are logged to the security audit stream
 - Maximum of 5 migrations per connection lifetime
@@ -199,7 +199,7 @@ The following metrics are exported to Prometheus and visualized in Grafana:
 | `quic_0rtt_replay_blocked` | — | > 100/hour |
 | `quic_connection_migrations` | `from={wifi,cellular,wired}` | — (informational) |
 
-Alert routing follows the standard on-call rotation. Critical alerts (connection failure > 1%) page immediately. Warning alerts occurred[^ct-1.14] more than 3 times in 10 minutes trigger a Slack notification.
+Alert routing follows the standard on-call rotation. Critical alerts (connection failure > 1%) page immediately. Warning alerts occurred[^cn-1.14] more than 3 times in 10 minutes trigger a Slack notification.
 
 ## 6. Troubleshooting
 
@@ -215,7 +215,7 @@ A: This occurs when session tickets have expired (lifetime > 300s) or when the t
 A: Ensure the PATH_CHALLENGE/PATH_RESPONSE exchange completes within the configured timeout (5 seconds). NAT rebinding on the new path can cause the response to arrive from a different source port. Verify that the load balancer supports connection ID-based routing rather than 5-tuple routing.
 
 **Q: Higher latency than HTTP/2 for some requests.**
-A: QUIC's congestion control (Cubic by default) can be more conservative than TCP's on low-loss networks. Consider switching to BBRv2 for datacenter-to-edge links where packet loss is minimal and bandwidth is well-provisioned. See Section 3.2[^ct-1.15] for encryption overhead details.
+A: QUIC's congestion control (Cubic by default) can be more conservative than TCP's on low-loss networks. Consider switching to BBRv2 for datacenter-to-edge links where packet loss is minimal and bandwidth is well-provisioned. See Section 3.2[^cn-1.15] for encryption overhead details.
 
 ### 6.2 Diagnostic Tools
 
@@ -226,7 +226,7 @@ A: QUIC's congestion control (Cubic by default) can be more conservative than TC
 
 ## 7. Migration Checklist
 
-Before enabling HTTP/3 at each edge location, verify the following items have been addressed separately[^ct-1.16] for each deployment environment:
+Before enabling HTTP/3 at each edge location, verify the following items have been addressed separately[^cn-1.16] for each deployment environment:
 
 - [ ] UDP port 443 is open in all relevant firewall rules
 - [ ] Load balancer supports QUIC connection ID routing
@@ -240,7 +240,7 @@ Before enabling HTTP/3 at each edge location, verify the following items have be
 - [ ] 0-RTT replay protection (strike register) operational
 - [ ] Connection migration policies configured per security requirements
 - [ ] Performance baseline captured for comparison with HTTP/2
-- [ ] JSON[^ct-1.17] logging format for QUIC events verified in telemetry pipeline
+- [ ] JSON[^cn-1.17] logging format for QUIC events verified in telemetry pipeline
 - [ ] Certificate rotation schedule confirmed with cert-manager
 
 ## Appendix A: Glossary
@@ -269,75 +269,75 @@ Before enabling HTTP/3 at each edge location, verify the following items have be
 7. Internal: Network Security Policy v4.2
 
 
-[^ct-1.1]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.1]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: spelling fix
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.2]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.2]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: version format normalization
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.3]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.3]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: security protocol update
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
     rejected: @ai:gpt-5.3-codex 2026-02-27 "Keep this specific item unresolved to verify group-approve preserves prior child decisions."
 
-[^ct-1.4]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.4]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: unit spacing consistency
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.5]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.5]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: spelling fix
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.6]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.6]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: unit spacing consistency
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.7]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.7]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: remove redundant approximation marker
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.8]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.8]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: spelling fix
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.9]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.9]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: protocol acronym capitalization
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.10]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.10]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: unit spacing consistency
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.11]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.11]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: heading spelling correction
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.12]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.12]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: body spelling correction
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.13]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.13]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: spelling fix
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.14]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.14]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: past tense spelling correction
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.15]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.15]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: sentence capitalization and section style
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.16]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.16]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: spelling fix
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1.17]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
+[^cn-1.17]: @ai:gpt-5.3-codex | 2026-02-27 | sub | accepted
     @ai:gpt-5.3-codex 2026-02-27: acronym capitalization
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle." (cascaded from ct-1)
 
-[^ct-1]: @ai:gpt-5.3-codex | 2026-02-27 | group | accepted
+[^cn-1]: @ai:gpt-5.3-codex | 2026-02-27 | group | accepted
     @ai:gpt-5.3-codex 2026-02-27: propose_batch
     approved: @ai:gpt-5.3-codex 2026-02-27 "Batch copy-edit set is high quality and ready to settle."

@@ -5,7 +5,7 @@ await build({
   bundle: true,
   outfile: 'dist/lexical-bridge.js',
   format: 'iife',
-  globalName: 'ChangeTracksLexical',
+  globalName: 'ChangeDownLexical',
   target: 'chrome120',
   minify: false,
   sourcemap: true,

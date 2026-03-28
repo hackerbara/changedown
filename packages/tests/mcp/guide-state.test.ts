@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SessionState } from '@changetracks/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
 
 describe('SessionState: guideShownForMode', () => {
   it('starts as null', () => {

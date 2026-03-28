@@ -1,12 +1,12 @@
 Feature: H3 - ID Allocator
   The ID allocator scans existing SC-IDs in file content and allocates
   new sequential IDs. Single edits get flat IDs (ct-N), multiple edits
-  get dotted IDs under a parent (ct-N.1, ct-N.2).
+  get dotted IDs under a parent (ct-N.1, cn-N.2).
 
   # ── Scanning Existing IDs ──
 
   Scenario: Finds the maximum SC-ID in text
-    Given text containing "[^ct-3] and [^ct-7] here [^ct-2]"
+    Given text containing "[^cn-3] and [^cn-7] here [^cn-2]"
     When I scan for the max SC-ID
     Then the max ID is 7
 
@@ -16,12 +16,12 @@ Feature: H3 - ID Allocator
     Then the max ID is 0
 
   Scenario: Handles dotted IDs and returns the parent number
-    Given text containing "[^ct-5.1] [^ct-5.2] [^ct-3]"
+    Given text containing "[^cn-5.1] [^cn-5.2] [^cn-3]"
     When I scan for the max SC-ID
     Then the max ID is 5
 
   Scenario: Handles mixed flat and dotted IDs
-    Given text containing "[^ct-10] [^ct-3.1] [^ct-3.2]"
+    Given text containing "[^cn-10] [^cn-3.1] [^cn-3.2]"
     When I scan for the max SC-ID
     Then the max ID is 10
 
@@ -30,22 +30,22 @@ Feature: H3 - ID Allocator
   Scenario: Allocates a flat ID for a single edit
     Given a max existing ID of 5
     When I allocate IDs for 1 edit
-    Then the allocated IDs are "ct-6"
+    Then the allocated IDs are "cn-6"
 
   Scenario: Allocates dotted IDs for multiple edits
     Given a max existing ID of 5
     When I allocate IDs for 3 edit
-    Then the allocated IDs are "ct-6.1,ct-6.2,ct-6.3"
+    Then the allocated IDs are "cn-6.1,cn-6.2,cn-6.3"
 
   Scenario: Allocates from zero when no existing IDs
     Given a max existing ID of 0
     When I allocate IDs for 1 edit
-    Then the allocated IDs are "ct-1"
+    Then the allocated IDs are "cn-1"
 
   Scenario: Allocates dotted IDs from zero for multiple edits
     Given a max existing ID of 0
     When I allocate IDs for 2 edit
-    Then the allocated IDs are "ct-1.1,ct-1.2"
+    Then the allocated IDs are "cn-1.1,cn-1.2"
 
   Scenario: Allocates zero IDs for zero count
     Given a max existing ID of 5
@@ -55,4 +55,4 @@ Feature: H3 - ID Allocator
   Scenario: Dotted IDs use consecutive child numbers
     Given a max existing ID of 2
     When I allocate IDs for 4 edit
-    Then the allocated IDs are "ct-3.1,ct-3.2,ct-3.3,ct-3.4"
+    Then the allocated IDs are "cn-3.1,cn-3.2,cn-3.3,cn-3.4"

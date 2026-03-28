@@ -2,14 +2,14 @@
  * Custom Notifications
  *
  * Sends custom notifications to the LSP client about parse results:
- * - changetracks/decorationData: Full ChangeNode[] for decoration rendering
- * - changetracks/changeCount: Aggregated counts by change type
- * - changetracks/allChangesResolved: Sent when no changes remain
+ * - changedown/decorationData: Full ChangeNode[] for decoration rendering
+ * - changedown/changeCount: Aggregated counts by change type
+ * - changedown/allChangesResolved: Sent when no changes remain
  */
 
 import { Connection } from 'vscode-languageserver';
-import { ChangeNode, ChangeType, isGhostNode } from '@changetracks/core';
-import type { DecorationDataParams, ChangeCountParams, AllChangesResolvedParams, CoherenceStatusParams } from '@changetracks/core';
+import { ChangeNode, ChangeType, isGhostNode } from '@changedown/core';
+import type { DecorationDataParams, ChangeCountParams, AllChangesResolvedParams, CoherenceStatusParams } from '@changedown/core';
 
 /**
  * Send decoration data notification to client.
@@ -25,11 +25,15 @@ export function sendDecorationData(
   connection: Connection,
   uri: string,
   changes: ChangeNode[],
-  documentVersion: number
+  documentVersion: number,
+  autoFoldLines?: number[]
 ): void {
   const filtered = changes.filter(c => !isGhostNode(c));
   const params: DecorationDataParams = { uri, changes: filtered, documentVersion };
-  connection.sendNotification('changetracks/decorationData', params);
+  if (autoFoldLines?.length) {
+    params.autoFoldLines = autoFoldLines;
+  }
+  connection.sendNotification('changedown/decorationData', params);
 }
 
 /**
@@ -43,7 +47,7 @@ export function sendCoherenceStatus(
   threshold: number,
 ): void {
   const params: CoherenceStatusParams = { uri, coherenceRate, unresolvedCount, threshold };
-  connection.sendNotification('changetracks/coherenceStatus', params);
+  connection.sendNotification('changedown/coherenceStatus', params);
 }
 
 /**
@@ -92,11 +96,11 @@ export function sendChangeCount(
   }
 
   const params: ChangeCountParams = { uri, counts };
-  connection.sendNotification('changetracks/changeCount', params);
+  connection.sendNotification('changedown/changeCount', params);
 
   // Send all changes resolved notification if no changes remain
   if (counts.total === 0) {
     const resolvedParams: AllChangesResolvedParams = { uri };
-    connection.sendNotification('changetracks/allChangesResolved', resolvedParams);
+    connection.sendNotification('changedown/allChangesResolved', resolvedParams);
   }
 }

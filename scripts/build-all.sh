@@ -45,7 +45,7 @@ build_pkg() {
   fi
 }
 
-echo "${BOLD}Building ChangeTracks (all packages) [legacy]${RESET}"
+echo "${BOLD}Building ChangeDown (all packages) [legacy]${RESET}"
 echo ""
 
 # Clean stale .tsbuildinfo files that cause incremental builds to skip output
@@ -53,13 +53,13 @@ echo ""
 # "dist exists in tsbuildinfo but not on disk" class of silent build failures.
 find "$ROOT" -name '*.tsbuildinfo' -not -path '*/node_modules/*' -delete 2>/dev/null || true
 
-build_pkg "@changetracks/core"        "packages/core"                    "npm run build"
-build_pkg "@changetracks/docx"        "packages/docx"                    "npx tsc"
-build_pkg "changetracks"              "packages/cli"                     "npx tsc"
-build_pkg "@changetracks/lsp-server"  "packages/lsp-server"              "npm run build"
-build_pkg "changetracks-vscode"       "packages/vscode-extension"        "npm run compile && npm run esbuild"
-build_pkg "@changetracks/mcp"          "changetracks-plugin/mcp-server"   "node esbuild.mjs"
-build_pkg "hooks-impl (plugin)"       "changetracks-plugin/hooks-impl"   "node esbuild.mjs"
+build_pkg "@changedown/core"        "packages/core"                    "npm run build"
+build_pkg "@changedown/docx"        "packages/docx"                    "npx tsc"
+build_pkg "changedown"              "packages/cli"                     "npx tsc"
+build_pkg "@changedown/lsp-server"  "packages/lsp-server"              "npm run build"
+build_pkg "changedown-vscode"       "packages/vscode-extension"        "npm run compile && npm run esbuild"
+build_pkg "@changedown/mcp"          "changedown-plugin/mcp-server"   "node esbuild.mjs"
+build_pkg "hooks-impl (plugin)"       "changedown-plugin/hooks-impl"   "node esbuild.mjs"
 
 echo ""
 if [ $failed -eq 0 ]; then
@@ -68,7 +68,7 @@ if [ $failed -eq 0 ]; then
   # Package the VS Code extension, uninstall from all editors, then install fresh.
   EXT_DIR="$ROOT/packages/vscode-extension"
   VSIX_VERSION=$(node -p "require('$EXT_DIR/package.json').version")
-  VSIX_NAME="changetracks-vscode-${VSIX_VERSION}.vsix"
+  VSIX_NAME="changedown-vscode-${VSIX_VERSION}.vsix"
   EDITORS=(cursor code)
 
   printf "${BOLD}Packaging VS Code extension...${RESET} "
@@ -80,7 +80,7 @@ if [ $failed -eq 0 ]; then
       editor_label="$(echo "$editor_cmd" | sed 's/cursor/Cursor/;s/code/VS Code/')"
       if command -v "$editor_cmd" >/dev/null 2>&1; then
         printf "${BOLD}Uninstalling from ${editor_label}...${RESET} "
-        if "$editor_cmd" --uninstall-extension hackerbara.changetracks-vscode 2>/dev/null; then
+        if "$editor_cmd" --uninstall-extension hackerbara.changedown-vscode 2>/dev/null; then
           printf "${GREEN}ok${RESET}\n"
         else
           printf "${DIM}not installed${RESET}\n"
@@ -95,7 +95,7 @@ if [ $failed -eq 0 ]; then
       if command -v "$editor_cmd" >/dev/null 2>&1; then
         if "$editor_cmd" --install-extension "$EXT_DIR/$VSIX_NAME" 2>/tmp/sc-${editor_cmd}-install.log; then
           printf "${GREEN}ok${RESET}\n"
-          echo "${DIM}Reload the ${editor_label} window to use the updated ChangeTracks extension.${RESET}"
+          echo "${DIM}Reload the ${editor_label} window to use the updated ChangeDown extension.${RESET}"
         else
           printf "${RED}FAIL${RESET}\n"
           cat /tmp/sc-${editor_cmd}-install.log | head -10
@@ -109,12 +109,12 @@ if [ $failed -eq 0 ]; then
     cat /tmp/sc-vsce.log | head -15
   fi
 
-  # Install Cursor MCP config so the ChangeTracks server appears in Cursor's MCP tool list.
+  # Install Cursor MCP config so the ChangeDown server appears in Cursor's MCP tool list.
   printf "${BOLD}Installing Cursor MCP config...${RESET} "
-  if [ -f "$ROOT/changetracks-plugin/cursor/install-mcp.sh" ]; then
-    if (cd "$ROOT" && bash "$ROOT/changetracks-plugin/cursor/install-mcp.sh") 2>/tmp/sc-mcp-install.log; then
+  if [ -f "$ROOT/changedown-plugin/cursor/install-mcp.sh" ]; then
+    if (cd "$ROOT" && bash "$ROOT/changedown-plugin/cursor/install-mcp.sh") 2>/tmp/sc-mcp-install.log; then
       printf "${GREEN}ok${RESET}\n"
-      echo "${DIM}Enable in Cursor: Settings → Features → MCP → ensure \"changetracks\" is on. Reload window if needed.${RESET}"
+      echo "${DIM}Enable in Cursor: Settings → Features → MCP → ensure \"changedown\" is on. Reload window if needed.${RESET}"
     else
       printf "${RED}FAIL${RESET}\n"
       cat /tmp/sc-mcp-install.log | head -5
@@ -125,8 +125,8 @@ if [ $failed -eq 0 ]; then
 
   # Install Cursor hooks and skill
   printf "${BOLD}Installing Cursor hooks...${RESET} "
-  if [ -f "$ROOT/changetracks-plugin/cursor/install-hooks.sh" ]; then
-    if (cd "$ROOT" && bash "$ROOT/changetracks-plugin/cursor/install-hooks.sh") 2>/tmp/sc-hooks-install.log; then
+  if [ -f "$ROOT/changedown-plugin/cursor/install-hooks.sh" ]; then
+    if (cd "$ROOT" && bash "$ROOT/changedown-plugin/cursor/install-hooks.sh") 2>/tmp/sc-hooks-install.log; then
       printf "${GREEN}ok${RESET}\n"
     else
       printf "${RED}FAIL${RESET}\n"
@@ -136,10 +136,10 @@ if [ $failed -eq 0 ]; then
     printf "${DIM}skipped (install-hooks.sh not found)${RESET}\n"
   fi
   printf "${BOLD}Installing Cursor skill...${RESET} "
-  if [ -f "$ROOT/changetracks-plugin/cursor/install-skill.sh" ]; then
-    if (cd "$ROOT" && bash "$ROOT/changetracks-plugin/cursor/install-skill.sh") 2>/tmp/sc-skill-install.log; then
+  if [ -f "$ROOT/changedown-plugin/cursor/install-skill.sh" ]; then
+    if (cd "$ROOT" && bash "$ROOT/changedown-plugin/cursor/install-skill.sh") 2>/tmp/sc-skill-install.log; then
       printf "${GREEN}ok${RESET}\n"
-      echo "${DIM}Skill copied to .cursor/skills/changetracks/ — required for strict mode redirect guidance.${RESET}"
+      echo "${DIM}Skill copied to .cursor/skills/changedown/ — required for strict mode redirect guidance.${RESET}"
     else
       printf "${RED}FAIL${RESET}\n"
       cat /tmp/sc-skill-install.log | head -5
@@ -149,22 +149,22 @@ if [ $failed -eq 0 ]; then
   fi
 
   # Sync built artifacts to Cursor's plugin cache
-  PLUGIN_VERSION=$(node -p "require('$ROOT/changetracks-plugin/mcp-server/package.json').version" 2>/dev/null || echo '0.1.0')
-  PLUGIN_CACHE="$HOME/.claude/plugins/cache/local/changetracks/$PLUGIN_VERSION"
+  PLUGIN_VERSION=$(node -p "require('$ROOT/changedown-plugin/mcp-server/package.json').version" 2>/dev/null || echo '0.1.0')
+  PLUGIN_CACHE="$HOME/.claude/plugins/cache/local/changedown/$PLUGIN_VERSION"
   if [ -d "$PLUGIN_CACHE" ]; then
     printf "${BOLD}Syncing to plugin cache...${RESET} "
-    rsync -a --delete "$ROOT/changetracks-plugin/mcp-server/dist/" "$PLUGIN_CACHE/mcp-server/dist/"
-    rsync -a --delete "$ROOT/changetracks-plugin/hooks-impl/dist/"  "$PLUGIN_CACHE/hooks-impl/dist/"
-    rsync -a "$ROOT/changetracks-plugin/hooks/"                     "$PLUGIN_CACHE/hooks/"
-    rsync -a "$ROOT/changetracks-plugin/skills/"                    "$PLUGIN_CACHE/skills/"
+    rsync -a --delete "$ROOT/changedown-plugin/mcp-server/dist/" "$PLUGIN_CACHE/mcp-server/dist/"
+    rsync -a --delete "$ROOT/changedown-plugin/hooks-impl/dist/"  "$PLUGIN_CACHE/hooks-impl/dist/"
+    rsync -a "$ROOT/changedown-plugin/hooks/"                     "$PLUGIN_CACHE/hooks/"
+    rsync -a "$ROOT/changedown-plugin/skills/"                    "$PLUGIN_CACHE/skills/"
     for pkg in core cli; do
       SRC="$ROOT/packages/$pkg"
       if [ -d "$SRC" ]; then
         for sub_dir in mcp-server hooks-impl; do
           if [ "$pkg" = "cli" ]; then
-            DEST="$PLUGIN_CACHE/$sub_dir/node_modules/changetracks"
+            DEST="$PLUGIN_CACHE/$sub_dir/node_modules/changedown"
           else
-            DEST="$PLUGIN_CACHE/$sub_dir/node_modules/@changetracks/$pkg"
+            DEST="$PLUGIN_CACHE/$sub_dir/node_modules/@changedown/$pkg"
           fi
           [ -L "$DEST" ] && rm "$DEST"
           mkdir -p "$DEST"

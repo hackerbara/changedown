@@ -11,7 +11,7 @@
 import { findFootnoteBlock, parseFootnoteHeader } from '../footnote-utils.js';
 import { applyReview } from './apply-review.js';
 import { applyProposeChange, appendFootnote } from '../file-ops.js';
-import { scanMaxCtId, generateFootnoteDefinition } from './footnote-generator.js';
+import { scanMaxCnId, generateFootnoteDefinition } from './footnote-generator.js';
 import { isL3Format } from '../footnote-patterns.js';
 import { parseForFormat } from '../format-aware-parse.js';
 import { computeReject } from './accept-reject.js';
@@ -37,7 +37,7 @@ export interface SupersedeSuccess {
   isError: false;
   /** The full document text after supersede operations. */
   text: string;
-  /** The newly allocated change ID (e.g. "ct-2"). */
+  /** The newly allocated change ID (e.g. "cn-2"). */
   newChangeId: string;
   /** The original change ID that was superseded. */
   originalChangeId: string;
@@ -59,8 +59,8 @@ export type SupersedeResult = SupersedeSuccess | SupersedeError;
  * rewritten text with:
  * 1. Original change rejected (status → rejected, rejection line added)
  * 2. New replacement change proposed at the same location
- * 3. Cross-references: `supersedes: ct-N` in new footnote,
- *    `superseded-by: ct-M` in original footnote
+ * 3. Cross-references: `supersedes: cn-N` in new footnote,
+ *    `superseded-by: cn-M` in original footnote
  *
  * Constraints enforced:
  * - Only `proposed` changes can be superseded
@@ -135,8 +135,8 @@ export async function computeSupersedeResult(
   if (isDirectReplace && rejectedChange) {
     // --- Direct replacement path for insertions and comments ---
     // Replace the old CriticMarkup with new markup inline, avoiding body reversion.
-    const maxId = scanMaxCtId(fileContent);
-    const newChangeId = `ct-${maxId + 1}`;
+    const maxId = scanMaxCnId(fileContent);
+    const newChangeId = `cn-${maxId + 1}`;
 
     // Build replacement markup
     let newMarkup: string;
@@ -150,10 +150,10 @@ export async function computeSupersedeResult(
       changeType = 'ins';
     }
 
-    // Replace the old markup span (range covers {++...++} or {>>...<<}) and its ref [^ct-N]
+    // Replace the old markup span (range covers {++...++} or {>>...<<}) and its ref [^cn-N]
     const rangeStart = rejectedChange.range.start;
     let rangeEnd = rejectedChange.range.end;
-    // Include the [^ct-N] reference if present after the markup
+    // Include the [^cn-N] reference if present after the markup
     const refStr = `[^${changeId}]`;
     if (fileContent.slice(rangeEnd, rangeEnd + refStr.length) === refStr) {
       rangeEnd += refStr.length;
@@ -168,7 +168,7 @@ export async function computeSupersedeResult(
     // Update original footnote status to rejected
     // (applyReview already did this, so just add cross-references)
 
-    // --- Add `supersedes: ct-N` to the new change's footnote ---
+    // --- Add `supersedes: cn-N` to the new change's footnote ---
     const modifiedLines = fileContent.split('\n');
     const newBlock = findFootnoteBlock(modifiedLines, newChangeId);
     if (newBlock) {
@@ -177,7 +177,7 @@ export async function computeSupersedeResult(
       fileContent = modifiedLines.join('\n');
     }
 
-    // --- Add `superseded-by: ct-M` to the original change's footnote ---
+    // --- Add `superseded-by: cn-M` to the original change's footnote ---
     const updatedLines = fileContent.split('\n');
     const origBlock = findFootnoteBlock(updatedLines, changeId);
     if (origBlock) {
@@ -203,8 +203,8 @@ export async function computeSupersedeResult(
   }
 
   // --- 4. Allocate next ID ---
-  const maxId = scanMaxCtId(fileContent);
-  const newChangeId = `ct-${maxId + 1}`;
+  const maxId = scanMaxCnId(fileContent);
+  const newChangeId = `cn-${maxId + 1}`;
 
   // --- 5. Create replacement change via applyProposeChange ---
   // Determine oldText for propose: if caller provided oldText, use it.
@@ -232,7 +232,7 @@ export async function computeSupersedeResult(
   });
   fileContent = proposeResult.modifiedText;
 
-  // --- 6. Add `supersedes: ct-N` to the new change's footnote ---
+  // --- 6. Add `supersedes: cn-N` to the new change's footnote ---
   const modifiedLines = fileContent.split('\n');
   const newBlock = findFootnoteBlock(modifiedLines, newChangeId);
   if (newBlock) {
@@ -241,7 +241,7 @@ export async function computeSupersedeResult(
     fileContent = modifiedLines.join('\n');
   }
 
-  // --- 7. Add `superseded-by: ct-M` to the original change's footnote ---
+  // --- 7. Add `superseded-by: cn-M` to the original change's footnote ---
   const updatedLines = fileContent.split('\n');
   const origBlock = findFootnoteBlock(updatedLines, changeId);
   if (origBlock) {

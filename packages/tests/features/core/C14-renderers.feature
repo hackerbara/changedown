@@ -49,43 +49,43 @@ Feature: Renderers
   Scenario: Smart view strips footnote refs with known footnotes
     Given a CriticMarkup text:
       """
-      Hello[^ct-1].
+      Hello[^cn-1].
 
-      [^ct-1]: @ai:test | 2026-02-25 | ins | proposed
+      [^cn-1]: @ai:test | 2026-02-25 | ins | proposed
       """
     When I render with ANSI in "smart" view
-    Then the stripped ANSI output does not contain "[^ct-1]"
+    Then the stripped ANSI output does not contain "[^cn-1]"
     And the stripped ANSI output contains "Hello"
 
   Scenario: Smart view strips trailing footnote ref on change
     Given a CriticMarkup text:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @ai:test | 2026-02-25 | ins | proposed
+      [^cn-1]: @ai:test | 2026-02-25 | ins | proposed
       """
     When I render with ANSI in "smart" view
-    Then the stripped ANSI output does not contain "[^ct-1]"
+    Then the stripped ANSI output does not contain "[^cn-1]"
     And the stripped ANSI output contains "world"
 
   Scenario: Smart view omits footnote section
     Given a CriticMarkup text:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @ai:test | 2026-02-25 | ins | proposed
+      [^cn-1]: @ai:test | 2026-02-25 | ins | proposed
       """
     When I render with ANSI in "smart" view
-    Then the stripped ANSI output does not contain "[^ct-1]:"
+    Then the stripped ANSI output does not contain "[^cn-1]:"
 
   # ── ANSI smart view: metadata projection ──────────────────────────
 
   Scenario: Smart view projects metadata annotation at end of line
     Given a CriticMarkup text:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @ai:claude-opus-4.6 | 2026-02-25 | ins | proposed
+      [^cn-1]: @ai:claude-opus-4.6 | 2026-02-25 | ins | proposed
         reason: spelling fix
       """
     When I render with ANSI in "smart" view
@@ -96,9 +96,9 @@ Feature: Renderers
   Scenario: Smart view shows deliberation header with status counts
     Given a CriticMarkup text:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @ai:claude-opus-4.6 | 2026-02-25 | ins | proposed
+      [^cn-1]: @ai:claude-opus-4.6 | 2026-02-25 | ins | proposed
         reason: spelling fix
       """
     When I render with ANSI in "smart" view
@@ -108,10 +108,10 @@ Feature: Renderers
   Scenario: Smart view header shows multiple statuses when mixed
     Given a CriticMarkup text:
       """
-      Hello {++world++}[^ct-1] {--old--}[^ct-2].
+      Hello {++world++}[^cn-1] {--old--}[^cn-2].
 
-      [^ct-1]: @alice | 2026-02-25 | ins | proposed
-      [^ct-2]: @bob | 2026-02-25 | del | accepted
+      [^cn-1]: @alice | 2026-02-25 | ins | proposed
+      [^cn-2]: @bob | 2026-02-25 | del | accepted
       """
     When I render with ANSI in "smart" view
     Then the stripped ANSI output contains "1 proposed"
@@ -120,9 +120,9 @@ Feature: Renderers
   Scenario: Smart view shows reply count in metadata annotation
     Given a CriticMarkup text:
       """
-      Hello {~~old~>new~~}[^ct-1].
+      Hello {~~old~>new~~}[^cn-1].
 
-      [^ct-1]: @alice | 2026-02-25 | sub | proposed
+      [^cn-1]: @alice | 2026-02-25 | sub | proposed
         reason: better wording
         @bob 2026-02-25: I agree with this change
         @alice 2026-02-25: thanks!
@@ -145,20 +145,20 @@ Feature: Renderers
   Scenario: Markup view projects footnote metadata into Zone 3
     Given a CriticMarkup text:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @ai:test | 2026-02-25 | ins | proposed
+      [^cn-1]: @ai:test | 2026-02-25 | ins | proposed
       """
     When I render with ANSI in "markup" view
-    Then the stripped ANSI output contains "ct-1"
+    Then the stripped ANSI output contains "cn-1"
     And the stripped ANSI output contains "@ai:test"
 
   Scenario: Markup view colorizes footnote definitions by status
     Given a CriticMarkup text:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @alice | 2026-02-25 | ins | proposed
+      [^cn-1]: @alice | 2026-02-25 | ins | proposed
       """
     When I render with ANSI in "markup" view
     Then the raw ANSI output contains yellow escape code
@@ -190,9 +190,9 @@ Feature: Renderers
   Scenario: Meta view produces deliberation header
     Given a tracked markdown file "test.md" with content:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @ai:test | 2026-02-25 | ins | proposed
+      [^cn-1]: @ai:test | 2026-02-25 | ins | proposed
       """
     When I render meta view for "test.md"
     Then the meta output contains "proposed: 1"
@@ -201,21 +201,21 @@ Feature: Renderers
   Scenario: Meta view includes inline comment annotation for changes
     Given a tracked markdown file "test.md" with content:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @ai:test | 2026-02-25 | ins | proposed
+      [^cn-1]: @ai:test | 2026-02-25 | ins | proposed
       """
     When I render meta view for "test.md"
-    Then the meta output contains "{>>ct-1"
-    And the meta output does not contain "[^ct-1]:"
+    Then the meta output contains "{>>cn-1"
+    And the meta output does not contain "[^cn-1]:"
 
   Scenario: Meta view appends Zone 3 metadata at end of line
     Given a tracked markdown file "test.md" with content:
       """
-      Hello {++world++}[^ct-1].
+      Hello {++world++}[^cn-1].
 
-      [^ct-1]: @ai:test | 2026-02-25 | ins | proposed
+      [^cn-1]: @ai:test | 2026-02-25 | ins | proposed
         reason: clarity
       """
     When I render meta view for "test.md"
-    Then the meta output contains "{>>ct-1 @ai:test: clarity<<}"
+    Then the meta output contains "{>>cn-1 @ai:test: clarity<<}"

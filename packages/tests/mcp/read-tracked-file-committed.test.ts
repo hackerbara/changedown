@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
-import { handleReadTrackedFile } from '@changetracks/mcp/internals';
-import { SessionState } from '@changetracks/mcp/internals';
-import { type ChangeTracksConfig } from '@changetracks/mcp/internals';
-import { ConfigResolver } from '@changetracks/mcp/internals';
+import { handleReadTrackedFile } from '@changedown/mcp/internals';
+import { SessionState } from '@changedown/mcp/internals';
+import { type ChangeDownConfig } from '@changedown/mcp/internals';
+import { ConfigResolver } from '@changedown/mcp/internals';
 import { createTestResolver } from './test-resolver.js';
-import { initHashline } from '@changetracks/core';
+import { initHashline } from '@changedown/core';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
@@ -12,7 +12,7 @@ import * as os from 'node:os';
 describe('read_tracked_file committed view', () => {
   let tmpDir: string;
   let state: SessionState;
-  let config: ChangeTracksConfig;
+  let config: ChangeDownConfig;
   let resolver: ConfigResolver;
 
   beforeAll(async () => {
@@ -20,7 +20,7 @@ describe('read_tracked_file committed view', () => {
   });
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ct-committed-view-'));
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-committed-view-'));
     state = new SessionState();
     config = {
       tracking: {
@@ -80,9 +80,9 @@ describe('read_tracked_file committed view', () => {
   it('shows P flag for proposed changes', async () => {
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(filePath, [
-      'Before {++added text++}[^ct-1] after',
+      'Before {++added text++}[^cn-1] after',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
     ].join('\n'));
 
     const result = await handleReadTrackedFile(
@@ -93,16 +93,16 @@ describe('read_tracked_file committed view', () => {
 
     const text = result.content[0].text;
     // Proposed insertion should be reverted (removed), line should have P flag
-    // Unified format: "N:HH P| content {>>ct-N<<}"
+    // Unified format: "N:HH P| content {>>cn-N<<}"
     expect(text).toMatch(/P\| Before  after/);
   });
 
   it('shows A flag for accepted changes', async () => {
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(filePath, [
-      'Before {++added text++}[^ct-1] after',
+      'Before {++added text++}[^cn-1] after',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | accepted',
+      '[^cn-1]: @alice | 2026-02-17 | ins | accepted',
     ].join('\n'));
 
     const result = await handleReadTrackedFile(
@@ -113,16 +113,16 @@ describe('read_tracked_file committed view', () => {
 
     const text = result.content[0].text;
     // Accepted insertion should be kept, line should have A flag
-    // Unified format: "N:HH A| content {>>ct-N<<}"
+    // Unified format: "N:HH A| content {>>cn-N<<}"
     expect(text).toMatch(/A\| Before added text after/);
   });
 
   it('excludes footnote definitions from output', async () => {
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(filePath, [
-      'Some text {++new++}[^ct-1]',
+      'Some text {++new++}[^cn-1]',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
       '    reason: clarity improvement',
     ].join('\n'));
 
@@ -133,7 +133,7 @@ describe('read_tracked_file committed view', () => {
     );
 
     const text = result.content[0].text;
-    expect(text).not.toContain('[^ct-1]:');
+    expect(text).not.toContain('[^cn-1]:');
     expect(text).not.toContain('reason: clarity improvement');
   });
 
@@ -162,12 +162,12 @@ describe('read_tracked_file committed view', () => {
   it('shows change summary in header', async () => {
     const filePath = path.join(tmpDir, 'test.md');
     await fs.writeFile(filePath, [
-      'Before {++added++}[^ct-1] after',
-      '{--removed--}[^ct-2]',
+      'Before {++added++}[^cn-1] after',
+      '{--removed--}[^cn-2]',
       'Clean line.',
       '',
-      '[^ct-1]: @alice | 2026-02-17 | ins | proposed',
-      '[^ct-2]: @alice | 2026-02-17 | del | accepted',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
+      '[^cn-2]: @alice | 2026-02-17 | del | accepted',
     ].join('\n'));
 
     const result = await handleReadTrackedFile(
@@ -183,7 +183,7 @@ describe('read_tracked_file committed view', () => {
   });
 
   it('returns error when hashline is disabled', async () => {
-    const disabledConfig: ChangeTracksConfig = {
+    const disabledConfig: ChangeDownConfig = {
       ...config,
       hashline: { enabled: false, auto_remap: false },
     };
