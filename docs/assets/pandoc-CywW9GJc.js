@@ -1,1 +1,0 @@
-var e=``+new URL(`pandoc-MdtRRCtT.wasm`,import.meta.url).href;export{e as default};
