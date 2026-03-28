@@ -1,0 +1,1 @@
+import{n as e,t}from"./typescript-DSCe6C8u.js";export{t as conf,e as language};

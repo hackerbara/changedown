@@ -1,1 +1,0 @@
-var e=`/assets/pandoc-MdtRRCtT.wasm`;export{e as default};
