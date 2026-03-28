@@ -19028,6 +19028,15 @@ ${sidecarSection}
         if (event.type === "editorSwitch" || event.type === "save" || event.type === "flush") {
           return "hard-break";
         }
+        if (event.type === "cursorMove") {
+          const buf = pending;
+          if (!buf)
+            return "ignore";
+          if (buf.currentText.length === 0 && buf.originalText.length > 0)
+            return "ignore";
+          const outside = event.offset < buf.anchorOffset || event.offset > buf.anchorOffset + buf.currentText.length;
+          return outside ? "hard-break" : "ignore";
+        }
         if (isComposing) {
           return "ignore";
         }
@@ -19077,6 +19086,13 @@ ${sidecarSection}
       exports.processEvent = processEvent;
       var signal_classifier_js_1 = require_signal_classifier();
       var pending_buffer_js_1 = require_pending_buffer();
+      var tracking_js_1 = require_tracking();
+      var footnote_generator_js_1 = require_footnote_generator();
+      var hashline_js_1 = require_hashline();
+      var l2_to_l3_js_1 = require_l2_to_l3();
+      var types_js_1 = require_types();
+      var parser_js_1 = require_parser();
+      var cmParser = new parser_js_1.CriticMarkupParser();
       function processEvent(state, event, context) {
         if (state.pending !== null && state.config.pauseThresholdMs > 0 && (event.type === "insertion" || event.type === "deletion" || event.type === "substitution") && context.now - state.pending.lastEditTime > state.config.pauseThresholdMs) {
           return handleBreak(state, event, context);
@@ -19084,7 +19100,7 @@ ${sidecarSection}
         const signal = (0, signal_classifier_js_1.classifySignal)(event, state);
         switch (signal) {
           case "hard-break":
-            return handleHardBreak(state);
+            return handleHardBreak(state, context);
           case "break":
             return handleBreak(state, event, context);
           case "extend":
@@ -19104,7 +19120,7 @@ ${sidecarSection}
           cursorOffset: buf.cursorOffset
         };
       }
-      function flush(state) {
+      function flush(state, context) {
         const buf = state.pending;
         if (buf === null) {
           return { effects: [], clearedState: state };
@@ -19122,25 +19138,83 @@ ${sidecarSection}
           } else {
             changeType = "substitution";
           }
-          effects.push({
-            type: "crystallize",
-            changeType,
-            offset: buf.anchorOffset,
-            length: changeType === "insertion" ? buf.currentText.length : changeType === "deletion" ? 0 : buf.currentText.length,
-            currentText: buf.currentText,
-            originalText: buf.originalText,
-            scId: buf.scId
-          });
+          const hasContext = context?.documentText !== void 0 && context?.author !== void 0;
+          const canProduceL2 = hasContext && context?.documentFormat === "l2";
+          const canProduceL3 = hasContext && context?.documentFormat === "l3";
+          if (canProduceL2 || canProduceL3) {
+            const scId = buf.scId ?? "ct-0";
+            const docText = context.documentText;
+            const ct = changeType === "insertion" ? types_js_1.ChangeType.Insertion : changeType === "deletion" ? types_js_1.ChangeType.Deletion : types_js_1.ChangeType.Substitution;
+            const abbrev = (0, types_js_1.changeTypeToAbbrev)(ct);
+            const rawAuthor = context.author.replace(/^@/, "");
+            const dateStr = new Date(context.now).toISOString().slice(0, 10);
+            if (canProduceL2) {
+              let markupEdit = changeType === "insertion" ? (0, tracking_js_1.wrapInsertion)(buf.currentText, buf.anchorOffset, buf.scId) : changeType === "deletion" ? (0, tracking_js_1.wrapDeletion)(buf.originalText, buf.anchorOffset, buf.scId) : (0, tracking_js_1.wrapSubstitution)(buf.originalText, buf.currentText, buf.anchorOffset, buf.scId);
+              const simulated = docText.slice(0, markupEdit.offset) + markupEdit.newText + docText.slice(markupEdit.offset + markupEdit.length);
+              markupEdit = tryAtomicMerge(simulated, markupEdit, ct, buf.scId);
+              const footnoteText = (0, footnote_generator_js_1.generateFootnoteDefinition)(scId, abbrev, rawAuthor, dateStr);
+              effects.push({
+                type: "crystallize",
+                edits: {
+                  format: "l2",
+                  markupEdit,
+                  footnoteEdit: { offset: docText.length, length: 0, newText: footnoteText }
+                }
+              });
+            } else {
+              const lineStarts = (0, l2_to_l3_js_1.buildLineStarts)(docText);
+              const lineNumber = (0, l2_to_l3_js_1.offsetToLineNumber)(lineStarts, buf.anchorOffset);
+              const lineIdx = lineNumber - 1;
+              const lineContent = docText.split("\n")[lineIdx] ?? "";
+              const allLines = lineContent.trim() === "" ? docText.split("\n") : void 0;
+              const hash = (0, hashline_js_1.computeLineHash)(lineIdx, lineContent, allLines);
+              const column = buf.anchorOffset - (lineStarts[lineIdx] ?? 0);
+              const anchorLen = changeType === "deletion" ? 0 : buf.currentText.length;
+              const editOpLine = (0, footnote_generator_js_1.buildContextualL3EditOp)({
+                changeType: ct,
+                originalText: buf.originalText,
+                currentText: buf.currentText,
+                lineContent,
+                lineNumber,
+                hash,
+                column,
+                anchorLen
+              });
+              const footnoteHeader = (0, footnote_generator_js_1.generateFootnoteDefinition)(scId, abbrev, rawAuthor, dateStr);
+              effects.push({
+                type: "crystallize",
+                edits: {
+                  format: "l3",
+                  markupEdit: null,
+                  footnoteEdit: { offset: docText.length, length: 0, newText: footnoteHeader + "\n" + editOpLine }
+                }
+              });
+            }
+          } else {
+            effects.push({
+              type: "crystallize",
+              changeType,
+              offset: buf.anchorOffset,
+              length: changeType === "insertion" ? buf.currentText.length : changeType === "deletion" ? 0 : buf.currentText.length,
+              currentText: buf.currentText,
+              originalText: buf.originalText,
+              scId: buf.scId
+            });
+          }
         }
-        effects.push({ type: "updatePendingOverlay", overlay: null }, { type: "mergeAdjacent", offset: buf.anchorOffset });
+        const hasFullCrystallize = effects.some((e) => e.type === "crystallize" && "edits" in e);
+        effects.push({ type: "updatePendingOverlay", overlay: null });
+        if (!hasFullCrystallize) {
+          effects.push({ type: "mergeAdjacent", offset: buf.anchorOffset });
+        }
         return { effects, clearedState: { ...state, pending: null } };
       }
-      function handleHardBreak(state) {
-        const { effects, clearedState } = flush(state);
+      function handleHardBreak(state, context) {
+        const { effects, clearedState } = flush(state, context);
         return { newState: clearedState, effects };
       }
       function handleBreak(state, event, context) {
-        const { effects: flushEffects, clearedState } = flush(state);
+        const { effects: flushEffects, clearedState } = flush(state, context);
         if (event.type === "insertion") {
           if (state.config.breakOnNewline && event.text.includes("\n") || event.text.length >= state.config.pasteMinChars) {
             return {
@@ -19239,6 +19313,68 @@ ${sidecarSection}
           };
         }
         throw new Error(`Unreachable: unhandled event type in handleSplice: ${event.type}`);
+      }
+      function tryAtomicMerge(simulated, originalEdit, expectedType, scId) {
+        const parser = new parser_js_1.CriticMarkupParser();
+        const vdoc = parser.parse(simulated);
+        const changes = vdoc.getChanges();
+        const newIdx = changes.findIndex((c) => c.id === scId);
+        if (newIdx < 0)
+          return originalEdit;
+        const newChange = changes[newIdx];
+        const delta = originalEdit.newText.length - originalEdit.length;
+        if (newIdx > 0) {
+          const pred = changes[newIdx - 1];
+          if (canMerge(pred, newChange, expectedType)) {
+            return buildMergedEdit(pred, newChange, expectedType, scId, originalEdit, delta, "predecessor");
+          }
+        }
+        if (newIdx < changes.length - 1) {
+          const succ = changes[newIdx + 1];
+          if (canMerge(newChange, succ, expectedType)) {
+            return buildMergedEdit(newChange, succ, expectedType, scId, originalEdit, delta, "successor");
+          }
+        }
+        return originalEdit;
+      }
+      function canMerge(first, second, expectedType) {
+        return first.type === expectedType && second.type === expectedType && first.status === types_js_1.ChangeStatus.Proposed && second.status === types_js_1.ChangeStatus.Proposed && first.range.end === second.range.start;
+      }
+      function buildMergedEdit(first, second, changeType, scId, originalEdit, delta, direction) {
+        let combinedContent;
+        let combinedOriginal;
+        let combinedModified;
+        if (changeType === types_js_1.ChangeType.Insertion) {
+          combinedContent = (first.modifiedText ?? "") + (second.modifiedText ?? "");
+        } else if (changeType === types_js_1.ChangeType.Deletion) {
+          combinedContent = (first.originalText ?? "") + (second.originalText ?? "");
+        } else {
+          combinedOriginal = (first.originalText ?? "") + (second.originalText ?? "");
+          combinedModified = (first.modifiedText ?? "") + (second.modifiedText ?? "");
+          combinedContent = "";
+        }
+        let mergedNewText;
+        if (changeType === types_js_1.ChangeType.Insertion) {
+          mergedNewText = (0, tracking_js_1.wrapInsertion)(combinedContent, 0, scId).newText;
+        } else if (changeType === types_js_1.ChangeType.Deletion) {
+          mergedNewText = (0, tracking_js_1.wrapDeletion)(combinedContent, 0, scId).newText;
+        } else {
+          mergedNewText = (0, tracking_js_1.wrapSubstitution)(combinedOriginal, combinedModified, 0, scId).newText;
+        }
+        let docStartOffset;
+        let docEndOffset;
+        if (direction === "predecessor") {
+          docStartOffset = first.range.start;
+          docEndOffset = originalEdit.offset + originalEdit.length;
+        } else {
+          docStartOffset = originalEdit.offset;
+          docEndOffset = second.range.end - delta;
+        }
+        return {
+          offset: docStartOffset,
+          length: docEndOffset - docStartOffset,
+          newText: mergedNewText
+        };
       }
     }
   });
@@ -20364,8 +20500,14 @@ This change's visible effect was absorbed by a later edit. The change is preserv
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.sendPendingEditFlushed = sendPendingEditFlushed;
-      function sendPendingEditFlushed(connection, uri, range, newText) {
-        const params = { uri, range, newText };
+      function sendPendingEditFlushed(connection, uri, markupRange, markupNewText, footnoteRange, footnoteNewText) {
+        const params = {
+          uri,
+          edits: [
+            { range: markupRange, newText: markupNewText },
+            { range: footnoteRange, newText: footnoteNewText }
+          ]
+        };
         connection.sendNotification("changetracks/pendingEditFlushed", params);
       }
     }
@@ -20992,97 +21134,216 @@ This change's visible effect was absorbed by a later edit. The change is preserv
       exports.PendingEditManager = void 0;
       var core_1 = require_dist();
       var PendingEditManager = class {
-        constructor(workspace, onCrystallize, getDocumentText) {
-          this.workspace = workspace;
+        constructor(onCrystallize) {
           this.onCrystallize = onCrystallize;
-          this.getDocumentText = getDocumentText;
           this.states = /* @__PURE__ */ new Map();
+          this.pendingEchos = /* @__PURE__ */ new Set();
           this.safetyNetInterval = null;
-          this._pauseThreshold = 2e3;
-          this.isMerging = false;
+          this._pauseThresholdMs = 2e3;
+          this._author = "@unknown";
         }
-        getPauseThreshold() {
-          return this._pauseThreshold;
-        }
+        // ── Public API ─────────────────────────────────────────────────────
         /**
-         * Exponential curve: threshold = 500 * 16^(1 - sensitivity)
-         *   1.0  -> 500ms    0.5  -> 2000ms (default)    0.0  -> Infinity
+         * Process an edit event. Returns false if the edit was an echo from
+         * our own crystallize (feedback loop guard).
          */
-        setPauseThreshold(sensitivity) {
-          this._pauseThreshold = sensitivity <= 0 ? Infinity : 500 * Math.pow(16, 1 - sensitivity);
-          const newMs = this._pauseThreshold === Infinity ? 0 : this._pauseThreshold;
-          for (const [uri, state] of this.states) {
-            this.states.set(uri, {
-              ...state,
-              config: { ...state.config, pauseThresholdMs: newMs }
-            });
+        handleChange(uri, type, offset, text, deletedText, documentText) {
+          if (this.pendingEchos.has(uri)) {
+            this.pendingEchos.delete(uri);
+            return false;
           }
-        }
-        handleChange(uri, oldText, newText, offset) {
           let event;
-          if (oldText.length === 0 && newText.length > 0) {
-            event = { type: "insertion", offset, text: newText };
-          } else if (oldText.length > 0 && newText.length === 0) {
-            event = { type: "deletion", offset, deletedText: oldText };
-          } else if (oldText.length > 0 && newText.length > 0) {
-            event = { type: "substitution", offset, oldText, newText };
-          } else {
-            return;
+          switch (type) {
+            case "insertion":
+              event = { type: "insertion", offset, text };
+              break;
+            case "deletion":
+              event = { type: "deletion", offset, deletedText };
+              break;
+            case "substitution":
+              event = { type: "substitution", offset, oldText: deletedText, newText: text };
+              break;
           }
-          const state = this.getState(uri);
-          const { newState, effects } = (0, core_1.processEvent)(state, event, { now: Date.now() });
-          this.states.set(uri, newState);
+          const uriState = this.getUriState(uri);
+          uriState.lastDocumentText = documentText;
+          const ctx = this.buildContext(uri, uriState, documentText);
+          const { newState, effects } = (0, core_1.processEvent)(uriState.boundary, event, ctx);
+          uriState.boundary = newState;
           this.executeEffects(uri, effects);
-          if (this.states.get(uri)?.pending) {
+          if (uriState.boundary.pending) {
             this.ensureSafetyNet();
           }
+          return true;
         }
-        flush(uri) {
-          const state = this.states.get(uri);
-          if (!state?.pending)
+        /**
+         * Process a cursor move event.
+         */
+        handleCursorMove(uri, offset, documentText) {
+          const uriState = this.states.get(uri);
+          if (!uriState?.boundary.pending)
             return;
-          const { newState, effects } = (0, core_1.processEvent)(state, { type: "flush" }, { now: Date.now() });
-          this.states.set(uri, newState);
+          const event = { type: "cursorMove", offset };
+          const ctx = this.buildContext(uri, uriState, documentText);
+          const { newState, effects } = (0, core_1.processEvent)(uriState.boundary, event, ctx);
+          uriState.boundary = newState;
           this.executeEffects(uri, effects);
         }
+        /**
+         * Force flush a document's pending buffer.
+         */
+        flush(uri, documentText) {
+          const uriState = this.states.get(uri);
+          if (!uriState?.boundary.pending)
+            return;
+          const event = { type: "flush" };
+          const text = documentText ?? uriState.lastDocumentText;
+          const ctx = this.buildContext(uri, uriState, text);
+          const { newState, effects } = (0, core_1.processEvent)(uriState.boundary, event, ctx);
+          uriState.boundary = newState;
+          this.executeEffects(uri, effects);
+        }
+        /**
+         * Flush all documents with pending buffers.
+         */
         flushAll() {
           for (const uri of this.states.keys()) {
             this.flush(uri);
           }
         }
+        /**
+         * Check if a document has a pending edit buffer.
+         */
         hasPendingEdit(uri) {
-          const state = this.states.get(uri);
-          return state?.pending !== null && state?.pending !== void 0;
+          return this.states.get(uri)?.boundary.pending !== null && this.states.get(uri)?.boundary.pending !== void 0;
         }
         /**
-         * Remove a single document's state and stop safety-net if no more pending edits.
-         * Call when a document is closed to prevent memory leaks.
+         * Clean up state for a closed document.
          */
         removeDocument(uri) {
           this.states.delete(uri);
-          if (!Array.from(this.states.values()).some((s) => s.pending !== null)) {
+          this.pendingEchos.delete(uri);
+          if (!this.anyPending()) {
             this.stopSafetyNet();
           }
         }
+        /**
+         * Mark that we expect an echo didChange from our own crystallize edit.
+         */
+        expectEcho(uri) {
+          this.pendingEchos.add(uri);
+        }
+        /**
+         * Consume a pending echo without processing it as a real edit.
+         * Used when a full-doc sync arrives (no range) — the echo is expected
+         * but handleChange is never called, so we must clear it explicitly.
+         */
+        consumeEcho(uri) {
+          this.pendingEchos.delete(uri);
+        }
+        /**
+         * Configure pause sensitivity.
+         * Formula: 500 * 16^(1 - sensitivity). sensitivity <= 0 means disabled.
+         */
+        setPauseThreshold(sensitivity) {
+          this._pauseThresholdMs = sensitivity <= 0 ? Infinity : 500 * Math.pow(16, 1 - sensitivity);
+          const newMs = this._pauseThresholdMs === Infinity ? 0 : this._pauseThresholdMs;
+          for (const uriState of this.states.values()) {
+            uriState.boundary = {
+              ...uriState.boundary,
+              config: { ...uriState.boundary.config, pauseThresholdMs: newMs }
+            };
+          }
+        }
+        /**
+         * Set the author identity for footnote metadata.
+         */
+        setAuthor(author) {
+          this._author = author;
+        }
+        /**
+         * Initialize the scId counter from existing document content.
+         * Call on document open with the max ct-N found in the document.
+         */
+        initScIdCounter(uri, maxId) {
+          const uriState = this.getUriState(uri);
+          uriState.scIdCounter = maxId;
+        }
+        /**
+         * Clean up all state and stop timers.
+         */
         dispose() {
           this.stopSafetyNet();
           this.states.clear();
+          this.pendingEchos.clear();
         }
-        // ── Internals ───────────────────────────────────────────────────────
+        // ── Internals ──────────────────────────────────────────────────────
+        getUriState(uri) {
+          let uriState = this.states.get(uri);
+          if (!uriState) {
+            uriState = {
+              boundary: {
+                pending: null,
+                isComposing: false,
+                config: {
+                  ...core_1.DEFAULT_EDIT_BOUNDARY_CONFIG,
+                  pauseThresholdMs: this._pauseThresholdMs === Infinity ? 0 : this._pauseThresholdMs
+                }
+              },
+              scIdCounter: 0
+            };
+            this.states.set(uri, uriState);
+          }
+          return uriState;
+        }
+        buildContext(uri, uriState, documentText) {
+          return {
+            now: Date.now(),
+            allocateScId: () => {
+              uriState.scIdCounter++;
+              return `ct-${uriState.scIdCounter}`;
+            },
+            author: this._author,
+            documentText,
+            documentFormat: "l2"
+          };
+        }
+        /**
+         * Interpret effects from the core state machine.
+         */
+        executeEffects(uri, effects) {
+          for (const effect of effects) {
+            switch (effect.type) {
+              case "crystallize":
+                if ("edits" in effect) {
+                  const fullEffect = effect;
+                  if (fullEffect.edits.format === "l2" || fullEffect.edits.format === "l3") {
+                    this.pendingEchos.add(uri);
+                    this.onCrystallize({ uri, edits: fullEffect.edits });
+                  }
+                }
+                break;
+              case "mergeAdjacent":
+                break;
+              case "updatePendingOverlay":
+                break;
+            }
+          }
+        }
+        // ── Safety net timer ───────────────────────────────────────────────
         ensureSafetyNet() {
           if (this.safetyNetInterval)
             return;
-          const threshold = this._pauseThreshold === Infinity ? 0 : this._pauseThreshold;
+          const threshold = this._pauseThresholdMs === Infinity ? 0 : this._pauseThresholdMs;
           if (threshold <= 0)
             return;
           const checkMs = Math.min(5e3, threshold);
           this.safetyNetInterval = setInterval(() => {
             const now = Date.now();
             let anyPending = false;
-            for (const [uri, state] of this.states) {
-              if (state.pending) {
+            for (const [uri, uriState] of this.states) {
+              if (uriState.boundary.pending) {
                 anyPending = true;
-                if (state.config.pauseThresholdMs > 0 && now - state.pending.lastEditTime > state.config.pauseThresholdMs) {
+                if (uriState.boundary.config.pauseThresholdMs > 0 && now - uriState.boundary.pending.lastEditTime > uriState.boundary.config.pauseThresholdMs) {
                   this.flush(uri);
                 }
               }
@@ -21098,123 +21359,12 @@ This change's visible effect was absorbed by a later edit. The change is preserv
             this.safetyNetInterval = null;
           }
         }
-        getState(uri) {
-          let state = this.states.get(uri);
-          if (!state) {
-            state = {
-              pending: null,
-              isComposing: false,
-              config: {
-                ...core_1.DEFAULT_EDIT_BOUNDARY_CONFIG,
-                pauseThresholdMs: this._pauseThreshold === Infinity ? 0 : this._pauseThreshold
-              }
-            };
-            this.states.set(uri, state);
+        anyPending() {
+          for (const uriState of this.states.values()) {
+            if (uriState.boundary.pending)
+              return true;
           }
-          return state;
-        }
-        /**
-         * Interpret effects from the core state machine.
-         */
-        executeEffects(uri, effects) {
-          for (const effect of effects) {
-            switch (effect.type) {
-              case "crystallize":
-                this.handleCrystallize(uri, effect);
-                break;
-              case "mergeAdjacent":
-                this.mergeAdjacentChanges(uri, effect.offset);
-                break;
-              case "updatePendingOverlay":
-                break;
-            }
-          }
-        }
-        handleCrystallize(uri, effect) {
-          let edit;
-          let anchorOffset;
-          switch (effect.changeType) {
-            case "insertion":
-              edit = this.workspace.wrapInsertion(effect.currentText, effect.offset, effect.scId);
-              anchorOffset = effect.offset;
-              break;
-            case "deletion":
-              edit = this.workspace.wrapDeletion(effect.originalText, effect.offset, effect.scId);
-              anchorOffset = effect.offset;
-              break;
-            case "substitution":
-              edit = this.workspace.wrapSubstitution(effect.originalText, effect.currentText, effect.offset, effect.scId);
-              anchorOffset = effect.offset;
-              break;
-          }
-          this.onCrystallize({
-            uri,
-            offset: edit.offset,
-            length: edit.length,
-            newText: edit.newText,
-            anchorOffset
-          });
-        }
-        /**
-         * After flush, check for adjacent same-type changes and merge them.
-         * Guards against recursive merging.
-         */
-        mergeAdjacentChanges(uri, anchorOffset) {
-          if (this.isMerging || !this.getDocumentText)
-            return;
-          this.isMerging = true;
-          try {
-            const currentText = this.getDocumentText(uri);
-            if (currentText === void 0)
-              return;
-            const virtualDoc = this.workspace.parse(currentText);
-            const changes = virtualDoc.getChanges();
-            if (changes.length < 2)
-              return;
-            let idx = -1;
-            for (let i = 0; i < changes.length; i++) {
-              if (changes[i].range.start === anchorOffset) {
-                idx = i;
-                break;
-              }
-            }
-            if (idx === -1)
-              return;
-            const cur = changes[idx];
-            if (idx > 0) {
-              const prev = changes[idx - 1];
-              if (prev.range.end === cur.range.start && prev.type === cur.type) {
-                this.emitMerge(uri, prev, cur);
-                return;
-              }
-            }
-            if (idx < changes.length - 1) {
-              const next = changes[idx + 1];
-              if (cur.range.end === next.range.start && cur.type === next.type) {
-                this.emitMerge(uri, cur, next);
-                return;
-              }
-            }
-          } finally {
-            this.isMerging = false;
-          }
-        }
-        emitMerge(uri, first, second) {
-          let mergedText;
-          if (first.type === core_1.ChangeType.Insertion) {
-            mergedText = `{++${first.modifiedText || ""}${second.modifiedText || ""}++}`;
-          } else if (first.type === core_1.ChangeType.Deletion) {
-            mergedText = `{--${first.originalText || ""}${second.originalText || ""}--}`;
-          } else {
-            return;
-          }
-          this.onCrystallize({
-            uri,
-            offset: first.range.start,
-            length: second.range.end - first.range.start,
-            newText: mergedText,
-            anchorOffset: first.range.start
-          });
+          return false;
         }
       };
       exports.PendingEditManager = PendingEditManager;
@@ -21288,6 +21438,7 @@ This change's visible effect was absorbed by a later edit. The change is preserv
           this.coherenceThreshold = core_2.DEFAULT_CONFIG.coherence.threshold;
           this.lastCoherenceStatus = /* @__PURE__ */ new Map();
           this.pendingWriteBack = /* @__PURE__ */ new Set();
+          this.pendingCrystallizeEcho = /* @__PURE__ */ new Set();
           this.codeLensMode = "cursor";
           this._gitGetWorkspaceRoot = async () => void 0;
           this._gitGetPreviousVersion = async () => void 0;
@@ -21295,7 +21446,7 @@ This change's visible effect was absorbed by a later edit. The change is preserv
           this.connection = connection;
           this.documents = new vscode_languageserver_1.TextDocuments(vscode_languageserver_textdocument_1.TextDocument);
           this.workspace = new core_1.Workspace();
-          this.pendingEditManager = new pending_edit_manager_1.PendingEditManager(this.workspace, (edit) => this.handleCrystallizedEdit(edit), (uri) => this.docStates.get(uri)?.text);
+          this.pendingEditManager = new pending_edit_manager_1.PendingEditManager((edit) => this.handleCrystallizedEdit(edit));
           this.setupHandlers();
         }
         /**
@@ -21349,32 +21500,6 @@ This change's visible effect was absorbed by a later edit. The change is preserv
           this.connection.onRequest("changetracks/compactChange", this.handleCompactChange.bind(this));
           this.connection.onRequest("changetracks/compactChanges", this.handleCompactChanges.bind(this));
           this.connection.onRequest("changetracks/reviewAll", this.handleReviewAll.bind(this));
-          this.connection.onNotification("changetracks/trackingEvent", (params) => {
-            try {
-              const uri = params.textDocument.uri;
-              const text = this.docStates.get(uri)?.text || "";
-              switch (params.type) {
-                case "insertion": {
-                  const insertedText = text.substring(params.position.offset, params.position.offset + params.byteLength);
-                  this.pendingEditManager.handleChange(uri, "", insertedText, params.position.offset);
-                  break;
-                }
-                case "deletion": {
-                  const deletedText = text.substring(params.position.offset, params.position.offset + params.byteLength);
-                  this.pendingEditManager.handleChange(uri, deletedText, "", params.position.offset);
-                  break;
-                }
-                case "replacement": {
-                  const oldText = text.substring(params.position.offset, params.position.offset + (params.oldByteLength || 0));
-                  const newText = text.substring(params.position.offset, params.position.offset + (params.newByteLength || 0));
-                  this.pendingEditManager.handleChange(uri, oldText, newText, params.position.offset);
-                  break;
-                }
-              }
-            } catch (err) {
-              this.connection.console.error(`changetracks/trackingEvent handler error: ${err}`);
-            }
-          });
           this.connection.onNotification("changetracks/batchEditStart", (params) => {
             this.handleBatchEditStart(params.uri);
           });
@@ -21471,7 +21596,61 @@ This change's visible effect was absorbed by a later edit. The change is preserv
               this.connection.console.error(`changetracks/setCodeLensMode handler error: ${err}`);
             }
           });
+          this.connection.onNotification("changetracks/cursorMove", (params) => {
+            try {
+              const uri = params.textDocument.uri;
+              const text = this.docStates.get(uri)?.text ?? "";
+              this.pendingEditManager.handleCursorMove(uri, params.offset, text);
+            } catch (err) {
+              this.connection.console.error(`changetracks/cursorMove handler error: ${err}`);
+            }
+          });
           this.documents.listen(this.connection);
+          this.connection.onNotification("textDocument/didChange", (params) => {
+            try {
+              const uri = params.textDocument.uri;
+              let currentText = this.docStates.get(uri)?.text ?? "";
+              for (const change of params.contentChanges) {
+                if (!change.range) {
+                  this.pendingEditManager.consumeEcho(uri);
+                  currentText = change.text;
+                  continue;
+                }
+                const offset = (0, converters_1.positionToOffset)(currentText, change.range.start);
+                const endOffset = (0, converters_1.positionToOffset)(currentText, change.range.end);
+                const rangeLength = endOffset - offset;
+                const deletedText = currentText.substring(offset, endOffset);
+                const insertedText = change.text;
+                let type;
+                if (rangeLength === 0 && insertedText.length > 0) {
+                  type = "insertion";
+                } else if (rangeLength > 0 && insertedText.length === 0) {
+                  type = "deletion";
+                } else {
+                  type = "substitution";
+                }
+                this.pendingEditManager.handleChange(uri, type, offset, insertedText, deletedText, currentText);
+                currentText = currentText.substring(0, offset) + insertedText + currentText.substring(endOffset);
+              }
+            } catch (err) {
+              this.connection.console.error(`textDocument/didChange (edit tracking) error: ${err}`);
+            }
+            try {
+              const td = params.textDocument;
+              const changes = params.contentChanges;
+              if (changes.length === 0)
+                return;
+              const docs = this.documents;
+              let syncedDocument = docs._syncedDocuments.get(td.uri);
+              if (syncedDocument !== void 0) {
+                syncedDocument = docs._configuration.update(syncedDocument, changes, td.version);
+                docs._syncedDocuments.set(td.uri, syncedDocument);
+                docs._onDidChangeContent.fire(Object.freeze({ document: syncedDocument }));
+              }
+            } catch (err) {
+              this.connection.console.error(`textDocument/didChange (document sync) error: ${err}`);
+            }
+          });
         }
         /**
          * Start listening for LSP messages
@@ -21497,8 +21676,10 @@ This change's visible effect was absorbed by a later edit. The change is preserv
           }
           return {
             capabilities: {
-              // Full document sync - server gets complete document text on every change
-              textDocumentSync: vscode_languageserver_1.TextDocumentSyncKind.Full,
+              // Incremental document sync - server receives incremental content changes
+              // which the raw didChange handler uses for edit tracking before TextDocuments
+              // processes them into full document text.
+              textDocumentSync: vscode_languageserver_1.TextDocumentSyncKind.Incremental,
               // Hover capability - show comment text on hover
               hoverProvider: true,
               // Semantic tokens capability - syntax highlighting for CriticMarkup
@@ -21752,6 +21933,8 @@ This change's visible effect was absorbed by a later edit. The change is preserv
             return;
           this.ensureDocState(uri, text, languageId);
           const state = this.docStates.get(uri);
+          const maxId = (0, core_1.scanMaxCtId)(text);
+          this.pendingEditManager.initScIdCounter(uri, maxId);
           const isL3 = this.workspace.isFootnoteNative(text);
           if (!isL3) {
             const l2Doc = this.workspace.parse(text, languageId);
@@ -21849,8 +22032,9 @@ This change's visible effect was absorbed by a later edit. The change is preserv
             }
             return;
           }
+          const isCrystallizeEcho = this.pendingCrystallizeEcho.delete(uri);
           const isL3 = this.workspace.isFootnoteNative(text);
-          if (!isL3) {
+          if (!isL3 && !isCrystallizeEcho) {
             const doc = this.workspace.parse(text, languageId);
             const changes = doc.getChanges();
             if (changes.length > 0) {
@@ -21885,19 +22069,34 @@ This change's visible effect was absorbed by a later edit. The change is preserv
         /**
          * Handle a crystallized edit from the PendingEditManager.
          *
-         * Converts the offset-based CrystallizedEdit into an LSP Range and sends
+         * Converts the offset-based CrystallizedEdit into LSP Ranges and sends
          * a changetracks/pendingEditFlushed notification to the client. The client
-         * is responsible for applying the workspace edit to the document.
+         * is responsible for applying the workspace edits to the document.
          *
-         * @param edit The crystallized edit with offset coordinates
+         * The new CrystallizedEdit contains `edits` with `markupEdit` (inline
+         * CriticMarkup replacement) and `footnoteEdit` (footnote definition append).
+         * For L3 format, markupEdit is null (body text stays as-is).
+         *
+         * @param edit The crystallized edit with offset-based edits
          */
         handleCrystallizedEdit(edit) {
           const text = this.getDocumentText(edit.uri);
           if (!text) {
             return;
           }
-          const range = (0, converters_1.offsetRangeToLspRange)(text, edit.offset, edit.offset + edit.length);
-          (0, pending_edit_1.sendPendingEditFlushed)(this.connection, edit.uri, range, edit.newText);
+          const { edits } = edit;
+          const { markupEdit, footnoteEdit } = edits;
+          this.pendingEditManager.expectEcho(edit.uri);
+          this.pendingCrystallizeEcho.add(edit.uri);
+          if (markupEdit) {
+            const markupRange = (0, converters_1.offsetRangeToLspRange)(text, markupEdit.offset, markupEdit.offset + markupEdit.length);
+            const textAfterMarkup = text.substring(0, markupEdit.offset) + markupEdit.newText + text.substring(markupEdit.offset + markupEdit.length);
+            const footnoteRange = (0, converters_1.offsetRangeToLspRange)(textAfterMarkup, footnoteEdit.offset, footnoteEdit.offset + footnoteEdit.length);
+            (0, pending_edit_1.sendPendingEditFlushed)(this.connection, edit.uri, markupRange, markupEdit.newText, footnoteRange, footnoteEdit.newText);
+          } else {
+            const footnoteRange = (0, converters_1.offsetRangeToLspRange)(text, footnoteEdit.offset, footnoteEdit.offset + footnoteEdit.length);
+            (0, pending_edit_1.sendPendingEditFlushed)(this.connection, edit.uri, { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }, "", footnoteRange, footnoteEdit.newText);
+          }
         }
         /**
          * Handle hover request
