@@ -21114,6 +21114,8 @@ This change's visible effect was absorbed by a later edit. The change is preserv
           return false;
         if ("author" in obj && typeof obj.author !== "string")
           return false;
+        if ("settlement" in obj && typeof obj.settlement !== "object")
+          return false;
         return true;
       }
       var DECORATION_NOTIFY_DEBOUNCE_MS = 60;
@@ -21285,8 +21287,20 @@ This change's visible effect was absorbed by a later edit. The change is preserv
           this.connection.onNotification("changedown/cursorMove", (params) => {
             try {
               const uri = params.textDocument.uri;
-              const text = this.docStates.get(uri)?.text ?? "";
+              const state = this.docStates.get(uri);
+              const text = state?.text ?? "";
               this.pendingEditManager.handleCursorMove(uri, params.offset, text);
+              if (state) {
+                const pos = (0, converters_1.offsetToPosition)(text, params.offset);
+                const hit = state.parseResult?.changeAtOffset(params.offset);
+                const newLine = pos.line;
+                const newChangeId = hit?.id;
+                if (newLine !== state.cursorState?.line || newChangeId !== state.cursorState?.changeId) {
+                  state.cursorState = { line: newLine, changeId: newChangeId };
+                  this.connection.sendRequest(vscode_languageserver_1.CodeLensRefreshRequest.type).catch(() => {
+                  });
+                }
+              }
             } catch (err) {
               this.connection.console.error(`changedown/cursorMove handler error: ${err}`);
             }
@@ -21354,6 +21368,13 @@ This change's visible effect was absorbed by a later edit. The change is preserv
           if (isChangedownInitOptions(raw)) {
             const identity = (raw.reviewerIdentity || raw.author || "").trim();
             this.reviewerIdentity = identity || void 0;
+            if (raw.settlement) {
+              this.projectConfig = {
+                ...this.projectConfig ?? core_2.DEFAULT_CONFIG,
+                settlement: { ...core_2.DEFAULT_CONFIG.settlement, ...raw.settlement }
+              };
+              this.coherenceThreshold = (this.projectConfig.coherence ?? core_2.DEFAULT_CONFIG.coherence).threshold;
+            }
           }
           if (params.rootUri) {
             this.workspaceRoot = new URL(params.rootUri).pathname;
