@@ -2,11 +2,11 @@
 
 **ChangeDown {++c++}[^cn-1]{--C--}[^cn-2]ollaborative Editing Powered by CriticMarkup**[^cn-3]
 
-*By: Sarah Chen, Product Lead – ChangeDown*
+*By: Author 1, Product Lead – ChangeDown*
 
-*James Rivera, Engineering – ChangeDown*
+*Author 2, Engineering – ChangeDown*
 
-*Maya Patel, Documentation – ChangeDown*[^cn-4]
+*Author 3, Documentation – ChangeDown*[^cn-4]
 
 **{--Introduction--}[^cn-5]**
 
