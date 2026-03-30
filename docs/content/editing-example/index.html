@@ -1,310 +1,102 @@
-<!DOCTYPE html><html lang="en" data-astro-cid-fzx4jmue> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ChangeDown</title><link rel="canonical" href="https://changedown.com/content/editing-example/"><meta name="description" content="ChangeDown c[^ct-1][^ct-2]ollaborative Editing Powered by CriticMarkup[^ct-3]"><meta name="robots" content="index, follow"><meta property="og:title" content="ChangeDown"><meta property="og:type" content="article"><meta property="og:image" content="https://changedown.com/og-images/content-editing-example.png"><meta property="og:url" content="https://changedown.com/content/editing-example/"><meta property="og:description" content="ChangeDown c[^ct-1][^ct-2]ollaborative Editing Powered by CriticMarkup[^ct-3]"><meta property="og:site_name" content="ChangeDown"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="ChangeDown"><meta name="twitter:image" content="https://changedown.com/og-images/content-editing-example.png"><meta name="twitter:description" content="ChangeDown c[^ct-1][^ct-2]ollaborative Editing Powered by CriticMarkup[^ct-3]"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="/app/assets/main.css"><link rel="stylesheet" href="/app/assets/editor.css"><style>body{margin:0;background:#18181b}body:has(#app:not(:empty)) #seo-content[data-astro-cid-fzx4jmue]{display:none}.seo-content[data-astro-cid-fzx4jmue]{max-width:800px;margin:2rem auto;padding:0 1rem;font-family:DM Sans,sans-serif;color:#e4e4e7}.seo-content[data-astro-cid-fzx4jmue] a[data-astro-cid-fzx4jmue]{color:#60a5fa}.seo-content[data-astro-cid-fzx4jmue] code[data-astro-cid-fzx4jmue]{background:#27272a;padding:.1em .3em;border-radius:3px}.seo-content[data-astro-cid-fzx4jmue] pre[data-astro-cid-fzx4jmue]{background:#27272a;padding:1em;border-radius:6px;overflow-x:auto}
-</style></head> <body data-astro-cid-fzx4jmue> <!-- Static content for non-JS crawlers; removed once SPA mounts --> <article id="seo-content" class="seo-content" data-astro-cid-fzx4jmue> <p><strong>ChangeDown c[^ct-1][^ct-2]ollaborative Editing Powered by CriticMarkup</strong>[^ct-3]</p>
+<!DOCTYPE html><html lang="en" data-astro-cid-fzx4jmue> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ChangeDown</title><link rel="canonical" href="https://changedown.com/content/editing-example/"><meta name="description" content="ChangeDown collaborative Editing Powered by CriticMarkup"><meta name="robots" content="index, follow"><meta property="og:title" content="ChangeDown"><meta property="og:type" content="article"><meta property="og:image" content="https://changedown.com/og-images/content-editing-example.png"><meta property="og:url" content="https://changedown.com/content/editing-example/"><meta property="og:description" content="ChangeDown collaborative Editing Powered by CriticMarkup"><meta property="og:site_name" content="ChangeDown"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="ChangeDown"><meta name="twitter:image" content="https://changedown.com/og-images/content-editing-example.png"><meta name="twitter:description" content="ChangeDown collaborative Editing Powered by CriticMarkup"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"><link rel="stylesheet" href="/app/assets/main.css"><link rel="stylesheet" href="/app/assets/editor.css"><style>body{margin:0;background:#18181b}body:has(#app:not(:empty)) #seo-content[data-astro-cid-fzx4jmue]{display:none}.seo-content[data-astro-cid-fzx4jmue]{max-width:800px;margin:2rem auto;padding:0 1rem;font-family:DM Sans,sans-serif;color:#e4e4e7}.seo-content[data-astro-cid-fzx4jmue] a[data-astro-cid-fzx4jmue]{color:#60a5fa}.seo-content[data-astro-cid-fzx4jmue] code[data-astro-cid-fzx4jmue]{background:#27272a;padding:.1em .3em;border-radius:3px}.seo-content[data-astro-cid-fzx4jmue] pre[data-astro-cid-fzx4jmue]{background:#27272a;padding:1em;border-radius:6px;overflow-x:auto}
+</style></head> <body data-astro-cid-fzx4jmue> <!-- Static content for non-JS crawlers; removed once SPA mounts --> <article id="seo-content" class="seo-content" data-astro-cid-fzx4jmue> <p><strong>ChangeDown collaborative Editing Powered by CriticMarkup</strong></p>
 <p><em>By: Sarah Chen, Product Lead – ChangeDown</em></p>
 <p><em>James Rivera, Engineering – ChangeDown</em></p>
-<p><em>Maya Patel, Documentation – ChangeDown</em>[^ct-4]</p>
-<p><strong>[^ct-5]</strong></p>
-<p>When teams collaborate on documents, they are not thinking about the underlying technology —[^ct-6] they just want their edits tracked reliably and attributed correctly.</p>
-<p>But [^ct-7] document editing workflows face a familiar challenge: you have invested in sophisticated[^ct-8] AI agents[^ct-9] that can draft, revise, and restructure content, yet they [^ct-10] every editorial safeguard your team depends on [^ct-11] —[^ct-12]Edits arrive without attribution[^ct-13]. Revisions overwrite previous work with no record[^ct-14]. Reviewers discover changes only by diffing file versions after the fact,[^ct-15] [^ct-16] reconstructing context from commit messages that rarely explain why a particular sentence was reworded or a paragraph reorganized.</p>
-<p>That is why ChangeDown and the CriticMarkup open standard[^ct-17] took a different approach.[^ct-18] Every edit is[^ct-19] [^ct-20] inline, attributed to its[^ct-21] author, with a reason attached.</p>
-<p>The new open source[^ct-22] CriticMarkup[^ct-23] connector for markdown editors gives teams a bring-your-own-vocabulary approach to change tracking. Rather than forcing a proprietary format, the connector maps every insertion, deletion, substitution[^ct-24] [^ct-25]highlightand comment[^ct-26] to standard CriticMarkup delimiters that any text editor can render. This means organizations can integrate change tracking into their existing markdown pipelines without vendor lock-in, using the same files across VS Code, GitHub, static site generators, and documentation build systems that already process plain text natively[^ct-27] while maintaining full editorial accountability.</p>
-<p>For the more than[^ct-28] 10,000[^ct-29] organizations running collaborative document workflows today, this integration delivers a practical path to tracked AI editing. Teams in North America, Europe, and the Asia-Pacific region[^ct-30] can[^ct-31] connect their[^ct-32] existing markdown toolchains to ChangeDown without replacing their current editors or revision control systems[^ct-33].</p>
+<p><em>Maya Patel, Documentation – ChangeDown</em></p>
+<hr>
+<p>When teams collaborate on documents, they are not thinking about the underlying technology — they just want their edits tracked reliably and attributed correctly.</p>
+<p>But  document editing workflows face a familiar challenge: you have invested in sophisticated AI agents that can draft, revise, and restructure content, yet they  every editorial safeguard your team depends on  —Edits arrive without attribution. Revisions overwrite previous work with no record. Reviewers discover changes only by diffing file versions after the fact,  reconstructing context from commit messages that rarely explain why a particular sentence was reworded or a paragraph reorganized.</p>
+<p>That is why ChangeDown and the CriticMarkup open standard took a different approach. Every edit is  inline, attributed to its author, with a reason attached.</p>
+<p>The new open source CriticMarkup connector for markdown editors gives teams a bring-your-own-vocabulary approach to change tracking. Rather than forcing a proprietary format, the connector maps every insertion, deletion, substitution highlightand comment to standard CriticMarkup delimiters that any text editor can render. This means organizations can integrate change tracking into their existing markdown pipelines without vendor lock-in, using the same files across VS Code, GitHub, static site generators, and documentation build systems that already process plain text natively while maintaining full editorial accountability.</p>
+<p>For the more than 10,000 organizations running collaborative document workflows today, this integration delivers a practical path to tracked AI editing. Teams in North America, Europe, and the Asia-Pacific region can connect their existing markdown toolchains to ChangeDown without replacing their current editors or revision control systems.</p>
 <p>Here is how the integration works, where it fits across collaborative editing workflows, and what measurable improvements organizations report from deploying tracked change management.</p>
-<p><strong>ChangeDown[^ct-34] integration[^ct-35] architecture and design[^ct-36]</strong></p>
-<p>This integration connects your markdown editing environment to open-source CriticMarkup services through a layered[^ct-37] architecture designed for extensibility and reliability. The architecture comprises three integrated layers:[^ct-38]</p>
-<p>[^ct-39][^ct-40] [^ct-41] [^ct-42]</p>
-<p>{--<img src="changedown-intro_media/7bf4b3672eb5431bc7fe4330e9c6237948fd6493.png" alt="Diagram showing human and AI agent collaboration flow">--}[^ct-43]</p>
-<p>[^ct-44]</p>
-<p>[^ct-45]</p>
+<p><strong>ChangeDown integration architecture and design</strong></p>
+<p>This integration connects your markdown editing environment to open-source CriticMarkup services through a layered architecture designed for extensibility and reliability. The architecture comprises three integrated layers:</p>
+<p>{--<img src="changedown-intro_media/7bf4b3672eb5431bc7fe4330e9c6237948fd6493.png" alt="Diagram showing human and AI agent collaboration flow">--}</p>
 <ul>
-<li><strong>Editor</strong> [^ct-46] <strong>interaction layer:</strong> –[^ct-47] The VS Code extension captures every keystroke and cursor movement, accumulating edits into boundary-delimited change operations that wrap automatically in [^ct-48]CriticMarkup(CM)[^ct-49] syntax before writing each attributed change to the file.</li>
-<li><strong>Connector layer:</strong> –[^ct-50] The open source[^ct-51] MCP tool server bridges AI agents to the same CriticMarkup format, translating propose_change calls into attributed edit operations with full metadata.</li>
-<li><strong>AI agent</strong> <strong>layer</strong>[^ct-52] –[^ct-53] Large language models and other AI agents interact with tracked files through the MCP tool server, generating context-aware edit proposals that reference LINE:HASH coordinates. The connector validates each proposal against the current file state before committing attributed changes to the CriticMarkup record using[^ct-54] the[^ct-55]six-level matching cascade[^ct-56]. Metadata extraction is handled by the footnote-native parser[^ct-57], delivering structured metadata extraction for attributed review responses.</li>
+<li><strong>Editor</strong>  <strong>interaction layer:</strong> – The VS Code extension captures every keystroke and cursor movement, accumulating edits into boundary-delimited change operations that wrap automatically in CriticMarkup(CM) syntax before writing each attributed change to the file.</li>
+<li><strong>Connector layer:</strong> – The open source MCP tool server bridges AI agents to the same CriticMarkup format, translating propose_change calls into attributed edit operations with full metadata.</li>
+<li><strong>AI agent</strong> <strong>layer</strong> – Large language models and other AI agents interact with tracked files through the MCP tool server, generating context-aware edit proposals that reference LINE:HASH coordinates. The connector validates each proposal against the current file state before committing attributed changes to the CriticMarkup record using thesix-level matching cascade. Metadata extraction is handled by the footnote-native parser, delivering structured metadata extraction for attributed review responses.</li>
 </ul>
-<p>This arc[^ct-58]hitecture is illustrated in the following NEEDS ACTION: replace with actual figure reference diagram[^ct-59].[^ct-60]</p>
-<p><img src="changedown-intro_media/7bf4b3672eb5431bc7fe4330e9c6237948fd6493.png" alt="Diagram showing human and AI agent collaboration flow">[^ct-61]</p>
-<p><em>Figure 1: ChangeDown extension integration with CriticMarkup services overview</em>[^ct-62]</p>
-<p><strong>[^ct-63] Agent e[^ct-64]diting f[^ct-65]low{--s End-to-End--}[^ct-66]</strong></p>
-<p>{--<img src="changedown-intro_media/39147bb8e8058267e9a1c5e85296161e951acca4.png" alt="Diagram showing MCP plugin agent editing flow">--}[^ct-67]</p>
-<p>[^ct-68]</p>
-<p>When an agent connects to a tracked file in the editing environment, the following flow takes place:[^ct-69]</p>
+<p>This architecture is illustrated in the following NEEDS ACTION: replace with actual figure reference diagram.</p>
+<p><img src="changedown-intro_media/7bf4b3672eb5431bc7fe4330e9c6237948fd6493.png" alt="Diagram showing human and AI agent collaboration flow"></p>
+<p><em>Figure 1: ChangeDown extension integration with CriticMarkup services overview</em></p>
+<p>** Agent editing flow{--s End-to-End--}**</p>
+<p>{--<img src="changedown-intro_media/39147bb8e8058267e9a1c5e85296161e951acca4.png" alt="Diagram showing MCP plugin agent editing flow">--}</p>
+<p>When an agent connects to a tracked file in the editing environment, the following flow takes place:</p>
 <ol>
-<li><strong>Agent reads file state</strong> –[^ct-70] The agent reads the current file state through the MCP read_tracked_file tool, which returns every line with its LINE:HASH coordinate. The agent receives the full document context including pending changes, author metadata, and review status for each [^ct-71] tracked operation[^ct-72].</li>
-<li><strong>Parser interprets intent</strong> –[^ct-73] {-----}[^ct-74] The CriticMarkup parser[^ct-75] processes the request and identifies the appropriate editing action from the agent instructions through three stages:
+<li><strong>Agent reads file state</strong> – The agent reads the current file state through the MCP read_tracked_file tool, which returns every line with its LINE:HASH coordinate. The agent receives the full document context including pending changes, author metadata, and review status for each  tracked operation.</li>
+<li><strong>Parser interprets intent</strong> – {-----} The CriticMarkup parser processes the request and identifies the appropriate editing action from the agent instructions through three stages:
 <ol>
-<li><strong>Change Detection:</strong> –[^ct-76] [^ct-77]supporting[^ct-78] thousands of[^ct-79] [^ct-80] editing sessions</li>
-<li><strong>Intent Understanding:</strong> –[^ct-81] {--The footnote-native parser maps recognized text to editing intents such as insert, delete, substitute, highlight, and comment operations with full author (--}[^ct-82]attribution[^ct-83][^ct-84] now enhanced with LLM-powered contextual intent classification[^ct-85] for faster, description-based intent classification</li>
-<li><strong>Response Generation:</strong> –[^ct-86] For straightforward requests, the MCP tool server[^ct-87] generates a direct response using its built-in propose_change fulfillment. For complex editing tasks requiring document context, the system[^ct-88] routes to large language models (such as Claude) for nuanced revision proposals[^ct-89] that respect existing tracked changes.[^ct-90]</li>
+<li><strong>Change Detection:</strong> – supporting thousands of  editing sessions</li>
+<li><strong>Intent Understanding:</strong> – {--The footnote-native parser maps recognized text to editing intents such as insert, delete, substitute, highlight, and comment operations with full author (--}attribution now enhanced with LLM-powered contextual intent classification for faster, description-based intent classification</li>
+<li><strong>Response Generation:</strong> – For straightforward requests, the MCP tool server generates a direct response using its built-in propose_change fulfillment. For complex editing tasks requiring document context, the system routes to large language models (such as Claude) for nuanced revision proposals that respect existing tracked changes.</li>
 </ol>
 </li>
 </ol>
-<p>{--This architecture supports multi-turn conversations with contextual awareness, so an agent can reference earlier edits in the same session and build on previous review decisions.--}[^ct-91]</p>
+<p>{--This architecture supports multi-turn conversations with contextual awareness, so an agent can reference earlier edits in the same session and build on previous review decisions.--}</p>
 <ol start="3">
-<li><strong>Response flows back</strong> –[^ct-92] {-----}[^ct-93] The MCP tool server formulates the edit proposal and routes it through the CriticMarkup parser for validation and serialization. The response includes fully attributed change operations with LINE:HASH coordinates. The parser[^ct-94] supports the[^ct-95] six-level matching cascade[^ct-96] for fine-grained control over anchor resolution, whitespace normalization, and settled-text fallback ([^ct-97]STF)[^ct-98] in ambiguous contexts. The response flows back through the connector to the editor using[^ct-99] the CriticMarkup protocol.</li>
-<li><strong>Escalation when needed</strong> –[^ct-100] {-----}[^ct-101] If the virtual agent can't[^ct-102] resolve the editing request — for example, when a proposed substitution conflicts with a pending change from another author — the system escalates to a human reviewer. The escalation preserves the full dialog[^ct-103] context so the reviewer can pick up without repeating steps.</li>
+<li><strong>Response flows back</strong> – {-----} The MCP tool server formulates the edit proposal and routes it through the CriticMarkup parser for validation and serialization. The response includes fully attributed change operations with LINE:HASH coordinates. The parser supports the six-level matching cascade for fine-grained control over anchor resolution, whitespace normalization, and settled-text fallback (STF) in ambiguous contexts. The response flows back through the connector to the editor using the CriticMarkup protocol.</li>
+<li><strong>Escalation when needed</strong> – {-----} If the virtual agent can't resolve the editing request — for example, when a proposed substitution conflicts with a pending change from another author — the system escalates to a human reviewer. The escalation preserves the full dialog context so the reviewer can pick up without repeating steps.</li>
 </ol>
-<p>This architecture supports multiturn conversations with contextual awareness, allowing agents to reference earlier edits and build on previous review decisions within the same session.[^ct-104]</p>
-<p>The agent editing flow is illustrated in the following flow diagram.[^ct-105]</p>
-<p><img src="changedown-intro_media/39147bb8e8058267e9a1c5e85296161e951acca4.png" alt="Diagram showing MCP plugin agent editing flow">[^ct-106]</p>
-<p><em>Figure 2: ChangeDown agent editing environment and review integration call flow</em>[^ct-107]</p>
-<p>T[^ct-108]his solution integrates with your editing environment in the following ways for collaborative workflows.[^ct-109]</p>
+<p>This architecture supports multiturn conversations with contextual awareness, allowing agents to reference earlier edits and build on previous review decisions within the same session.</p>
+<p>The agent editing flow is illustrated in the following flow diagram.</p>
+<p><img src="changedown-intro_media/39147bb8e8058267e9a1c5e85296161e951acca4.png" alt="Diagram showing MCP plugin agent editing flow"></p>
+<p><em>Figure 2: ChangeDown agent editing environment and review integration call flow</em></p>
+<p>This solution integrates with your editing environment in the following ways for collaborative workflows.</p>
 <ul>
-<li><strong>CriticMarkup services:</strong> –[^ct-110] The CriticMarkup parser handles {--change detection and edit-boundary segmentation, while the footnote-native parser provides structured metadata extraction for attributed review (--}[^ct-111]responses[^ct-112] and {--agentic developer tools provide the orchestration framework for agent-driven editing workflows with full LINE:HASH (--}[^ct-113]addressing[^ct-114]. The parser resolves ambiguous anchors using the matching cascade[^ct-115].</li>
-<li><strong>Agentic developer tools:</strong> –[^ct-116] The MCP tool server provides the orchestration framework for agent-driven editing workflows with full LINE:HASH addressing.</li>
-<li><strong>Generative AI with</strong> <strong>large language</strong>[^ct-117] <strong>models:</strong> –[^ct-118] Large language models power context-aware edit generation — the model reads full document state[^ct-119] via read_tracked_file before proposing attributed changes,[^ct-120] [^ct-121]enabling responses that go beyond scripted intents.</li>
+<li><strong>CriticMarkup services:</strong> – The CriticMarkup parser handles {--change detection and edit-boundary segmentation, while the footnote-native parser provides structured metadata extraction for attributed review (--}responses and {--agentic developer tools provide the orchestration framework for agent-driven editing workflows with full LINE:HASH (--}addressing. The parser resolves ambiguous anchors using the matching cascade.</li>
+<li><strong>Agentic developer tools:</strong> – The MCP tool server provides the orchestration framework for agent-driven editing workflows with full LINE:HASH addressing.</li>
+<li><strong>Generative AI with</strong> <strong>large language</strong> <strong>models:</strong> – Large language models power context-aware edit generation — the model reads full document state via read_tracked_file before proposing attributed changes, enabling responses that go beyond scripted intents.</li>
 </ul>
 <p><strong>Why this design matters</strong></p>
 <ul>
-<li><strong>Your files, your rules.</strong> The ChangeDown extension[^ct-122] runs entirely in your own editor, giving you full control over customization, data retention, and compliance.</li>
+<li><strong>Your files, your rules.</strong> The ChangeDown extension runs entirely in your own editor, giving you full control over customization, data retention, and compliance.</li>
 <li><strong>Built for performance.</strong> Designed for responsive, real-time change tracking with minimal editor overhead.</li>
 <li><strong>Secure by design.</strong> Local-first processing means your document data stays in your infrastructure at all times.</li>
-<li><strong>Deploy where you need.</strong> Available as an open source extension supporting global teams, with local-first[^ct-123] processing and no cloud dependency for all supported editing operations.[^ct-124]</li>
+<li><strong>Deploy where you need.</strong> Available as an open source extension supporting global teams, with local-first processing and no cloud dependency for all supported editing operations.</li>
 </ul>
 <p><strong>Use cases across collaborative workflows</strong></p>
-<p>Organizations[^ct-125] across industries can find benefits in pursuing tracked, AI-assisted document management solutions.[^ct-126]</p>
-<p>[^ct-127]</p>
-<p>Healthcare organizations can[^ct-128] enhance clinical documentation with intelligent template management, automated discharge summary drafting, and smart protocol routing that assigns revisions to the right specialist while maintaining comprehensive audit trails of every clinical document [^ct-129] revision.</p>
-<p>[^ct-130]</p>
-<p>Finance organizations can[^ct-131] improve document self-service in situations like regulatory filing preparation, contract revision tracking, and compliance report generation, all while maintaining the strict change attribution and editorial audit trails that financial regulators require for audit readiness and operational transparency[^ct-132].[^ct-133]</p>
-<p>[^ct-134]</p>
-<p>Government agencies can streamline policy document workflows with full change attribution, supporting inter-agency review processes with tracked revisions for benefit enrollment guides, permit application forms, and public records documentation.[^ct-135]</p>
+<p>Organizations across industries can find benefits in pursuing tracked, AI-assisted document management solutions.</p>
+<p>Healthcare organizations can enhance clinical documentation with intelligent template management, automated discharge summary drafting, and smart protocol routing that assigns revisions to the right specialist while maintaining comprehensive audit trails of every clinical document  revision.</p>
+<p>Finance organizations can improve document self-service in situations like regulatory filing preparation, contract revision tracking, and compliance report generation, all while maintaining the strict change attribution and editorial audit trails that financial regulators require for audit readiness and operational transparency.</p>
+<p>Government agencies can streamline policy document workflows with full change attribution, supporting inter-agency review processes with tracked revisions for benefit enrollment guides, permit application forms, and public records documentation.</p>
 <p><strong>Workflow benefits</strong></p>
-<p>[^ct-136]</p>
-<p>[^ct-137]Tracked AI editing transforms routine document revisions, including[^ct-138] [^ct-139]content updates, structural reorganization, and style corrections, into streamlined self-service experiences. The integration delivers consistent editorial quality around the clock and scales to handle revision volume spikes without adding headcount or compromising review quality. The resultis[^ct-140] consistent, quality support available around the clock[^ct-141] without proportional staffing costs.</p>
+<p>Tracked AI editing transforms routine document revisions, including content updates, structural reorganization, and style corrections, into streamlined self-service experiences. The integration delivers consistent editorial quality around the clock and scales to handle revision volume spikes without adding headcount or compromising review quality. The resultis consistent, quality support available around the clock without proportional staffing costs.</p>
 <table>
 <thead>
 <tr>
 <th></th>
 <th><strong>Step</strong></th>
-<th><strong>Traditional p[^ct-142][^ct-143]rocess</strong></th>
-<th><strong>With ChangeDown integration[^ct-144] i[^ct-145][^ct-146]ntegration</strong></th>
+<th><strong>Traditional process</strong></th>
+<th><strong>With ChangeDown integration integration</strong></th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td>1</td>
 <td>Author initiates edit</td>
-<td>Opens file, makes changes without attribution (4–[^ct-147]{-----}[^ct-148] minute[^ct-149] no audit trail)</td>
-<td>Instant change tracking with author metadata using[^ct-150] LINE:HASH coordinates (under 1 second)</td>
+<td>Opens file, makes changes without attribution (4–{-----} minute no audit trail)</td>
+<td>Instant change tracking with author metadata using LINE:HASH coordinates (under 1 second)</td>
 </tr>
 <tr>
 <td>2</td>
 <td>Review</td>
-<td>Reviewer manually diffs versions (2–[^ct-151]3 min per file)</td>
-<td>ChangeDown[^ct-152] presents inline changes with author, date, and reason in seconds[^ct-153]</td>
+<td>Reviewer manually diffs versions (2–3 min per file)</td>
+<td>ChangeDown presents inline changes with author, date, and reason in seconds</td>
 </tr>
 <tr>
 <td>3</td>
 <td>Resolution</td>
-<td>8–[^ct-154]{-----}[^ct-155]12 minute review cycle</td>
-<td>2–[^ct-156]{-----}[^ct-157]4 minute resolution with full context preserved</td>
+<td>8–{-----}12 minute review cycle</td>
+<td>2–{-----}4 minute resolution with full context preserved</td>
 </tr>
 </tbody>
 </table>
 <p>Similar efficiency gains apply to content migration and multi-author consolidation workflows across all supported editing environments.</p>
-<p>[^ct-158]</p>
-<p>[^ct-159] contextual editing capabilities in the CriticMarkup matching cascade[^ct-160] enables genuine contextual editing experiences. The system recognizes returning authors[^ct-161];[^ct-162] it references their change history. It[^ct-163] recognizes[^ct-164][^ct-165] returning authors, references[^ct-166][^ct-167] their change history, and anticipates[^ct-168][^ct-169] revision patterns based on previous edits. This intelligent, empathetic approach builds loyalty by making every author feel known, not processed.</p>
-<p><strong>[^ct-170]Conclusion</strong></p>
-<p>In today's collaborative editing deployments, organizations face a definitive challenge.[^ct-171]The need to address h[^ct-172][^ct-173]ow to scale AI-assisted document workflows without sacrificing the editorial accountability that reviewers and compliance teams require. Through the open source[^ct-174] CriticMarkup connector, combined with the MCP tool server and VS Code extension, delivers a production-ready solution.</p>
-<p>Organizations implementing this {--Open-source--}[^ct-175]o[^ct-176]pen source[^ct-177] CriticMarkup integration[^ct-178] gain measurable advantages in editorial throughput[^ct-179] review quality, and document integrity. This solution integrates with proven open source[^ct-180] standards to improve every interaction and maintain context and intent across complete conversations,[^ct-181] [^ct-182] improving[^ct-183] your editorial experience.</p>
-<p>Ready to transform your collaborative editing strategy? Connect with the ChangeDown[^ct-184] open source community to design a deployment architecture[^ct-185] tailored to your specific editorial workflow requirements.[^ct-186]</p>
-<p>[^ct-1]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-2]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-3]: @editor | 2026-03-21 | comment | proposed
-@editor 2026-03-21: This post was copyedited for grammar, spelling, capitalization, punctuation, terminology, and consistency issues. Other important issues are noted in comments, and you should consider revising the content accordingly before publication.</p>
-<p>[^ct-4]: @editor | 2026-03-21 | comment | proposed
-@editor 2026-03-21: <strong>NEEDS ACTION:</strong> Please add byline information following the format provided</p>
-<p>[^ct-5]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-6]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-7]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-8]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-9]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-10]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-11]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-12]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-13]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-14]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-15]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-16]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-17]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-18]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-19]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-20]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-21]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-22]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-23]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-24]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-25]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-26]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-27]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-28]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-29]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-30]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-31]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-32]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-33]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-34]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-35]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-36]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-37]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-38]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-39]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-40]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-41]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-42]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-43]: @editor | 2026-03-21 | del | proposed
-image-dimensions: 4.5in x 1.125in</p>
-<p>[^ct-44]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-45]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-46]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-47]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-48]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-49]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-50]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-51]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-52]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-53]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-54]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-55]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-56]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-57]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-58]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-59]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-60]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-61]: @editor | 2026-03-21 | ins | proposed
-image-dimensions: 4.5in x 1.125in</p>
-<p>[^ct-62]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-63]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-64]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-65]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-66]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-67]: @editor | 2026-03-21 | del | proposed
-image-dimensions: 4.5in x 2.25in</p>
-<p>[^ct-68]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-69]: @editor | 2026-03-21 | comment | proposed
-@editor 2026-03-21: <strong>NEEDS ACTION:</strong> Lists need to be introduced with a sentence rather than a heading. I've added a suggestion. Please review for accuracy.</p>
-<p>[^ct-70]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-71]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-72]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-73]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-74]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-75]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-76]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-77]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-78]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-79]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-80]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-81]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-82]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-83]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-84]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-85]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-86]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-87]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-88]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-89]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-90]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-91]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-92]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-93]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-94]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-95]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-96]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-97]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-98]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-99]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-100]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-101]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-102]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-103]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-104]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-105]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-106]: @editor | 2026-03-21 | ins | proposed
-image-dimensions: 4.5in x 2.25in</p>
-<p>[^ct-107]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-108]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-109]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-110]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-111]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-112]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-113]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-114]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-115]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-116]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-117]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-118]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-119]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-120]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-121]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-122]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-123]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-124]: @editor | 2026-03-21 | comment | proposed
-@editor 2026-03-21: <strong>NEEDS ACTION:</strong> Best practice for blog posts is to convey information in prose and reserve lists for information that should be itemized. This list would probably serve the reader better as prose; consider converting it. At the least, the list needs to be introduced with prose (i.e., a complete sentence not in boldface).</p>
-<p>[^ct-125]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-126]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-127]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-128]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-129]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-130]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-131]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-132]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-133]: @editor | 2026-03-21 | comment | proposed
-@editor 2026-03-21: <strong>NEEDS ACTION:</strong> I revised this section to prose. Please review for accuracy.</p>
-<p>[^ct-134]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-135]: @editor | 2026-03-21 | comment | proposed
-@editor 2026-03-21: <strong>NEEDS ACTION:</strong> Please revise to complete sentences</p>
-<p>[^ct-136]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-137]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-138]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-139]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-140]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-141]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-142]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-143]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-144]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-145]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-146]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-147]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-148]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-149]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-150]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-151]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-152]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-153]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-154]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-155]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-156]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-157]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-158]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-159]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-160]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-161]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-162]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-163]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-164]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-165]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-166]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-167]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-168]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-169]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-170]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-171]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-172]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-173]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-174]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-175]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-176]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-177]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-178]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-179]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-180]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-181]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-182]: @editor | 2026-03-21 | del | proposed</p>
-<p>[^ct-183]: @editor | 2026-03-21 | sub | proposed</p>
-<p>[^ct-184]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-185]: @editor | 2026-03-21 | ins | proposed</p>
-<p>[^ct-186]: @editor | 2026-03-21 | comment | proposed
-@editor 2026-03-21: <strong>QUESTION:</strong> is there a place somewhere in the post for this link?
-ChangeDown Open Source Community
-<a href="https://github.com/changedown/community">https://github.com/changedown/community</a></p>
+<p>contextual editing capabilities in the CriticMarkup matching cascade enables genuine contextual editing experiences. The system recognizes returning authors; it references their change history. It recognizes returning authors, references their change history, and anticipates revision patterns based on previous edits. This intelligent, empathetic approach builds loyalty by making every author feel known, not processed.</p>
+<p><strong>Conclusion</strong></p>
+<p>In today's collaborative editing deployments, organizations face a definitive challenge.The need to address how to scale AI-assisted document workflows without sacrificing the editorial accountability that reviewers and compliance teams require. Through the open source CriticMarkup connector, combined with the MCP tool server and VS Code extension, delivers a production-ready solution.</p>
+<p>Organizations implementing this {--Open-source--}open source CriticMarkup integration gain measurable advantages in editorial throughput review quality, and document integrity. This solution integrates with proven open source standards to improve every interaction and maintain context and intent across complete conversations,  improving your editorial experience.</p>
+<p>Ready to transform your collaborative editing strategy? Connect with the ChangeDown open source community to design a deployment architecture tailored to your specific editorial workflow requirements.</p>
  </article> <!-- SPA takes over from here --> <div id="app" data-content-path="/content/editing-example.md" data-astro-cid-fzx4jmue></div> <script type="module" src="/app/main.js"></script> </body> </html>
