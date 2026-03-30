@@ -1,7 +1,7 @@
 <!-- changedown.com/v1: untracked -->
 # About this site
 
-This site implements a minimal browser-based Changedown editor environment, using components of the Changedown Visual Studio Code extension. It is intended as a proof of concept and working lab, and may have bugs! It runs entirely in your browser -- no server, no account, no data leaves your machine. 
+This site implements a minimal browser-based [Changedown](https://github.com/hackerbara/changedown) editor environment, using components of the Changedown Visual Studio Code extension. It is intended as a proof of concept and working lab, and may have bugs! It runs entirely in your browser. No server, no account, no data leaves your machine. 
 
 Changedown editor enhancements flow through the standard Changedown LSP server, running on a Web Worker process. Pandoc is dynamically loaded from CDN for docx operations.
 
@@ -20,7 +20,7 @@ Changedown editor enhancements flow through the standard Changedown LSP server, 
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/) for the code editing surface
 - [Pandoc WASM](https://github.com/nicholasgasior/pandoc-wasm) for document conversion
 - [Astro](https://astro.build/) for the website shell and SEO
- - [preact-render-to-string](https://github.com/preactjs/preact-render-to-string) for build-time SSR — the native app hydrates a pre-rendered component shell for instant first paint, while the browser build client-renders into an empty container alongside Astro's static SEO article for crawlers
+ - [preact-render-to-string](https://github.com/preactjs/preact-render-to-string) for build-time SSR — the app hydrates a pre-rendered component shell for instant first paint, rendering in over Astro's static SEO article for crawlers
 - [CriticMarkup](https://criticmarkup.com/) as the change tracking format
 - [Changedown](https://github.com/hackerbara/changedown) core parser, LSP, Monaco bindings, docx processing
 

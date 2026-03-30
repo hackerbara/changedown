@@ -3,7 +3,7 @@
     // Derive content path from URL before the SPA module loads
     (function() {
       var p = window.location.pathname;
-      var cp = p === '/' ? '/content/index.md'
+      var cp = p === '/' ? '/content/01-index.md'
         : p.startsWith('/content/') ? (p.endsWith('.md') ? p : p + '.md')
         : '/content' + p + '.md';
       document.getElementById('app').dataset.contentPath = cp;
