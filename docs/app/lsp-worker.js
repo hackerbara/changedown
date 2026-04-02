@@ -8757,6 +8757,7 @@ ${JSON.stringify(message, null, 4)}`);
       exports.findCodeZones = findCodeZones;
       exports.tryMatchFenceOpen = tryMatchFenceOpen;
       exports.tryMatchFenceClose = tryMatchFenceClose;
+      exports.isFenceCloserLine = isFenceCloserLine;
       exports.skipInlineCode = skipInlineCode;
       function findCodeZones(text) {
         const zones = [];
@@ -8898,6 +8899,33 @@ ${JSON.stringify(message, null, 4)}`);
           pos++;
         }
         return pos;
+      }
+      function isFenceCloserLine(line) {
+        let pos = 0;
+        let spaces = 0;
+        while (spaces < 3 && pos < line.length && line.charCodeAt(pos) === 32) {
+          spaces++;
+          pos++;
+        }
+        if (pos >= line.length)
+          return false;
+        const marker = line.charCodeAt(pos);
+        if (marker !== 96 && marker !== 126)
+          return false;
+        let runLength = 0;
+        while (pos < line.length && line.charCodeAt(pos) === marker) {
+          runLength++;
+          pos++;
+        }
+        if (runLength < 3)
+          return false;
+        while (pos < line.length) {
+          const c = line.charCodeAt(pos);
+          if (c !== 32 && c !== 9)
+            return false;
+          pos++;
+        }
+        return true;
       }
       function skipInlineCode(text, position) {
         let openEnd = position;
@@ -9059,9 +9087,29 @@ ${JSON.stringify(message, null, 4)}`);
         [types_js_1.ChangeType.Highlight]: "highlight",
         [types_js_1.ChangeType.Comment]: "comment"
       };
+      var UNKNOWN_PRIOR_SUB = "\u2026";
       function buildContextualL3EditOp(params) {
-        const { changeType, originalText, currentText, lineContent, lineNumber, hash, column, anchorLen } = params;
-        const rawOp = buildEditOpFromParts(CHANGE_TYPE_KEY[changeType], originalText, currentText);
+        const { changeType, lineContent, lineNumber, hash, column, anchorLen } = params;
+        let originalText = params.originalText ?? "";
+        let currentText = params.currentText ?? "";
+        const typeKey = CHANGE_TYPE_KEY[changeType];
+        let rawOp = buildEditOpFromParts(typeKey, originalText, currentText);
+        if (lineContent.length > 0 && anchorLen > 0) {
+          const col = Math.max(0, Math.min(column, lineContent.length));
+          const end = Math.min(col + anchorLen, lineContent.length);
+          const bodySlice = lineContent.slice(col, end);
+          if (changeType === types_js_1.ChangeType.Insertion && rawOp === "{++++}" && bodySlice.length > 0) {
+            currentText = bodySlice;
+            rawOp = buildEditOpFromParts(typeKey, originalText, currentText);
+          }
+          if (changeType === types_js_1.ChangeType.Substitution && rawOp === "{~~~>~~}") {
+            if (bodySlice.length > 0)
+              currentText = bodySlice;
+            if (!originalText && currentText)
+              originalText = UNKNOWN_PRIOR_SUB;
+            rawOp = buildEditOpFromParts(typeKey, originalText, currentText);
+          }
+        }
         if (!lineContent) {
           return formatL3EditOpLine(lineNumber, hash, rawOp);
         }
@@ -11113,11 +11161,11 @@ ${JSON.stringify(message, null, 4)}`);
         const split = (0, footnote_patterns_js_1.splitBodyAndFootnotes)(body.split("\n"));
         let cleanBodyLines = split.bodyLines;
         const footnoteLines = split.footnoteLines;
+        const preRefBodyStr = cleanBodyLines.join("\n");
+        const preRefLineStarts = buildLineStarts(preRefBodyStr);
         const refRe = (0, footnote_patterns_js_1.footnoteRefGlobal)();
         cleanBodyLines = cleanBodyLines.map((line) => line.replace(refRe, ""));
         const anchorMap = /* @__PURE__ */ new Map();
-        const bodyStr = cleanBodyLines.join("\n");
-        const lineStarts = buildLineStarts(bodyStr);
         const cumulativeDeltas = [];
         let cumDelta = 0;
         for (let i2 = 0; i2 < sortedAsc.length; i2++) {
@@ -11127,13 +11175,13 @@ ${JSON.stringify(message, null, 4)}`);
         }
         for (let changeIdx = 0; changeIdx < sortedAsc.length; changeIdx++) {
           const change = sortedAsc[changeIdx];
-          const shiftedLineNum = offsetToLineNumber(lineStarts, cumulativeDeltas[changeIdx]);
+          const shiftedLineNum = offsetToLineNumber(preRefLineStarts, cumulativeDeltas[changeIdx]);
           let lineNum = shiftedLineNum;
           lineNum = Math.max(1, Math.min(lineNum, cleanBodyLines.length || 1));
           const lineIdx = lineNum - 1;
           const lineContent = cleanBodyLines[lineIdx] ?? "";
-          const lineStart = lineStarts[lineIdx] ?? 0;
-          const changeCol = Math.max(0, Math.min(cumulativeDeltas[changeIdx] - lineStart, lineContent.length));
+          const preRefLineStart = preRefLineStarts[lineIdx] ?? 0;
+          const changeCol = Math.max(0, Math.min(cumulativeDeltas[changeIdx] - preRefLineStart, lineContent.length));
           let anchorLen;
           switch (change.type) {
             case types_js_1.ChangeType.Insertion:
@@ -11179,7 +11227,9 @@ ${JSON.stringify(message, null, 4)}`);
             i++;
             if (changeId) {
               const anchor = anchorMap.get(changeId);
-              if (anchor) {
+              const nextLine = footnoteLines[i];
+              const hasExistingEditOp = nextLine && footnote_patterns_js_1.FOOTNOTE_L3_EDIT_OP.test(nextLine);
+              if (anchor && !hasExistingEditOp) {
                 rebuiltFootnotes.push(anchor);
               }
             }
@@ -11779,8 +11829,8 @@ ${JSON.stringify(message, null, 4)}`);
         let opEnd = -1;
         if (opener === "{~~") {
           const searchFrom = opStart + opener.length;
-          const closerIdx = opString.indexOf("~~}", searchFrom);
-          opEnd = closerIdx !== -1 ? closerIdx + 3 : -1;
+          const closerIdx = opString.lastIndexOf("~~}");
+          opEnd = closerIdx >= searchFrom ? closerIdx + 3 : -1;
         } else if (opener === "{>>") {
           const searchFrom = opStart + opener.length;
           const closerIdx = opString.indexOf("<<}", searchFrom);
@@ -12403,6 +12453,7 @@ ${JSON.stringify(message, null, 4)}`);
       var footnote_patterns_js_1 = require_footnote_patterns();
       var code_zones_js_1 = require_code_zones();
       var format_aware_parse_js_1 = require_format_aware_parse();
+      var footnote_generator_js_1 = require_footnote_generator();
       function computeSettledReplace(change) {
         const rangeLength = change.range.end - change.range.start;
         if (change.type === types_js_1.ChangeType.Comment) {
@@ -12578,6 +12629,17 @@ ${JSON.stringify(message, null, 4)}`);
           if (ref && findContainingCodeZone(part.offset, zones)) {
             segments.push(part.text);
             deferredRefs.push({ ref, origLineIndex: offsetToLine(part.offset) });
+          } else if (ref && zones.length > 0) {
+            const targetLineIdx = offsetToLine(part.offset);
+            const lineStartOff = targetLineIdx === 0 ? 0 : lineBreaks[targetLineIdx - 1] + 1;
+            const lineEndOff = targetLineIdx < lineBreaks.length ? lineBreaks[targetLineIdx] : text.length;
+            const targetLine = text.slice(lineStartOff, lineEndOff);
+            if ((0, code_zones_js_1.isFenceCloserLine)(targetLine)) {
+              segments.push(part.text);
+              deferredRefs.push({ ref, origLineIndex: targetLineIdx + 1 });
+            } else {
+              segments.push(part.text + ref);
+            }
           } else {
             segments.push(part.text + ref);
           }
@@ -12600,9 +12662,30 @@ ${JSON.stringify(message, null, 4)}`);
         for (const [lineIdx, refs] of refsByLine) {
           if (lineIdx < lines.length) {
             lines[lineIdx] = lines[lineIdx] + refs.join("");
+          } else {
+            while (lines.length <= lineIdx)
+              lines.push("");
+            lines[lineIdx] = refs.join("");
           }
         }
         return lines.join("\n");
+      }
+      function recoverL2EditOpPayload(change, sourceText) {
+        let orig = change.originalText ?? "";
+        let cur = change.modifiedText ?? "";
+        if (change.type === types_js_1.ChangeType.Insertion) {
+          if (!cur && change.contentRange) {
+            cur = sourceText.slice(change.contentRange.start, change.contentRange.end);
+          }
+        } else if (change.type === types_js_1.ChangeType.Substitution) {
+          if (!cur && change.modifiedRange) {
+            cur = sourceText.slice(change.modifiedRange.start, change.modifiedRange.end);
+          }
+          if (!orig && change.originalRange) {
+            orig = sourceText.slice(change.originalRange.start, change.originalRange.end);
+          }
+        }
+        return { originalText: orig, currentText: cur };
       }
       function settleAcceptedChangesOnly(text) {
         if ((0, footnote_patterns_js_1.isL3Format)(text)) {
@@ -12616,7 +12699,79 @@ ${JSON.stringify(message, null, 4)}`);
         }
         const parts = [...accepted].sort((a, b) => a.range.start - b.range.start).map(accept_reject_js_1.computeAcceptParts);
         const zones = (0, code_zones_js_1.findCodeZones)(text);
-        const settledContent = buildSegmentsWithZoneAwareness(text, parts, zones);
+        const rawSettledContent = buildSegmentsWithZoneAwareness(text, parts, zones);
+        const { bodyLines, footnoteLines } = (0, footnote_patterns_js_1.splitBodyAndFootnotes)(rawSettledContent.split("\n"));
+        const refRe = (0, footnote_patterns_js_1.footnoteRefGlobal)();
+        const cleanBodyLines = bodyLines.map((line) => line.replace(refRe, ""));
+        const refIndex = /* @__PURE__ */ new Map();
+        for (let i = 0; i < bodyLines.length; i++) {
+          const refPattern = /\[\^cn-[\w.]+\]/g;
+          let rm;
+          while ((rm = refPattern.exec(bodyLines[i])) !== null) {
+            refIndex.set(rm[0], { lineIdx: i, col: rm.index });
+          }
+        }
+        const footnoteHeaderIndex = /* @__PURE__ */ new Map();
+        for (let i = 0; i < footnoteLines.length; i++) {
+          const idMatch = footnoteLines[i].match(/^\[\^(cn-[\w.]+)\]:/);
+          if (idMatch)
+            footnoteHeaderIndex.set(idMatch[1], i);
+        }
+        const scanRe = (0, footnote_patterns_js_1.footnoteRefGlobal)();
+        const editOpInsertions = [];
+        for (const change of accepted) {
+          const { originalText: effOrig, currentText: effCur } = recoverL2EditOpPayload(change, text);
+          const refPos = refIndex.get(`[^${change.id}]`);
+          if (!refPos)
+            continue;
+          const { lineIdx, col: refColInLine } = refPos;
+          let anchorLen;
+          switch (change.type) {
+            case types_js_1.ChangeType.Insertion:
+            case types_js_1.ChangeType.Substitution:
+              anchorLen = effCur.length;
+              break;
+            case types_js_1.ChangeType.Deletion:
+              anchorLen = 0;
+              break;
+            case types_js_1.ChangeType.Highlight:
+              anchorLen = (change.originalText ?? "").length;
+              break;
+            default:
+              anchorLen = 0;
+              break;
+          }
+          scanRe.lastIndex = 0;
+          let precedingRefBytes = 0;
+          let m;
+          while ((m = scanRe.exec(bodyLines[lineIdx])) !== null) {
+            if (m.index >= refColInLine)
+              break;
+            precedingRefBytes += m[0].length;
+          }
+          const changeCol = Math.max(0, refColInLine - precedingRefBytes - anchorLen);
+          const lineNumber = lineIdx + 1;
+          const hash = (0, hashline_js_1.computeLineHash)(lineIdx, cleanBodyLines[lineIdx], cleanBodyLines);
+          const editOpLine = (0, footnote_generator_js_1.buildContextualL3EditOp)({
+            changeType: change.type,
+            originalText: effOrig,
+            currentText: effCur,
+            lineContent: cleanBodyLines[lineIdx],
+            lineNumber,
+            hash,
+            column: changeCol,
+            anchorLen
+          });
+          const headerLine = footnoteHeaderIndex.get(change.id);
+          if (headerLine !== void 0) {
+            editOpInsertions.push({ headerLine, editOpLine });
+          }
+        }
+        editOpInsertions.sort((a, b) => b.headerLine - a.headerLine);
+        for (const { headerLine, editOpLine } of editOpInsertions) {
+          footnoteLines.splice(headerLine + 1, 0, editOpLine);
+        }
+        const settledContent = [...bodyLines, "", ...footnoteLines].join("\n");
         return { settledContent, settledIds };
       }
       function settleRejectedChangesOnly(text) {
@@ -19149,11 +19304,11 @@ ${sidecarSection}
     "../core/dist/index.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
-      exports.promoteToLevel2 = exports.promoteToLevel1 = exports.computeSupersedeResult = exports.computeAmendEdits = exports.VALID_DECISIONS = exports.applyReview = exports.ensureL2 = exports.buildContextualL3EditOp = exports.formatL3EditOpLine = exports.buildEditOpFromParts = exports.scanMaxCnId = exports.generateFootnoteDefinition = exports.insertComment = exports.wrapSubstitution = exports.wrapDeletion = exports.wrapInsertion = exports.previousChange = exports.nextChange = exports.computeReplyEdit = exports.computeUnresolveEdit = exports.computeResolutionEdit = exports.computeFootnoteArchiveLineEdit = exports.computeApprovalLineEdit = exports.computeFootnoteStatusEdits = exports.computeRejectParts = exports.computeAcceptParts = exports.computeReject = exports.computeAccept = exports.skipInlineCode = exports.tryMatchFenceClose = exports.tryMatchFenceOpen = exports.findCodeZones = exports.CriticMarkupParser = exports.TokenType = exports.VirtualDocument = exports.nodeStatus = exports.consumptionLabel = exports.isGhostNode = exports.changeTypeToAbbrev = exports.ChangeStatus = exports.ChangeType = exports.formatTimestamp = exports.compareTimestamps = exports.nowTimestamp = exports.parseTimestamp = exports.canWithdraw = exports.canAccept = exports.reviewerType = exports.DEFAULT_CONFIG = exports.parseProjectConfig = void 0;
-      exports.ensureHashlineReady = exports.initHashline = exports.computeSettledView = exports.settleRejectedChangesOnly = exports.settleAcceptedChangesOnly = exports.computeOriginalText = exports.computeSettledText = exports.computeSettledReplace = exports.tryDiagnosticConfusableMatch = exports.unicodeName = exports.diagnosticConfusableNormalize = exports.whitespaceCollapsedIsAmbiguous = exports.whitespaceCollapsedFind = exports.buildWhitespaceCollapseMap = exports.collapseWhitespace = exports.normalizedIndexOf = exports.defaultNormalizer = exports.insertTrackingHeader = exports.generateTrackingHeader = exports.parseTrackingHeader = exports.computeSidecarResolveAll = exports.computeSidecarReject = exports.computeSidecarAccept = exports.parseContextualEditOp = exports.FootnoteNativeParser = exports.SidecarParser = exports.annotateSidecar = exports.annotateMarkdown = exports.lineOffset = exports.escapeRegex = exports.stripLineComment = exports.wrapLineComment = exports.getCommentSyntax = exports.Workspace = exports.resolveReplayFromParsedFootnotes = exports.traceDependencies = exports.resolve = exports.scrubForward = exports.scrubBackward = exports.convertL3ToL2 = exports.offsetToLineNumber = exports.buildLineStarts = exports.bodyReplacement = exports.convertL2ToL3 = exports.checkSupersedesIntegrity = exports.compactL2 = exports.compact = exports.analyzeCompactionCandidates = exports.compactToLevel0 = exports.compactToLevel1 = void 0;
-      exports.splitBodyAndFootnotes = exports.isL3Format = exports.FOOTNOTE_L3_EDIT_OP = exports.FOOTNOTE_THREAD_REPLY = exports.FOOTNOTE_CONTINUATION = exports.FOOTNOTE_DEF_STATUS_VALUE = exports.FOOTNOTE_DEF_STATUS = exports.FOOTNOTE_DEF_STRICT = exports.FOOTNOTE_DEF_LENIENT = exports.FOOTNOTE_DEF_START_QUICK = exports.FOOTNOTE_DEF_START = exports.footnoteRefNumericGlobal = exports.footnoteRefGlobal = exports.FOOTNOTE_REF_ANCHORED = exports.FOOTNOTE_ID_NUMERIC_PATTERN = exports.FOOTNOTE_ID_PATTERN = exports.markupWithRef = exports.inlineMarkupAll = exports.hasCriticMarkup = exports.HAS_CRITIC_MARKUP = exports.multiLineComment = exports.multiLineHighlight = exports.multiLineDeletion = exports.multiLineInsertion = exports.multiLineSubstitution = exports.singleLineComment = exports.singleLineHighlight = exports.singleLineInsertion = exports.singleLineDeletion = exports.singleLineSubstitution = exports.findSidecarBlockStart = exports.SIDECAR_BLOCK_MARKER = exports.formatCommittedOutput = exports.computeCommittedView = exports.computeCommittedLine = exports.parseFootnotes = exports.findFootnoteBlockStart = exports.stripBoundaryEcho = exports.relocateHashRef = exports.detectNoOp = exports.stripHashlinePrefixes = exports.formatTrackedHeader = exports.formatTrackedHashLines = exports.computeSettledLineHash = exports.settledLine = exports.HashlineMismatchError = exports.validateLineRef = exports.parseLineRef = exports.formatHashLines = exports.computeLineHash = void 0;
-      exports.bufferEnd = exports.isBufferEmpty = exports.DEFAULT_EDIT_BOUNDARY_CONFIG = exports.computeContinuationLines = exports.findFootnoteSectionRange = exports.buildLineRefMap = exports.buildDeliberationHeader = exports.buildRawDocument = exports.buildSettledDocument = exports.buildChangesDocument = exports.buildReviewDocument = exports.buildViewDocument = exports.formatHtml = exports.formatAnsi = exports.formatPlainText = exports.formatDocument = exports.nextViewName = exports.resolveViewName = exports.VIEW_NAMES = exports.VIEW_NAME_DISPLAY_NAMES = exports.VIEW_NAME_ALIASES = exports.parseOp = exports.resolveAt = exports.parseAt = exports.extractFootnoteStatuses = exports.resolveChangeById = exports.findChildFootnoteIds = exports.findReviewInsertionIndex = exports.findDiscussionInsertionIndex = exports.parseFootnoteHeader = exports.findFootnoteBlock = exports.countFootnoteHeadersWithStatus = exports.contentZoneText = exports.resolveOverlapWithAuthor = exports.findAllProposedOverlaps = exports.stripRefsFromContent = exports.guardOverlap = exports.checkCriticMarkupOverlap = exports.stripCriticMarkupToCommittedWithMap = exports.stripCriticMarkup = exports.stripCriticMarkupWithMap = exports.replaceUnique = exports.extractLineRange = exports.appendFootnote = exports.applySingleOperation = exports.applyProposeChange = exports.tryFindUniqueMatch = exports.findUniqueMatch = exports.viewAwareFind = exports.buildViewSurfaceMap = void 0;
-      exports.stripFootnoteBlocks = exports.parseForFormat = exports.processEvent = exports.classifySignal = exports.createBuffer = exports.spliceDelete = exports.spliceInsert = exports.appendOriginal = exports.prependOriginal = exports.extendBuffer = exports.bufferContainsOffset = void 0;
+      exports.promoteToLevel1 = exports.computeSupersedeResult = exports.computeAmendEdits = exports.VALID_DECISIONS = exports.applyReview = exports.ensureL2 = exports.buildContextualL3EditOp = exports.formatL3EditOpLine = exports.buildEditOpFromParts = exports.scanMaxCnId = exports.generateFootnoteDefinition = exports.insertComment = exports.wrapSubstitution = exports.wrapDeletion = exports.wrapInsertion = exports.previousChange = exports.nextChange = exports.computeReplyEdit = exports.computeUnresolveEdit = exports.computeResolutionEdit = exports.computeFootnoteArchiveLineEdit = exports.computeApprovalLineEdit = exports.computeFootnoteStatusEdits = exports.computeRejectParts = exports.computeAcceptParts = exports.computeReject = exports.computeAccept = exports.isFenceCloserLine = exports.skipInlineCode = exports.tryMatchFenceClose = exports.tryMatchFenceOpen = exports.findCodeZones = exports.CriticMarkupParser = exports.TokenType = exports.VirtualDocument = exports.nodeStatus = exports.consumptionLabel = exports.isGhostNode = exports.changeTypeToAbbrev = exports.ChangeStatus = exports.ChangeType = exports.formatTimestamp = exports.compareTimestamps = exports.nowTimestamp = exports.parseTimestamp = exports.canWithdraw = exports.canAccept = exports.reviewerType = exports.DEFAULT_CONFIG = exports.parseProjectConfig = void 0;
+      exports.initHashline = exports.computeSettledView = exports.settleRejectedChangesOnly = exports.settleAcceptedChangesOnly = exports.computeOriginalText = exports.computeSettledText = exports.computeSettledReplace = exports.tryDiagnosticConfusableMatch = exports.unicodeName = exports.diagnosticConfusableNormalize = exports.whitespaceCollapsedIsAmbiguous = exports.whitespaceCollapsedFind = exports.buildWhitespaceCollapseMap = exports.collapseWhitespace = exports.normalizedIndexOf = exports.defaultNormalizer = exports.insertTrackingHeader = exports.generateTrackingHeader = exports.parseTrackingHeader = exports.computeSidecarResolveAll = exports.computeSidecarReject = exports.computeSidecarAccept = exports.parseContextualEditOp = exports.FootnoteNativeParser = exports.SidecarParser = exports.annotateSidecar = exports.annotateMarkdown = exports.lineOffset = exports.escapeRegex = exports.stripLineComment = exports.wrapLineComment = exports.getCommentSyntax = exports.Workspace = exports.resolveReplayFromParsedFootnotes = exports.traceDependencies = exports.resolve = exports.scrubForward = exports.scrubBackward = exports.convertL3ToL2 = exports.offsetToLineNumber = exports.buildLineStarts = exports.bodyReplacement = exports.convertL2ToL3 = exports.checkSupersedesIntegrity = exports.compactL2 = exports.compact = exports.analyzeCompactionCandidates = exports.compactToLevel0 = exports.compactToLevel1 = exports.promoteToLevel2 = void 0;
+      exports.isL3Format = exports.FOOTNOTE_L3_EDIT_OP = exports.FOOTNOTE_THREAD_REPLY = exports.FOOTNOTE_CONTINUATION = exports.FOOTNOTE_DEF_STATUS_VALUE = exports.FOOTNOTE_DEF_STATUS = exports.FOOTNOTE_DEF_STRICT = exports.FOOTNOTE_DEF_LENIENT = exports.FOOTNOTE_DEF_START_QUICK = exports.FOOTNOTE_DEF_START = exports.footnoteRefNumericGlobal = exports.footnoteRefGlobal = exports.FOOTNOTE_REF_ANCHORED = exports.FOOTNOTE_ID_NUMERIC_PATTERN = exports.FOOTNOTE_ID_PATTERN = exports.markupWithRef = exports.inlineMarkupAll = exports.hasCriticMarkup = exports.HAS_CRITIC_MARKUP = exports.multiLineComment = exports.multiLineHighlight = exports.multiLineDeletion = exports.multiLineInsertion = exports.multiLineSubstitution = exports.singleLineComment = exports.singleLineHighlight = exports.singleLineInsertion = exports.singleLineDeletion = exports.singleLineSubstitution = exports.findSidecarBlockStart = exports.SIDECAR_BLOCK_MARKER = exports.formatCommittedOutput = exports.computeCommittedView = exports.computeCommittedLine = exports.parseFootnotes = exports.findFootnoteBlockStart = exports.stripBoundaryEcho = exports.relocateHashRef = exports.detectNoOp = exports.stripHashlinePrefixes = exports.formatTrackedHeader = exports.formatTrackedHashLines = exports.computeSettledLineHash = exports.settledLine = exports.HashlineMismatchError = exports.validateLineRef = exports.parseLineRef = exports.formatHashLines = exports.computeLineHash = exports.ensureHashlineReady = void 0;
+      exports.isBufferEmpty = exports.DEFAULT_EDIT_BOUNDARY_CONFIG = exports.computeContinuationLines = exports.findFootnoteSectionRange = exports.buildLineRefMap = exports.buildDeliberationHeader = exports.buildRawDocument = exports.buildSettledDocument = exports.buildChangesDocument = exports.buildReviewDocument = exports.buildViewDocument = exports.formatHtml = exports.formatAnsi = exports.formatPlainText = exports.formatDocument = exports.nextViewName = exports.resolveViewName = exports.VIEW_NAMES = exports.VIEW_NAME_DISPLAY_NAMES = exports.VIEW_NAME_ALIASES = exports.parseOp = exports.resolveAt = exports.parseAt = exports.extractFootnoteStatuses = exports.resolveChangeById = exports.findChildFootnoteIds = exports.findReviewInsertionIndex = exports.findDiscussionInsertionIndex = exports.parseFootnoteHeader = exports.findFootnoteBlock = exports.countFootnoteHeadersWithStatus = exports.contentZoneText = exports.resolveOverlapWithAuthor = exports.findAllProposedOverlaps = exports.stripRefsFromContent = exports.guardOverlap = exports.checkCriticMarkupOverlap = exports.stripCriticMarkupToCommittedWithMap = exports.stripCriticMarkup = exports.stripCriticMarkupWithMap = exports.replaceUnique = exports.extractLineRange = exports.appendFootnote = exports.applySingleOperation = exports.applyProposeChange = exports.tryFindUniqueMatch = exports.findUniqueMatch = exports.viewAwareFind = exports.buildViewSurfaceMap = exports.splitBodyAndFootnotes = void 0;
+      exports.stripFootnoteBlocks = exports.parseForFormat = exports.processEvent = exports.classifySignal = exports.createBuffer = exports.spliceDelete = exports.spliceInsert = exports.appendOriginal = exports.prependOriginal = exports.extendBuffer = exports.bufferContainsOffset = exports.bufferEnd = void 0;
       var index_js_1 = require_config();
       Object.defineProperty(exports, "parseProjectConfig", { enumerable: true, get: function() {
         return index_js_1.parseProjectConfig;
@@ -19227,6 +19382,9 @@ ${sidecarSection}
       } });
       Object.defineProperty(exports, "skipInlineCode", { enumerable: true, get: function() {
         return code_zones_js_1.skipInlineCode;
+      } });
+      Object.defineProperty(exports, "isFenceCloserLine", { enumerable: true, get: function() {
+        return code_zones_js_1.isFenceCloserLine;
       } });
       var accept_reject_js_1 = require_accept_reject();
       Object.defineProperty(exports, "computeAccept", { enumerable: true, get: function() {

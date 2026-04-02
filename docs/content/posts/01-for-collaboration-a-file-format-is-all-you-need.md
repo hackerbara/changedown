@@ -8,11 +8,11 @@
 
 How should humans and agents collaborate on documents? How do we keep track of who is changing what, when, and why? What does it mean to “review” and “approve” these changes? These are rich UX questions many different people are circling. Beneath them all, I think something is missing: where does all this get recorded? And how do we control and share that record? I think we need an interchange file format, one that is human-readable, AI-readable, and plain text: **Changedown** - CriticMarkup + Markdown footnotes with governance.
 
-This question comes into critical focus with the increasing need to collaborate on detailed plan and skill files, for AI agents, and complex documents and creative outputs being produced for humans and by humans in tandem with AI. Currently, when a human or an AI agent edits a Markdown file, you get a diff — new text you can compare against old. You can manually see what changed. You can't see why. You can't see who proposed it, who approved it, whether anyone pushed back, what alternatives were considered. That context lives in agent traces, in chat logs, in PR comments, in your memory, scattered across tools that need manual correlation. The next person who opens the file gets the final text and nothing else.
+This question comes into critical focus with the increasing need to collaborate on detailed plan and skill files for AI agents, and complex documents and creative outputs being produced for humans and by humans in tandem with AI. Currently, when a human or an AI agent edits a Markdown file, you get a diff — new text you can compare against old. You can manually see what changed. You can't see why. You can't see who proposed it, who approved it, whether anyone pushed back, what alternatives were considered. That context lives in agent traces, in chat logs, in PR comments, and in your memory, scattered across tools that need manual correlation. The next person who opens the file gets the final text and nothing else.
 
 Trying to get AI to reliably participate in and act on that context dance currently requires a messy constellation of correlation across git logs, MCP connections to chat apps, and command line binary tools. To help, I've created **Changedown**, a simple file format that encapsulates plaintext content, context, and review status in one place. This allows the content state to live in the world, with intent and history living directly in the character stream. This fits the natural mental model of humans, and for AI it allows for clear programmatic enforcement and powerful optimization of token and conceptual economy through proper tool shaping.
 
-There are many important questions that a file format doesn't inherently solve: how you collaborate on edits in real-time with others, how humans and agents process through reviews, how to make that all scale for AI outputs. These questions are all upstream of how the produced changes are crystallized and shared downstream with others.
+There are many important questions that a file format doesn't inherently solve: how you collaborate on edits in real-time with others, how humans and agents process through reviews, and how to make that all scale for AI outputs. These questions are all upstream of how the produced changes are crystallized and shared downstream with others.
 
 What a file format gives is a clear sense of how changes and their history persist in the world, how versions of that history are exchanged, and what the shared participation language is for any human or AI.
 
@@ -27,21 +27,17 @@ Changedown writes this down in the file. An insertion: new text. A deletion: . A
 Here's what that looks like in practice:
 
 ```
+The API should use {~~REST~>GraphQL~~}[^cn-1] for the public interface.
 
-The API should use {~~REST~>GraphQL~~} for the public interface.
+We added {++OAuth 2.0 with JWT tokens++}[^cn-2] for authentication.
 
-We added {++OAuth 2.0 with JWT tokens++} for authentication.
-
-: @alice | 2026-03-15 | sub | proposed
+[^cn-1]: @alice | 2026-03-15 | sub | proposed
 
 reason: Clearer terminology for the API audience
-
 approved: @bob 2026-03-16 "Agreed, reads better"
 
-: @carol | 2026-03-15 | ins | proposed
-
+[^cn-2]: @carol | 2026-03-15 | ins | proposed
 reason: Security requirement for all public endpoints
-
 ```
 
 The file carries its own history. It is almost a simple database itself, no sidecar services or files. The characters in the file are the protocol. Any text editor can read it. Git diffs it naturally. And when the format needs to travel to Word or back, the round-trip is a first-class concern — because interchange is the whole point.
@@ -60,9 +56,9 @@ Other editors and paradigms like Google Docs, or now Anthropic and others' docx 
 
 ## Files everyone can understand and edit
 
-Humans can also directly read Changedown files, and manually edit them (though it is somewhat cumbersome). Being able to comprehend the contained file directly instead of having to rely on processing tools is an important building block of trustable, easily verifiable AI output review. It means no other service is ever going to own the context, and no opaque intermediate tooling or agent prompt is going to silently record errors that can't be caught. Trust architectures can be built all the way down.
+Humans can also directly read Changedown files, and manually edit them, even though it is somewhat cumbersome. Being able to comprehend the contained file directly instead of having to rely on processing tools is an important building block of trustable, easily verifiable AI output review. It means no other service is ever going to own the context, and no opaque intermediate tooling or agent prompt is going to silently record errors that can't be caught. Trust architectures can be built all the way down.
 
-Working with any kind of data store, binary or text, is always going to boil down to effective tooling. So why not focus that tooling challenge into areas humans can already interact with natively, just like AIs? And the established social expectations and rituals around file-based review cycles have both tremendous inertia that are not worth fighting, and also contain tremendous wisdom in terms of how they encode participation expectations and agency.
+Working with any kind of data store, binary or text, is always going to boil down to effective tooling. So why not focus that tooling challenge into areas humans can already interact with natively, just like AIs? And the established social expectations and rituals around file-based review cycles have tremendous inertia that is not worth fighting, and also contain tremendous wisdom in terms of how they encode participation expectations and agency.
 
 ## A file gives humans agency over how they participate
 
@@ -101,7 +97,7 @@ The result is diffable, mergeable, gittable, and human-readable. It works withou
 
 # Collaboration is hard, but it can be crystallized
 
-Making truly rich, effective experience for collaboration and review is a forest of messy questions. The answers keep multiplying. Skills frameworks. Databases. CRDTs for real-time sync. Beautiful new editors and agent development environments. [Alex Clemmer](https://moment.dev/blog/lies-i-was-told-pt-1) at Moment.dev made the case that collaborative editing is a UX problem, not just an algorithms problem — and he's right. I think persistence and exchange is also a UX problem. [Can Bölük](https://blog.can.ac/2026/02/12/the-harness-problem/) showed that the tool interface shapes model performance more than model capability does. His hashline contribution made it possible for AI agents to cleanly speak to Changedown MCP tools and reason about proposal states. [Kevin Gu](https://x.com/gukevinr/status/2031889622385729730) pointed out that plain markdown lacks the provenance and governance that serious collaboration requires. Couldn't agree more! Projects like [Proof SDK](https://github.com/EveryInc/proof-sdk) are exploring provenance-tracked editing with agent bridges and beautiful UIs. All of it will keep evolving — and it should.
+Making truly rich, effective experiences for collaboration and review is a forest of messy questions. The answers keep multiplying. [Alex Clemmer](https://moment.dev/blog/lies-i-was-told-pt-1) at Moment.dev made the case that collaborative editing is a UX problem, not just an algorithms problem — and he's right. I think persistence and exchange is also a UX problem. [Can Bölük](https://blog.can.ac/2026/02/12/the-harness-problem/) showed that the tool interface shapes model performance more than model capability does. His hashline contribution made it possible for AI agents to cleanly speak to Changedown MCP tools and reason about proposal states. [Kevin Gu](https://x.com/gukevinr/status/2031889622385729730) pointed out that plain markdown lacks the provenance and governance that serious collaboration requires. Couldn't agree more! Projects like [Proof SDK](https://github.com/EveryInc/proof-sdk) are exploring provenance-tracked editing with agent bridges and beautiful UIs. All of it will keep evolving — and it should.
 
 But I do think that at the end of the day, every approach collaboration produces the same outputs: changes to text, with discussion and provenance and review attached. Microsoft docx is still here today in part because it can capture the breadth of those outputs, and I think Markdown workflows should be able to as well, inheriting all the complexity and consideration and physical "thingness" that comes from being a file that is real and shareable.
 

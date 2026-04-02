@@ -1,3 +1,4 @@
+<!-- changedown.com/v1: tracked -->
 <!-- changedown.com/v1: untracked -->
 # Recently landed
 
@@ -19,10 +20,14 @@
 
 - **Cryptographic attestation** — Signed change provenance. Verify that a change or review was actually done by the author that claims it. I am not a cryptographer though and neither is Claude lol.
 - **Universal change review** — Git diff, GitHub PR, and Jujutsu adapters feeding the same ChangeNode[] IR. One UI for reviewing changes regardless of source, with perfect Changedown export.
-- **Enhanced Multi-editor support** — Website is POC for web-based editors via LSP over WebSocket, but how different editor ecosystems and their various metaphors can best be supported is an ongoing question.
+- **Enhanced Multi-editor support** — Website is POC for web-based editors via LSP over WebSocket, but how different editor ecosystems and their various metaphors can best supported is an ongoing question.
 
 
 # Links
 
 - [CriticMarkup](http://criticmarkup.com) — The syntax foundation, created by Gabe Weatherhead and Erik Hess
 - [GitHub](https://github.com/hackerbara/changedown) — Source, issues, discussions
+
+
+[^cn-1]: ai:claude-opus-4.6 | 2026-04-02 | creation | proposed
+    ai:claude-opus-4.6 2026-04-02T00:45:29Z: File created
