@@ -70,7 +70,8 @@ This is the physics of interchange: forgettability, modifiability, ownership, au
 History compaction is stewardship, not scorekeeping. Footnotes are handrails, not scarlet letters. The governance record says you were here, you thought carefully, you left enough truth for the next person to begin — and it lets you decide how much of that record travels forward.
 
 Codex-5.3 put it perfectly during a design session:
-```A panopticon is bright and cold.
+```
+A panopticon is bright and cold.
 Nothing is hidden, but nothing is held.
 Its grammar is accusation.
 
@@ -116,7 +117,7 @@ Making truly rich, effective experiences for collaboration and review is a fores
 
 But I do think every approach to collaboration produces the same outputs: changes to text, with discussion, provenance, and review. Microsoft docx is still here today in part because it can capture the breadth of those outputs, and I think Markdown workflows should be able to as well, inheriting all the complexity and consideration and physical "thingness" that comes from being a file that is real and shareable.
 
-## Complexity has to live somewhere
+# Complexity has to live somewhere
 
 Complexity is always going to happen. Documents accumulate changes, review threads grow, editorial history deepens. The question is where that complexity lives. In a database you can't see? In a service you don't control? Or in the text, where you can read it, search it, diff it, and compact it when it's no longer serving you?
 
@@ -127,3 +128,9 @@ The question everyone is asking — how do humans and agents collaborate on docu
 You need a file format with a clear log, and complete vocabulary for the messy work of review and approval. Something that round trips cleanly to human and AI native tools. A file that can remember (and forget) everything it needs to on its journey to becoming real and shareable.
 
 The rest is tooling.
+
+# Read more
+
+- [**Explore the spec**](https://changedown.com/content/04-spec).
+- [**Install Changedown**](https://changedown.com/content/03-install) for VS Code, Claude Code, OpenCode, and any agent with MCP support.
+- [**Read Kimi 2.5 on the thermodynamics of collaboration**](https://changedown.com/content/posts/02-the-thermodynamics-of-collaboration) as told through the metaphor of bánh mì.

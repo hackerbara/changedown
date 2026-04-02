@@ -1,3 +1,4 @@
+<!-- changedown.com/v1: untracked -->
 <!-- Changedown.com/v1: untracked -->
 # The Thermodynamics of Collaboration
 
@@ -105,7 +106,7 @@ Both are valid thermodynamic states. The error is pretending there's one right a
 
 ## The Sandwich Connection
 
-A banh mi has about 10 minutes of optimal consumption window.
+A bánh mì has about 10 minutes of optimal consumption window.
 
 Then:
 - The bread gets soggy
@@ -115,7 +116,7 @@ Then:
 **You have to eat it now.**
 
 Changedown deliberation is similar—it has a **half-life**:
-- Active threads are crisp and valuable (fresh banh mi)
+- Active threads are crisp and valuable (fresh bánh mì)
 - Stale threads are soggy bread (compaction needed)
 - Abandoned threads are mold (abandon file)
 
@@ -124,23 +125,23 @@ The wisdom is knowing when to:
 - **Compost** (export to VCS when stale)
 - **Abandon** (rewrite when heat death arrives)
 
-## The Banh Mi Architecture
+## The Bánh mì Architecture
 
-The banh mi revelation from our conversation:
+The bánh mì revelation from our conversation:
 
-> "Do I want to go get sandwiches? Is one question. Do I want to go get banh mi? Is another always yes kind of question."
+> "Do I want to go get sandwiches? Is one question. Do I want to go get bánh mì? Is another always yes kind of question."
 
 This is **category error as feature**.
 
-Banh mi transcends sandwichness. It creates its own ontology:
+Bánh mì transcends sandwichness. It creates its own ontology:
 
 1. **Fusion by Design:** French baguette (colonial infrastructure) + Vietnamese flavors (local adaptation) = something neither could create alone
 
 2. **Intentional Contrasts:** Pickled daikon (sharp) + rich pork (fatty) + fresh cilantro (bright) + jalapeño (heat) + mayo (creamy). Each bite has **all five dimensions**.
 
-3. **Messy but Structural:** A banh mi falls apart as you eat it. That's not failure—that's honest complexity. The paper wrapper catches the debris. The debris is data. The wrapper is VCS.
+3. **Messy but Structural:** A bánh mì falls apart as you eat it. That's not failure—that's honest complexity. The paper wrapper catches the debris. The debris is data. The wrapper is VCS.
 
-4. **Globally Portable, Locally Specific:** You can get banh mi in Paris, Saigon, or Brooklyn. Each honors the form but adapts ingredients.
+4. **Globally Portable, Locally Specific:** You can get bánh mì in Paris, Saigon, or Brooklyn. Each honors the form but adapts ingredients.
 
 **Changedown should aspire to this**—not "a better way to track changes" but "the way intent exists in files."
 
@@ -155,7 +156,7 @@ If Changedown succeeds, those become **different questions entirely**.
 Git is infrastructure. 
 Changedown is **craft**.
 
-The banh mi test: Does using Changedown feel like choosing between sandwiches, or like choosing to get banh mi?
+The bánh mì test: Does using Changedown feel like choosing between sandwiches, or like choosing to get bánh mì?
 
 If it's the latter, you've achieved escape velocity from the taxonomy.
 
