@@ -1,46 +1,20 @@
 <!-- changedown.com/v1: tracked -->
-# ChangeDown
+# Changedown
 
 Track changes in markdown — for humans and AI agents.
 
-Every edit is attributed, every decision recorded. The file carries its own deliberation history — not in a sidebar or a separate system, but in the text itself. Anyone reading it sees not just what the document says, but the reasoning that shaped it.
+Collaboration needs a **portable interchange format**: intent and review history live in the character stream, not in chat logs, PR comments, or proprietary UIs. State lives in the world, whoever holds the file can verify what was proposed, reviewed, and decided without asking a service for a second, hidden source of truth; participation, privacy, and how control can be exercised or resisted all follow from that. [*For collaboration, a file format is all you need*](/content/posts/01-for-collaboration-a-file-format-is-all-you-need#for-collaboration-a-file-format-is-all-you-need) develops the argument from interchange through agency and trust.
+
+Changedown is that layer — CriticMarkup for edits, markdown footnotes for deliberation — so the file stays plain text, diffable in git, and readable in any editor.
+
+**Humans** — A VS Code extension with the workflow you know from Word: accept, reject, comment, navigate; discussion stays next to the text.
+
+**Agents** — Six MCP tools with hash-stable coordinates. In early benchmarking (169-line document, 32 seeded errors, Claude Sonnet), Changedown completed the task in **3 tool calls** versus **25** for raw file editing, same reported quality — methodology and tables in [*How Changedown is benchmarked*](https://github.com/hackerbara/changedown/blob/main/docs/public/how-changetracks-is-benchmarked.md#the-headline-task8-deep-copy-edit).
+
+**This site** — You can try the editor with docx import/export in the browser; it is a rough demo **with bugs**. For real work, use the [VS Code extension](https://marketplace.visualstudio.com/items?itemName=changedown.changedown).
 
 ---
 
-**For humans** — a VS Code extension with the workflow you know from Word and Google Docs. Accept, reject, comment, navigate.
-The comment panel keeps discussion next to the text — no context-switching to review. 
+[VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=changedown.changedown) · [npm](https://www.npmjs.com/package/@changedown/core) · [GitHub](https://github.com/hackerbara/changedown)
 
-**For agents** — six MCP tools that read and write CriticMarkup directly. Hash-verified coordinates prevent stale edits. {~~Fewer tokens~>2.3× fewer tokens~~}[^cn-1.3] than raw file replacement.
-
-**For everyone** — plain text. Readable in any editor, diffable in git, parseable by anything. No lock-in. {==The format is already markdown==}[^cn-4].
-
-
----
-
-Get it: [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=changedown.changedown) · [npm](https://www.npmjs.com/package/@changedown/core) · [GitHub](https://github.com/hackerbara/changedown)
-
-[^cn-1.1]: @ai:claude-opus-4.6 | 2026-03-13 | sub | accepted
-    6:24 history{~~~>~~} —
-    @ai:claude-opus-4.6 2026-03-13T06:08:23Z: The file IS the deliberation record — not just a log of what changed, but why
-    approved: @human:hackerbara 2026-03-13T06:09:37Z "good catch — deliberation is the right word"
-
-[^cn-1.2]: @ai:claude-opus-4.6 | 2026-03-13 | ins | accepted
-    11:82 {++The comment panel keeps discussion next to the text — no context-switching to review. ++}
-    @ai:claude-opus-4.6 2026-03-13T06:08:23Z: The comment panel is the demo — every change on this page has its thread visible on the right
-    approved: @human:hackerbara 2026-03-13T06:09:37Z "yes — exactly what the panel on the right shows"
-
-[^cn-1.3]: @ai:claude-opus-4.6 | 2026-03-13 | sub | proposed
-    @ai:claude-opus-4.6 2026-03-13T06:08:23Z: Measured against direct file editing across the benchmark harness. Concrete beats vague.
-
-[^cn-1]: @ai:claude-opus-4.6 | 2026-03-13 | group | proposed
-    @ai:claude-opus-4.6 2026-03-13T06:08:23Z: propose_batch
-
-[^cn-3]: @ai:claude-opus-4.6 | 2026-03-13 | ins | rejected
-    16:c5 {++**For teams** — shared review workflows with approval chains, amendment history, and compaction. ++}
-    @ai:claude-opus-4.6 2026-03-13T06:08:48Z: Natural extension of the three-audience framing. Teams are where the collaboration features land.
-    rejected: @human:hackerbara 2026-03-13T06:09:37Z "not there yet. ship it when it's real."
-
-[^cn-4]: @human:hackerbara | 2026-03-13 | highlight | proposed
-    @human:hackerbara 2026-03-13T06:09:08Z: this is the line. everything else supports this.
-
-
+**Read more** — [Install](/content/03-install) · [Format spec](/content/04-spec) · [About this site](/content/06-about-site) · [Ideas & roadmap](/content/07-ideas) · [Editing example](/content/02-editing-example) · [For collaboration, a file format is all you need](/content/posts/01-for-collaboration-a-file-format-is-all-you-need#for-collaboration-a-file-format-is-all-you-need)

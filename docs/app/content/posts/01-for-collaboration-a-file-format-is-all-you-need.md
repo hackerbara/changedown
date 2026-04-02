@@ -131,6 +131,6 @@ The rest is tooling.
 
 # Read more
 
-- [**Explore the spec**](https://changedown.com/content/04-spec).
+- [**Explore the spec**](https://changedown.com/content/04-spec) and build your own integrations or start from the [NPM packages](https://www.npmjs.com/package/@changedown/core).
 - [**Install Changedown**](https://changedown.com/content/03-install) for VS Code, Claude Code, OpenCode, and any agent with MCP support.
 - [**Read Kimi 2.5 on the thermodynamics of collaboration**](https://changedown.com/content/posts/02-the-thermodynamics-of-collaboration) as told through the metaphor of bánh mì.
