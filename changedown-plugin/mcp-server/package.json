@@ -1,6 +1,6 @@
 {
   "name": "@changedown/mcp",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "description": "MCP server for ChangeDown — durable change tracking for AI agents",
   "license": "MIT",
   "repository": {
@@ -30,7 +30,8 @@
     "./transport/pane-endpoint": "./dist/transport/pane-endpoint.js",
     "./remote-backend": "./dist/remote-backend.js",
     "./pane-registration": "./dist/pane-registration.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./remote-worker": "./dist/remote-worker.js"
   },
   "bin": {
     "changedown-mcp": "./dist/index.js"

@@ -157,6 +157,27 @@ that will be removed in a future cleanup.
 | docs/public/ | Public-facing docs, glossary, how-tos |
 | docs/findings/ | Bug investigations, test results, research reports |
 
+## Core Protocol Model Notes
+
+For core algorithm review, revisit the 2026-05-06 protocol model and graphic map:
+
+- `docs/findings/2026-05-06-changedown-protocol-model.md` — durable model of the
+  implemented ChangeDown protocol: body projection, footnote operation log,
+  L2/L3 conversion, anchor resolution, text matching, amend, supersede, scrub
+  replay, stacking, compaction, and coherence caveats.
+- `docs/findings/2026-05-06-changedown-protocol-design-map.md` — compact diagram
+  and profile of the same model, including the algorithm spine, scrub replay,
+  supersede, amend reality check, stacking profile, compaction profile, and risk
+  seams.
+
+Load-bearing frame from those notes: ChangeDown is a Markdown document whose
+body is a materialized projection of an ordered operation log. The body is not
+the whole truth; footnotes are operation records; scrub replay can reconstruct
+intermediate states when local anchors fail. Keep explicit `supersedes:`
+provenance separate from replay-computed `consumedBy` evidence, and remember
+that the current `coherenceRate` is resolved-or-consumed anchor coherence rather
+than a full final-body replay equality proof.
+
 ## Worktree Setup
 
 `npm install` in git worktrees produces incomplete packages from npm's cache

@@ -64,7 +64,10 @@ export function resolveAuthor(
     return { author: explicitAuthor };
   }
 
-  const fromEnv = process.env[AUTHOR_ENV_KEY]?.trim();
+  const runtime = globalThis as typeof globalThis & {
+    process?: { env?: Record<string, string | undefined> };
+  };
+  const fromEnv = runtime.process?.env?.[AUTHOR_ENV_KEY]?.trim();
 
   if (config.author.enforcement === 'required') {
     if (fromEnv) {

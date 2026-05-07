@@ -1,5 +1,8 @@
 import type { ChangeDownConfig } from '../config/index.js';
-import { resolveProtocolMode } from './config.js';
+
+function resolveProtocolMode(mode: 'classic' | 'compact'): 'classic' | 'compact' {
+  return mode === 'compact' ? 'compact' : 'classic';
+}
 
 /**
  * Composes a config-driven edit guide for first-contact protocol teaching.

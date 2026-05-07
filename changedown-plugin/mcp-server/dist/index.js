@@ -8912,7 +8912,7 @@ function validateLineRef(ref, fileLines) {
     throw new HashlineMismatchError([{ line: ref.line, expected: ref.hash, actual: actualHash }], fileLines);
   }
 }
-var HASH_LEN, RADIX, HASH_MOD, DICT, encoder, HASHLINE_KEY, HashlineMismatchError;
+var HASH_LEN, RADIX, HASH_MOD, DICT, encoder, HASHLINE_KEY, ensureHashlineReady, HashlineMismatchError;
 var init_hashline = __esm({
   "../../packages/core/dist-esm/hashline.js"() {
     "use strict";
@@ -8923,6 +8923,7 @@ var init_hashline = __esm({
     DICT = Array.from({ length: HASH_MOD }, (_, i) => i.toString(RADIX).padStart(HASH_LEN, "0"));
     encoder = new TextEncoder();
     HASHLINE_KEY = "__changedown_xxhash__";
+    ensureHashlineReady = initHashline;
     HashlineMismatchError = class extends Error {
       constructor(mismatches, fileLines) {
         const CONTEXT = 2;
@@ -10645,6 +10646,18 @@ function revertChangesInBody(body, changes) {
   }
   return body;
 }
+function computeOriginalTextL3(text) {
+  const doc = parseForFormat(text);
+  const allChanges = doc.getChanges();
+  const { bodyLines } = splitBodyAndFootnotes(text.split("\n"));
+  let body = bodyLines.join("\n");
+  if (allChanges.length > 0) {
+    body = revertChangesInBody(body, allChanges);
+  }
+  const zones = findCodeZones(body);
+  body = stripInlineFootnoteRefs(body, zones);
+  return body + "\n";
+}
 function computeCurrentText(text, options) {
   if (isL3Format(text)) {
     return computeCurrentTextL3(text);
@@ -10656,6 +10669,26 @@ function computeCurrentText(text, options) {
     return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones2), zones2);
   }
   const edits = [...changes].sort((a, b) => b.range.start - a.range.start).map(computeCurrentReplace);
+  let result = text;
+  for (const edit of edits) {
+    result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
+  }
+  const zones = findCodeZones(result);
+  result = stripFootnoteDefinitions(result, zones);
+  result = stripInlineFootnoteRefs(result, zones);
+  return result;
+}
+function computeOriginalText(text, options) {
+  if (isL3Format(text)) {
+    return computeOriginalTextL3(text);
+  }
+  const doc = parseForFormat(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
+  const changes = doc.getChanges();
+  if (changes.length === 0) {
+    const zones2 = findCodeZones(text);
+    return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones2), zones2);
+  }
+  const edits = [...changes].sort((a, b) => b.range.start - a.range.start).map(computeReject);
   let result = text;
   for (const edit of edits) {
     result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
@@ -15552,6 +15585,9 @@ var init_file_ops2 = __esm({
     init_dist_esm();
   }
 });
+
+// src/index.ts
+import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // ../../node_modules/zod/v3/helpers/util.js
 var util;
@@ -29742,7 +29778,7 @@ init_registry();
 
 // ../../packages/cli/dist/engine/backends/file-backend.js
 import * as fs14 from "node:fs";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
+import { fileURLToPath } from "node:url";
 
 // ../../packages/cli/dist/engine/config-resolver.js
 import * as path2 from "node:path";
@@ -31805,7 +31841,8 @@ function resolveAuthor(explicitAuthor, config2, toolName) {
       return formatError3;
     return { author: explicitAuthor };
   }
-  const fromEnv = process.env[AUTHOR_ENV_KEY]?.trim();
+  const runtime = globalThis;
+  const fromEnv = runtime.process?.env?.[AUTHOR_ENV_KEY]?.trim();
   if (config2.author.enforcement === "required") {
     if (fromEnv) {
       const formatError3 = validateAuthorFormat(fromEnv);
@@ -33709,9 +33746,12 @@ import * as fs8 from "node:fs/promises";
 import * as path7 from "node:path";
 
 // ../../packages/cli/dist/engine/guide-composer.js
+function resolveProtocolMode2(mode) {
+  return mode === "compact" ? "compact" : "classic";
+}
 function composeGuide(config2, options = {}) {
   const sections = [];
-  const protocolMode = resolveProtocolMode(config2.protocol.mode);
+  const protocolMode = resolveProtocolMode2(config2.protocol.mode);
   sections.push(composeProtocolSection(protocolMode, config2));
   if (options.targetKind === "word")
     sections.push(composeWordSessionSection(protocolMode));
@@ -34735,7 +34775,7 @@ var FileBackend = class {
       throw new Error(`FileBackend: expected file:// URI, got scheme '${scheme}'`);
     }
     try {
-      return fileURLToPath2(uri);
+      return fileURLToPath(uri);
     } catch (err) {
       throw new Error(`FileBackend: cannot resolve URI to path: ${uri} \u2014 ${err instanceof Error ? err.message : String(err)}`);
     }
@@ -38047,7 +38087,7 @@ import { EventEmitter as EventEmitter2 } from "node:events";
 import { randomUUID as randomUUID2 } from "node:crypto";
 
 // src/version.ts
-var version2 = "0.4.4";
+var version2 = "0.4.6";
 
 // src/transport/pane-endpoint.ts
 var CAPABILITY_BACKEND_REGISTER = "backend-register";
@@ -38783,13 +38823,13 @@ async function applyWordReviewChanges(args, backend, uri) {
 
 // src/document-target.ts
 import * as path14 from "node:path";
-import { fileURLToPath as fileURLToPath3, pathToFileURL } from "node:url";
+import { fileURLToPath as fileURLToPath2, pathToFileURL } from "node:url";
 function normalizeDocumentTarget(input, baseDir) {
   if (input.startsWith("word://")) {
     return { uri: input };
   }
   if (input.startsWith("file://")) {
-    const filePath2 = fileURLToPath3(input);
+    const filePath2 = fileURLToPath2(input);
     return {
       uri: pathToFileURL(filePath2).href,
       filePath: filePath2
@@ -38800,6 +38840,36 @@ function normalizeDocumentTarget(input, baseDir) {
     uri: pathToFileURL(filePath).href,
     filePath
   };
+}
+
+// src/word-document-workflow.ts
+init_dist_esm();
+
+// ../../packages/cli/dist/engine/browser.js
+init_dist_esm();
+
+// ../../packages/cli/dist/engine/browser-state.js
+init_dist_esm();
+
+// ../../packages/cli/dist/engine/browser.js
+var DEFAULT_CONFIG3 = {
+  ...DEFAULT_CONFIG,
+  hooks: {
+    enforcement: "warn",
+    exclude: [],
+    intercept_tools: true,
+    intercept_bash: false,
+    patch_wrap_experimental: false
+  },
+  protocol: {
+    mode: "classic",
+    level: 2,
+    reasoning: "optional",
+    batch_reasoning: "optional"
+  }
+};
+function resolveProtocolMode3(mode) {
+  return mode === "compact" ? "compact" : "classic";
 }
 
 // src/word-propose.ts
@@ -38889,14 +38959,8 @@ async function applyPreparedWordProposeChange(backend, uri, prepared) {
   return backend.applyChange({ uri }, op);
 }
 
-// src/index.ts
+// src/word-document-workflow.ts
 var MAX_WORD_LIST_PREVIEW_LENGTH = 80;
-function paneRequestTimeoutMs() {
-  const raw = process.env.CHANGEDOWN_PANE_REQUEST_TIMEOUT_MS;
-  if (!raw) return 6e5;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 6e5;
-}
 function buildWordListPreview(change) {
   let preview = "";
   switch (change.type) {
@@ -39058,12 +39122,158 @@ async function buildWordListChangesResponse(backend, uri, args) {
     diagnostics: doc.getDiagnostics()
   };
 }
+async function handleWordReadTrackedFile(input) {
+  const { backend, uri, args, config: config2, state } = input;
+  try {
+    await ensureHashlineReady();
+    const snapshot = await backend.read({ uri });
+    const DEFAULT_LIMIT2 = 500;
+    const MAX_LIMIT2 = 2e3;
+    const requestedView = typeof args.view === "string" ? args.view : void 0;
+    const offset = typeof args.offset === "number" ? args.offset : 1;
+    const requestedLimit = typeof args.limit === "number" ? args.limit : void 0;
+    const resolvedView = requestedView !== void 0 ? resolveView(requestedView) : null;
+    if (requestedView !== void 0 && resolvedView === null) {
+      return errorResult3(
+        `Unknown view '${requestedView}'. Valid views: working, simple, decided, original, raw`
+      );
+    }
+    const defaultView = resolveView(config2.policy.default_view ?? "working") ?? "working";
+    const viewPolicy = config2.policy.view_policy ?? "suggest";
+    const canonicalView = requestedView === void 0 ? defaultView : resolvedView;
+    if (viewPolicy === "require" && canonicalView !== defaultView) {
+      return errorResult3(
+        `This project requires view "${config2.policy.default_view}" (view_policy = "require"). Requested view "${requestedView}" is not allowed.`
+      );
+    }
+    const protocolMode = resolveProtocolMode3(config2.protocol.mode);
+    const viewSourceText = canonicalView === "original" ? computeOriginalText(snapshot.text) : snapshot.text;
+    const buildableView = canonicalView === "original" ? "working" : canonicalView;
+    const doc = buildViewDocument(viewSourceText, buildableView, {
+      filePath: uri,
+      trackingStatus: "tracked",
+      protocolMode,
+      defaultView,
+      viewPolicy
+    });
+    let sessionHashes = doc.lines.map((l) => ({
+      line: l.margin.lineNumber,
+      raw: l.sessionHashes.raw,
+      committed: l.sessionHashes.committed,
+      currentView: l.sessionHashes.currentView,
+      rawLineNum: l.rawLineNumber
+    }));
+    let syntheticBlankAnchor = null;
+    if (doc.lines.length === 0 && (canonicalView === "working" || canonicalView === "simple")) {
+      const rawLines = viewSourceText.split("\n");
+      const rawLineIndex = rawLines.findIndex((line) => line.trim() === "");
+      const rawLineNum = rawLineIndex >= 0 ? rawLineIndex + 1 : 1;
+      const rawLine = rawLines[rawLineNum - 1] ?? "";
+      const hash2 = computeLineHash(rawLineNum - 1, rawLine, rawLines);
+      syntheticBlankAnchor = ` 1:${hash2}  | `;
+      sessionHashes = [{
+        line: 1,
+        raw: hash2,
+        committed: hash2,
+        currentView: hash2,
+        rawLineNum
+      }];
+    }
+    state.recordAfterRead(uri, canonicalView, sessionHashes, viewSourceText);
+    const totalLines = doc.lines.length;
+    const effectiveStart = Math.max(1, offset);
+    const limit = Math.min(requestedLimit ?? DEFAULT_LIMIT2, MAX_LIMIT2);
+    const effectiveEnd = Math.min(effectiveStart + limit - 1, totalLines);
+    let adjustedEnd = effectiveEnd;
+    while (adjustedEnd < doc.lines.length && doc.lines[adjustedEnd]?.continuesChange) {
+      adjustedEnd++;
+    }
+    const paginatedDoc = {
+      ...doc,
+      lines: doc.lines.slice(effectiveStart - 1, adjustedEnd),
+      header: {
+        ...doc.header,
+        lineRange: { start: effectiveStart, end: adjustedEnd, total: totalLines }
+      }
+    };
+    let output = formatPlainText(paginatedDoc);
+    if (syntheticBlankAnchor !== null) {
+      output = output.endsWith("---") ? `${output}
+${syntheticBlankAnchor}` : `${output}
+${syntheticBlankAnchor}`;
+    }
+    if (adjustedEnd < totalLines) {
+      output += `
+
+--- showing lines ${effectiveStart}-${adjustedEnd} of ${totalLines} | use offset/limit to paginate ---`;
+    }
+    const guide = args.include_guide === true ? `
+
+${composeGuide(config2, { targetKind: "word" })}` : "";
+    const content = [{ type: "text", text: output }];
+    if (guide) content.unshift({ type: "text", text: guide });
+    return { content };
+  } catch (err) {
+    return errorResult3(err instanceof Error ? err.message : String(err));
+  }
+}
+async function handleWordListChanges(input) {
+  const { backend, uri, args } = input;
+  try {
+    await ensureHashlineReady();
+    const response = await buildWordListChangesResponse(backend, uri, args);
+    return {
+      content: [{ type: "text", text: JSON.stringify(response) }]
+    };
+  } catch (err) {
+    return errorResult3(err instanceof Error ? err.message : String(err));
+  }
+}
+async function handleWordProposeChange(input) {
+  const { backend, uri, args, config: config2, state } = input;
+  try {
+    await ensureHashlineReady();
+    if (Object.prototype.hasOwnProperty.call(args, "word_spike_direct") || Object.prototype.hasOwnProperty.call(args, "word_author_spike") || Object.prototype.hasOwnProperty.call(args, "spike")) {
+      return errorResult3("word_spike_direct/word_author_spike/spike are diagnostic-only and are not supported by public word:// propose_change");
+    }
+    const snapshot = await backend.read({ uri });
+    const prepared = await prepareWordProposeChange({
+      args,
+      uri,
+      snapshotText: snapshot.text,
+      config: config2,
+      state
+    });
+    if (!prepared.ok) return prepared.toolResult;
+    const result = await applyPreparedWordProposeChange(backend, uri, prepared);
+    if (result.applied === false) {
+      return errorResult3(result.text ?? "Word adapter did not apply prepared proposal");
+    }
+    try {
+      const after = await backend.read({ uri });
+      await rerecordState(state, uri, after.text, config2);
+    } catch {
+      await rerecordState(state, uri, prepared.newL2, config2);
+    }
+    return prepared.toolResult;
+  } catch (err) {
+    return errorResult3(err instanceof Error ? err.message : String(err));
+  }
+}
+
+// src/index.ts
+function paneRequestTimeoutMs() {
+  const raw = process.env.CHANGEDOWN_PANE_REQUEST_TIMEOUT_MS;
+  if (!raw) return 6e5;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 6e5;
+}
 function rootUrisToPaths(roots) {
   const paths = [];
   for (const r of roots) {
     if (!r?.uri || !r.uri.startsWith("file://")) continue;
     try {
-      paths.push(fileURLToPath(r.uri));
+      paths.push(fileURLToPath3(r.uri));
     } catch {
     }
   }
@@ -39192,110 +39402,15 @@ async function startHostMode(port, httpServer) {
           if (backend instanceof FileBackend) {
             return dispatchTool((a) => handleReadTrackedFile(a, resolver, state), fileArgs);
           }
-          try {
-            const snapshot = await backend.read({ uri });
-            const DEFAULT_LIMIT2 = 500;
-            const MAX_LIMIT2 = 2e3;
-            const requestedView = typeof mutableArgs.view === "string" ? mutableArgs.view : void 0;
-            const offset = typeof mutableArgs.offset === "number" ? mutableArgs.offset : 1;
-            const requestedLimit = typeof mutableArgs.limit === "number" ? mutableArgs.limit : void 0;
-            const resolvedView = requestedView !== void 0 ? resolveView(requestedView) : null;
-            if (requestedView !== void 0 && resolvedView === null) {
-              return errorResult3(
-                `Unknown view '${requestedView}'. Valid views: working, simple, decided, original, raw`
-              );
-            }
-            const config2 = await resolver.lastConfig();
-            const defaultView = resolveView(config2.policy.default_view ?? "working") ?? "working";
-            const viewPolicy = config2.policy.view_policy ?? "suggest";
-            const canonicalView = requestedView === void 0 ? defaultView : resolvedView;
-            if (viewPolicy === "require" && canonicalView !== defaultView) {
-              return errorResult3(
-                `This project requires view "${config2.policy.default_view}" (view_policy = "require"). Requested view "${requestedView}" is not allowed.`
-              );
-            }
-            const protocolMode = resolveProtocolMode(config2.protocol.mode);
-            const doc = buildViewDocument(snapshot.text, canonicalView, {
-              filePath: uri,
-              // e.g. "word://sess-abc" — no filesystem path
-              trackingStatus: "tracked",
-              protocolMode,
-              defaultView,
-              viewPolicy
-            });
-            let sessionHashes = doc.lines.map((l) => ({
-              line: l.margin.lineNumber,
-              raw: l.sessionHashes.raw,
-              committed: l.sessionHashes.committed,
-              currentView: l.sessionHashes.currentView,
-              rawLineNum: l.rawLineNumber
-            }));
-            let syntheticBlankAnchor = null;
-            if (doc.lines.length === 0 && (canonicalView === "working" || canonicalView === "simple")) {
-              const rawLines = snapshot.text.split("\n");
-              const rawLineIndex = rawLines.findIndex((line) => line.trim() === "");
-              const rawLineNum = rawLineIndex >= 0 ? rawLineIndex + 1 : 1;
-              const rawLine = rawLines[rawLineNum - 1] ?? "";
-              const hash2 = computeLineHash(rawLineNum - 1, rawLine, rawLines);
-              syntheticBlankAnchor = ` 1:${hash2}  | `;
-              sessionHashes = [{
-                line: 1,
-                raw: hash2,
-                committed: hash2,
-                currentView: hash2,
-                rawLineNum
-              }];
-            }
-            state.recordAfterRead(uri, canonicalView, sessionHashes, snapshot.text);
-            const totalLines = doc.lines.length;
-            const effectiveStart = Math.max(1, offset);
-            const limit = Math.min(requestedLimit ?? DEFAULT_LIMIT2, MAX_LIMIT2);
-            const effectiveEnd = Math.min(effectiveStart + limit - 1, totalLines);
-            let adjustedEnd = effectiveEnd;
-            while (adjustedEnd < doc.lines.length && doc.lines[adjustedEnd]?.continuesChange) {
-              adjustedEnd++;
-            }
-            const paginatedDoc = {
-              ...doc,
-              lines: doc.lines.slice(effectiveStart - 1, adjustedEnd),
-              header: {
-                ...doc.header,
-                lineRange: { start: effectiveStart, end: adjustedEnd, total: totalLines }
-              }
-            };
-            let output = formatPlainText(paginatedDoc);
-            if (syntheticBlankAnchor !== null) {
-              output = output.endsWith("---") ? `${output}
-${syntheticBlankAnchor}` : `${output}
-${syntheticBlankAnchor}`;
-            }
-            if (adjustedEnd < totalLines) {
-              output += `
-
---- showing lines ${effectiveStart}-${adjustedEnd} of ${totalLines} | use offset/limit to paginate ---`;
-            }
-            const guide = mutableArgs.include_guide === true ? `
-
-${composeGuide(config2, { targetKind: "word" })}` : "";
-            const content = [{ type: "text", text: output }];
-            if (guide) content.unshift({ type: "text", text: guide });
-            return { content };
-          } catch (err) {
-            return errorResult3(err instanceof Error ? err.message : String(err));
-          }
+          const config2 = await resolver.lastConfig();
+          return handleWordReadTrackedFile({ backend, uri, args: mutableArgs, config: config2, state });
         }
         case "list_changes": {
           if (backend instanceof FileBackend) {
             return dispatchTool((a) => handleListChanges(a, resolver, state), fileArgs);
           }
-          try {
-            const response = await buildWordListChangesResponse(backend, uri, mutableArgs);
-            return {
-              content: [{ type: "text", text: JSON.stringify(response) }]
-            };
-          } catch (err) {
-            return errorResult3(err instanceof Error ? err.message : String(err));
-          }
+          const config2 = await resolver.lastConfig();
+          return handleWordListChanges({ backend, uri, args: mutableArgs, config: config2, state });
         }
         case "propose_change":
         case "review_changes":
@@ -39311,35 +39426,10 @@ ${composeGuide(config2, { targetKind: "word" })}` : "";
             }
           }
           if (name === "propose_change") {
-            try {
-              if (Object.prototype.hasOwnProperty.call(mutableArgs, "word_spike_direct") || Object.prototype.hasOwnProperty.call(mutableArgs, "word_author_spike") || Object.prototype.hasOwnProperty.call(mutableArgs, "spike")) {
-                return errorResult3("word_spike_direct/word_author_spike/spike are diagnostic-only and are not supported by public word:// propose_change");
-              }
-              const snapshot = await backend.read({ uri });
-              const config2 = await resolver.lastConfig();
-              const prepared = await prepareWordProposeChange({
-                args: mutableArgs,
-                uri,
-                snapshotText: snapshot.text,
-                config: config2,
-                state
-              });
-              if (!prepared.ok) return prepared.toolResult;
-              const result = await applyPreparedWordProposeChange(backend, uri, prepared);
-              if (result.applied === false) {
-                return errorResult3(result.text ?? "Word adapter did not apply prepared proposal");
-              }
-              try {
-                const after = await backend.read({ uri });
-                await rerecordState(state, uri, after.text, config2);
-              } catch {
-                await rerecordState(state, uri, prepared.newL2, config2);
-              }
-              maybeIncrementEditCount(extra?.sessionId);
-              return prepared.toolResult;
-            } catch (err) {
-              return errorResult3(err instanceof Error ? err.message : String(err));
-            }
+            const config2 = await resolver.lastConfig();
+            const result = await handleWordProposeChange({ backend, uri, args: mutableArgs, config: config2, state });
+            if (!result.isError) maybeIncrementEditCount(extra?.sessionId);
+            return result;
           }
           if (name === "review_changes") {
             try {

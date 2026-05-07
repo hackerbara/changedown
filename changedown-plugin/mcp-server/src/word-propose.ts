@@ -1,11 +1,11 @@
-import type { ChangeDownConfig, SessionState } from '@changedown/cli/engine';
+import type { ChangeDownConfig } from '@changedown/cli/engine/browser';
 import type { ChangeOp, ChangeResult, DocumentBackend } from '@changedown/core/backend';
 import {
   prepareClassicProposeChange,
   prepareCompactProposeChange,
   type PrepareClassicProposeResult,
   type PrepareCompactProposeResult,
-} from '@changedown/cli/engine';
+} from '@changedown/cli/engine/browser';
 
 export type WordProposalFamily = 'classic' | 'compact';
 
@@ -14,7 +14,7 @@ export interface PrepareWordProposeInput {
   uri: string;
   snapshotText: string;
   config: ChangeDownConfig;
-  state: SessionState;
+  state: unknown;
 }
 
 export type PreparedWordPropose =
@@ -79,7 +79,7 @@ export async function prepareWordProposeChange(input: PrepareWordProposeInput): 
       relativePath: input.uri,
       fileContent: input.snapshotText,
       config: input.config,
-      state: input.state,
+      state: input.state as never,
     });
     return prepared.ok ? { ...prepared, family: 'compact' } : { ...prepared, family: 'compact' };
   }
@@ -90,7 +90,7 @@ export async function prepareWordProposeChange(input: PrepareWordProposeInput): 
     relativePath: input.uri,
     fileContent: input.snapshotText,
     config: input.config,
-    state: input.state,
+    state: input.state as never,
     allowSettleOnDemand: false,
   });
   return prepared.ok ? { ...prepared, family: 'classic' } : { ...prepared, family: 'classic' };

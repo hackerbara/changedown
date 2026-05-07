@@ -104,3 +104,11 @@ export type { PreparedWordPropose, PrepareWordProposeInput, WordProposalFamily }
 // ── Word backend adapters ─────────────────────────────────────────
 export { prepareWordReviewChanges, applyWordReviewChanges } from './word-review.js';
 export type { PreparedWordReviewChanges, WordReviewOperation, WordReviewValidationError } from './word-review.js';
+
+// ── Remote relay MCP factory ───────────────────────────────────────
+export { createRemoteRelayServer } from './remote/remote-server-factory.js';
+export { getRemoteWordTools, REMOTE_WORD_TOOL_NAMES } from './remote/remote-tool-list.js';
+export type { RelayRequestContext, RelayRoomClient, RelayAuthContext, RelayClientInfo } from './remote/relay-context.js';
+export { withRemoteMcpClient, listRemoteToolsViaMcp, callRemoteToolViaMcp } from './remote/mcp-inmemory-client.js';
+export { openApiFromMcpTools } from './remote/openapi-from-mcp.js';
+export { handleRemoteHttpFacade } from './remote/http-facade.js';

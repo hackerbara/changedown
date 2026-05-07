@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import type { Server as HttpServer } from 'node:http';
+import { fileURLToPath } from 'node:url';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
@@ -18,14 +19,8 @@ import {
 
 import {
   initHashline,
-  computeLineHash,
   buildViewDocument,
   formatPlainText,
-  parseForFormat,
-  findFootnoteBlock,
-  parseFootnoteHeader,
-  type ChangeNode,
-  type VirtualDocument,
 } from '@changedown/core';
 import { resolveView } from '@changedown/core/host';
 import {
@@ -47,15 +42,12 @@ import {
   handleSupersedeChange,
   handleProposeBatch,
   handleResolveThread,
-  composeGuide,
   rerecordState,
   getListedToolsWithConfig,
   resolveProtocolMode,
   makeDefaultRegistry,
   FileBackend,
   errorResult,
-  TYPE_MAP,
-  offsetToLineNumber,
 } from '@changedown/cli/engine';
 import type { DocumentBackend, DocumentSnapshot, ChangeOp } from '@changedown/core/backend';
 
@@ -76,261 +68,17 @@ import { ResourceReader } from './resources/resource-reader.js';
 import { version } from './version.js';
 import { applyWordReviewChanges } from './word-review.js';
 import { normalizeDocumentTarget } from './document-target.js';
-import { applyPreparedWordProposeChange, prepareWordProposeChange } from './word-propose.js';
-
-type WordListChangeSummary = {
-  change_id: string;
-  type: string;
-  status: string;
-  author: string;
-  line: number;
-  preview: string;
-  level: 0 | 1 | 2;
-  anchored: boolean;
-  resolved: boolean;
-  consumed_by?: string;
-};
-
-type WordListChangeContext = WordListChangeSummary & {
-  markup: string;
-  original_text: string | null;
-  modified_text: string | null;
-  context_before: string[];
-  context_after: string[];
-};
-
-type WordListChangeFullDetail = WordListChangeContext & {
-  footnote: {
-    author: string;
-    date: string;
-    reasoning: string | null;
-    discussion_count: number;
-    approvals: string[];
-    rejections: string[];
-    request_changes: string[];
-  };
-  participants: string[];
-  group: {
-    parent_id: string;
-    description: string | null;
-    siblings: string[];
-  } | null;
-};
-
-const MAX_WORD_LIST_PREVIEW_LENGTH = 80;
+import {
+  handleWordListChanges,
+  handleWordProposeChange,
+  handleWordReadTrackedFile,
+} from './word-document-workflow.js';
 
 function paneRequestTimeoutMs(): number {
   const raw = process.env.CHANGEDOWN_PANE_REQUEST_TIMEOUT_MS;
   if (!raw) return 600_000;
   const parsed = Number.parseInt(raw, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 600_000;
-}
-
-function buildWordListPreview(change: ChangeNode): string {
-  let preview = '';
-  switch (change.type) {
-    case 'Substitution':
-      preview = `${change.originalText ?? ''}~>${change.modifiedText ?? ''}`;
-      break;
-    case 'Insertion':
-      preview = change.modifiedText ?? '';
-      break;
-    case 'Deletion':
-      preview = change.originalText ?? '';
-      break;
-    default:
-      preview = change.originalText ?? change.modifiedText ?? '';
-      break;
-  }
-  if (preview.length > MAX_WORD_LIST_PREVIEW_LENGTH) {
-    return preview.slice(0, MAX_WORD_LIST_PREVIEW_LENGTH - 3) + '...';
-  }
-  return preview;
-}
-
-function effectiveChangeStatus(change: ChangeNode): string {
-  return (change.metadata?.status ?? change.inlineMetadata?.status ?? change.status).toString().toLowerCase();
-}
-
-function buildWordSummaryEntry(change: ChangeNode, text: string): WordListChangeSummary {
-  return {
-    change_id: change.id,
-    type: TYPE_MAP[change.type],
-    status: effectiveChangeStatus(change),
-    author: change.metadata?.author ?? change.inlineMetadata?.author ?? '',
-    line: offsetToLineNumber(text, change.range.start),
-    preview: buildWordListPreview(change),
-    level: change.level,
-    anchored: change.anchored,
-    resolved: change.resolved ?? true,
-    ...(change.consumedBy ? { consumed_by: change.consumedBy } : {}),
-  };
-}
-
-function buildWordContextEntry(
-  change: ChangeNode,
-  text: string,
-  lines: string[],
-  summary: WordListChangeSummary,
-  contextN: number,
-): WordListChangeContext {
-  const startLine = offsetToLineNumber(text, change.range.start);
-  const endLine = offsetToLineNumber(text, change.range.end);
-  return {
-    ...summary,
-    markup: text.slice(change.range.start, change.range.end),
-    original_text: change.type === 'Insertion' ? null : (change.originalText ?? null),
-    modified_text: change.type === 'Deletion' ? null : (change.modifiedText ?? null),
-    context_before: lines.slice(Math.max(0, startLine - 1 - contextN), startLine - 1),
-    context_after: lines.slice(endLine, Math.min(lines.length, endLine + contextN)),
-  };
-}
-
-function buildWordFullDetailEntry(
-  change: ChangeNode,
-  text: string,
-  lines: string[],
-  doc: VirtualDocument,
-  summary: WordListChangeSummary,
-  contextN: number,
-): WordListChangeFullDetail {
-  const ctx = buildWordContextEntry(change, text, lines, summary, contextN);
-  const meta = change.metadata;
-  const participants = new Set<string>();
-  if (meta?.author) participants.add(meta.author);
-  meta?.discussion?.forEach((d) => participants.add(d.author));
-  meta?.approvals?.forEach((a) => participants.add(a.author));
-  meta?.rejections?.forEach((a) => participants.add(a.author));
-  meta?.requestChanges?.forEach((a) => participants.add(a.author));
-
-  let group: WordListChangeFullDetail['group'] = null;
-  const dotIndex = change.id.lastIndexOf('.');
-  if (dotIndex > 0) {
-    const parentId = change.id.slice(0, dotIndex);
-    const parentBlock = findFootnoteBlock(lines, parentId);
-    let description: string | null = null;
-    if (parentBlock) {
-      for (let i = parentBlock.headerLine + 1; i <= parentBlock.blockEnd; i++) {
-        const trimmed = lines[i]?.trim() ?? '';
-        if (trimmed.startsWith('reason:') || trimmed.startsWith('context:')) continue;
-        if (trimmed && !trimmed.startsWith('approved:') && !trimmed.startsWith('rejected:') && !trimmed.startsWith('request-changes:')) {
-          description = trimmed;
-          break;
-        }
-      }
-    }
-    const siblings = doc
-      .getChanges()
-      .filter((c) => (c.groupId === parentId || c.id.startsWith(parentId + '.')) && c.id !== parentId)
-      .map((c) => c.id);
-    group = { parent_id: parentId, description, siblings };
-  }
-
-  return {
-    ...ctx,
-    footnote: {
-      author: meta?.author ?? '',
-      date: meta?.date ?? '',
-      reasoning: meta?.discussion?.[0]?.text ?? null,
-      discussion_count: meta?.discussion?.length ?? 0,
-      approvals: (meta?.approvals ?? []).map((a) => a.author),
-      rejections: (meta?.rejections ?? []).map((a) => a.author),
-      request_changes: (meta?.requestChanges ?? []).map((a) => a.author),
-    },
-    participants: [...participants],
-    group,
-  };
-}
-
-function buildWordDetailForLevel(
-  detail: string,
-  change: ChangeNode,
-  text: string,
-  lines: string[],
-  doc: VirtualDocument,
-  summary: WordListChangeSummary,
-  contextN: number,
-): WordListChangeSummary | WordListChangeContext | WordListChangeFullDetail {
-  switch (detail) {
-    case 'context':
-      return buildWordContextEntry(change, text, lines, summary, contextN);
-    case 'full':
-      return buildWordFullDetailEntry(change, text, lines, doc, summary, contextN);
-    default:
-      return summary;
-  }
-}
-
-async function buildWordListChangesResponse(
-  backend: DocumentBackend,
-  uri: string,
-  args: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
-  const snapshot = await backend.read({ uri });
-  const text = snapshot.text;
-  const doc = parseForFormat(text);
-  const allChanges = doc.getChanges();
-  const lines = text.split('\n');
-  const statusFilter = typeof args.status === 'string' ? args.status : undefined;
-  const changeIdArg = typeof args.change_id === 'string' ? args.change_id : undefined;
-  const changeIdsArg = Array.isArray(args.change_ids) ? args.change_ids.filter((id): id is string => typeof id === 'string') : undefined;
-  const hasIds = !!(changeIdArg || (changeIdsArg && changeIdsArg.length > 0));
-  const detail = typeof args.detail === 'string' ? args.detail : (hasIds ? 'full' : 'summary');
-  const contextN = Math.max(0, typeof args.context_lines === 'number' ? args.context_lines : 3);
-  const includeNativeDiagnostics = args.debug === true || args.diagnostics === true || args.native === true;
-  const nativeChanges = includeNativeDiagnostics
-    ? await backend.listChanges({ uri }, args).catch(() => undefined)
-    : undefined;
-
-  if (hasIds) {
-    const targetIds = new Set<string>();
-    if (changeIdArg) targetIds.add(changeIdArg);
-    changeIdsArg?.forEach((id) => targetIds.add(id));
-
-    const changeMap = new Map(allChanges.map((change) => [change.id, change]));
-    const results: Array<WordListChangeSummary | WordListChangeContext | WordListChangeFullDetail | { change_id: string; error: string }> = [];
-    for (const id of targetIds) {
-      const change = changeMap.get(id);
-      if (!change) {
-        const settledBlock = findFootnoteBlock(lines, id);
-        if (settledBlock) {
-          const header = parseFootnoteHeader(settledBlock.headerContent);
-          results.push({ change_id: id, error: `Change settled (status: ${header?.status ?? 'unknown'})` });
-        } else {
-          results.push({ change_id: id, error: 'Change not found' });
-        }
-        continue;
-      }
-      const summary = buildWordSummaryEntry(change, text);
-      results.push(buildWordDetailForLevel(detail, change, text, lines, doc, summary, contextN));
-    }
-
-    return {
-      file: uri,
-      total_count: allChanges.length,
-      filtered_count: results.length,
-      changes: results,
-      ...(nativeChanges ? { native_changes: nativeChanges } : {}),
-      diagnostics: doc.getDiagnostics(),
-    };
-  }
-
-  const entries = allChanges.map((change) => {
-    const summary = buildWordSummaryEntry(change, text);
-    return buildWordDetailForLevel(detail, change, text, lines, doc, summary, contextN);
-  });
-  const filtered = statusFilter
-    ? entries.filter((entry) => 'status' in entry && entry.status === statusFilter)
-    : entries;
-
-  return {
-    file: uri,
-    total_count: entries.length,
-    filtered_count: filtered.length,
-    changes: filtered,
-    ...(nativeChanges ? { native_changes: nativeChanges } : {}),
-    diagnostics: doc.getDiagnostics(),
-  };
 }
 
 /**
@@ -542,140 +290,15 @@ async function startHostMode(port: number, httpServer: HttpServer): Promise<void
           if (backend instanceof FileBackend) {
             return dispatchTool((a) => handleReadTrackedFile(a, resolver, state), fileArgs);
           }
-          // word:// path: read from backend, then run the same buildViewDocument →
-          // pagination → formatPlainText pipeline as the file:// path so that
-          // agents get LINE:HASH coordinates they can use with propose_change.
-          try {
-            const snapshot = await backend.read({ uri });
-
-            // Parse view/offset/limit from args (same defaults as read-tracked-file.ts).
-            const DEFAULT_LIMIT = 500;
-            const MAX_LIMIT = 2000;
-            const requestedView = typeof mutableArgs.view === 'string' ? mutableArgs.view : undefined;
-            const offset = typeof mutableArgs.offset === 'number' ? mutableArgs.offset : 1;
-            const requestedLimit = typeof mutableArgs.limit === 'number' ? mutableArgs.limit : undefined;
-
-            const resolvedView = requestedView !== undefined ? resolveView(requestedView) : null;
-            if (requestedView !== undefined && resolvedView === null) {
-              return errorResult(
-                `Unknown view '${requestedView}'. Valid views: working, simple, decided, original, raw`,
-              ) as CallToolResult;
-            }
-
-            // Config for view-policy and protocol-mode. No project dir for word://,
-            // so use resolver.lastConfig() which returns config for the current session.
-            const config = await resolver.lastConfig();
-            const defaultView = resolveView(config.policy.default_view ?? 'working') ?? 'working';
-            const viewPolicy = config.policy.view_policy ?? 'suggest';
-            const canonicalView = requestedView === undefined
-              ? defaultView
-              : resolvedView!;
-
-            if (viewPolicy === 'require' && canonicalView !== defaultView) {
-              return errorResult(
-                `This project requires view "${config.policy.default_view}" (view_policy = "require"). ` +
-                `Requested view "${requestedView}" is not allowed.`,
-              ) as CallToolResult;
-            }
-
-            const protocolMode = resolveProtocolMode(config.protocol.mode);
-
-            // Build the view document (same pipeline as file:// path).
-            // Word documents are always actively tracked when the add-in is connected.
-            const doc = buildViewDocument(snapshot.text, canonicalView, {
-              filePath: uri,            // e.g. "word://sess-abc" — no filesystem path
-              trackingStatus: 'tracked',
-              protocolMode,
-              defaultView,
-              viewPolicy,
-            });
-
-            // Record session hashes so subsequent propose_change at: "LINE:HASH" works.
-            let sessionHashes = doc.lines.map((l) => ({
-              line: l.margin.lineNumber,
-              raw: l.sessionHashes.raw,
-              committed: l.sessionHashes.committed,
-              currentView: l.sessionHashes.currentView,
-              rawLineNum: l.rawLineNumber,
-            }));
-            let syntheticBlankAnchor: string | null = null;
-            if (doc.lines.length === 0 && (canonicalView === 'working' || canonicalView === 'simple')) {
-              // A new Word document may materialize as an empty ChangeDown source.
-              // Cold-start reconciliation can also record that emptiness as an
-              // accepted initial-word-body footnote, leaving no visible current
-              // lines even though the raw L2 has a patchable blank body line.
-              // Compact public editing still needs one coordinate to attach the
-              // first proposal. Treat this as a patchable empty line in the wire
-              // protocol; it is not extra document content.
-              const rawLines = snapshot.text.split('\n');
-              const rawLineIndex = rawLines.findIndex((line) => line.trim() === '');
-              const rawLineNum = rawLineIndex >= 0 ? rawLineIndex + 1 : 1;
-              const rawLine = rawLines[rawLineNum - 1] ?? '';
-              const hash = computeLineHash(rawLineNum - 1, rawLine, rawLines);
-              syntheticBlankAnchor = ` 1:${hash}  | `;
-              sessionHashes = [{
-                line: 1,
-                raw: hash,
-                committed: hash,
-                currentView: hash,
-                rawLineNum,
-              }];
-            }
-            state.recordAfterRead(uri, canonicalView, sessionHashes, snapshot.text);
-
-            // Pagination.
-            const totalLines = doc.lines.length;
-            const effectiveStart = Math.max(1, offset);
-            const limit = Math.min(requestedLimit ?? DEFAULT_LIMIT, MAX_LIMIT);
-            const effectiveEnd = Math.min(effectiveStart + limit - 1, totalLines);
-
-            // Safe pagination: don't truncate mid-CriticMarkup block.
-            let adjustedEnd = effectiveEnd;
-            while (adjustedEnd < doc.lines.length && doc.lines[adjustedEnd]?.continuesChange) {
-              adjustedEnd++;
-            }
-
-            const paginatedDoc = {
-              ...doc,
-              lines: doc.lines.slice(effectiveStart - 1, adjustedEnd),
-              header: {
-                ...doc.header,
-                lineRange: { start: effectiveStart, end: adjustedEnd, total: totalLines },
-              },
-            };
-
-            let output = formatPlainText(paginatedDoc);
-            if (syntheticBlankAnchor !== null) {
-              output = output.endsWith('---')
-                ? `${output}\n${syntheticBlankAnchor}`
-                : `${output}\n${syntheticBlankAnchor}`;
-            }
-
-            // Truncation hint.
-            if (adjustedEnd < totalLines) {
-              output += `\n\n--- showing lines ${effectiveStart}-${adjustedEnd} of ${totalLines} | use offset/limit to paginate ---`;
-            }
-
-            const guide = mutableArgs.include_guide === true ? `\n\n${composeGuide(config, { targetKind: 'word' })}` : '';
-            const content: Array<{ type: 'text'; text: string }> = [{ type: 'text', text: output }];
-            if (guide) content.unshift({ type: 'text', text: guide });
-            return { content } as CallToolResult;
-          } catch (err) {
-            return errorResult(err instanceof Error ? err.message : String(err)) as CallToolResult;
-          }
+          const config = await resolver.lastConfig();
+          return handleWordReadTrackedFile({ backend, uri, args: mutableArgs, config, state });
         }
         case 'list_changes': {
           if (backend instanceof FileBackend) {
             return dispatchTool((a) => handleListChanges(a, resolver, state), fileArgs);
           }
-          try {
-            const response = await buildWordListChangesResponse(backend, uri, mutableArgs);
-            return {
-              content: [{ type: 'text' as const, text: JSON.stringify(response) }],
-            } as CallToolResult;
-          } catch (err) {
-            return errorResult(err instanceof Error ? err.message : String(err)) as CallToolResult;
-          }
+          const config = await resolver.lastConfig();
+          return handleWordListChanges({ backend, uri, args: mutableArgs, config, state });
         }
         case 'propose_change':
         case 'review_changes':
@@ -695,48 +318,11 @@ async function startHostMode(port: number, httpServer: HttpServer): Promise<void
               return toolResult;
             }
           }
-          // word:// propose_change baseline: run the normal ChangeDown compact
-          // proposal machinery against the materialized L2 snapshot first, then
-          // send Word only the old/new L2 document pair to apply natively.
           if (name === 'propose_change') {
-            try {
-              if (Object.prototype.hasOwnProperty.call(mutableArgs, 'word_spike_direct') || Object.prototype.hasOwnProperty.call(mutableArgs, 'word_author_spike') || Object.prototype.hasOwnProperty.call(mutableArgs, 'spike')) {
-                return errorResult('word_spike_direct/word_author_spike/spike are diagnostic-only and are not supported by public word:// propose_change') as CallToolResult;
-              }
-
-
-              const snapshot = await backend.read({ uri });
-              const config = await resolver.lastConfig();
-              const prepared = await prepareWordProposeChange({
-                args: mutableArgs,
-                uri,
-                snapshotText: snapshot.text,
-                config,
-                state,
-              });
-              if (!prepared.ok) return prepared.toolResult as CallToolResult;
-
-              const result = await applyPreparedWordProposeChange(backend, uri, prepared);
-              if (result.applied === false) {
-                return errorResult(result.text ?? 'Word adapter did not apply prepared proposal') as CallToolResult;
-              }
-
-              // The prepared L2 is useful for the core response, but the native
-              // Word document is source of truth after Office.js mutation. Try to
-              // re-read and record the reconciled snapshot; fall back to the
-              // prepared L2 only if readback is unavailable.
-              try {
-                const after = await backend.read({ uri });
-                await rerecordState(state, uri, after.text, config);
-              } catch {
-                await rerecordState(state, uri, prepared.newL2, config);
-              }
-
-              maybeIncrementEditCount(extra?.sessionId);
-              return prepared.toolResult as CallToolResult;
-            } catch (err) {
-              return errorResult(err instanceof Error ? err.message : String(err)) as CallToolResult;
-            }
+            const config = await resolver.lastConfig();
+            const result = await handleWordProposeChange({ backend, uri, args: mutableArgs, config, state });
+            if (!result.isError) maybeIncrementEditCount(extra?.sessionId);
+            return result;
           }
 
           if (name === 'review_changes') {

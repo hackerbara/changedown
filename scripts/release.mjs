@@ -130,17 +130,21 @@ async function main() {
       }
     }
   }
-  // Bump the Claude Code plugin manifest too — Claude Code uses its `version`
-  // field as the cache key for `/plugin update`. Without bumping, end-user
-  // installs of the new release won't refresh their plugin cache and they'll
-  // keep running the previous build.
-  const pluginManifestPath = path.join(repoRoot, 'changedown-plugin/.claude-plugin/plugin.json');
-  if (fs.existsSync(pluginManifestPath)) {
+  // Bump agent plugin manifests too — plugin runtimes use `version` as an
+  // install/update cache key. Without bumping, end-user installs of the new
+  // release can keep running the previous build.
+  const pluginManifestPaths = [
+    ['Claude Code plugin manifest', 'changedown-plugin/.claude-plugin/plugin.json'],
+    ['Codex plugin manifest', 'changedown-plugin/.codex-plugin/plugin.json'],
+  ];
+  for (const [label, relativeManifestPath] of pluginManifestPaths) {
+    const pluginManifestPath = path.join(repoRoot, relativeManifestPath);
+    if (!fs.existsSync(pluginManifestPath)) continue;
     const manifest = JSON.parse(fs.readFileSync(pluginManifestPath, 'utf8'));
     manifest.version = version;
     fs.writeFileSync(pluginManifestPath, JSON.stringify(manifest, null, 2) + '\n');
     bumpedFiles.push(pluginManifestPath);
-    console.log(`  changedown-plugin (Claude Code plugin manifest) → ${version}`);
+    console.log(`  changedown-plugin (${label}) → ${version}`);
   }
 
   console.log('  Updating package-lock.json...');

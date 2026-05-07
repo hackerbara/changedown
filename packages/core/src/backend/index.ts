@@ -15,3 +15,11 @@ export {
   type DocumentResourceDescriptor,
 } from './types.js';
 export { BackendRegistry, type BackendEntry } from './registry.js';
+export {
+  CHANGEDOWN_DOCUMENT_BACKEND_PROTOCOL_V1,
+  backendWireOperationClass,
+  assertPaneBackendWireRequestHasNoTransportSecrets,
+  type PaneBackendWireOperation,
+  type PaneBackendWireRequest,
+  type BackendWireOperationClass,
+} from './backend-wire.js';

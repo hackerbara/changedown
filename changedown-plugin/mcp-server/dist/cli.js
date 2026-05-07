@@ -14753,7 +14753,8 @@ function resolveAuthor(explicitAuthor, config, toolName) {
       return formatError2;
     return { author: explicitAuthor };
   }
-  const fromEnv = process.env[AUTHOR_ENV_KEY]?.trim();
+  const runtime = globalThis;
+  const fromEnv = runtime.process?.env?.[AUTHOR_ENV_KEY]?.trim();
   if (config.author.enforcement === "required") {
     if (fromEnv) {
       const formatError2 = validateAuthorFormat(fromEnv);
@@ -16595,9 +16596,12 @@ import * as fs8 from "node:fs/promises";
 import * as path7 from "node:path";
 
 // ../../packages/cli/dist/engine/guide-composer.js
+function resolveProtocolMode2(mode) {
+  return mode === "compact" ? "compact" : "classic";
+}
 function composeGuide(config, options = {}) {
   const sections = [];
-  const protocolMode = resolveProtocolMode(config.protocol.mode);
+  const protocolMode = resolveProtocolMode2(config.protocol.mode);
   sections.push(composeProtocolSection(protocolMode, config));
   if (options.targetKind === "word")
     sections.push(composeWordSessionSection(protocolMode));

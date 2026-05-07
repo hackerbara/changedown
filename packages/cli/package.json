@@ -1,6 +1,6 @@
 {
   "name": "@changedown/cli",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "description": "Durable change tracking for editors and AI agents",
   "type": "module",
   "main": "dist/index.js",
@@ -8,6 +8,7 @@
     ".": "./dist/index.js",
     "./config": "./dist/config/index.js",
     "./engine": "./dist/engine/index.js",
+    "./engine/browser": "./dist/engine/browser.js",
     "./cli-parse": "./dist/cli-parse.js",
     "./cli-output": "./dist/cli-output.js",
     "./cli-helpers": "./dist/cli-helpers.js",

@@ -1,0 +1,20 @@
+{
+  "name": "@changedown/remote-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile": "npm run build:tsc -w @changedown/mcp && tsc --noEmit",
+    "dev": "npm run build -w @changedown/mcp && wrangler dev --local",
+    "deploy:staging": "npm run build -w @changedown/mcp && wrangler deploy --env staging"
+  },
+  "dependencies": {
+    "@changedown/mcp": "file:../mcp-server",
+    "@modelcontextprotocol/sdk": "^1.29.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260506.1",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.2",
+    "wrangler": "^4.88.0"
+  }
+}

@@ -8,8 +8,8 @@ export {
   findConfigFile,
   resolveProjectDir,
   isFileInScope,
-  expandTrackingAbsolutePattern,
   resolveProtocolMode,
   derivePolicyMode,
   asStringArray,
 } from '@changedown/cli/engine';
+export { expandTrackingAbsolutePattern } from '@changedown/cli/config';

@@ -1,6 +1,6 @@
 {
   "name": "@changedown/core",
-  "version": "0.4.4",
+  "version": "0.4.6",
   "description": "CriticMarkup parser and operations engine",
   "license": "MIT",
   "repository": {

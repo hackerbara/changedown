@@ -3,7 +3,7 @@ import { EventEmitter } from "node:events";
 import { randomUUID } from "node:crypto";
 
 // src/version.ts
-var version = "0.4.4";
+var version = "0.4.6";
 
 // src/transport/fixed-port-leader.ts
 import * as fs from "node:fs";
