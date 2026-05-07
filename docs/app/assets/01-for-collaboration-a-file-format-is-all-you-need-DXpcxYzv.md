@@ -23,9 +23,9 @@ Changedown writes this down in the file. An insertion: new text. A deletion: . A
 Here's what that looks like in practice:
 
 ```changedown
-The API should use GraphQL for the public interface.
+The API should use {~~REST~>GraphQL~~}[^cn-1] for the public interface.
 
-We added OAuth 2.0 with JWT tokens for authentication.
+We added {++OAuth 2.0 with JWT tokens++}[^cn-2] for authentication.
 
 [^cn-1]: @alice | 2026-03-15 | sub | proposed
 reason: Clearer terminology for the API audience

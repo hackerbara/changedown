@@ -1,0 +1,1 @@
+function e(e){return new Worker(`/app/assets/editor.worker-C-FGr7p3.js`,{type:`module`,name:e?.name})}export{e as default};
