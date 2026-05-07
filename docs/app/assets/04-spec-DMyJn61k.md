@@ -23,16 +23,16 @@ CriticMarkup defines five inline constructs:
 
 | Type         | Syntax                      | Example                                       |
 |--------------|-----------------------------|-----------------------------------------------|
-| Insertion    | `text`                | `added this`                            |
-| Deletion     | ``                | ``                          |
-| Substitution | `new`            | `GraphQL`                         |
-| Highlight    | `text`                | `important`                             |
-| Comment      | ``                | ``                        |
+| Insertion    | `{++text++}`                | `{++added this++}`                            |
+| Deletion     | `{--text--}`                | `{--removed this--}`                          |
+| Substitution | `{~~old~>new~~}`            | `{~~REST~>GraphQL~~}`                         |
+| Highlight    | `{==text==}`                | `{==important==}`                             |
+| Comment      | `{>>text<<}`                | `{>>needs citation<<}`                        |
 
 Any markdown file containing these constructs is a valid CriticMarkup document. This is Level 0 — the substrate. No attribution, no IDs, just the change:
 
 ```changedown
-The API should use GraphQL for the public interface.
+The API should use {~~REST~>GraphQL~~} for the public interface.
 ```
 
 ### Level 1 — Attribution
@@ -40,7 +40,7 @@ The API should use GraphQL for the public interface.
 Attach a comment with no whitespace after the closing delimiter, and metadata travels with the change:
 
 ```changedown
-The API should use GraphQL for the public interface.
+The API should use {~~REST~>GraphQL~~}{>>@alice | 2024-01-15 | sub | proposed<<} for the public interface.
 ```
 
 The comment carries pipe-separated fields: `@author`, date, type, status. Same `|` separator at every level, flexible field order. Use as few or as many fields as needed. Level 1 adds identity without ceremony.
@@ -50,7 +50,7 @@ The comment carries pipe-separated fields: `@author`, date, type, status. Same `
 Add a footnote reference on the change and a footnote definition block, and the change gains a full deliberation record:
 
 ```changedown
-The API should use GraphQL for the public interface.
+The API should use {~~REST~>GraphQL~~}[^cn-1] for the public interface.
 
 [^cn-1]: @alice | 2024-01-15 | sub | proposed
     @alice 2024-01-15: GraphQL reduces over-fetching for dashboard clients.
@@ -76,17 +76,17 @@ Five inline change types using CriticMarkup delimiters:
 
 | Type         | Syntax                      | Body result when accepted        |
 |--------------|-----------------------------|----------------------------------|
-| Insertion    | `text`                | text is added                    |
-| Deletion     | ``                | text is removed                  |
-| Substitution | `new`            | old is replaced with new         |
-| Highlight    | `text`                | text is unchanged (annotation)   |
-| Comment      | ``                | no body text (annotation only)   |
+| Insertion    | `{++text++}`                | text is added                    |
+| Deletion     | `{--text--}`                | text is removed                  |
+| Substitution | `{~~old~>new~~}`            | old is replaced with new         |
+| Highlight    | `{==text==}`                | text is unchanged (annotation)   |
+| Comment      | `{>>text<<}`                | no body text (annotation only)   |
 
-Highlights attach comments with no whitespace: `text`. All types support multi-line content. Substitutions use `~>` to separate old text from new.
+Highlights attach comments with no whitespace: `{==text==}{>>reason<<}`. All types support multi-line content. Substitutions use `~>` to separate old text from new.
 
-The comment closer `<<}` is required in Level 0 and Level 1 CriticMarkup. In Level 2, the `` — the annotation extends to end of line. Standalone comments in the body (``) always require the closer.
+The comment closer `<<}` is required in Level 0 and Level 1 CriticMarkup. In Level 2, the `{>>reason` annotation attached to an edit-op in a footnote does not require a closing `<<}` — the annotation extends to end of line. Standalone comments in the body (`{>>text<<}`) always require the closer.
 
-Inline CriticMarkup must not nest — `text with {--other--} inside` is malformed. CriticMarkup appearing inside footnote discussion text is literal content, not parsed as markup.
+Inline CriticMarkup must not nest — `{++text with {--other--} inside++}` is malformed. CriticMarkup appearing inside footnote discussion text is literal content, not parsed as markup.
 
 ### Range Changes (Deferred)
 
@@ -117,19 +117,20 @@ The parent footnote `cn-17` carries the `move` (or other compound) type and the 
 Example of a grouped move operation:
 
 ```changedown
+{--The intro paragraph here.--}[^cn-17.1]
 
 ...
 
-The intro paragraph here.
+{++The intro paragraph here.++}[^cn-17.2]
 
 [^cn-17]: @alice | 2024-03-01 | move | proposed
     note: Move intro from section 3 to section 1
 
 [^cn-17.1]: @alice | 2024-03-01 | del | proposed
-    3:b2 
+    3:b2 {--The intro paragraph here.--}
 
 [^cn-17.2]: @alice | 2024-03-01 | ins | proposed
-    12:f1 The intro paragraph here.
+    12:f1 {++The intro paragraph here.++}
 ```
 
 Accepting the parent resolves all still-proposed children. Rejecting a child carves out one exception.
@@ -278,7 +279,7 @@ The substitution from the opening section — `REST` → `GraphQL` — through i
 **1. Propose.** Alice creates the change. The file now contains:
 
 ```changedown
-The API should use GraphQL for the public interface.
+The API should use {~~REST~>GraphQL~~}[^cn-1] for the public interface.
 
 [^cn-1]: @alice | 2024-01-15 | sub | proposed
     @alice 2024-01-15: GraphQL reduces over-fetching for dashboard clients.
@@ -297,7 +298,7 @@ The API should use GraphQL for the public interface.
 
 ```changedown
 [^cn-1]: @alice | 2024-01-15 | sub | accepted
-    4:e2 should use GraphQL for the public
+    4:e2 should use {~~REST~>GraphQL~~} for the public
     approved: @eve 2024-01-20
     approved: @bob 2024-01-21
     @alice 2024-01-15: GraphQL reduces over-fetching for dashboard clients.
@@ -363,14 +364,14 @@ Step 2 makes the hash **view-independent**: the same line produces the same hash
 The edit-op line embeds the CriticMarkup operation within surrounding body text, creating an unambiguous anchor within the target line:
 
 ```changedown
-    4:e2 should use GraphQL for the public
+    4:e2 should use {~~REST~>GraphQL~~} for the public
 ```
 
-`should use ` is the context before. `GraphQL` is the operation. ` for the public` is the context after. The combined string appears exactly once on line 4 — any parser can recover the operation's exact column position.
+`should use ` is the context before. `{~~REST~>GraphQL~~}` is the operation. ` for the public` is the context after. The combined string appears exactly once on line 4 — any parser can recover the operation's exact column position.
 
 This is a simplified, line-scoped variant of the W3C Web Annotation Data Model's TextQuoteSelector (`{prefix, exact, suffix}` for robust anchoring in dynamic documents). ChangeDown scopes the anchor to a single line because files have VCS history as the authoritative recovery path — full-document anchoring is over-engineered for this use case.
 
-For deletions (where the deleted text is absent from the body), the edit-op embeds the deletion operation in context: `contextBeforecontextAfter`. The surrounding context locates where the deletion occurred.
+For deletions (where the deleted text is absent from the body), the edit-op embeds the deletion operation in context: `contextBefore{--text--}contextAfter`. The surrounding context locates where the deletion occurred.
 
 ### Contextual Uniqueness Guarantee
 
@@ -593,10 +594,10 @@ The API should use GraphQL for the public interface
 and gRPC for internal service communication.
 
 Authentication uses OAuth 2.0 with JWT tokens for
-all endpoints. Rate limiting is set to 100 req/min.
+all endpoints. {==Rate limiting is set to 100 req/min.==}[^cn-3]
 
 [^cn-1]: @alice | 2024-01-15 | sub | accepted
-    4:e2 should use GraphQL for the public
+    4:e2 should use {~~REST~>GraphQL~~} for the public
     approved: @eve 2024-01-20
     approved: @bob 2024-01-21
     @alice 2024-01-15: GraphQL reduces over-fetching for dashboard clients.
@@ -606,7 +607,7 @@ all endpoints. Rate limiting is set to 100 req/min.
     resolved @dave 2024-01-17
 
 [^cn-2]: @alice | 2024-01-15 | ins | accepted
-    7:91 uses OAuth 2.0 with JWT tokens for
+    7:91 uses {++OAuth 2.0 with JWT tokens for++}
     approved: @eve 2024-01-20
     @bob 2024-01-16 [question]: What about latency for gRPC?
       @alice 2024-01-17: Sub-millisecond on our test cluster.

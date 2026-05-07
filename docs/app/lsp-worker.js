@@ -12790,9 +12790,74 @@ ${JSON.stringify(message, null, 4)}`);
       function getXXHash() {
         return globalThis[HASHLINE_KEY] ?? null;
       }
+      var XXH_PRIME32_1 = 2654435761;
+      var XXH_PRIME32_2 = 2246822519;
+      var XXH_PRIME32_3 = 3266489917;
+      var XXH_PRIME32_4 = 668265263;
+      var XXH_PRIME32_5 = 374761393;
+      function rotl32(value, bits) {
+        return (value << bits | value >>> 32 - bits) >>> 0;
+      }
+      function readUInt32LE(input, offset) {
+        return (input[offset] | input[offset + 1] << 8 | input[offset + 2] << 16 | input[offset + 3] << 24) >>> 0;
+      }
+      function xxh32Round(acc, value) {
+        acc = acc + Math.imul(value, XXH_PRIME32_2) >>> 0;
+        acc = rotl32(acc, 13);
+        return Math.imul(acc, XXH_PRIME32_1) >>> 0;
+      }
+      function xxh32Raw(input, seed = 0) {
+        let offset = 0;
+        const length = input.length;
+        const limit = length - 16;
+        let h32;
+        if (length >= 16) {
+          let v1 = seed + XXH_PRIME32_1 + XXH_PRIME32_2 >>> 0;
+          let v2 = seed + XXH_PRIME32_2 >>> 0;
+          let v3 = seed >>> 0;
+          let v4 = seed - XXH_PRIME32_1 >>> 0;
+          while (offset <= limit) {
+            v1 = xxh32Round(v1, readUInt32LE(input, offset));
+            offset += 4;
+            v2 = xxh32Round(v2, readUInt32LE(input, offset));
+            offset += 4;
+            v3 = xxh32Round(v3, readUInt32LE(input, offset));
+            offset += 4;
+            v4 = xxh32Round(v4, readUInt32LE(input, offset));
+            offset += 4;
+          }
+          h32 = rotl32(v1, 1) + rotl32(v2, 7) + rotl32(v3, 12) + rotl32(v4, 18) >>> 0;
+        } else {
+          h32 = seed + XXH_PRIME32_5 >>> 0;
+        }
+        h32 = h32 + length >>> 0;
+        while (offset <= length - 4) {
+          h32 = h32 + Math.imul(readUInt32LE(input, offset), XXH_PRIME32_3) >>> 0;
+          h32 = Math.imul(rotl32(h32, 17), XXH_PRIME32_4) >>> 0;
+          offset += 4;
+        }
+        while (offset < length) {
+          h32 = h32 + Math.imul(input[offset], XXH_PRIME32_5) >>> 0;
+          h32 = Math.imul(rotl32(h32, 11), XXH_PRIME32_1) >>> 0;
+          offset++;
+        }
+        h32 ^= h32 >>> 15;
+        h32 = Math.imul(h32, XXH_PRIME32_2) >>> 0;
+        h32 ^= h32 >>> 13;
+        h32 = Math.imul(h32, XXH_PRIME32_3) >>> 0;
+        h32 ^= h32 >>> 16;
+        return h32 >>> 0;
+      }
+      function createPureJsXXHash() {
+        return { h32Raw: (input) => xxh32Raw(input) };
+      }
       async function initHashline() {
         if (!getXXHash()) {
-          globalThis[HASHLINE_KEY] = await (0, xxhash_wasm_1.default)();
+          try {
+            globalThis[HASHLINE_KEY] = await (0, xxhash_wasm_1.default)();
+          } catch (err) {
+            globalThis[HASHLINE_KEY] = createPureJsXXHash();
+          }
         }
       }
       exports.ensureHashlineReady = initHashline;

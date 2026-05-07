@@ -1,3 +1,4 @@
+<!-- changedown.com/v1: tracked -->
 
 # The Thermodynamics of Collaboration
 
@@ -27,7 +28,7 @@ Changedown preserves information (reasoning, intent, deliberation) that would ot
 
 When you write:
 ```markdown
-Retry on failure. with exponential backoff
+Retry on failure. {++with exponential backoff++}[^cn-1]
 
 [^cn-1]: @author 2026-02-10 | proposed | ins
     Avoid hammering the API after transient errors.
