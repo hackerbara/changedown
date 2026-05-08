@@ -7,7 +7,7 @@
 
   <!-- Unique add-in ID — do not reuse across add-ins -->
   <Id>a3f7c142-84b2-4e9d-b031-cd2e7f85a301</Id>
-  <Version>1.0.1.0</Version>
+  <Version>1.0.2.0</Version>
   <ProviderName>ChangeDown</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="ChangeDown for Word"/>

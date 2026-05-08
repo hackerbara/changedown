@@ -4,6 +4,8 @@ set -euo pipefail
 BASE_URL="${CHANGEDOWN_WORD_BASE_URL:-https://changedown.com/word}"
 BASE_URL="${BASE_URL%/}"
 ADDIN_ID="a3f7c142-84b2-4e9d-b031-cd2e7f85a301"
+LOCAL_DEV_ADDIN_ID="d3b6b0d7-c5e8-4a81-8d9f-9d8cf7e6d051"
+KNOWN_ADDIN_IDS=("$ADDIN_ID" "$LOCAL_DEV_ADDIN_ID")
 STATE_DIR="${CHANGEDOWN_WORD_STATE_DIR:-$HOME/.changedown/word}"
 WEF_DIR="$HOME/Library/Containers/com.microsoft.Word/Data/Documents/wef"
 MANIFEST_PATH="$STATE_DIR/manifest.remote.xml"
@@ -30,11 +32,27 @@ download() {
   mv "$tmp" "$target"
 }
 
+cleanup_existing_manifests() {
+  local ids_pattern
+  ids_pattern="$(IFS='|'; echo "${KNOWN_ADDIN_IDS[*]}")"
+
+  rm -f "$WEF_MANIFEST_PATH"
+
+  local manifest
+  for manifest in "$WEF_DIR"/*.xml; do
+    [[ -e "$manifest" ]] || continue
+    if grep -Eql "$ids_pattern" "$manifest" 2>/dev/null; then
+      printf 'Removing old ChangeDown sideload manifest: %s\n' "$manifest"
+      rm -f "$manifest"
+    fi
+  done
+}
+
 echo "Installing ChangeDown remote Word pane..."
+cleanup_existing_manifests
 download "$BASE_URL/manifest.remote.xml" "$MANIFEST_PATH"
 download "$BASE_URL/ChangeDown-Launch.docx" "$LAUNCH_PATH"
 
-rm -f "$WEF_MANIFEST_PATH"
 if ! ln -s "$MANIFEST_PATH" "$WEF_MANIFEST_PATH" 2>/dev/null; then
   cp "$MANIFEST_PATH" "$WEF_MANIFEST_PATH"
 fi
