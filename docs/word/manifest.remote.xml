@@ -7,13 +7,13 @@
 
   <!-- Unique add-in ID — do not reuse across add-ins -->
   <Id>a3f7c142-84b2-4e9d-b031-cd2e7f85a301</Id>
-  <Version>1.0.2.0</Version>
+  <Version>1.0.3.0</Version>
   <ProviderName>ChangeDown</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="ChangeDown for Word"/>
   <Description DefaultValue="Bridge ChangeDown change-tracking annotations with Word&#39;s native Track Changes."/>
-  <IconUrl DefaultValue="https://changedown.com/word/assets/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://changedown.com/word/assets/icon-64.png"/>
+  <IconUrl DefaultValue="https://changedown.com/word/assets/icon-32.png?v=capybara-1"/>
+  <HighResolutionIconUrl DefaultValue="https://changedown.com/word/assets/icon-64.png?v=capybara-1"/>
   <SupportUrl DefaultValue="https://github.com/hackerbara/changedown"/>
   <!--
     Remote-only public-room install manifest.
@@ -82,9 +82,9 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16x16" DefaultValue="https://changedown.com/word/assets/icon-16.png"/>
-        <bt:Image id="Icon.32x32" DefaultValue="https://changedown.com/word/assets/icon-32.png"/>
-        <bt:Image id="Icon.80x80" DefaultValue="https://changedown.com/word/assets/icon-80.png"/>
+        <bt:Image id="Icon.16x16" DefaultValue="https://changedown.com/word/assets/icon-16.png?v=capybara-1"/>
+        <bt:Image id="Icon.32x32" DefaultValue="https://changedown.com/word/assets/icon-32.png?v=capybara-1"/>
+        <bt:Image id="Icon.80x80" DefaultValue="https://changedown.com/word/assets/icon-80.png?v=capybara-1"/>
       </bt:Images>
       <bt:Urls>
         <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://github.com/hackerbara/changedown"/>
@@ -164,9 +164,9 @@
       </Hosts>
       <Resources>
         <bt:Images>
-          <bt:Image id="Icon.16x16" DefaultValue="https://changedown.com/word/assets/icon-16.png"/>
-          <bt:Image id="Icon.32x32" DefaultValue="https://changedown.com/word/assets/icon-32.png"/>
-          <bt:Image id="Icon.80x80" DefaultValue="https://changedown.com/word/assets/icon-80.png"/>
+          <bt:Image id="Icon.16x16" DefaultValue="https://changedown.com/word/assets/icon-16.png?v=capybara-1"/>
+          <bt:Image id="Icon.32x32" DefaultValue="https://changedown.com/word/assets/icon-32.png?v=capybara-1"/>
+          <bt:Image id="Icon.80x80" DefaultValue="https://changedown.com/word/assets/icon-80.png?v=capybara-1"/>
         </bt:Images>
         <bt:Urls>
           <bt:Url id="GetStarted.LearnMoreUrl" DefaultValue="https://github.com/hackerbara/changedown"/>

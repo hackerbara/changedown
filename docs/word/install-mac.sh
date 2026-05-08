@@ -53,7 +53,7 @@ cleanup_existing_manifests
 download "$BASE_URL/manifest.remote.xml" "$MANIFEST_PATH"
 download "$BASE_URL/ChangeDown-Launch.docx" "$LAUNCH_PATH"
 
-if ! ln -s "$MANIFEST_PATH" "$WEF_MANIFEST_PATH" 2>/dev/null; then
+if ! ln "$MANIFEST_PATH" "$WEF_MANIFEST_PATH" 2>/dev/null; then
   cp "$MANIFEST_PATH" "$WEF_MANIFEST_PATH"
 fi
 
