@@ -3,6 +3,12 @@ $ErrorActionPreference = "Stop"
 $BaseUrl = $env:CHANGEDOWN_WORD_BASE_URL
 if ([string]::IsNullOrWhiteSpace($BaseUrl)) { $BaseUrl = "https://changedown.com/word" }
 $BaseUrl = $BaseUrl.TrimEnd("/")
+try {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+} catch {
+  # PowerShell 7+ and newer Windows builds do not need this; older Windows PowerShell
+  # hosts may need it to negotiate HTTPS with the hosted installer assets.
+}
 
 $AddinId = "a3f7c142-84b2-4e9d-b031-cd2e7f85a301"
 $LocalDevAddinId = "d3b6b0d7-c5e8-4a81-8d9f-9d8cf7e6d051"
@@ -16,7 +22,8 @@ if ([string]::IsNullOrWhiteSpace($LocalAppData)) {
 }
 $StateDir = Join-Path $LocalAppData "ChangeDown\Word"
 $ManifestPath = Join-Path $StateDir "manifest.remote.xml"
-$LaunchPath = Join-Path $StateDir "ChangeDown-Launch.docx"
+$RunId = [Guid]::NewGuid().ToString("N").Substring(0, 8)
+$LaunchPath = Join-Path $StateDir "ChangeDown-Launch-$RunId.docx"
 $RegistryPath = "HKCU:\SOFTWARE\Microsoft\Office\16.0\Wef\Developer"
 
 New-Item -ItemType Directory -Path $StateDir -Force | Out-Null
@@ -52,27 +59,43 @@ function Read-ZipEntryText($ZipPath, $EntryName) {
   }
 }
 
+function Get-XmlText($Xml, $XPath, $Description) {
+  $Element = $Xml.SelectSingleNode($XPath)
+  if ($null -eq $Element -or [string]::IsNullOrWhiteSpace($Element.InnerText)) {
+    throw "Downloaded manifest is missing $Description."
+  }
+  return $Element.InnerText
+}
+
+function Get-XmlAttributeText($Xml, $XPath, $AttributeName, $Description) {
+  $Element = $Xml.SelectSingleNode($XPath)
+  if ($null -eq $Element -or $null -eq $Element.Attributes[$AttributeName] -or [string]::IsNullOrWhiteSpace($Element.Attributes[$AttributeName].Value)) {
+    throw "Downloaded manifest is missing $Description."
+  }
+  return $Element.Attributes[$AttributeName].Value
+}
+
 function Test-DownloadedAssets {
   [xml]$Manifest = Get-Content -Raw -Path $ManifestPath
-  $ManifestId = $Manifest.OfficeApp.Id
-  $ManifestVersion = $Manifest.OfficeApp.Version
-  $SourceLocation = $Manifest.OfficeApp.DefaultSettings.SourceLocation.DefaultValue
+  $ManifestId = Get-XmlText $Manifest "/*[local-name()='OfficeApp']/*[local-name()='Id']" "Id"
+  $ManifestVersion = Get-XmlText $Manifest "/*[local-name()='OfficeApp']/*[local-name()='Version']" "Version"
+  $SourceLocation = Get-XmlAttributeText $Manifest "/*[local-name()='OfficeApp']/*[local-name()='DefaultSettings']/*[local-name()='SourceLocation']" "DefaultValue" "DefaultSettings SourceLocation"
 
   if ($ManifestId -ne $AddinId) {
     throw "Downloaded manifest id mismatch: expected $AddinId, got $ManifestId"
   }
-  if ([string]::IsNullOrWhiteSpace($ManifestVersion)) {
-    throw "Downloaded manifest is missing Version."
-  }
-  if ($SourceLocation -notlike "https://changedown.com/word/taskpane.html*") {
+  if ($SourceLocation -notlike "$BaseUrl/taskpane.html*") {
     throw "Downloaded manifest has unexpected SourceLocation: $SourceLocation"
+  }
+  if ($SourceLocation -notmatch '(\?|&)changedownMode=remote(&|$)') {
+    throw "Downloaded manifest is not in remote pane mode: $SourceLocation"
   }
 
   $WebExtensionXml = Read-ZipEntryText $LaunchPath "word/webextensions/webextension.xml"
-  if ($WebExtensionXml -notmatch [regex]::Escape("id=`"$AddinId`"")) {
+  if (-not $WebExtensionXml.Contains("id=`"$AddinId`"")) {
     throw "Launcher document does not reference ChangeDown add-in id $AddinId."
   }
-  if ($WebExtensionXml -notmatch [regex]::Escape("version=`"$ManifestVersion`"")) {
+  if (-not $WebExtensionXml.Contains("version=`"$ManifestVersion`"")) {
     throw "Launcher document version does not match manifest version $ManifestVersion."
   }
 }
@@ -94,11 +117,19 @@ function Remove-ExistingChangeDownSideloads {
   Remove-StaleRegistryValue $ManifestPath
 }
 
+function Remove-OldLaunchers {
+  $Cutoff = (Get-Date).AddDays(-7)
+  Get-ChildItem -Path $StateDir -Filter "ChangeDown-Launch-*.docx" -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -ne $LaunchPath -and $_.LastWriteTime -lt $Cutoff } |
+    Remove-Item -Force -ErrorAction SilentlyContinue
+}
+
 Write-Host "Installing ChangeDown remote Word pane..."
-Remove-ExistingChangeDownSideloads
 Save-Download "$BaseUrl/manifest.remote.xml" $ManifestPath
 Save-Download "$BaseUrl/ChangeDown-Launch.docx" $LaunchPath
 Test-DownloadedAssets
+Remove-ExistingChangeDownSideloads
+Remove-OldLaunchers
 
 New-Item -Path $RegistryPath -Force | Out-Null
 New-ItemProperty -Path $RegistryPath -Name $AddinId -Value $ManifestPath -PropertyType String -Force | Out-Null
