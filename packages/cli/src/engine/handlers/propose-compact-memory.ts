@@ -105,12 +105,98 @@ function replaceUnique(haystack: string, needle: string, replacement: string): s
   return haystack.slice(0, first) + replacement + haystack.slice(first + needle.length);
 }
 
+function isBlockInsertion(text: string): boolean {
+  const firstLine = text.trimStart().split(/\r?\n/, 1)[0] ?? '';
+  return /^(?:\|.*\||#{1,6}\s|[-*+]\s|\d+\.\s|```|~~~|>)/.test(firstLine);
+}
+
+function separatorBeforeInsertedPayload(previous: string, inserted: string): string {
+  if (previous === '' || previous.endsWith('\n')) return '';
+  return isBlockInsertion(inserted) ? '\n\n' : '\n';
+}
+
+function revisedInsertionPayloadAfterLine(input: {
+  fileContent: string;
+  containing: ChangeNode;
+  resolvedEndOffset: number;
+  insertedText: string;
+}): string | undefined {
+  const payload = input.containing.modifiedText ?? '';
+  const contentStart = input.containing.contentRange.start;
+  const contentEnd = input.containing.contentRange.end;
+  const payloadOffset = Math.min(Math.max(input.resolvedEndOffset, contentStart), contentEnd) - contentStart;
+  if (payloadOffset < 0 || payloadOffset > payload.length) return undefined;
+
+  const before = payload.slice(0, payloadOffset);
+  const after = payload.slice(payloadOffset);
+  const separator = separatorBeforeInsertedPayload(before, input.insertedText);
+  return `${before}${separator}${input.insertedText}${after}`;
+}
+
 async function trySupersedeContainingInsertion(input: {
   fileContent: string;
   op: NormalizedCompactOp;
   changeId: string;
   author: string;
+  state?: SessionState;
+  filePath?: string;
+  config?: ChangeDownConfig;
 }): Promise<ApplyResult | undefined> {
+  if (input.op.type === 'ins') {
+    if (!input.state || !input.filePath || !input.config) return undefined;
+
+    const fileLines = input.fileContent.split('\n');
+    let resolved;
+    try {
+      resolved = resolveCoordinates(
+        input.op,
+        input.fileContent,
+        fileLines,
+        input.state,
+        input.filePath,
+        input.config,
+      );
+    } catch {
+      return undefined;
+    }
+
+    const doc = parseForFormat(input.fileContent, { skipCodeBlocks: false });
+    const containing = doc.getChanges().find((change) => {
+      if (change.type !== ChangeType.Insertion) return false;
+      if (effectiveStatus(change) !== ChangeStatus.Proposed && effectiveStatus(change) !== 'proposed') return false;
+      if (!authorMatches(change.metadata?.author ?? change.inlineMetadata?.author, input.author)) return false;
+      return change.range.start <= resolved.endOffset && change.range.end >= resolved.startOffset;
+    });
+    if (!containing) return undefined;
+
+    const revised = revisedInsertionPayloadAfterLine({
+      fileContent: input.fileContent,
+      containing,
+      resolvedEndOffset: resolved.endOffset,
+      insertedText: input.op.newText,
+    });
+    if (revised === undefined) return undefined;
+
+    const supersede = await computeSupersedeResult(input.fileContent, containing.id, {
+      newText: revised,
+      reason: input.op.reasoning ?? `Append to ${containing.id} instead of nesting inside it`,
+      author: input.author,
+    });
+    if (supersede.isError) return undefined;
+
+    return {
+      modifiedText: supersede.text,
+      changeType: 'ins',
+      supersededIds: [containing.id],
+      affectedStartLine: resolved.rawStartLine,
+      affectedEndLine: resolved.rawEndLine,
+      relocations: resolved.relocations,
+      remaps: resolved.remaps,
+      viewResolved: resolved.viewResolved,
+      settled: false,
+    };
+  }
+
   if (input.op.type !== 'sub' && input.op.type !== 'del') return undefined;
 
   const doc = parseForFormat(input.fileContent, { skipCodeBlocks: false });
@@ -296,31 +382,44 @@ export async function prepareCompactProposeChange(
 
   const changeId = state.getNextId(filePath, fileContent);
   let applyResult: ApplyResult;
-  try {
-    applyResult = resolveAndApply(
-      compactOp,
-      fileContent,
-      fileContent.split('\n'),
-      state,
-      filePath,
-      config,
-      changeId,
-      author,
-    );
-  } catch (err) {
-    const supersedeResult = await trySupersedeContainingInsertion({
-      fileContent,
-      op: compactOp,
-      changeId,
-      author,
-    });
-    if (supersedeResult) {
-      applyResult = supersedeResult;
-    } else {
-    return fail(err instanceof Error ? err.message : String(err), 'HASHLINE_REFERENCE_UNRESOLVED', {
-      file: relativePath,
-      quick_fix: { action: 're_read', file: filePath },
-    });
+  const proactiveSupersede = await trySupersedeContainingInsertion({
+    fileContent,
+    op: compactOp,
+    changeId,
+    author,
+    state,
+    filePath,
+    config,
+  });
+  if (proactiveSupersede) {
+    applyResult = proactiveSupersede;
+  } else {
+    try {
+      applyResult = resolveAndApply(
+        compactOp,
+        fileContent,
+        fileContent.split('\n'),
+        state,
+        filePath,
+        config,
+        changeId,
+        author,
+      );
+    } catch (err) {
+      const supersedeResult = await trySupersedeContainingInsertion({
+        fileContent,
+        op: compactOp,
+        changeId,
+        author,
+      });
+      if (supersedeResult) {
+        applyResult = supersedeResult;
+      } else {
+        return fail(err instanceof Error ? err.message : String(err), 'HASHLINE_REFERENCE_UNRESOLVED', {
+          file: relativePath,
+          quick_fix: { action: 're_read', file: filePath },
+        });
+      }
     }
   }
 

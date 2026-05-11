@@ -21,13 +21,18 @@
   ],
   "type": "module",
   "main": "dist/index.js",
+  "engines": {
+    "node": ">=22"
+  },
   "exports": {
     ".": "./dist/index.js",
     "./internals": "./dist/internals.js",
     "./transport/fixed-port-leader": "./dist/transport/fixed-port-leader.js",
+    "./transport/signals": "./dist/transport/signals.js",
     "./transport/streamable-http": "./dist/transport/streamable-http.js",
     "./transport/client-proxy": "./dist/transport/client-proxy.js",
     "./transport/pane-endpoint": "./dist/transport/pane-endpoint.js",
+    "./lab-diagnostics": "./dist/lab-diagnostics.js",
     "./remote-backend": "./dist/remote-backend.js",
     "./pane-registration": "./dist/pane-registration.js",
     "./package.json": "./package.json",

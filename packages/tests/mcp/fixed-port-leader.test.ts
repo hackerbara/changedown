@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import * as http from 'node:http';
 import { AddressInfo } from 'node:net';
 import { bindOrForward, HttpsRequiredError, PortConflictError } from '@changedown/mcp/transport/fixed-port-leader';
+import { installSignalHandlers } from '@changedown/mcp/transport/signals';
 
 // Helper: spin up a fake "other changedown-mcp" that owns a port
 function fakeChangedownHost(port: number): Promise<http.Server> {
@@ -209,37 +210,41 @@ describe('bindOrForward', () => {
     }
   }, 5000);
 
-  it('host: registers stdin-close handlers that close the server and call process.exit', async () => {
-    // Bind as host; this attaches the stdin handlers.
-    // Do NOT push to `servers` — we manage the server lifecycle manually here
-    // so afterEach doesn't double-close it (which would re-fire the process.exit callback).
-    const result = await bindOrForward(TEST_PORT, { useHttps: false, requireHttps: false });
-    expect(result.mode).toBe('host');
-    if (result.mode !== 'host') return;
+  it('installSignalHandlers: stdin-end triggers stack.disposeAsync() and process.exit(0)', async () => {
+    // stdin / signal handling was extracted from bindOrForward into signals.ts
+    // (commit 742f917e6). This test covers installSignalHandlers directly.
 
-    // Capture stdin listeners added by bindOrForward so we can remove them cleanly.
+    // Save existing stdin listeners so we can restore them after the test.
     const stdinEndListeners = process.stdin.listeners('end').slice();
     const stdinErrorListeners = process.stdin.listeners('error').slice();
+    process.stdin.removeAllListeners('end');
+    process.stdin.removeAllListeners('error');
 
-    // Mock process.exit BEFORE emitting 'end' so the close-callback doesn't
-    // actually exit — and keep the mock alive until the server finishes closing.
+    let disposed = false;
+    const stack = new AsyncDisposableStack();
+    stack.defer(() => { disposed = true; });
+
+    // Mock process.exit before installing handlers so the call is intercepted.
     const exitCalls: number[] = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: number) => {
       exitCalls.push(code ?? 0);
     }) as any);
 
-    // Emit 'end' on stdin to simulate parent (Claude Code) pipe closure.
-    // The handler calls server.close(cb) where cb calls process.exit(0).
-    // Wait for the server to finish closing so the callback has a chance to fire.
-    const serverClosed = new Promise<void>(resolve => result.server.once('close', resolve));
-    process.stdin.emit('end');
-    await serverClosed;
+    installSignalHandlers(stack);
 
-    // process.exit(0) should have been called from inside server.close callback
+    // Emit 'end' on stdin to simulate parent (Claude Code) pipe closure.
+    // installSignalHandlers registers an 'end' listener that calls stack.disposeAsync()
+    // which then calls process.exit(0).
+    process.stdin.emit('end');
+
+    // disposeAsync is async — wait a tick for it to resolve and call process.exit.
+    await new Promise<void>(resolve => setImmediate(resolve));
+
+    expect(disposed).toBe(true);
     expect(exitCalls).toContain(0);
 
-    // Clean up stdin listeners added by bindOrForward
+    // Restore original stdin listeners.
     process.stdin.removeAllListeners('end');
     process.stdin.removeAllListeners('error');
     for (const l of stdinEndListeners) process.stdin.on('end', l as (...args: unknown[]) => void);

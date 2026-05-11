@@ -329,6 +329,15 @@ export type { ParsedDataUriMediaPart } from "./media.js";
 export { decodeOoxmlPackage, encodeOoxmlPackage } from "./package.js";
 export type { OoxmlPackageInput } from "./package.js";
 export { streamOoxmlPartEvents } from "./events.js";
+export {
+  collectOoxmlRevisionWitnesses,
+  type CapabilityAvailability,
+  type OoxmlRevisionContainerContext,
+  type OoxmlRevisionContainerKind,
+  type OoxmlRevisionSourceCapability,
+  type OoxmlRevisionWitness,
+  type OoxmlRevisionWitnessKind,
+} from "./revision-witness.js";
 export { projectOoxmlRevisionsToCurrentBody } from "./revisions.js";
 export type {
   ChangeDownRecord,

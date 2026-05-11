@@ -4,11 +4,13 @@ import * as https from "node:https";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-var DEV_CERT_DIR = path.join(os.homedir(), ".office-addin-dev-certs");
+function getDevCertDir() {
+  return process.env.CHANGEDOWN_DEV_CERT_DIR ?? path.join(os.homedir(), ".office-addin-dev-certs");
+}
 var DEV_CERT_REPAIR_COMMAND = "npx office-addin-dev-certs install";
 var SERVICE_NAME = "changedown-mcp";
 function loadDevCertOptions() {
-  const dir = DEV_CERT_DIR;
+  const dir = getDevCertDir();
   const certPath = path.join(dir, "localhost.crt");
   const keyPath = path.join(dir, "localhost.key");
   const caPath = path.join(dir, "ca.crt");
@@ -40,7 +42,7 @@ var PortConflictError = class extends Error {
 var HttpsRequiredError = class extends Error {
   constructor() {
     super(
-      `HTTPS is required for hosted Word pane mode, but this server is configured to use HTTP or Office add-in dev certificates were not found. Expected localhost.crt, localhost.key, and ca.crt under ${DEV_CERT_DIR}. Run \`${DEV_CERT_REPAIR_COMMAND}\`, trust the generated certificates if prompted, then start changedown-mcp again.`
+      `HTTPS is required for hosted Word pane mode, but this server is configured to use HTTP or Office add-in dev certificates were not found. Expected localhost.crt, localhost.key, and ca.crt under ${getDevCertDir()}. Run \`${DEV_CERT_REPAIR_COMMAND}\`, trust the generated certificates if prompted, then start changedown-mcp again.`
     );
     this.name = "HttpsRequiredError";
   }
@@ -56,7 +58,14 @@ async function probeHealthBothSchemes(port, preferHttps) {
   }
   return void 0;
 }
-var devCerts = loadDevCertOptions();
+var devCertsCache = "unloaded";
+function getDevCerts() {
+  if (devCertsCache === "unloaded") devCertsCache = loadDevCertOptions();
+  return devCertsCache;
+}
+function isFakeHealthEnabled() {
+  return process.env.CHANGEDOWN_MCP_TEST_FAKE_HEALTH === "1";
+}
 function envRequiresHttps() {
   const requireHttps = process.env.CHANGEDOWN_MCP_REQUIRE_HTTPS?.toLowerCase();
   return requireHttps === "1" || requireHttps === "true";
@@ -72,7 +81,7 @@ function resolveUseHttps(options) {
   return options?.useHttps ?? false;
 }
 function assertCanBindHttps(bindWithHttps) {
-  if (bindWithHttps && !devCerts) {
+  if (bindWithHttps && !getDevCerts()) {
     throw new HttpsRequiredError();
   }
 }
@@ -116,9 +125,28 @@ async function probeHealth(port, probeWithHttps = false) {
     });
   });
 }
+async function retryOnEAddrInUse(bind, opts = {}) {
+  const { initialDelayMs = 50, maxDelayMs = 800, totalBudgetMs = 2500 } = opts;
+  const start = Date.now();
+  let delay = initialDelayMs;
+  for (; ; ) {
+    try {
+      return await bind();
+    } catch (err) {
+      const code = err.code;
+      const elapsed = Date.now() - start;
+      if (code !== "EADDRINUSE" || elapsed + delay >= totalBudgetMs) {
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, delay));
+      delay = Math.min(delay * 2, maxDelayMs);
+    }
+  }
+}
 function tryBind(port, bindWithHttps = false) {
   return new Promise((resolve, reject) => {
-    const server = bindWithHttps ? https.createServer({ cert: devCerts.cert, key: devCerts.key }) : http.createServer();
+    const certs = getDevCerts();
+    const server = bindWithHttps ? https.createServer({ cert: certs.cert, key: certs.key }) : http.createServer();
     server.on("connection", (sock) => {
       console.error(`[pane-endpoint] TCP connect from ${sock.remoteAddress}:${sock.remotePort}`);
     });
@@ -133,31 +161,39 @@ function tryBind(port, bindWithHttps = false) {
     server.once("error", reject);
   });
 }
+var DEFAULT_HEARTBEAT = { intervalMs: 2e3, failThreshold: 2 };
 function makeHeartbeat(hostUrl, defaults, bindOptions) {
+  const url = new URL(hostUrl);
+  const hostPort = parseInt(url.port, 10);
+  const useHttps = url.protocol === "https:";
   return (override) => new Promise((resolve) => {
     const opts = {
       intervalMs: override?.intervalMs ?? defaults.intervalMs,
       failThreshold: override?.failThreshold ?? defaults.failThreshold
     };
-    const hostPort = parseInt(new URL(hostUrl).port, 10);
     let failures = 0;
     let inFlight = false;
     const timer = setInterval(async () => {
       if (inFlight) return;
       inFlight = true;
       try {
-        await probeHealth(hostPort, new URL(hostUrl).protocol === "https:");
+        if (isFakeHealthEnabled()) throw new Error("test-fake-health-fail");
+        await probeHealth(hostPort, useHttps);
         failures = 0;
       } catch {
         failures++;
         if (failures >= opts.failThreshold) {
           clearInterval(timer);
           try {
-            const promoted = await bindOrForward(hostPort, bindOptions);
+            const promoted = await bindOrForwardImpl(hostPort, bindOptions);
             resolve(promoted);
-          } catch {
-            const raced = await bindOrForward(hostPort, bindOptions);
-            resolve(raced);
+          } catch (first) {
+            try {
+              const raced = await bindOrForwardImpl(hostPort, bindOptions);
+              resolve(raced);
+            } catch (second) {
+              console.error("[changedown] promotion failed twice:", first, second);
+            }
           }
         }
       } finally {
@@ -166,13 +202,19 @@ function makeHeartbeat(hostUrl, defaults, bindOptions) {
     }, opts.intervalMs);
   });
 }
-async function bindOrForward(port, options = {}) {
+async function bindOrForwardCore(port, options = {}) {
   const requireHttps = shouldRequireHttps(options);
   if (requireHttps && options.useHttps === false) {
     throw new HttpsRequiredError();
   }
   const bindWithHttps = requireHttps ? true : resolveUseHttps(options);
-  if (requireHttps && !devCerts) {
+  if (isFakeHealthEnabled()) {
+    const expectedScheme = requireHttps || bindWithHttps ? "https" : "http";
+    const hostUrl = `${expectedScheme}://127.0.0.1:${port}`;
+    const startHeartbeat = makeHeartbeat(hostUrl, DEFAULT_HEARTBEAT, options);
+    return { mode: "client", hostUrl, startHeartbeat };
+  }
+  if (requireHttps && !getDevCerts()) {
     const probed = await probeHealthBothSchemes(
       port,
       /* preferHttps */
@@ -188,21 +230,12 @@ async function bindOrForward(port, options = {}) {
       throw new PortConflictError(port, SERVICE_NAME, probed.health.pid, probed.scheme, "https");
     }
     const hostUrl = `https://127.0.0.1:${port}`;
-    const startHeartbeat = makeHeartbeat(hostUrl, {
-      intervalMs: 2e3,
-      failThreshold: 2
-    }, options);
+    const startHeartbeat = makeHeartbeat(hostUrl, DEFAULT_HEARTBEAT, options);
     return { mode: "client", hostUrl, startHeartbeat };
   }
   try {
     assertCanBindHttps(bindWithHttps);
-    const server = await tryBind(port, bindWithHttps);
-    process.stdin.on("end", () => {
-      server.close(() => process.exit(0));
-      setTimeout(() => process.exit(0), 1e3).unref();
-    });
-    process.stdin.on("error", () => process.exit(0));
-    process.stdin.resume();
+    const server = await retryOnEAddrInUse(() => tryBind(port, bindWithHttps));
     return { mode: "host", server };
   } catch (err) {
     const code = err.code;
@@ -218,22 +251,32 @@ async function bindOrForward(port, options = {}) {
     if (probed.scheme !== expectedScheme) {
       throw new PortConflictError(port, SERVICE_NAME, probed.health.pid, probed.scheme, expectedScheme);
     }
-    const scheme = expectedScheme;
-    const hostUrl = `${scheme}://127.0.0.1:${port}`;
-    const HEARTBEAT_INTERVAL_MS = 2e3;
-    const HEARTBEAT_MISS_THRESHOLD = 2;
-    const startHeartbeat = makeHeartbeat(hostUrl, {
-      intervalMs: HEARTBEAT_INTERVAL_MS,
-      failThreshold: HEARTBEAT_MISS_THRESHOLD
-    }, options);
+    const hostUrl = `${expectedScheme}://127.0.0.1:${port}`;
+    const startHeartbeat = makeHeartbeat(hostUrl, DEFAULT_HEARTBEAT, options);
     return { mode: "client", hostUrl, startHeartbeat };
   }
 }
+var bindOverrideForTests = null;
+var __testHooks__ = {
+  overrideBindForTests(fn) {
+    bindOverrideForTests = fn;
+  },
+  resetBindOverride() {
+    bindOverrideForTests = null;
+  }
+};
+async function bindOrForwardImpl(port, options = {}) {
+  if (bindOverrideForTests) return bindOverrideForTests(port, options);
+  return bindOrForwardCore(port, options);
+}
+var bindOrForward = bindOrForwardCore;
 export {
   HttpsRequiredError,
   PortConflictError,
   SCHEME,
   SERVICE_NAME,
-  bindOrForward
+  __testHooks__,
+  bindOrForward,
+  retryOnEAddrInUse
 };
 //# sourceMappingURL=fixed-port-leader.js.map

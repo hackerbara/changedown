@@ -1,0 +1,9 @@
+---
+import { getEntry } from 'astro:content';
+import EditorialLayout from '@/layouts/EditorialLayout.astro';
+const entry = await getEntry('pages', 'privacy');
+const { Content } = await entry.render();
+---
+<EditorialLayout title={entry.data.title} description={entry.data.description} updatedAt={entry.data.updatedAt}>
+  <Content />
+</EditorialLayout>

@@ -68,6 +68,7 @@ interface ProjectionBlock {
   readonly kind: "paragraph" | "table";
   readonly start: number;
   readonly end: number;
+  readonly plainText: string;
   readonly markdownText: string;
   readonly xmlStart: number;
   readonly region?: OoxmlRegionProjection;
@@ -80,11 +81,19 @@ export function normalizeSourceForWordTransition(source: string): string {
 
 
 export function normalizeWordMarkdownForSourceEquivalence(markdown: string): string {
-  // Narrow Word serializer drift: plain prose exclamation marks may round-trip
-  // from Word escaped as `\!`. Do not broadly unescape Markdown punctuation;
-  // escapes around emphasis, links, code, and hard-break whitespace are source
+  // Narrow Word Markdown-projection drift: the OOXML projection canonicalizes
+  // literal prose punctuation so it cannot be re-read as Markdown syntax. That
+  // canonical escaping is correct for export, but source-transition validation
+  // must compare the semantic Markdown text rather than reject a compare
+  // package solely because Word projected `!` as `\!` or an intra-word `_` as
+  // `\_`.
+  //
+  // Do not broadly unescape Markdown punctuation: escapes around image syntax,
+  // emphasis delimiters, links, code, and hard-break whitespace are source
   // meaningful and must still trip stale-source validation.
-  return markdown.replace(/\\!/gu, "!");
+  return markdown
+    .replace(/\\!(?!\[)/gu, "!")
+    .replace(/(?<=\p{L}|\p{N})\\_(?=\p{L}|\p{N})/gu, "_");
 }
 
 export function wordWireSourcesEquivalent(a: string, b: string): boolean {
@@ -94,6 +103,74 @@ export function wordWireSourcesEquivalent(a: string, b: string): boolean {
       source.endsWith("\n") ? source.slice(0, -1) : source
     );
   return normalize(a) === normalize(b);
+}
+
+function comparableWordMarkdownCharAt(
+  source: string,
+  index: number
+): { char: string; next: number } {
+  const current = source[index] ?? "";
+  const next = source[index + 1] ?? "";
+  if (
+    current === "\\" &&
+    (next === "!" ||
+      (next === "_" &&
+        /[\p{L}\p{N}]/u.test(source[index - 1] ?? "") &&
+        /[\p{L}\p{N}]/u.test(source[index + 2] ?? "")))
+  ) {
+    return { char: next, next: index + 2 };
+  }
+  return { char: current, next: index + 1 };
+}
+
+function equivalentWordMarkdownOffset(
+  source: string,
+  target: string,
+  sourceOffset: number
+): number {
+  if (source === target) return sourceOffset;
+  let sourceIndex = 0;
+  let targetIndex = 0;
+  while (
+    sourceIndex < sourceOffset &&
+    sourceIndex < source.length &&
+    targetIndex < target.length
+  ) {
+    const sourceChar = comparableWordMarkdownCharAt(source, sourceIndex);
+    const targetChar = comparableWordMarkdownCharAt(target, targetIndex);
+    if (sourceChar.char !== targetChar.char) {
+      return sourceOffset;
+    }
+    sourceIndex = sourceChar.next;
+    targetIndex = targetChar.next;
+  }
+  return targetIndex + Math.max(0, sourceOffset - sourceIndex);
+}
+
+function remapTopologyToPriorProjectionSource(
+  topology: SourceTransitionTopology,
+  oldCurrentBody: string,
+  priorBody: string
+): SourceTransitionTopology {
+  if (oldCurrentBody === priorBody) return topology;
+  const start = equivalentWordMarkdownOffset(
+    oldCurrentBody,
+    priorBody,
+    topology.start
+  );
+  if (topology.kind === "inline-insert" || topology.kind === "block-insert") {
+    return { ...topology, start };
+  }
+  const oldEnd = equivalentWordMarkdownOffset(
+    oldCurrentBody,
+    priorBody,
+    topology.start + topology.oldMarkdown.length
+  );
+  return {
+    ...topology,
+    start,
+    oldMarkdown: priorBody.slice(start, oldEnd),
+  };
 }
 
 export function classifySourceTransition(
@@ -180,12 +257,20 @@ export async function renderTransitionForCompare(
     );
   }
 
-  const topology = classifySourceTransition(oldCurrentBody, newCurrentBody);
+  const normalizedOldCurrentBody =
+    normalizeWordMarkdownForSourceEquivalence(oldCurrentBody);
+  const normalizedNewCurrentBody =
+    normalizeWordMarkdownForSourceEquivalence(newCurrentBody);
+  const topology = remapTopologyToPriorProjectionSource(
+    classifySourceTransition(normalizedOldCurrentBody, normalizedNewCurrentBody),
+    normalizedOldCurrentBody,
+    priorBody
+  );
   const codec = createOoxmlPackageCodec();
   if (priorBody === "" && hasMarkdownBlockStructure(newCurrentBody)) {
     const revisedPackage = replaceEmptyBodyWithMarkdownBlocks(
       input.ooxmlSnapshot,
-      newCurrentBody
+      markdownBodyForWordRender(newCurrentBody)
     );
     const expectedProjection = codec.project({ snapshot: revisedPackage });
     const actualBody = normalizeBodyForProjectionComparison(
@@ -233,7 +318,7 @@ export async function renderTransitionForCompare(
   ) {
     const revisedPackage = replaceEmptyBodyWithMarkdownBlocks(
       input.ooxmlSnapshot,
-      newCurrentBody
+      markdownBodyForWordRender(newCurrentBody)
     );
     const expectedProjection = codec.project({ snapshot: revisedPackage });
     const actualBody = normalizeBodyForProjectionComparison(
@@ -259,22 +344,30 @@ export async function renderTransitionForCompare(
       diagnostics: [],
     };
   }
+  const structuralDeletion = tryApplyStructuralBlockDeletion(
+    workingSnapshot,
+    workingProjection,
+    topology
+  );
   const boundaryInsertion = tryApplyStructuralBlockBoundaryInsertion(
     workingSnapshot,
     workingProjection,
     topology
   );
-  const region = boundaryInsertion
+  const region = boundaryInsertion || structuralDeletion
     ? undefined
     : findRegionForSourceOffset(workingProjection, topology.start);
   const delta = region
     ? topologyToOoxmlDelta(workingSnapshot, region, topology)
     : undefined;
   const witnessHints = boundaryInsertion?.witnessHints ??
+    structuralDeletion?.witnessHints ??
     (region ? sourceTransitionWitnessHints(region, topology) : []);
   let patch;
   try {
-    patch = boundaryInsertion?.patch ?? (delta ? await codec.applyDelta(delta) : undefined);
+    patch = boundaryInsertion?.patch ??
+      structuralDeletion?.patch ??
+      (delta ? await codec.applyDelta(delta) : undefined);
     if (!patch) {
       throw new Error("Cannot render source transition without a patch");
     }
@@ -286,7 +379,7 @@ export async function renderTransitionForCompare(
     ) {
       const revisedPackage = replaceEmptyBodyWithMarkdownBlocks(
         input.ooxmlSnapshot,
-        newCurrentBody
+        markdownBodyForWordRender(newCurrentBody)
       );
       patch = {
         snapshot: revisedPackage,
@@ -408,6 +501,96 @@ function insertMarkdownBlocksAtXmlOffset(input: {
     changedParts: [input.partName],
     relationshipChanges: [],
     validation: createEmptyOoxmlValidationResult(),
+  };
+}
+
+function tryApplyStructuralBlockDeletion(
+  snapshot: OoxmlPackageSnapshot,
+  projection: CodecProjection,
+  topology: SourceTransitionTopology
+): { patch: OoxmlPatchResult; witnessHints: CompareWitnessHint[] } | undefined {
+  if (topology.kind !== "delete") {
+    return undefined;
+  }
+
+  const deletedBlocks = markdownBlocks(topology.oldMarkdown);
+  if (deletedBlocks.length === 0) {
+    return undefined;
+  }
+
+  const blocks = projectionBlocks(projection);
+  const startIndex = blocks.findIndex((block) => topology.start === block.start);
+  if (startIndex < 0) {
+    return undefined;
+  }
+
+  const targetBlocks = blocks.slice(startIndex, startIndex + deletedBlocks.length);
+  if (targetBlocks.length !== deletedBlocks.length) {
+    return undefined;
+  }
+  if (
+    targetBlocks.some(
+      (block, index) =>
+        block.kind !== "paragraph" ||
+        !block.region ||
+        !projectionBodiesEquivalent(deletedBlocks[index] ?? "", block.markdownText)
+    )
+  ) {
+    return undefined;
+  }
+
+  const documentPart = snapshot.parts.get(snapshot.documentPartName);
+  if (!documentPart?.text) {
+    throw new Error(`Cannot delete OOXML block without text part: ${snapshot.documentPartName}`);
+  }
+
+  const first = targetBlocks[0];
+  const last = targetBlocks[targetBlocks.length - 1];
+  if (!first?.region || !last?.region) {
+    return undefined;
+  }
+
+  const firstBounds = paragraphXmlBounds(
+    documentPart.text,
+    first.region.handle.paragraphIndex
+  );
+  const lastBounds = paragraphXmlBounds(
+    documentPart.text,
+    last.region.handle.paragraphIndex
+  );
+  const nextDocumentXml =
+    documentPart.text.slice(0, firstBounds.start) +
+    documentPart.text.slice(lastBounds.end);
+  const nextDocumentBytes = new TextEncoder().encode(nextDocumentXml);
+  const nextDocumentPart: OoxmlPart = {
+    ...documentPart,
+    text: nextDocumentXml,
+    bytes: nextDocumentBytes,
+    hash: stableBytesHash(nextDocumentBytes),
+  };
+  const parts = new Map(snapshot.parts);
+  const hashes = new Map(snapshot.hashes);
+  parts.set(snapshot.documentPartName, nextDocumentPart);
+  hashes.set(snapshot.documentPartName, nextDocumentPart.hash);
+
+  return {
+    patch: {
+      snapshot: {
+        ...snapshot,
+        freshnessVersion: `${snapshot.freshnessVersion}:block-delete`,
+        parts,
+        hashes,
+      },
+      changedParts: [snapshot.documentPartName],
+      relationshipChanges: [],
+      validation: createEmptyOoxmlValidationResult(),
+    },
+    witnessHints: [
+      {
+        kind: "paragraph",
+        paragraphIndex: first.region.handle.paragraphIndex,
+      },
+    ],
   };
 }
 
@@ -570,6 +753,10 @@ function replaceEmptyBodyWithMarkdownBlocks(
   };
 }
 
+function markdownBodyForWordRender(markdown: string): string {
+  return normalizeWordMarkdownForSourceEquivalence(markdown);
+}
+
 function markdownBlocksToOoxml(markdown: string): string {
   return markdownBlocks(markdown)
     .map((block) =>
@@ -654,8 +841,10 @@ function projectionBodiesEquivalent(expectedMarkdown: string, actualMarkdown: st
     return true;
   }
   const normalize = (markdown: string): string =>
-    normalizeSemanticFigureDestinations(
-      normalizeMathInMarkdownForProjectionComparison(markdown)
+    normalizeWordMarkdownForSourceEquivalence(
+      normalizeSemanticFigureDestinations(
+        normalizeMathInMarkdownForProjectionComparison(markdown)
+      )
     );
   return normalize(expectedMarkdown) === normalize(actualMarkdown);
 }
@@ -949,7 +1138,8 @@ function sourceOffsetToRegionPlainOffset(
 ): number {
   const block = projectionBlockForRegion(region);
   const start = block?.start ?? 0;
-  return Math.max(0, Math.min(region.plainText.length, sourceOffset - start));
+  const plainLength = block?.plainText.length ?? region.plainText.length;
+  return Math.max(0, Math.min(plainLength, sourceOffset - start));
 }
 
 function projectionBlockForRegion(region: OoxmlRegionProjection): ProjectionBlock | undefined {
@@ -962,16 +1152,21 @@ function projectionBlocks(projection: CodecProjection): readonly ProjectionBlock
   const tables = (projection as CodecProjection & { tables?: readonly OoxmlTableProjection[] }).tables ?? [];
   const unordered = [
     ...projection.regions
-      .filter((region) => region.markdownText.length > 0 || region.plainText.length === 0)
-      .filter((region) => !isRegionInsideTable(region))
-      .map((region) => ({
-        kind: "paragraph" as const,
-        markdownText: region.markdownText,
-        xmlStart: firstRegionXmlStart(region),
-        region,
-      })),
+      .map((region) => {
+        const protectedRevisionText = protectedRevisionTextForRegion(region);
+        return {
+          kind: "paragraph" as const,
+          plainText: region.plainText || protectedRevisionText.plainText,
+          markdownText: region.markdownText || protectedRevisionText.markdownText,
+          xmlStart: firstRegionXmlStart(region),
+          region,
+        };
+      })
+      .filter((block) => block.markdownText.length > 0 || block.plainText.length === 0)
+      .filter((block) => !isRegionInsideTable(block.region)),
     ...tables.map((table) => ({
       kind: "table" as const,
+      plainText: table.markdownText,
       markdownText: table.markdownText,
       xmlStart: table.xmlStart,
       table,
@@ -981,11 +1176,40 @@ function projectionBlocks(projection: CodecProjection): readonly ProjectionBlock
   let offset = 0;
   lastProjectionBlocks = unordered.map((block, index) => {
     const start = offset;
-    const end = start + block.markdownText.length;
+    // Keep offset geometry in the exact Markdown projection space used by
+    // source-transition diffs. Equivalence normalization is allowed to decide
+    // whether `CD_LIVE` and `CD\_LIVE` describe the same Word text, but it is
+    // length-changing; using it here shifts every following block left and can
+    // route a valid paragraph-boundary insertion into the next paragraph.
+    const sourceText = block.markdownText;
+    const end = start + sourceText.length;
     offset = end + (index === unordered.length - 1 ? 0 : 2);
     return { ...block, start, end };
   });
   return lastProjectionBlocks;
+}
+
+function protectedRevisionTextForRegion(region: OoxmlRegionProjection): {
+  plainText: string;
+  markdownText: string;
+} {
+  if (region.markdownText.length > 0 || region.plainText.length > 0) {
+    return { plainText: "", markdownText: "" };
+  }
+  const text = region.tokens
+    .filter(
+      (token): token is Extract<OoxmlToken, { kind: "protected" }> =>
+        token.kind === "protected" && token.reason === "existing-revision"
+    )
+    .map((token) => textFromWordTextRuns(token.xml))
+    .join("");
+  return { plainText: text, markdownText: text };
+}
+
+function textFromWordTextRuns(xml: string): string {
+  return [...xml.matchAll(/<w:t\b[^>]*>([\s\S]*?)<\/w:t>/gu)]
+    .map((match) => decodeXmlText(match[1] ?? ""))
+    .join("");
 }
 
 function sourceTransitionWitnessHints(
@@ -1061,4 +1285,23 @@ function firstRegionXmlStart(region: OoxmlRegionProjection): number {
 
 function isRegionInsideTable(region: OoxmlRegionProjection): boolean {
   return /\/w:tbl\[/.test(region.containerPath) || /\/w:tbl\[/.test(region.handle.path);
+}
+
+function paragraphXmlBounds(
+  documentXml: string,
+  paragraphIndex: number | undefined
+): { start: number; end: number } {
+  if (paragraphIndex === undefined) {
+    throw new Error("Cannot locate OOXML paragraph without paragraph index");
+  }
+  const starts = [...documentXml.matchAll(/<w:p\b[^>]*>/gu)];
+  const startMatch = starts[paragraphIndex];
+  if (!startMatch || startMatch.index === undefined) {
+    throw new Error(`Cannot locate OOXML paragraph ${paragraphIndex}`);
+  }
+  const close = documentXml.indexOf("</w:p>", startMatch.index);
+  if (close < 0) {
+    throw new Error(`Cannot locate OOXML paragraph ${paragraphIndex} end`);
+  }
+  return { start: startMatch.index, end: close + "</w:p>".length };
 }

@@ -41,6 +41,12 @@ await esbuild.build({
   outfile: 'dist/internals.js',
 });
 
+await esbuild.build({
+  ...shared,
+  entryPoints: ['src/lab-diagnostics.ts'],
+  outfile: 'dist/lab-diagnostics.js',
+});
+
 // Worker-safe remote relay facade subpath. Keep this browser-bundleable.
 await esbuild.build({
   ...shared,
@@ -70,6 +76,12 @@ await esbuild.build({
 
 await esbuild.build({
   ...shared,
+  entryPoints: ['src/transport/signals.ts'],
+  outfile: 'dist/transport/signals.js',
+});
+
+await esbuild.build({
+  ...shared,
   entryPoints: ['src/transport/pane-endpoint.ts'],
   outfile: 'dist/transport/pane-endpoint.js',
 });
@@ -91,4 +103,4 @@ await esbuild.build({
   external: ['./remote-backend.js'],
 });
 
-console.log('Bundled mcp-server → dist/index.js, dist/cli.js, dist/internals.js, dist/remote-worker.js, dist/transport/fixed-port-leader.js, dist/transport/streamable-http.js, dist/transport/client-proxy.js, dist/transport/pane-endpoint.js, dist/remote-backend.js, dist/pane-registration.js');
+console.log('Bundled mcp-server → dist/index.js, dist/cli.js, dist/internals.js, dist/lab-diagnostics.js, dist/remote-worker.js, dist/transport/fixed-port-leader.js, dist/transport/signals.js, dist/transport/streamable-http.js, dist/transport/client-proxy.js, dist/transport/pane-endpoint.js, dist/remote-backend.js, dist/pane-registration.js');

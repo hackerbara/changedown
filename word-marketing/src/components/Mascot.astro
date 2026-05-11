@@ -1,0 +1,34 @@
+---
+/**
+ * Mascot component — capybara (NOT a beaver).
+ *
+ * Three poses: idle (default everywhere), working (install/how-it-works),
+ * wave (sandbox scene 7, 404 page).
+ *
+ * Current SVGs are placeholders in /public/illustrations/, marked
+ * `data-placeholder="true"`. T10.7 replaces them with commissioned
+ * art from the brief at word-marketing/docs/illustrator-brief.md.
+ *
+ * Pass `decorative` for cases where the mascot accompanies a label and
+ * shouldn't be announced (most uses — the mascot is editorial flourish,
+ * not informational).
+ */
+interface Props {
+  pose: 'idle' | 'working' | 'wave';
+  size?: number;
+  decorative?: boolean;
+}
+const { pose, size = 80, decorative = false } = Astro.props;
+const src = `/illustrations/mascot-${pose}-placeholder.svg`;
+const alt = decorative ? '' : 'ChangeDown capybara mascot';
+---
+<img
+  src={src}
+  alt={alt}
+  width={size}
+  height={size}
+  data-placeholder="true"
+  data-pose={pose}
+  loading="lazy"
+  decoding="async"
+/>

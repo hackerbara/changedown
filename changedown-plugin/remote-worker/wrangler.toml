@@ -29,4 +29,4 @@ new_sqlite_classes = ["RoomDurableObject"]
 
 [env.staging.vars]
 PANE_ALLOWED_ORIGINS = "https://127.0.0.1:3000,https://changedown.com"
-API_ALLOWED_ORIGINS = "https://127.0.0.1:3000,https://changedown-remote-relay-staging.hackerbara.workers.dev"
+API_ALLOWED_ORIGINS = "https://127.0.0.1:3000,https://changedown.com,https://changedown-remote-relay-staging.hackerbara.workers.dev"

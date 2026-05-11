@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /word/
+Disallow: /dev/
+
+Sitemap: https://changedown.com/sitemap-index.xml

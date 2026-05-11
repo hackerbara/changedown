@@ -273,6 +273,70 @@ describe('remote worker stateless facade routes', () => {
     ]);
   });
 
+  it('supports a read-only GET tool call for fetch-only agents', async () => {
+    const calls: Array<{ op: string; name?: string; body?: unknown }> = [];
+    const env = {
+      ROOMS: {
+        idFromName(name: string) { calls.push({ op: 'idFromName', name }); return 'room-id'; },
+        get(id: string) {
+          calls.push({ op: 'get', name: id });
+          return {
+            fetch: async (_request: Request | string, init?: RequestInit) => {
+              const body = JSON.parse(String(init?.body));
+              calls.push({ op: 'fetch', body });
+              return new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify({ text: 'Hello world', format: 'L2', version: 'v-routes' }) }] }), { status: 200, headers: { 'content-type': 'application/json' } });
+            },
+          };
+        },
+      },
+    } as never;
+
+    const response = await worker.fetch(new Request(`https://relay.test/tools/read_tracked_file?token=${token}&file=word%3A%2F%2Fsess-1&view=working`), env);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(await json(response)).toMatchObject({ isError: false });
+    expect(calls).toEqual([
+      { op: 'idFromName', name: 'room-1' },
+      { op: 'get', name: 'room-id' },
+      { op: 'fetch', body: { token, operation: { protocol: 'changedown-document-backend/v1', operation: { kind: 'read', ref: { uri: 'word://sess-1' } } } } },
+    ]);
+  });
+
+  it('marks read-only GET tool responses no-store even when auth uses a header', async () => {
+    const env = {
+      ROOMS: {
+        idFromName() { return 'room-id'; },
+        get() {
+          return {
+            fetch: async () => new Response(JSON.stringify({ content: [{ type: 'text', text: JSON.stringify({ text: 'Hello world' }) }] }), { status: 200, headers: { 'content-type': 'application/json' } }),
+          };
+        },
+      },
+    } as never;
+
+    const response = await worker.fetch(new Request('https://relay.test/tools/read_tracked_file?file=word%3A%2F%2Fsess-1', {
+      headers: { Authorization: `Bearer ${token}` },
+    }), env);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('referrer-policy')).toBe('no-referrer');
+  });
+
+  it('does not allow mutating tool calls over GET at the Worker route layer', async () => {
+    const env = {
+      ROOMS: {
+        get() { throw new Error('DO must not be touched for GET mutators'); },
+        idFromName() { throw new Error('DO must not be touched for GET mutators'); },
+      },
+    } as never;
+
+    const response = await worker.fetch(new Request(`https://relay.test/tools/propose_change?token=${token}&file=word%3A%2F%2Fsess-1`), env);
+
+    expect(response.status).toBe(404);
+  });
+
   it('rejects read role tokens before dispatching mutating /tools/:name calls', async () => {
     const env = { ROOMS: { get() { throw new Error('DO must not be touched'); }, idFromName() { throw new Error('DO must not be touched'); } } } as never;
     const mint = await json(await worker.fetch(new Request('https://relay.test/room-token', {
@@ -481,6 +545,11 @@ describe('remote worker front room routes', () => {
     expect(html).toContain('ChangeDown remote room');
     expect(html).toContain('Open the Word pane and click Check rooms');
     expect(html).toContain('/tools/read_tracked_file');
+    expect(html).toContain('GET https://relay.test/tools?token=&lt;room token&gt;');
+    expect(html).toContain('GET https://relay.test/openapi.json?token=&lt;room token&gt;');
+    expect(html).toContain('Read-only fetch fallback');
+    expect(html).toContain('/tools/read_tracked_file?token=');
+    expect(html).toContain('GET only lets an agent read');
     expect(html).toContain('propose_change');
     expect(html).toContain('Idempotency-Key');
     expect(html).not.toContain(token);
@@ -563,6 +632,26 @@ describe('remote worker front room routes', () => {
 
     expect(response.status).toBe(409);
     expect(response.headers.get('access-control-allow-origin')).toBe('https://127.0.0.1:3000');
+    expect(response.headers.get('vary')).toContain('Origin');
+  });
+
+  it('answers CORS preflight for public room claims from the hosted Word pane', async () => {
+    const env = {
+      API_ALLOWED_ORIGINS: 'https://127.0.0.1:3000,https://changedown.com',
+      ROOMS: { get() { throw new Error('DO must not be touched by preflight'); }, idFromName() { throw new Error('DO must not be touched by preflight'); } },
+    } as never;
+
+    const response = await worker.fetch(new Request('https://relay.test/room/public-1/claim', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://changedown.com',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+      },
+    }), env);
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://changedown.com');
     expect(response.headers.get('vary')).toContain('Origin');
   });
 

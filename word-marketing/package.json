@@ -1,0 +1,41 @@
+{
+  "name": "@changedown/word-marketing",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Marketing site for ChangeDown for Word — changedown.com",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "npm run build:pane && astro build && npm run copy:pane && npm run build:og",
+    "build:marketing-only": "astro build",
+    "build:pane": "cd ../packages/word-add-in && npm run build",
+    "build:og": "tsx scripts/build-og-images.ts",
+    "copy:pane": "node scripts/copy-pane.mjs",
+    "preview": "astro preview",
+    "check": "astro check",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check:links": "linkinator dist --recurse --skip \"^https://changedown\\\\.com\" --skip \"^https://changedown\\\\.dev\" --skip \"^https://relay\\\\.changedown\\\\.com\" --silent",
+    "lhci": "lhci autorun --config=.lighthouserc.json"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.0.0",
+    "@astrojs/sitemap": "^3.2.0",
+    "@astrojs/solid-js": "^5.0.0",
+    "astro": "^5.0.0",
+    "solid-js": "^1.9.0"
+  },
+  "devDependencies": {
+    "@axe-core/cli": "^4.10.0",
+    "@lhci/cli": "^0.14.0",
+    "@playwright/test": "^1.48.0",
+    "@resvg/resvg-js": "^2.6.0",
+    "@types/node": "^22.0.0",
+    "linkinator": "^6.1.0",
+    "satori": "^0.12.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0",
+    "wawoff2": "^2.0.1"
+  }
+}

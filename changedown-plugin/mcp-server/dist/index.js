@@ -32,6 +32,7191 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
+// ../../packages/core/dist-esm/config/index.js
+var DEFAULT_CONFIG;
+var init_config = __esm({
+  "../../packages/core/dist-esm/config/index.js"() {
+    "use strict";
+    DEFAULT_CONFIG = {
+      tracking: {
+        include: ["**/*.md"],
+        exclude: ["node_modules/**", "dist/**"],
+        include_absolute: [],
+        default: "tracked",
+        auto_header: true
+      },
+      author: {
+        default: "",
+        enforcement: "optional"
+      },
+      matching: { mode: "normalized" },
+      hashline: { enabled: false, auto_remap: true },
+      settlement: { auto_on_approve: false, auto_on_reject: false },
+      coherence: { threshold: 98 },
+      review: {
+        may_review: { human: true, agent: true },
+        self_acceptance: { human: true, agent: true },
+        cross_withdrawal: { human: false, agent: false },
+        blocking_labels: {}
+      },
+      reasoning: {
+        propose: { human: false, agent: true },
+        review: { human: false, agent: true }
+      },
+      policy: {
+        mode: "safety-net",
+        creation_tracking: "footnote",
+        default_view: "working",
+        view_policy: "suggest"
+      }
+    };
+  }
+});
+
+// ../../packages/core/dist-esm/config/review-permissions.js
+function reviewerType(author) {
+  const stripped = author.startsWith("@") ? author.slice(1) : author;
+  if (stripped.startsWith("ai:") || stripped.startsWith("ci:"))
+    return "agent";
+  return "human";
+}
+function canAccept(reviewer, changeAuthor, config2) {
+  const rt = reviewerType(reviewer);
+  if (!config2.review.may_review[rt]) {
+    return { allowed: false, reason: `${rt} participants cannot review in this project` };
+  }
+  if (!config2.review.self_acceptance[rt] && reviewer === changeAuthor) {
+    return { allowed: false, reason: `${rt} participants cannot accept their own changes in this project` };
+  }
+  return { allowed: true };
+}
+var init_review_permissions = __esm({
+  "../../packages/core/dist-esm/config/review-permissions.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/timestamp.js
+function normalizeHour(hour, ampm) {
+  if (!ampm)
+    return hour;
+  const upper = ampm.toUpperCase();
+  if (upper === "AM")
+    return hour === 12 ? 0 : hour;
+  if (upper === "PM")
+    return hour === 12 ? 12 : hour + 12;
+  return hour;
+}
+function parseTimestamp(raw) {
+  const m = TIMESTAMP_RE.exec(raw.trim());
+  if (!m) {
+    const dateMatch = /^(\d{4}-\d{2}-\d{2})/.exec(raw.trim());
+    const date5 = dateMatch ? dateMatch[1] : raw.trim();
+    return { raw, date: date5, sortable: date5 ? `${date5}T00:00:00Z` : raw };
+  }
+  const date4 = m[1];
+  const hourRaw = m[2];
+  const minuteRaw = m[3];
+  const secondRaw = m[4];
+  const ampm = m[5];
+  const zulu = m[6];
+  if (hourRaw === void 0) {
+    return { raw, date: date4, sortable: `${date4}T00:00:00Z` };
+  }
+  const hour = normalizeHour(parseInt(hourRaw, 10), ampm);
+  const minute = parseInt(minuteRaw, 10);
+  const second = secondRaw ? parseInt(secondRaw, 10) : 0;
+  const time3 = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}`;
+  const utc = zulu === "Z";
+  const sortable = `${date4}T${time3}${utc ? "Z" : ""}`;
+  return { raw, date: date4, time: time3, utc, sortable };
+}
+function nowTimestamp() {
+  const iso = (/* @__PURE__ */ new Date()).toISOString();
+  const raw = iso.replace(/\.\d{3}Z$/, "Z");
+  return parseTimestamp(raw);
+}
+var TIMESTAMP_RE;
+var init_timestamp = __esm({
+  "../../packages/core/dist-esm/timestamp.js"() {
+    "use strict";
+    TIMESTAMP_RE = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?\s?([AaPp][Mm])?(Z)?)?$/;
+  }
+});
+
+// ../../packages/core/dist-esm/model/types.js
+function changeTypeToAbbrev(type) {
+  switch (type) {
+    case ChangeType.Insertion:
+      return "ins";
+    case ChangeType.Deletion:
+      return "del";
+    case ChangeType.Substitution:
+      return "sub";
+    case ChangeType.Highlight:
+      return "hig";
+    case ChangeType.Comment:
+      return "com";
+    case ChangeType.Move:
+      return "mov";
+  }
+}
+function changeTypeToShortCode(type) {
+  switch (type) {
+    case ChangeType.Insertion:
+      return "ins";
+    case ChangeType.Deletion:
+      return "del";
+    case ChangeType.Substitution:
+      return "sub";
+    case ChangeType.Highlight:
+      return "hl";
+    case ChangeType.Comment:
+      return "com";
+    case ChangeType.Move:
+      return "mov";
+  }
+}
+function isGhostNode(node) {
+  return node.resolved === false && !node.consumedBy;
+}
+function nodeStatus(node) {
+  return (node.metadata?.status ?? node.inlineMetadata?.status ?? node.status).toString().toLowerCase();
+}
+var ChangeType, ChangeStatus;
+var init_types = __esm({
+  "../../packages/core/dist-esm/model/types.js"() {
+    "use strict";
+    (function(ChangeType2) {
+      ChangeType2["Insertion"] = "Insertion";
+      ChangeType2["Deletion"] = "Deletion";
+      ChangeType2["Substitution"] = "Substitution";
+      ChangeType2["Highlight"] = "Highlight";
+      ChangeType2["Comment"] = "Comment";
+      ChangeType2["Move"] = "Move";
+    })(ChangeType || (ChangeType = {}));
+    (function(ChangeStatus2) {
+      ChangeStatus2["Proposed"] = "Proposed";
+      ChangeStatus2["Accepted"] = "Accepted";
+      ChangeStatus2["Rejected"] = "Rejected";
+    })(ChangeStatus || (ChangeStatus = {}));
+  }
+});
+
+// ../../packages/core/dist-esm/model/diagnostic.js
+var UnresolvedChangesError, StructuralIntegrityError;
+var init_diagnostic = __esm({
+  "../../packages/core/dist-esm/model/diagnostic.js"() {
+    "use strict";
+    UnresolvedChangesError = class extends Error {
+      constructor(diagnostics) {
+        super(`Document has ${diagnostics.length} unresolved change(s); cannot mutate.`);
+        this.name = "UnresolvedChangesError";
+        this.diagnostics = diagnostics;
+      }
+    };
+    StructuralIntegrityError = class extends Error {
+      constructor(violations) {
+        super(`Structural integrity violated: ${violations.map((v) => v.kind).join(", ")}.`);
+        this.name = "StructuralIntegrityError";
+        this.violations = violations;
+      }
+    };
+  }
+});
+
+// ../../packages/core/dist-esm/model/document.js
+function assertResolved(doc, options) {
+  const allowed = new Set(options?.allow ?? []);
+  const violations = doc.getDiagnostics().filter((d) => BLOCKING_KINDS.has(d.kind) && !allowed.has(d.kind));
+  if (violations.length > 0)
+    throw new UnresolvedChangesError(violations);
+}
+var VirtualDocument, BLOCKING_KINDS;
+var init_document = __esm({
+  "../../packages/core/dist-esm/model/document.js"() {
+    "use strict";
+    init_types();
+    init_diagnostic();
+    VirtualDocument = class _VirtualDocument {
+      constructor(changes = [], coherenceRate = 100, unresolvedDiagnostics = [], resolvedText, records = []) {
+        this.diagnostics = [];
+        this.changes = changes;
+        this.records = records;
+        this.coherenceRate = coherenceRate;
+        this.unresolvedDiagnostics = unresolvedDiagnostics;
+        this.resolvedText = resolvedText;
+      }
+      /**
+       * Create a VirtualDocument from a pending overlay only (no parse).
+       * Used when LSP is disconnected and overlay exists — enables display of
+       * pending insertion before LSP connects.
+       */
+      static fromOverlayOnly(overlay) {
+        const change = {
+          id: overlay.scId ?? `cn-pending-${overlay.range.start}`,
+          type: ChangeType.Insertion,
+          status: ChangeStatus.Proposed,
+          range: overlay.range,
+          contentRange: overlay.range,
+          modifiedText: overlay.text,
+          level: 1,
+          anchored: false,
+          resolved: true
+        };
+        return new _VirtualDocument([change]);
+      }
+      getChanges() {
+        return this.changes;
+      }
+      getRecords() {
+        return this.records.slice();
+      }
+      getReviewableChanges() {
+        return this.changes.filter((change) => String(change.metadata?.status ?? change.inlineMetadata?.status ?? change.status).toLowerCase() === "proposed");
+      }
+      /** Returns L2+ ghost nodes that failed anchor resolution. L0/L1 unanchored nodes are excluded. */
+      getUnresolvedChanges() {
+        return this.changes.filter((c) => isGhostNode(c));
+      }
+      changeAtOffset(offset) {
+        for (const change of this.changes) {
+          if (change.range.start === change.range.end ? offset === change.range.start : offset >= change.range.start && offset < change.range.end) {
+            return change;
+          }
+        }
+        return null;
+      }
+      acceptChange(id) {
+        const change = this.changes.find((c) => c.id === id);
+        if (change) {
+          change.status = ChangeStatus.Accepted;
+        }
+      }
+      rejectChange(id) {
+        const change = this.changes.find((c) => c.id === id);
+        if (change) {
+          change.status = ChangeStatus.Rejected;
+        }
+      }
+      /**
+       * Returns all changes belonging to a given group (e.g., a move operation).
+       * Changes are identified by their groupId field.
+       */
+      getGroupMembers(groupId) {
+        return this.changes.filter((c) => c.groupId === groupId);
+      }
+      /**
+       * Returns a readonly view of diagnostics emitted during parsing or
+       * subsequent operations on this document. Diagnostics live on the
+       * document, not on individual ChangeNodes — see model/diagnostic.ts.
+       */
+      getDiagnostics() {
+        return this.diagnostics;
+      }
+      /**
+       * Append a diagnostic. Called by parsers during construction and by
+       * recovery paths that detect new issues. Not part of the read API
+       * surface for ordinary consumers.
+       */
+      addDiagnostic(d) {
+        this.diagnostics.push(d);
+      }
+      /**
+       * Remove all diagnostics whose changeId matches. Used by the replay
+       * protocol in footnote-native-parser when a previously-failed change
+       * is recovered, and by review-changes when a change settles.
+       */
+      removeDiagnosticsForChange(changeId) {
+        this.diagnostics = this.diagnostics.filter((d) => d.changeId !== changeId);
+      }
+    };
+    BLOCKING_KINDS = /* @__PURE__ */ new Set([
+      "coordinate_failed",
+      "anchor_ambiguous",
+      "anchor_missing",
+      "structural_invalid"
+    ]);
+  }
+});
+
+// ../../packages/core/dist-esm/parser/tokens.js
+var TokenType;
+var init_tokens = __esm({
+  "../../packages/core/dist-esm/parser/tokens.js"() {
+    "use strict";
+    (function(TokenType2) {
+      TokenType2["AdditionOpen"] = "{++";
+      TokenType2["AdditionClose"] = "++}";
+      TokenType2["DeletionOpen"] = "{--";
+      TokenType2["DeletionClose"] = "--}";
+      TokenType2["SubstitutionOpen"] = "{~~";
+      TokenType2["SubstitutionClose"] = "~~}";
+      TokenType2["SubstitutionSeparator"] = "~>";
+      TokenType2["HighlightOpen"] = "{==";
+      TokenType2["HighlightClose"] = "==}";
+      TokenType2["CommentOpen"] = "{>>";
+      TokenType2["CommentClose"] = "<<}";
+    })(TokenType || (TokenType = {}));
+  }
+});
+
+// ../../packages/core/dist-esm/parser/code-zones.js
+function buildCodeZoneMask(text) {
+  const mask = new Uint8Array(text.length);
+  for (const zone of findCodeZones(text)) {
+    const end = Math.min(zone.end, text.length);
+    for (let i = zone.start; i < end; i++) {
+      mask[i] = 1;
+    }
+  }
+  return mask;
+}
+function findCodeZones(text) {
+  const zones = [];
+  let position = 0;
+  let atLineStart = true;
+  let inFence = false;
+  let fenceStart = 0;
+  let fenceMarkerCode = 0;
+  let fenceLength = 0;
+  while (position < text.length) {
+    const ch = text.charCodeAt(position);
+    if (inFence) {
+      if (atLineStart) {
+        const closeResult = tryMatchFenceClose(text, position, fenceMarkerCode, fenceLength);
+        if (closeResult >= 0) {
+          zones.push({ start: fenceStart, end: closeResult, type: "fence" });
+          inFence = false;
+          position = closeResult;
+          atLineStart = true;
+          continue;
+        }
+      }
+      const nextNewline = text.indexOf("\n", position);
+      if (nextNewline === -1) {
+        position = text.length;
+      } else {
+        position = nextNewline + 1;
+        atLineStart = true;
+      }
+      continue;
+    }
+    if (atLineStart) {
+      const fenceResult = tryMatchFenceOpen(text, position);
+      if (fenceResult) {
+        inFence = true;
+        fenceStart = position;
+        fenceMarkerCode = fenceResult.markerCode;
+        fenceLength = fenceResult.length;
+        position = fenceResult.nextPos;
+        atLineStart = true;
+        continue;
+      }
+    }
+    if (ch === 96) {
+      const codeStart = position;
+      let openEnd = position;
+      while (openEnd < text.length && text.charCodeAt(openEnd) === 96) {
+        openEnd++;
+      }
+      const runLength = openEnd - position;
+      let scanPos = openEnd;
+      let found = false;
+      while (scanPos < text.length) {
+        if (text.charCodeAt(scanPos) !== 96) {
+          scanPos++;
+          continue;
+        }
+        const closeRunStart = scanPos;
+        while (scanPos < text.length && text.charCodeAt(scanPos) === 96) {
+          scanPos++;
+        }
+        if (scanPos - closeRunStart === runLength) {
+          zones.push({ start: codeStart, end: scanPos, type: "inline" });
+          atLineStart = text.charCodeAt(scanPos - 1) === 10;
+          position = scanPos;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        atLineStart = false;
+        position = openEnd;
+      }
+      continue;
+    }
+    atLineStart = ch === 10;
+    position++;
+  }
+  if (inFence) {
+    zones.push({ start: fenceStart, end: text.length, type: "fence" });
+  }
+  return zones;
+}
+function tryMatchFenceOpen(text, position) {
+  let pos = position;
+  let spaces = 0;
+  while (spaces < 3 && pos < text.length && text.charCodeAt(pos) === 32) {
+    spaces++;
+    pos++;
+  }
+  if (pos >= text.length)
+    return null;
+  const markerCode = text.charCodeAt(pos);
+  if (markerCode !== 96 && markerCode !== 126)
+    return null;
+  let runLength = 0;
+  while (pos < text.length && text.charCodeAt(pos) === markerCode) {
+    runLength++;
+    pos++;
+  }
+  if (runLength < 3)
+    return null;
+  if (markerCode === 96) {
+    const lineEnd = text.indexOf("\n", pos);
+    const infoEnd = lineEnd === -1 ? text.length : lineEnd;
+    const infoString = text.substring(pos, infoEnd);
+    if (infoString.includes("`"))
+      return null;
+  }
+  const nextNewline = text.indexOf("\n", pos);
+  const nextPos = nextNewline === -1 ? text.length : nextNewline + 1;
+  return { markerCode, length: runLength, nextPos };
+}
+function tryMatchFenceClose(text, position, fenceMarkerCode, fenceLength) {
+  let pos = position;
+  let spaces = 0;
+  while (spaces < 3 && pos < text.length && text.charCodeAt(pos) === 32) {
+    spaces++;
+    pos++;
+  }
+  if (pos >= text.length)
+    return -1;
+  if (text.charCodeAt(pos) !== fenceMarkerCode)
+    return -1;
+  let runLength = 0;
+  while (pos < text.length && text.charCodeAt(pos) === fenceMarkerCode) {
+    runLength++;
+    pos++;
+  }
+  if (runLength < fenceLength)
+    return -1;
+  while (pos < text.length && text.charCodeAt(pos) !== 10) {
+    const c = text.charCodeAt(pos);
+    if (c !== 32 && c !== 9)
+      return -1;
+    pos++;
+  }
+  if (pos < text.length && text.charCodeAt(pos) === 10) {
+    pos++;
+  }
+  return pos;
+}
+function isFenceCloserLine(line) {
+  let pos = 0;
+  let spaces = 0;
+  while (spaces < 3 && pos < line.length && line.charCodeAt(pos) === 32) {
+    spaces++;
+    pos++;
+  }
+  if (pos >= line.length)
+    return false;
+  const marker = line.charCodeAt(pos);
+  if (marker !== 96 && marker !== 126)
+    return false;
+  let runLength = 0;
+  while (pos < line.length && line.charCodeAt(pos) === marker) {
+    runLength++;
+    pos++;
+  }
+  if (runLength < 3)
+    return false;
+  while (pos < line.length) {
+    const c = line.charCodeAt(pos);
+    if (c !== 32 && c !== 9)
+      return false;
+    pos++;
+  }
+  return true;
+}
+function skipInlineCode(text, position) {
+  let openEnd = position;
+  while (openEnd < text.length && text.charCodeAt(openEnd) === 96) {
+    openEnd++;
+  }
+  const runLength = openEnd - position;
+  let scanPos = openEnd;
+  while (scanPos < text.length) {
+    if (text.charCodeAt(scanPos) !== 96) {
+      scanPos++;
+      continue;
+    }
+    const closeRunStart = scanPos;
+    while (scanPos < text.length && text.charCodeAt(scanPos) === 96) {
+      scanPos++;
+    }
+    if (scanPos - closeRunStart === runLength) {
+      return scanPos;
+    }
+  }
+  return position;
+}
+var init_code_zones = __esm({
+  "../../packages/core/dist-esm/parser/code-zones.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/footnote-patterns.js
+function footnoteRefGlobal() {
+  return new RegExp(`\\[\\^${FOOTNOTE_ID_PATTERN}\\]`, "g");
+}
+function footnoteRefNumericGlobal() {
+  return new RegExp(`\\[\\^${FOOTNOTE_ID_NUMERIC_PATTERN}\\]`, "g");
+}
+function isL3Format(text) {
+  const zones = findCodeZones(text);
+  const defRe = new RegExp(FOOTNOTE_DEF_START.source, "gm");
+  let defMatch;
+  let firstFootnote = -1;
+  while ((defMatch = defRe.exec(text)) !== null) {
+    if (!zones.some((z2) => defMatch.index >= z2.start && defMatch.index < z2.end)) {
+      firstFootnote = defMatch.index;
+      break;
+    }
+  }
+  if (firstFootnote < 0)
+    return false;
+  const body = text.slice(0, firstFootnote);
+  const cmRe = /\{\+\+|\{--|\{~~|\{==|\{>>/g;
+  if (cmRe.test(body)) {
+    cmRe.lastIndex = 0;
+    let m;
+    while ((m = cmRe.exec(body)) !== null) {
+      if (!zones.some((z2) => m.index >= z2.start && m.index < z2.end)) {
+        return false;
+      }
+    }
+  }
+  const footnoteSection = text.slice(firstFootnote);
+  const footnoteLines = footnoteSection.split("\n");
+  if (footnoteLines.some((line) => FOOTNOTE_L3_EDIT_OP.test(line)))
+    return true;
+  for (let i = 0; i < footnoteLines.length; i++) {
+    if (!FOOTNOTE_L3_HISTORY_HEADER.test(footnoteLines[i]))
+      continue;
+    for (let j = i + 1; j < footnoteLines.length; j++) {
+      const line = footnoteLines[j];
+      if (FOOTNOTE_DEF_START.test(line))
+        break;
+      if (/^ {4}source:\s*\S/.test(line))
+        return true;
+      if (line.trim() !== "" && !line.startsWith("    "))
+        break;
+    }
+  }
+  return false;
+}
+function unescapeCtxString(s) {
+  return s.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+}
+function splitBodyAndFootnotes(lines) {
+  const text = lines.join("\n");
+  const zones = findCodeZones(text);
+  let firstFootnoteLine = lines.length;
+  let charOffset = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const inCodeZone = zones.some((z2) => charOffset >= z2.start && charOffset < z2.end);
+    if (!inCodeZone && FOOTNOTE_DEF_START.test(lines[i])) {
+      firstFootnoteLine = i;
+      break;
+    }
+    charOffset += lines[i].length + 1;
+  }
+  let bodyEnd = firstFootnoteLine;
+  while (bodyEnd > 0 && lines[bodyEnd - 1].trim() === "") {
+    bodyEnd--;
+  }
+  return {
+    bodyLines: lines.slice(0, bodyEnd),
+    footnoteLines: lines.slice(firstFootnoteLine),
+    bodyEndIndex: bodyEnd
+  };
+}
+var FOOTNOTE_ID_PATTERN, FOOTNOTE_ID_NUMERIC_PATTERN, FOOTNOTE_REF_ANCHORED, FOOTNOTE_DEF_START, FOOTNOTE_DEF_START_QUICK, FOOTNOTE_DEF_LENIENT, FOOTNOTE_DEF_STRICT, FOOTNOTE_DEF_STATUS, FOOTNOTE_DEF_STATUS_VALUE, FOOTNOTE_L3_EDIT_OP, FOOTNOTE_L3_HISTORY_HEADER, IMAGE_DIMENSIONS_RE, CTX_RE, FOOTNOTE_CONTINUATION, FOOTNOTE_THREAD_REPLY;
+var init_footnote_patterns = __esm({
+  "../../packages/core/dist-esm/footnote-patterns.js"() {
+    "use strict";
+    init_code_zones();
+    FOOTNOTE_ID_PATTERN = "cn-\\d+(?:\\.\\d+)?";
+    FOOTNOTE_ID_NUMERIC_PATTERN = "cn-(\\d+)(?:\\.\\d+)?";
+    FOOTNOTE_REF_ANCHORED = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]`);
+    FOOTNOTE_DEF_START = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:`);
+    FOOTNOTE_DEF_START_QUICK = /^\[\^cn-\d+/;
+    FOOTNOTE_DEF_LENIENT = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s*@(\\S+)\\s*\\|\\s*(\\S+)\\s*\\|\\s*(\\S+)\\s*\\|\\s*(\\S+)`);
+    FOOTNOTE_DEF_STRICT = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s+(?:(@\\S+)\\s+\\|\\s+)?(\\S+)\\s+\\|\\s+(\\S+)\\s+\\|\\s+(\\S+)`);
+    FOOTNOTE_DEF_STATUS = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s+(?:@\\S+\\s+\\|\\s+)?\\S+\\s+\\|\\s+\\S+\\s+\\|\\s+(\\S+)`);
+    FOOTNOTE_DEF_STATUS_VALUE = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:\\s.*\\|\\s*(proposed|accepted|rejected)`);
+    FOOTNOTE_L3_EDIT_OP = /^ {4}(\d+):([0-9a-fA-F]{2,}) (.*)/;
+    FOOTNOTE_L3_HISTORY_HEADER = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:\\s.*\\|\\s*(?:ins|del|sub|format|equation|image|field|object)\\s*\\|\\s*accepted\\s*$`);
+    IMAGE_DIMENSIONS_RE = /^([\d.]+)in\s*x\s*([\d.]+)in$/;
+    CTX_RE = /@ctx:"((?:[^"\\]|\\.)*)"\|\|"((?:[^"\\]|\\.)*)"/;
+    FOOTNOTE_CONTINUATION = /^\s+\S/;
+    FOOTNOTE_THREAD_REPLY = /^\s+@\S+\s+\d{4}-\d{2}-\d{2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?Z?)?(?:\s+\[[^\]]+\])?:/;
+  }
+});
+
+// ../../packages/core/dist-esm/operations/footnote-generator.js
+function generateFootnoteDefinition(id, type, author, date4) {
+  const d = date4 ?? nowTimestamp().date;
+  const authorPart = author ? `@${author} | ` : "";
+  return `
+
+[^${id}]: ${authorPart}${d} | ${type} | proposed`;
+}
+function buildEditOpFromParts(changeType, originalText, currentText) {
+  switch (changeType) {
+    case "insertion":
+      return `{++${currentText}++}`;
+    case "deletion":
+      return `{--${originalText}--}`;
+    case "highlight":
+      return `{==${originalText}==}`;
+    case "comment":
+      return `{>>${originalText}<<}`;
+    default:
+      return `{~~${originalText}~>${currentText}~~}`;
+  }
+}
+function formatL3EditOpLine(lineNumber, hash2, editOp) {
+  return `    ${lineNumber}:${hash2} ${editOp}`;
+}
+function buildContextualL3EditOp(params) {
+  const { changeType, lineContent, lineNumber, hash: hash2, column, anchorLen } = params;
+  let originalText = params.originalText ?? "";
+  let currentText = params.currentText ?? "";
+  const typeKey = CHANGE_TYPE_KEY[changeType];
+  let rawOp = buildEditOpFromParts(typeKey, originalText, currentText);
+  if (lineContent.length > 0 && anchorLen > 0) {
+    const col = Math.max(0, Math.min(column, lineContent.length));
+    const end = Math.min(col + anchorLen, lineContent.length);
+    const bodySlice = lineContent.slice(col, end);
+    if (changeType === ChangeType.Insertion && rawOp === "{++++}" && bodySlice.length > 0) {
+      currentText = bodySlice;
+      rawOp = buildEditOpFromParts(typeKey, originalText, currentText);
+    }
+    if (changeType === ChangeType.Substitution && rawOp === "{~~~>~~}") {
+      if (bodySlice.length > 0)
+        currentText = bodySlice;
+      if (!originalText && currentText)
+        originalText = UNKNOWN_PRIOR_SUB;
+      rawOp = buildEditOpFromParts(typeKey, originalText, currentText);
+    }
+  }
+  if (!lineContent) {
+    return formatL3EditOpLine(lineNumber, hash2, rawOp);
+  }
+  const clampedCol = Math.max(0, Math.min(column, lineContent.length));
+  const clampedEnd = Math.max(clampedCol, Math.min(clampedCol + anchorLen, lineContent.length));
+  let spanStart = clampedCol;
+  let spanEnd = clampedEnd;
+  let expandLeft = false;
+  let unique = false;
+  while (!unique) {
+    if (!expandLeft) {
+      if (spanEnd < lineContent.length)
+        spanEnd++;
+      expandLeft = true;
+    } else {
+      if (spanStart > 0)
+        spanStart--;
+      expandLeft = false;
+    }
+    const candidate = lineContent.slice(spanStart, spanEnd);
+    const first = lineContent.indexOf(candidate);
+    const second = lineContent.indexOf(candidate, first + 1);
+    unique = second === -1;
+    if (spanStart === 0 && spanEnd === lineContent.length) {
+      unique = true;
+    }
+  }
+  const preSnapStart = spanStart;
+  const preSnapEnd = spanEnd;
+  while (spanEnd < lineContent.length && lineContent[spanEnd] !== " ")
+    spanEnd++;
+  while (spanStart > 0 && lineContent[spanStart - 1] !== " ")
+    spanStart--;
+  const snapped = lineContent.slice(spanStart, spanEnd);
+  const snapFirst = lineContent.indexOf(snapped);
+  const snapSecond = lineContent.indexOf(snapped, snapFirst + 1);
+  if (snapSecond !== -1) {
+    spanStart = preSnapStart;
+    spanEnd = preSnapEnd;
+  }
+  const contextBefore = lineContent.slice(spanStart, clampedCol);
+  const contextAfter = lineContent.slice(clampedEnd, spanEnd);
+  return `    ${lineNumber}:${hash2} ${contextBefore}${rawOp}${contextAfter}`;
+}
+function scanMaxCnId(text) {
+  const pattern = footnoteRefNumericGlobal();
+  let max = 0;
+  let match;
+  while ((match = pattern.exec(text)) !== null) {
+    const n = parseInt(match[1], 10);
+    if (n > max) {
+      max = n;
+    }
+  }
+  return max;
+}
+var CHANGE_TYPE_KEY, UNKNOWN_PRIOR_SUB;
+var init_footnote_generator = __esm({
+  "../../packages/core/dist-esm/operations/footnote-generator.js"() {
+    "use strict";
+    init_footnote_patterns();
+    init_timestamp();
+    init_types();
+    CHANGE_TYPE_KEY = {
+      [ChangeType.Insertion]: "insertion",
+      [ChangeType.Deletion]: "deletion",
+      [ChangeType.Substitution]: "substitution",
+      [ChangeType.Highlight]: "highlight",
+      [ChangeType.Comment]: "comment",
+      [ChangeType.Move]: "move"
+    };
+    UNKNOWN_PRIOR_SUB = "\u2026";
+  }
+});
+
+// ../../packages/core/dist-esm/parser/parser.js
+function parseInlineMetadata(raw) {
+  const result = { raw };
+  const fields = raw.split("|").map((f) => f.trim());
+  for (const field of fields) {
+    if (!field)
+      continue;
+    if (field.startsWith("@")) {
+      result.author = field;
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(field)) {
+      result.date = field;
+    } else if (["ins", "del", "sub", "highlight", "comment"].includes(field)) {
+      result.type = field;
+    } else if (["proposed", "accepted", "rejected", "approved"].includes(field)) {
+      result.status = field;
+    } else {
+      result.freeText = result.freeText ? `${result.freeText}|${field}` : field;
+    }
+  }
+  return result;
+}
+function applyImageExtraMetadata(def, metadata) {
+  if (!def.extraMetadata)
+    return;
+  const dimStr = def.extraMetadata["image-dimensions"];
+  if (dimStr) {
+    const dimMatch = dimStr.match(IMAGE_DIMENSIONS_RE);
+    if (dimMatch) {
+      metadata.imageDimensions = {
+        widthIn: parseFloat(dimMatch[1]),
+        heightIn: parseFloat(dimMatch[2])
+      };
+    }
+  }
+  const imageMeta = {};
+  for (const [key, value] of Object.entries(def.extraMetadata)) {
+    if (key.startsWith("image-") && key !== "image-dimensions") {
+      imageMeta[key] = value;
+    }
+  }
+  if (Object.keys(imageMeta).length > 0) {
+    metadata.imageMetadata = imageMeta;
+  }
+}
+function applyEquationExtraMetadata(def, metadata) {
+  if (!def.extraMetadata)
+    return;
+  const equationMeta = {};
+  for (const [key, value] of Object.entries(def.extraMetadata)) {
+    if (key.startsWith("equation-")) {
+      equationMeta[key] = value;
+    }
+  }
+  if (Object.keys(equationMeta).length > 0) {
+    metadata.equationMetadata = equationMeta;
+  }
+}
+var CriticMarkupParser;
+var init_parser = __esm({
+  "../../packages/core/dist-esm/parser/parser.js"() {
+    "use strict";
+    init_types();
+    init_document();
+    init_tokens();
+    init_footnote_patterns();
+    init_code_zones();
+    init_timestamp();
+    init_footnote_generator();
+    CriticMarkupParser = class _CriticMarkupParser {
+      constructor() {
+        this.idBase = 0;
+      }
+      parse(text, options) {
+        this.idBase = scanMaxCnId(text);
+        const changes = [];
+        let position = 0;
+        let changeCounter = 0;
+        const skipCodeBlocks = options?.skipCodeBlocks !== false;
+        const settledRefs = /* @__PURE__ */ new Map();
+        let atLineStart = true;
+        let inFence = false;
+        let fenceMarkerCode = 0;
+        let fenceLength = 0;
+        while (position < text.length) {
+          const ch = text.charCodeAt(position);
+          if (skipCodeBlocks && inFence) {
+            if (atLineStart) {
+              const closeResult = tryMatchFenceClose(text, position, fenceMarkerCode, fenceLength);
+              if (closeResult >= 0) {
+                inFence = false;
+                position = closeResult;
+                atLineStart = true;
+                continue;
+              }
+            }
+            const nextNewline = text.indexOf("\n", position);
+            if (nextNewline === -1) {
+              position = text.length;
+            } else {
+              position = nextNewline + 1;
+              atLineStart = true;
+            }
+            continue;
+          }
+          if (skipCodeBlocks && atLineStart) {
+            const fenceResult = tryMatchFenceOpen(text, position);
+            if (fenceResult) {
+              inFence = true;
+              fenceMarkerCode = fenceResult.markerCode;
+              fenceLength = fenceResult.length;
+              position = fenceResult.nextPos;
+              atLineStart = true;
+              continue;
+            }
+          }
+          if (skipCodeBlocks && ch === 96) {
+            const skipTo = skipInlineCode(text, position);
+            if (skipTo > position) {
+              atLineStart = text.charCodeAt(skipTo - 1) === 10;
+              position = skipTo;
+              continue;
+            }
+            let runEnd = position + 1;
+            while (runEnd < text.length && text.charCodeAt(runEnd) === 96) {
+              runEnd++;
+            }
+            atLineStart = false;
+            position = runEnd;
+            continue;
+          }
+          const node = this.tryParseNode(text, position, changeCounter);
+          if (node) {
+            this.tryAttachAdjacentComment(text, node);
+            this.tryAttachFootnoteRef(text, node);
+            changeCounter++;
+            changes.push(node);
+            position = node.range.end;
+            atLineStart = position > 0 && text.charCodeAt(position - 1) === 10;
+          } else {
+            if (ch === 91 && text.charCodeAt(position + 1) === 94) {
+              const remaining = text.substring(position, position + 30);
+              const refMatch = remaining.match(_CriticMarkupParser.FOOTNOTE_REF);
+              if (refMatch) {
+                const afterRef = position + refMatch[0].length;
+                if (text.charCodeAt(afterRef) !== 58) {
+                  const refId = refMatch[1];
+                  if (!changes.some((c) => c.id === refId)) {
+                    settledRefs.set(refId, position);
+                  }
+                  position = afterRef;
+                  atLineStart = false;
+                  continue;
+                }
+              }
+            }
+            atLineStart = ch === 10;
+            position++;
+          }
+        }
+        const footnotes = this.parseFootnoteDefinitions(text);
+        this.mergeFootnoteMetadata(changes, footnotes, settledRefs);
+        this.resolveMoveGroups(changes, footnotes);
+        const usedIds = /* @__PURE__ */ new Set();
+        for (const c of changes) {
+          if (c.anchored) {
+            const m = c.id.match(/^cn-(\d+)(?:\.\d+)?$/);
+            if (m)
+              usedIds.add(parseInt(m[1], 10));
+          }
+        }
+        let nextId = this.idBase;
+        const unanchored = changes.filter((c) => !c.anchored && c.id.startsWith("cn-"));
+        for (const c of unanchored) {
+          do {
+            nextId++;
+          } while (usedIds.has(nextId));
+          c.id = `cn-${nextId}`;
+        }
+        return new VirtualDocument(changes);
+      }
+      tryParseNode(text, startPos, counter) {
+        if (this.matchesAt(text, startPos, TokenType.AdditionOpen)) {
+          return this.parseInsertion(text, startPos, counter);
+        }
+        if (this.matchesAt(text, startPos, TokenType.DeletionOpen)) {
+          return this.parseDeletion(text, startPos, counter);
+        }
+        if (this.matchesAt(text, startPos, TokenType.SubstitutionOpen)) {
+          return this.parseSubstitution(text, startPos, counter);
+        }
+        if (this.matchesAt(text, startPos, TokenType.HighlightOpen)) {
+          return this.parseHighlight(text, startPos, counter);
+        }
+        if (this.matchesAt(text, startPos, TokenType.CommentOpen)) {
+          return this.parseComment(text, startPos, counter);
+        }
+        return null;
+      }
+      parseInsertion(text, startPos, counter) {
+        const contentStart = startPos + TokenType.AdditionOpen.length;
+        const closePos = text.indexOf(TokenType.AdditionClose, contentStart);
+        if (closePos === -1) {
+          return null;
+        }
+        const endPos = closePos + TokenType.AdditionClose.length;
+        const content = text.substring(contentStart, closePos);
+        return {
+          id: this.assignId(counter),
+          type: ChangeType.Insertion,
+          status: ChangeStatus.Proposed,
+          range: { start: startPos, end: endPos },
+          contentRange: { start: contentStart, end: closePos },
+          modifiedText: content,
+          level: 0,
+          anchored: false,
+          resolved: true
+        };
+      }
+      parseDeletion(text, startPos, counter) {
+        const contentStart = startPos + TokenType.DeletionOpen.length;
+        const closePos = text.indexOf(TokenType.DeletionClose, contentStart);
+        if (closePos === -1) {
+          return null;
+        }
+        const endPos = closePos + TokenType.DeletionClose.length;
+        const content = text.substring(contentStart, closePos);
+        return {
+          id: this.assignId(counter),
+          type: ChangeType.Deletion,
+          status: ChangeStatus.Proposed,
+          range: { start: startPos, end: endPos },
+          contentRange: { start: contentStart, end: closePos },
+          originalText: content,
+          level: 0,
+          anchored: false,
+          resolved: true
+        };
+      }
+      /**
+       * Finds the next ~~} at or after searchStart that is not inside a backtick-quoted
+       * span (so that substitutions whose new text contains literal `` `~~}` `` parse correctly).
+       */
+      indexOfSubstitutionCloseOutsideBackticks(text, searchStart) {
+        const close = TokenType.SubstitutionClose;
+        let pos = searchStart;
+        while (pos < text.length) {
+          const next = text.indexOf(close, pos);
+          if (next === -1)
+            return -1;
+          const between = text.substring(searchStart, next);
+          const backtickCount = (between.match(/`/g) ?? []).length;
+          if (backtickCount % 2 === 0)
+            return next;
+          pos = next + close.length;
+        }
+        return -1;
+      }
+      parseSubstitution(text, startPos, counter) {
+        const contentStart = startPos + TokenType.SubstitutionOpen.length;
+        const separatorPos = text.indexOf(TokenType.SubstitutionSeparator, contentStart);
+        if (separatorPos === -1)
+          return null;
+        const modifiedStart = separatorPos + TokenType.SubstitutionSeparator.length;
+        const closePos = this.indexOfSubstitutionCloseOutsideBackticks(text, modifiedStart);
+        if (closePos === -1 || separatorPos >= closePos) {
+          return null;
+        }
+        const originalText = text.substring(contentStart, separatorPos);
+        const modifiedText = text.substring(modifiedStart, closePos);
+        const endPos = closePos + TokenType.SubstitutionClose.length;
+        return {
+          id: this.assignId(counter),
+          type: ChangeType.Substitution,
+          status: ChangeStatus.Proposed,
+          range: { start: startPos, end: endPos },
+          contentRange: { start: contentStart, end: closePos },
+          originalRange: { start: contentStart, end: separatorPos },
+          modifiedRange: { start: modifiedStart, end: closePos },
+          originalText,
+          modifiedText,
+          level: 0,
+          anchored: false,
+          resolved: true
+        };
+      }
+      parseHighlight(text, startPos, counter) {
+        const contentStart = startPos + TokenType.HighlightOpen.length;
+        const closePos = text.indexOf(TokenType.HighlightClose, contentStart);
+        if (closePos === -1) {
+          return null;
+        }
+        const highlightedText = text.substring(contentStart, closePos);
+        let endPos = closePos + TokenType.HighlightClose.length;
+        let comment;
+        if (this.matchesAt(text, endPos, TokenType.CommentOpen)) {
+          const commentContentStart = endPos + TokenType.CommentOpen.length;
+          const commentClosePos = text.indexOf(TokenType.CommentClose, commentContentStart);
+          if (commentClosePos !== -1) {
+            comment = text.substring(commentContentStart, commentClosePos);
+            endPos = commentClosePos + TokenType.CommentClose.length;
+          }
+        }
+        return {
+          id: this.assignId(counter),
+          type: ChangeType.Highlight,
+          status: ChangeStatus.Proposed,
+          range: { start: startPos, end: endPos },
+          contentRange: { start: contentStart, end: closePos },
+          originalText: highlightedText,
+          metadata: comment !== void 0 ? { comment } : void 0,
+          level: 0,
+          anchored: false,
+          resolved: true
+        };
+      }
+      parseComment(text, startPos, counter) {
+        const contentStart = startPos + TokenType.CommentOpen.length;
+        const closePos = text.indexOf(TokenType.CommentClose, contentStart);
+        if (closePos === -1) {
+          return null;
+        }
+        const endPos = closePos + TokenType.CommentClose.length;
+        const comment = text.substring(contentStart, closePos);
+        return {
+          id: this.assignId(counter),
+          type: ChangeType.Comment,
+          status: ChangeStatus.Proposed,
+          range: { start: startPos, end: endPos },
+          contentRange: { start: contentStart, end: closePos },
+          metadata: { comment },
+          level: 0,
+          anchored: false,
+          resolved: true
+        };
+      }
+      parseFootnoteDefinitions(text) {
+        const map2 = /* @__PURE__ */ new Map();
+        let searchStart = 0;
+        if (text.startsWith("[^cn-")) {
+          searchStart = 0;
+        } else {
+          const firstDef = text.indexOf("\n[^cn-");
+          if (firstDef === -1)
+            return map2;
+          searchStart = firstDef + 1;
+        }
+        const lines = text.substring(searchStart).split(/\r?\n/);
+        let lineOffset2 = 0;
+        for (let k = 0; k < searchStart; k++) {
+          if (text.charCodeAt(k) === 10)
+            lineOffset2++;
+        }
+        let currentId = null;
+        let currentDef = null;
+        let lastDiscussionComment = null;
+        let inRevisions = false;
+        for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
+          const line = lines[lineIdx];
+          const absLine = lineIdx + lineOffset2;
+          const defMatch = line.match(_CriticMarkupParser.FOOTNOTE_DEF);
+          if (defMatch) {
+            currentId = defMatch[1];
+            currentDef = {
+              author: defMatch[2],
+              date: defMatch[3],
+              type: defMatch[4],
+              status: defMatch[5],
+              startLine: absLine,
+              endLine: absLine,
+              replyCount: 0
+            };
+            map2.set(currentId, currentDef);
+            lastDiscussionComment = null;
+            inRevisions = false;
+            continue;
+          }
+          if (!currentId || !currentDef) {
+            continue;
+          }
+          if (line.trim() === "") {
+            continue;
+          }
+          if (!/^[\t ]/.test(line)) {
+            currentId = null;
+            currentDef = null;
+            lastDiscussionComment = null;
+            inRevisions = false;
+            continue;
+          }
+          currentDef.endLine = absLine;
+          const rawIndent = line.length - line.replace(/^[\t ]+/, "").length;
+          const trimmed = line.trim();
+          if (trimmed === "revisions:") {
+            inRevisions = true;
+            lastDiscussionComment = null;
+            continue;
+          }
+          if (inRevisions) {
+            const revMatch = trimmed.match(_CriticMarkupParser.REVISION_RE);
+            if (revMatch) {
+              if (!currentDef.revisions)
+                currentDef.revisions = [];
+              currentDef.revisions.push({
+                label: revMatch[1],
+                author: revMatch[2],
+                date: revMatch[3],
+                timestamp: parseTimestamp(revMatch[3]),
+                text: revMatch[4]
+              });
+              continue;
+            }
+            inRevisions = false;
+          }
+          const ctxMatch = trimmed.match(_CriticMarkupParser.CONTEXT_RE);
+          if (ctxMatch) {
+            currentDef.context = ctxMatch[1];
+            lastDiscussionComment = null;
+            continue;
+          }
+          const apprMatch = trimmed.match(_CriticMarkupParser.APPROVAL_RE);
+          if (apprMatch) {
+            const approval = {
+              author: apprMatch[2],
+              date: apprMatch[3],
+              timestamp: parseTimestamp(apprMatch[3])
+            };
+            if (apprMatch[4] !== void 0) {
+              approval.reason = apprMatch[4];
+            }
+            switch (apprMatch[1]) {
+              case "approved":
+                if (!currentDef.approvals)
+                  currentDef.approvals = [];
+                currentDef.approvals.push(approval);
+                break;
+              case "rejected":
+                if (!currentDef.rejections)
+                  currentDef.rejections = [];
+                currentDef.rejections.push(approval);
+                break;
+              case "request-changes":
+                if (!currentDef.requestChanges)
+                  currentDef.requestChanges = [];
+                currentDef.requestChanges.push(approval);
+                break;
+            }
+            lastDiscussionComment = null;
+            continue;
+          }
+          const resolvedMatch = trimmed.match(_CriticMarkupParser.RESOLVED_RE);
+          if (resolvedMatch) {
+            currentDef.resolution = {
+              type: "resolved",
+              author: resolvedMatch[1],
+              date: resolvedMatch[2],
+              timestamp: parseTimestamp(resolvedMatch[2]),
+              reason: resolvedMatch[3] || void 0
+            };
+            lastDiscussionComment = null;
+            continue;
+          }
+          const openMatch = trimmed.match(_CriticMarkupParser.OPEN_RE);
+          if (openMatch) {
+            currentDef.resolution = {
+              type: "open",
+              reason: openMatch[1] || void 0
+            };
+            lastDiscussionComment = null;
+            continue;
+          }
+          const reasonMatch = trimmed.match(_CriticMarkupParser.REASON_RE);
+          if (reasonMatch) {
+            const comment = {
+              author: currentDef.author || "unknown",
+              date: currentDef.date || "unknown",
+              timestamp: parseTimestamp(currentDef.date || "unknown"),
+              text: reasonMatch[1],
+              depth: 0
+            };
+            if (!currentDef.discussion)
+              currentDef.discussion = [];
+            currentDef.discussion.push(comment);
+            lastDiscussionComment = comment;
+            continue;
+          }
+          const supersedesMatch = trimmed.match(_CriticMarkupParser.SUPERSEDES_RE);
+          if (supersedesMatch) {
+            if (!currentDef.supersedes)
+              currentDef.supersedes = supersedesMatch[1];
+            lastDiscussionComment = null;
+            continue;
+          }
+          const supersededByMatch = trimmed.match(_CriticMarkupParser.SUPERSEDED_BY_RE);
+          if (supersededByMatch) {
+            if (!currentDef.supersededBy)
+              currentDef.supersededBy = [];
+            currentDef.supersededBy.push(supersededByMatch[1]);
+            lastDiscussionComment = null;
+            continue;
+          }
+          const discMatch = trimmed.match(_CriticMarkupParser.DISCUSSION_RE);
+          if (discMatch) {
+            const depth = Math.max(0, Math.floor((rawIndent - 4) / 2));
+            const comment = {
+              author: discMatch[1],
+              date: discMatch[2],
+              timestamp: parseTimestamp(discMatch[2]),
+              text: discMatch[4],
+              depth
+            };
+            if (discMatch[3]) {
+              comment.label = discMatch[3];
+            }
+            if (!currentDef.discussion)
+              currentDef.discussion = [];
+            currentDef.discussion.push(comment);
+            lastDiscussionComment = comment;
+            currentDef.replyCount = (currentDef.replyCount ?? 0) + 1;
+            continue;
+          }
+          if (lastDiscussionComment) {
+            lastDiscussionComment.text += "\n" + trimmed;
+            continue;
+          }
+          const kvMatch = trimmed.match(/^([\w-]+):\s+(.*)/);
+          if (kvMatch) {
+            if (!currentDef.extraMetadata)
+              currentDef.extraMetadata = {};
+            currentDef.extraMetadata[kvMatch[1]] = kvMatch[2];
+            lastDiscussionComment = null;
+            continue;
+          }
+        }
+        return map2;
+      }
+      mergeFootnoteMetadata(changes, footnotes, settledRefs) {
+        for (const node of changes) {
+          const def = footnotes.get(node.id);
+          if (!def)
+            continue;
+          node.level = 2;
+          if (def.status === "accepted") {
+            node.status = ChangeStatus.Accepted;
+          } else if (def.status === "rejected") {
+            node.status = ChangeStatus.Rejected;
+          }
+          const existingComment = node.metadata?.comment;
+          node.metadata = {
+            ...node.metadata,
+            author: def.author,
+            date: def.date
+          };
+          if (existingComment !== void 0) {
+            node.metadata.comment = existingComment;
+          }
+          if (def.context !== void 0) {
+            node.metadata.context = def.context;
+          }
+          if (def.approvals) {
+            node.metadata.approvals = def.approvals;
+          }
+          if (def.rejections) {
+            node.metadata.rejections = def.rejections;
+          }
+          if (def.requestChanges) {
+            node.metadata.requestChanges = def.requestChanges;
+          }
+          if (def.revisions) {
+            node.metadata.revisions = def.revisions;
+          }
+          if (def.discussion) {
+            node.metadata.discussion = def.discussion;
+          }
+          if (def.resolution) {
+            node.metadata.resolution = def.resolution;
+          }
+          applyImageExtraMetadata(def, node.metadata);
+          applyEquationExtraMetadata(def, node.metadata);
+          if (def.supersedes)
+            node.supersedes = def.supersedes;
+          if (def.supersededBy && def.supersededBy.length > 0)
+            node.supersededBy = def.supersededBy;
+          if (def.startLine !== void 0) {
+            node.footnoteLineRange = { startLine: def.startLine, endLine: def.endLine ?? def.startLine };
+          }
+          node.replyCount = def.replyCount ?? 0;
+        }
+        if (settledRefs) {
+          const claimedIds = new Set(changes.map((c) => c.id));
+          for (const [id, offset] of settledRefs) {
+            if (claimedIds.has(id))
+              continue;
+            const def = footnotes.get(id);
+            if (!def)
+              continue;
+            const refLength = `[^${id}]`.length;
+            let status = ChangeStatus.Proposed;
+            if (def.status === "accepted")
+              status = ChangeStatus.Accepted;
+            else if (def.status === "rejected")
+              status = ChangeStatus.Rejected;
+            const TYPE_MAP2 = {
+              ins: ChangeType.Insertion,
+              del: ChangeType.Deletion,
+              sub: ChangeType.Substitution,
+              highlight: ChangeType.Highlight,
+              comment: ChangeType.Comment,
+              insertion: ChangeType.Insertion,
+              deletion: ChangeType.Deletion,
+              substitution: ChangeType.Substitution
+            };
+            const type = TYPE_MAP2[def.type ?? ""] ?? ChangeType.Substitution;
+            const node = {
+              id,
+              type,
+              status,
+              range: { start: offset, end: offset + refLength },
+              contentRange: { start: offset, end: offset + refLength },
+              // covers [^cn-N] ref
+              level: 2,
+              decided: true,
+              anchored: true,
+              resolved: true,
+              metadata: {
+                author: def.author,
+                date: def.date,
+                type: def.type,
+                status: def.status
+              }
+            };
+            if (def.context !== void 0)
+              node.metadata.context = def.context;
+            if (def.approvals)
+              node.metadata.approvals = def.approvals;
+            if (def.rejections)
+              node.metadata.rejections = def.rejections;
+            if (def.requestChanges)
+              node.metadata.requestChanges = def.requestChanges;
+            if (def.revisions)
+              node.metadata.revisions = def.revisions;
+            if (def.discussion)
+              node.metadata.discussion = def.discussion;
+            if (def.resolution)
+              node.metadata.resolution = def.resolution;
+            applyImageExtraMetadata(def, node.metadata);
+            applyEquationExtraMetadata(def, node.metadata);
+            if (def.supersedes)
+              node.supersedes = def.supersedes;
+            if (def.supersededBy && def.supersededBy.length > 0)
+              node.supersededBy = def.supersededBy;
+            if (def.startLine !== void 0) {
+              node.footnoteLineRange = { startLine: def.startLine, endLine: def.endLine ?? def.startLine };
+            }
+            node.replyCount = def.replyCount ?? 0;
+            changes.push(node);
+          }
+          changes.sort((a, b) => a.range.start - b.range.start);
+        }
+      }
+      resolveMoveGroups(changes, footnotes) {
+        for (const [id, def] of footnotes) {
+          if (def.type !== "move")
+            continue;
+          const parentId = id;
+          const prefix = parentId + ".";
+          for (const node of changes) {
+            if (!node.id.startsWith(prefix))
+              continue;
+            node.groupId = parentId;
+            if (node.type === ChangeType.Deletion) {
+              node.moveRole = "from";
+            } else if (node.type === ChangeType.Insertion) {
+              node.moveRole = "to";
+            }
+          }
+        }
+      }
+      tryAttachAdjacentComment(text, node) {
+        const pos = node.range.end;
+        if (!this.matchesAt(text, pos, TokenType.CommentOpen))
+          return;
+        const contentStart = pos + TokenType.CommentOpen.length;
+        const closePos = text.indexOf(TokenType.CommentClose, contentStart);
+        if (closePos === -1)
+          return;
+        const content = text.substring(contentStart, closePos);
+        const endPos = closePos + TokenType.CommentClose.length;
+        node.inlineMetadata = parseInlineMetadata(content);
+        node.level = 1;
+        node.range = { start: node.range.start, end: endPos };
+      }
+      tryAttachFootnoteRef(text, node) {
+        if (text.charCodeAt(node.range.end) !== 91)
+          return;
+        const remaining = text.substring(node.range.end, node.range.end + 30);
+        const match = remaining.match(_CriticMarkupParser.FOOTNOTE_REF);
+        if (match) {
+          node.id = match[1];
+          node.footnoteRefStart = node.range.end;
+          node.range = { start: node.range.start, end: node.range.end + match[0].length };
+          node.level = 2;
+          node.anchored = true;
+          node.resolved = true;
+        }
+      }
+      matchesAt(text, position, delimiter) {
+        return text.startsWith(delimiter, position);
+      }
+      assignId(counter) {
+        return `cn-${this.idBase + counter + 1}`;
+      }
+    };
+    CriticMarkupParser.FOOTNOTE_REF = FOOTNOTE_REF_ANCHORED;
+    CriticMarkupParser.FOOTNOTE_DEF = FOOTNOTE_DEF_STRICT;
+    CriticMarkupParser.APPROVAL_RE = /^(approved|rejected|request-changes):\s+(@\S+)\s+(\S+)(?:\s+"([^"]*)")?$/;
+    CriticMarkupParser.SUPERSEDES_RE = /^supersedes:\s+(\S+)\s*$/;
+    CriticMarkupParser.SUPERSEDED_BY_RE = /^superseded-by:\s+(\S+)\s*$/;
+    CriticMarkupParser.DISCUSSION_RE = /^(@\S+)\s+(\S+)(?:\s+\[([^\]]+)\])?:\s*(.*)$/;
+    CriticMarkupParser.RESOLVED_RE = /^resolved:?\s+(@\S+)\s+(\S+)(?::\s*(.*))?$/;
+    CriticMarkupParser.OPEN_RE = /^open(?:\s+--\s+(.*))?$/;
+    CriticMarkupParser.REVISION_RE = /^(r\d+)\s+(@\S+)\s+(\S+):\s+"([^"]*)"$/;
+    CriticMarkupParser.CONTEXT_RE = /^context:\s+"([^"]*)"$/;
+    CriticMarkupParser.REASON_RE = /^reason:\s+(.+)$/;
+  }
+});
+
+// ../../packages/core/dist-esm/footnote-utils.js
+function countFootnoteHeadersWithStatus(content, status) {
+  let count = 0;
+  for (const s of extractFootnoteStatuses(content).values()) {
+    if (s === status)
+      count++;
+  }
+  return count;
+}
+function findFootnoteBlock(lines, changeId) {
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith(`[^${changeId}]:`)) {
+      let end = i;
+      let j = i + 1;
+      while (j < lines.length) {
+        if (lines[j].startsWith("[^cn-"))
+          break;
+        if (lines[j].startsWith("    ")) {
+          end = j;
+          j++;
+          continue;
+        }
+        if (lines[j].trim() === "") {
+          let k = j + 1;
+          let hasMore = false;
+          while (k < lines.length && !lines[k].startsWith("[^cn-")) {
+            if (lines[k].startsWith("    ")) {
+              hasMore = true;
+              break;
+            }
+            if (lines[k].trim() !== "")
+              break;
+            k++;
+          }
+          if (hasMore) {
+            j++;
+            continue;
+          }
+          break;
+        }
+        break;
+      }
+      return { headerLine: i, blockEnd: end, headerContent: lines[i] };
+    }
+  }
+  return null;
+}
+function parseFootnoteHeader(headerLine) {
+  const colonIdx = headerLine.indexOf(":");
+  if (colonIdx === -1)
+    return null;
+  const content = headerLine.slice(colonIdx + 1).trim();
+  const parts = content.split("|").map((p) => p.trim());
+  if (parts.length < 4)
+    return null;
+  return {
+    author: parts[0].replace(/^@/, ""),
+    date: parts[1],
+    type: parts[2],
+    status: parts[3]
+  };
+}
+function findDiscussionInsertionIndex(lines, headerLine, blockEnd) {
+  let insertAfter = headerLine;
+  for (let i = headerLine + 1; i <= blockEnd; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed === "")
+      continue;
+    if (isApprovalOrResolutionLine(trimmed)) {
+      return i - 1;
+    }
+    insertAfter = i;
+  }
+  return insertAfter;
+}
+function findReviewInsertionIndex(lines, headerLine, blockEnd) {
+  let insertAfter = headerLine;
+  for (let i = headerLine + 1; i <= blockEnd; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed === "")
+      continue;
+    if (isResolutionLine(trimmed)) {
+      return i - 1;
+    }
+    insertAfter = i;
+  }
+  return insertAfter;
+}
+function findChildFootnoteIds(lines, parentId) {
+  const prefix = `[^${parentId}.`;
+  const children = [];
+  for (const line of lines) {
+    if (line.startsWith(prefix)) {
+      const closeBracket = line.indexOf("]:");
+      if (closeBracket !== -1) {
+        children.push(line.slice(2, closeBracket));
+      }
+    }
+  }
+  return children;
+}
+function findFootnoteBlockStart(lines) {
+  let lastDefIdx = -1;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (FOOTNOTE_DEF_START.test(lines[i])) {
+      lastDefIdx = i;
+      break;
+    }
+  }
+  if (lastDefIdx === -1) {
+    return lines.length;
+  }
+  let candidate = lastDefIdx;
+  while (candidate >= 0) {
+    let j = candidate + 1;
+    let isTerminal2 = true;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
+        j++;
+      } else if (line.trim() === "") {
+        j++;
+      } else {
+        isTerminal2 = false;
+        break;
+      }
+    }
+    if (isTerminal2) {
+      lastDefIdx = candidate;
+      break;
+    }
+    candidate--;
+    while (candidate >= 0 && !FOOTNOTE_DEF_START.test(lines[candidate])) {
+      candidate--;
+    }
+  }
+  if (candidate < 0) {
+    return lines.length;
+  }
+  let blockStart = lastDefIdx;
+  for (let i = lastDefIdx - 1; i >= 0; i--) {
+    const line = lines[i];
+    if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
+      blockStart = i;
+    } else if (line.trim() === "") {
+      let hasFootnoteBefore = false;
+      for (let k = i - 1; k >= 0; k--) {
+        if (lines[k].trim() === "")
+          continue;
+        if (FOOTNOTE_DEF_START.test(lines[k]) || FOOTNOTE_CONTINUATION.test(lines[k])) {
+          hasFootnoteBefore = true;
+        }
+        break;
+      }
+      if (hasFootnoteBefore) {
+        blockStart = i;
+      } else {
+        break;
+      }
+    } else {
+      break;
+    }
+  }
+  return blockStart;
+}
+function isApprovalOrResolutionLine(trimmed) {
+  return trimmed.startsWith("approved:") || trimmed.startsWith("rejected:") || trimmed.startsWith("request-changes:") || trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
+}
+function isResolutionLine(trimmed) {
+  return trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
+}
+function extractFootnoteStatuses(text) {
+  const statuses = /* @__PURE__ */ new Map();
+  const lines = text.split("\n");
+  for (const line of lines) {
+    const m = FOOTNOTE_ID_AND_STATUS_RE.exec(line);
+    if (m) {
+      statuses.set(m[1], m[2].toLowerCase());
+    }
+  }
+  return statuses;
+}
+var FOOTNOTE_ID_AND_STATUS_RE;
+var init_footnote_utils = __esm({
+  "../../packages/core/dist-esm/footnote-utils.js"() {
+    "use strict";
+    init_footnote_patterns();
+    FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(cn-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
+  }
+});
+
+// ../../packages/core/dist-esm/host/decorations/helpers.js
+function hasInlineDelimiters(change) {
+  return change.range.start < change.contentRange.start || change.range.end > change.contentRange.end;
+}
+var init_helpers = __esm({
+  "../../packages/core/dist-esm/host/decorations/helpers.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/operations/accept-reject.js
+function computeAcceptParts(change) {
+  const rangeLength = change.range.end - change.range.start;
+  const refId = change.level >= 2 ? change.id : "";
+  switch (change.type) {
+    case ChangeType.Insertion:
+      return { offset: change.range.start, length: rangeLength, text: change.modifiedText ?? "", refId };
+    case ChangeType.Deletion:
+      return { offset: change.range.start, length: rangeLength, text: "", refId };
+    case ChangeType.Substitution:
+      return { offset: change.range.start, length: rangeLength, text: change.modifiedText ?? "", refId };
+    case ChangeType.Highlight:
+      return { offset: change.range.start, length: rangeLength, text: change.originalText ?? "", refId };
+    case ChangeType.Comment:
+      return { offset: change.range.start, length: rangeLength, text: "", refId: "" };
+    case ChangeType.Move:
+      return { offset: change.range.start, length: rangeLength, text: change.modifiedText ?? "", refId };
+  }
+}
+function computeRejectParts(change) {
+  const rangeLength = change.range.end - change.range.start;
+  const refId = change.level >= 2 ? change.id : "";
+  switch (change.type) {
+    case ChangeType.Insertion:
+      return { offset: change.range.start, length: rangeLength, text: "", refId };
+    case ChangeType.Deletion:
+      return { offset: change.range.start, length: rangeLength, text: change.originalText ?? "", refId };
+    case ChangeType.Substitution:
+      return { offset: change.range.start, length: rangeLength, text: change.originalText ?? "", refId };
+    case ChangeType.Highlight:
+      return { offset: change.range.start, length: rangeLength, text: change.originalText ?? "", refId };
+    case ChangeType.Comment:
+      return { offset: change.range.start, length: rangeLength, text: "", refId: "" };
+    case ChangeType.Move:
+      return { offset: change.range.start, length: rangeLength, text: change.originalText ?? "", refId };
+  }
+}
+function computeReject(change) {
+  if (!hasInlineDelimiters(change)) {
+    switch (change.type) {
+      case ChangeType.Insertion:
+        return { offset: change.range.start, length: change.range.end - change.range.start, newText: "" };
+      case ChangeType.Deletion:
+        return { offset: change.range.start, length: 0, newText: change.originalText ?? "" };
+      case ChangeType.Substitution:
+        return { offset: change.range.start, length: change.range.end - change.range.start, newText: change.originalText ?? "" };
+      case ChangeType.Highlight:
+        return { offset: change.range.start, length: 0, newText: "" };
+      case ChangeType.Comment:
+        return { offset: change.range.start, length: 0, newText: "" };
+      case ChangeType.Move:
+        return { offset: change.range.start, length: change.range.end - change.range.start, newText: "" };
+    }
+  }
+  const parts = computeRejectParts(change);
+  const ref = parts.refId ? `[^${parts.refId}]` : "";
+  return { offset: parts.offset, length: parts.length, newText: parts.text + ref };
+}
+var init_accept_reject = __esm({
+  "../../packages/core/dist-esm/operations/accept-reject.js"() {
+    "use strict";
+    init_types();
+    init_footnote_patterns();
+    init_timestamp();
+    init_footnote_utils();
+    init_helpers();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/resolution.js
+function computeResolutionEdit(text, changeId, opts) {
+  const lines = text.split("\n");
+  const block = findFootnoteBlock(lines, changeId);
+  if (!block)
+    return null;
+  const date4 = opts.date ?? nowTimestamp().raw;
+  const author = opts.author.startsWith("@") ? opts.author : `@${opts.author}`;
+  const line = `    resolved: ${author} ${date4}`;
+  const offset = lines.slice(0, block.blockEnd + 1).join("\n").length;
+  return { offset, length: 0, newText: "\n" + line };
+}
+function computeUnresolveEdit(text, changeId) {
+  const lines = text.split("\n");
+  const block = findFootnoteBlock(lines, changeId);
+  if (!block)
+    return null;
+  for (let i = block.headerLine + 1; i <= block.blockEnd; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith("resolved:") || trimmed.startsWith("resolved ")) {
+      const linesBefore = lines.slice(0, i).join("\n");
+      const lineOffset2 = linesBefore.length;
+      const lineLength = lines[i].length + 1;
+      return { offset: lineOffset2, length: lineLength, newText: "" };
+    }
+  }
+  return null;
+}
+var init_resolution = __esm({
+  "../../packages/core/dist-esm/operations/resolution.js"() {
+    "use strict";
+    init_footnote_utils();
+    init_timestamp();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/reply.js
+function computeReplyEdit(docText, changeId, opts) {
+  const lines = docText.split("\n");
+  const block = findFootnoteBlock(lines, changeId);
+  if (!block) {
+    return { isError: true, error: `Footnote not found for ${changeId}` };
+  }
+  const date4 = opts.date ?? nowTimestamp().raw;
+  const labelPart = opts.label ? ` [${opts.label}]` : "";
+  const replyLines = opts.text.split("\n");
+  const indent = "    ";
+  const continuationIndent = "      ";
+  const firstLine = `${indent}@${opts.author} ${date4}${labelPart}: ${replyLines[0]}`;
+  const continuationLines = replyLines.slice(1).map((l) => `${continuationIndent}${l}`);
+  const newLines = [firstLine, ...continuationLines];
+  const insertIndex = findDiscussionInsertionIndex(lines, block.headerLine, block.blockEnd) + 1;
+  lines.splice(insertIndex, 0, ...newLines);
+  return { isError: false, text: lines.join("\n") };
+}
+var init_reply = __esm({
+  "../../packages/core/dist-esm/operations/reply.js"() {
+    "use strict";
+    init_footnote_utils();
+    init_timestamp();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/navigation.js
+var init_navigation = __esm({
+  "../../packages/core/dist-esm/operations/navigation.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/operations/tracking.js
+var init_tracking = __esm({
+  "../../packages/core/dist-esm/operations/tracking.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/operations/comment.js
+var init_comment = __esm({
+  "../../packages/core/dist-esm/operations/comment.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/operations/apply-review.js
+function decisionToKeyword(decision) {
+  switch (decision) {
+    case "approve":
+      return "approved:";
+    case "reject":
+      return "rejected:";
+    case "request_changes":
+      return "request-changes:";
+    case "withdraw":
+      return "withdrew:";
+    default: {
+      const _exhaustive = decision;
+      return _exhaustive;
+    }
+  }
+}
+function checkBlocks(lines, block) {
+  const blockers = [];
+  const resolved = /* @__PURE__ */ new Set();
+  for (let i = block.headerLine + 1; i <= block.blockEnd; i++) {
+    const line = lines[i].trim();
+    const colonIdx = line.indexOf(":");
+    if (colonIdx < 1)
+      continue;
+    const keyword = line.slice(0, colonIdx);
+    const authorMatch = line.slice(colonIdx + 1).match(/^\s*@(\S+)/);
+    if (!authorMatch)
+      continue;
+    const author = "@" + authorMatch[1];
+    if (keyword === "blocked")
+      blockers.push(author);
+    else if (keyword === "withdrew" || keyword === "approved")
+      resolved.add(author);
+  }
+  const unresolvedBlockers = blockers.filter((b) => !resolved.has(b));
+  return { blocked: unresolvedBlockers.length > 0, blockers: unresolvedBlockers };
+}
+function promoteLevel0ToLevel2(fileContent, changeId, author) {
+  const parser = new CriticMarkupParser();
+  const doc = parser.parse(fileContent);
+  const changes = doc.getChanges();
+  const change = changes.find((c) => c.id === changeId);
+  if (!change) {
+    return null;
+  }
+  if (change.level !== 0) {
+    return null;
+  }
+  const typeAbbrev = changeTypeToAbbrev(change.type);
+  const result = ensureL2(fileContent, change.range.start, { author, type: typeAbbrev });
+  if (!result.promoted) {
+    return null;
+  }
+  return result.text;
+}
+function formatReviewAuthor(author) {
+  return author.startsWith("@") ? author : `@${author}`;
+}
+function applyReview(fileContent, changeId, decision, reasoning, author, config2) {
+  let lines = fileContent.split("\n");
+  let block = findFootnoteBlock(lines, changeId);
+  if (!block) {
+    const promoted = promoteLevel0ToLevel2(fileContent, changeId, author);
+    if (!promoted) {
+      return { error: `Change "${changeId}" not found in file.` };
+    }
+    fileContent = promoted;
+    lines = fileContent.split("\n");
+    block = findFootnoteBlock(lines, changeId);
+    if (!block) {
+      return { error: `Change "${changeId}" not found in file after promotion attempt.` };
+    }
+  }
+  const header = parseFootnoteHeader(lines[block.headerLine]);
+  if (!header) {
+    return {
+      error: `Malformed metadata for change "${changeId}". Expected format: @author | date | type | status`
+    };
+  }
+  const currentStatus = header.status;
+  if (config2 && (decision === "approve" || decision === "reject")) {
+    const acceptCheck = canAccept(author, header.author, config2);
+    if (!acceptCheck.allowed) {
+      return { error: acceptCheck.reason };
+    }
+  }
+  if (decision === "approve" && currentStatus === "accepted") {
+    return {
+      updatedContent: fileContent,
+      result: { change_id: changeId, decision, status_updated: false, reason: "already_accepted" }
+    };
+  }
+  if (decision === "reject" && currentStatus === "rejected") {
+    return {
+      updatedContent: fileContent,
+      result: { change_id: changeId, decision, status_updated: false, reason: "already_rejected" }
+    };
+  }
+  if (decision === "approve") {
+    const blockResult = checkBlocks(lines, block);
+    if (blockResult.blocked) {
+      return { error: `Acceptance blocked by unresolved request-changes from ${blockResult.blockers.join(", ")}` };
+    }
+  }
+  const keyword = decisionToKeyword(decision);
+  const ts = nowTimestamp();
+  const reviewLine = `    ${keyword} ${formatReviewAuthor(author)} ${ts.raw} "${reasoning}"`;
+  const insertAfterIdx = findReviewInsertionIndex(lines, block.headerLine, block.blockEnd);
+  lines.splice(insertAfterIdx + 1, 0, reviewLine);
+  let statusUpdated = false;
+  let reason;
+  if (decision === "approve" && currentStatus === "proposed") {
+    lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*proposed\s*$/, "| accepted");
+    statusUpdated = true;
+  } else if (decision === "reject" && currentStatus === "proposed") {
+    lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*proposed\s*$/, "| rejected");
+    statusUpdated = true;
+  } else if (decision === "reject" && currentStatus === "accepted") {
+    lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*accepted\s*$/, "| rejected");
+    statusUpdated = true;
+  } else if (decision === "approve" && currentStatus === "rejected") {
+    lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*rejected\s*$/, "| accepted");
+    statusUpdated = true;
+  } else if (decision === "request_changes") {
+    reason = "request_changes_no_status_change";
+  }
+  let cascadedChildren;
+  if (statusUpdated && (decision === "approve" || decision === "reject")) {
+    const childIds = findChildFootnoteIds(lines, changeId);
+    if (childIds.length > 0) {
+      cascadedChildren = [];
+      const targetStatus = decision === "approve" ? "accepted" : "rejected";
+      for (const childId of childIds) {
+        const childBlock = findFootnoteBlock(lines, childId);
+        if (!childBlock)
+          continue;
+        const childHeader = parseFootnoteHeader(lines[childBlock.headerLine]);
+        if (!childHeader)
+          continue;
+        if (childHeader.status !== "proposed")
+          continue;
+        lines[childBlock.headerLine] = lines[childBlock.headerLine].replace(/\|\s*proposed\s*$/, `| ${targetStatus}`);
+        const childInsertIdx = findReviewInsertionIndex(lines, childBlock.headerLine, childBlock.blockEnd);
+        const childReviewLine = `    ${keyword} ${formatReviewAuthor(author)} ${ts.raw} "${reasoning}" (cascaded from ${changeId})`;
+        lines.splice(childInsertIdx + 1, 0, childReviewLine);
+        cascadedChildren.push(childId);
+      }
+      if (cascadedChildren.length === 0)
+        cascadedChildren = void 0;
+    }
+  }
+  const result = { change_id: changeId, decision, status_updated: statusUpdated };
+  if (reason) {
+    result.reason = reason;
+  }
+  if (cascadedChildren) {
+    result.cascaded_children = cascadedChildren;
+  }
+  return {
+    updatedContent: lines.join("\n"),
+    result
+  };
+}
+var VALID_DECISIONS;
+var init_apply_review = __esm({
+  "../../packages/core/dist-esm/operations/apply-review.js"() {
+    "use strict";
+    init_parser();
+    init_types();
+    init_footnote_utils();
+    init_timestamp();
+    init_ensure_l2();
+    init_review_permissions();
+    VALID_DECISIONS = ["approve", "reject", "request_changes", "withdraw"];
+  }
+});
+
+// ../../node_modules/xxhash-wasm/esm/xxhash-wasm.js
+async function e() {
+  return (function(t2) {
+    const { exports: { mem: e2, xxh32: n, xxh64: r, init32: i, update32: a, digest32: o, init64: s, update64: u, digest64: c } } = t2;
+    let h = new Uint8Array(e2.buffer);
+    function g(t3, n2) {
+      if (e2.buffer.byteLength < t3 + n2) {
+        const r2 = Math.ceil((t3 + n2 - e2.buffer.byteLength) / 65536);
+        e2.grow(r2), h = new Uint8Array(e2.buffer);
+      }
+    }
+    function f(t3, e3, n2, r2, i2, a2) {
+      g(t3);
+      const o2 = new Uint8Array(t3);
+      return h.set(o2), n2(0, e3), o2.set(h.subarray(0, t3)), { update(e4) {
+        let n3;
+        return h.set(o2), "string" == typeof e4 ? (g(3 * e4.length, t3), n3 = w.encodeInto(e4, h.subarray(t3)).written) : (g(e4.byteLength, t3), h.set(e4, t3), n3 = e4.byteLength), r2(0, t3, n3), o2.set(h.subarray(0, t3)), this;
+      }, digest: () => (h.set(o2), a2(i2(0))) };
+    }
+    function y(t3) {
+      return t3 >>> 0;
+    }
+    const b = 2n ** 64n - 1n;
+    function d(t3) {
+      return t3 & b;
+    }
+    const w = new TextEncoder(), l = 0, p = 0n;
+    function x(t3, e3 = l) {
+      return g(3 * t3.length, 0), y(n(0, w.encodeInto(t3, h).written, e3));
+    }
+    function L(t3, e3 = p) {
+      return g(3 * t3.length, 0), d(r(0, w.encodeInto(t3, h).written, e3));
+    }
+    return { h32: x, h32ToString: (t3, e3 = l) => x(t3, e3).toString(16).padStart(8, "0"), h32Raw: (t3, e3 = l) => (g(t3.byteLength, 0), h.set(t3), y(n(0, t3.byteLength, e3))), create32: (t3 = l) => f(48, t3, i, a, o, y), h64: L, h64ToString: (t3, e3 = p) => L(t3, e3).toString(16).padStart(16, "0"), h64Raw: (t3, e3 = p) => (g(t3.byteLength, 0), h.set(t3), d(r(0, t3.byteLength, e3))), create64: (t3 = p) => f(88, t3, s, u, c, d) };
+  })((await WebAssembly.instantiate(t)).instance);
+}
+var t;
+var init_xxhash_wasm = __esm({
+  "../../node_modules/xxhash-wasm/esm/xxhash-wasm.js"() {
+    t = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 48, 8, 96, 3, 127, 127, 127, 1, 127, 96, 3, 127, 127, 127, 0, 96, 2, 127, 127, 0, 96, 1, 127, 1, 127, 96, 3, 127, 127, 126, 1, 126, 96, 3, 126, 127, 127, 1, 126, 96, 2, 127, 126, 0, 96, 1, 127, 1, 126, 3, 11, 10, 0, 0, 2, 1, 3, 4, 5, 6, 1, 7, 5, 3, 1, 0, 1, 7, 85, 9, 3, 109, 101, 109, 2, 0, 5, 120, 120, 104, 51, 50, 0, 0, 6, 105, 110, 105, 116, 51, 50, 0, 2, 8, 117, 112, 100, 97, 116, 101, 51, 50, 0, 3, 8, 100, 105, 103, 101, 115, 116, 51, 50, 0, 4, 5, 120, 120, 104, 54, 52, 0, 5, 6, 105, 110, 105, 116, 54, 52, 0, 7, 8, 117, 112, 100, 97, 116, 101, 54, 52, 0, 8, 8, 100, 105, 103, 101, 115, 116, 54, 52, 0, 9, 10, 251, 22, 10, 242, 1, 1, 4, 127, 32, 0, 32, 1, 106, 33, 3, 32, 1, 65, 16, 79, 4, 127, 32, 3, 65, 16, 107, 33, 6, 32, 2, 65, 168, 136, 141, 161, 2, 106, 33, 3, 32, 2, 65, 137, 235, 208, 208, 7, 107, 33, 4, 32, 2, 65, 207, 140, 162, 142, 6, 106, 33, 5, 3, 64, 32, 3, 32, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 3, 32, 4, 32, 0, 65, 4, 106, 34, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 4, 32, 2, 32, 0, 65, 4, 106, 34, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 2, 32, 5, 32, 0, 65, 4, 106, 34, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 5, 32, 6, 32, 0, 65, 4, 106, 34, 0, 79, 13, 0, 11, 32, 2, 65, 12, 119, 32, 5, 65, 18, 119, 106, 32, 4, 65, 7, 119, 106, 32, 3, 65, 1, 119, 106, 5, 32, 2, 65, 177, 207, 217, 178, 1, 106, 11, 32, 1, 106, 32, 0, 32, 1, 65, 15, 113, 16, 1, 11, 146, 1, 0, 32, 1, 32, 2, 106, 33, 2, 3, 64, 32, 1, 65, 4, 106, 32, 2, 75, 69, 4, 64, 32, 0, 32, 1, 40, 2, 0, 65, 189, 220, 202, 149, 124, 108, 106, 65, 17, 119, 65, 175, 214, 211, 190, 2, 108, 33, 0, 32, 1, 65, 4, 106, 33, 1, 12, 1, 11, 11, 3, 64, 32, 1, 32, 2, 79, 69, 4, 64, 32, 0, 32, 1, 45, 0, 0, 65, 177, 207, 217, 178, 1, 108, 106, 65, 11, 119, 65, 177, 243, 221, 241, 121, 108, 33, 0, 32, 1, 65, 1, 106, 33, 1, 12, 1, 11, 11, 32, 0, 32, 0, 65, 15, 118, 115, 65, 247, 148, 175, 175, 120, 108, 34, 0, 65, 13, 118, 32, 0, 115, 65, 189, 220, 202, 149, 124, 108, 34, 0, 65, 16, 118, 32, 0, 115, 11, 63, 0, 32, 0, 65, 8, 106, 32, 1, 65, 168, 136, 141, 161, 2, 106, 54, 2, 0, 32, 0, 65, 12, 106, 32, 1, 65, 137, 235, 208, 208, 7, 107, 54, 2, 0, 32, 0, 65, 16, 106, 32, 1, 54, 2, 0, 32, 0, 65, 20, 106, 32, 1, 65, 207, 140, 162, 142, 6, 106, 54, 2, 0, 11, 195, 4, 1, 6, 127, 32, 1, 32, 2, 106, 33, 6, 32, 0, 65, 24, 106, 33, 4, 32, 0, 65, 40, 106, 40, 2, 0, 33, 3, 32, 0, 32, 0, 40, 2, 0, 32, 2, 106, 54, 2, 0, 32, 0, 65, 4, 106, 34, 5, 32, 5, 40, 2, 0, 32, 2, 65, 16, 79, 32, 0, 40, 2, 0, 65, 16, 79, 114, 114, 54, 2, 0, 32, 2, 32, 3, 106, 65, 16, 73, 4, 64, 32, 3, 32, 4, 106, 32, 1, 32, 2, 252, 10, 0, 0, 32, 0, 65, 40, 106, 32, 2, 32, 3, 106, 54, 2, 0, 15, 11, 32, 3, 4, 64, 32, 3, 32, 4, 106, 32, 1, 65, 16, 32, 3, 107, 34, 2, 252, 10, 0, 0, 32, 0, 65, 8, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 12, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 65, 4, 106, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 16, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 65, 8, 106, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 20, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 65, 12, 106, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 40, 106, 65, 0, 54, 2, 0, 32, 1, 32, 2, 106, 33, 1, 11, 32, 1, 32, 6, 65, 16, 107, 77, 4, 64, 32, 6, 65, 16, 107, 33, 8, 32, 0, 65, 8, 106, 40, 2, 0, 33, 2, 32, 0, 65, 12, 106, 40, 2, 0, 33, 3, 32, 0, 65, 16, 106, 40, 2, 0, 33, 5, 32, 0, 65, 20, 106, 40, 2, 0, 33, 7, 3, 64, 32, 2, 32, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 2, 32, 3, 32, 1, 65, 4, 106, 34, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 3, 32, 5, 32, 1, 65, 4, 106, 34, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 5, 32, 7, 32, 1, 65, 4, 106, 34, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 7, 32, 8, 32, 1, 65, 4, 106, 34, 1, 79, 13, 0, 11, 32, 0, 65, 8, 106, 32, 2, 54, 2, 0, 32, 0, 65, 12, 106, 32, 3, 54, 2, 0, 32, 0, 65, 16, 106, 32, 5, 54, 2, 0, 32, 0, 65, 20, 106, 32, 7, 54, 2, 0, 11, 32, 1, 32, 6, 73, 4, 64, 32, 4, 32, 1, 32, 6, 32, 1, 107, 34, 1, 252, 10, 0, 0, 32, 0, 65, 40, 106, 32, 1, 54, 2, 0, 11, 11, 97, 1, 1, 127, 32, 0, 65, 16, 106, 40, 2, 0, 33, 1, 32, 0, 65, 4, 106, 40, 2, 0, 4, 127, 32, 1, 65, 12, 119, 32, 0, 65, 20, 106, 40, 2, 0, 65, 18, 119, 106, 32, 0, 65, 12, 106, 40, 2, 0, 65, 7, 119, 106, 32, 0, 65, 8, 106, 40, 2, 0, 65, 1, 119, 106, 5, 32, 1, 65, 177, 207, 217, 178, 1, 106, 11, 32, 0, 40, 2, 0, 106, 32, 0, 65, 24, 106, 32, 0, 65, 40, 106, 40, 2, 0, 16, 1, 11, 255, 3, 2, 3, 126, 1, 127, 32, 0, 32, 1, 106, 33, 6, 32, 1, 65, 32, 79, 4, 126, 32, 6, 65, 32, 107, 33, 6, 32, 2, 66, 214, 235, 130, 238, 234, 253, 137, 245, 224, 0, 124, 33, 3, 32, 2, 66, 177, 169, 172, 193, 173, 184, 212, 166, 61, 125, 33, 4, 32, 2, 66, 249, 234, 208, 208, 231, 201, 161, 228, 225, 0, 124, 33, 5, 3, 64, 32, 3, 32, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 3, 32, 4, 32, 0, 65, 8, 106, 34, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 4, 32, 2, 32, 0, 65, 8, 106, 34, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 2, 32, 5, 32, 0, 65, 8, 106, 34, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 5, 32, 6, 32, 0, 65, 8, 106, 34, 0, 79, 13, 0, 11, 32, 2, 66, 12, 137, 32, 5, 66, 18, 137, 124, 32, 4, 66, 7, 137, 124, 32, 3, 66, 1, 137, 124, 32, 3, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 4, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 2, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 5, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 5, 32, 2, 66, 197, 207, 217, 178, 241, 229, 186, 234, 39, 124, 11, 32, 1, 173, 124, 32, 0, 32, 1, 65, 31, 113, 16, 6, 11, 134, 2, 0, 32, 1, 32, 2, 106, 33, 2, 3, 64, 32, 2, 32, 1, 65, 8, 106, 79, 4, 64, 32, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 32, 0, 133, 66, 27, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 33, 0, 32, 1, 65, 8, 106, 33, 1, 12, 1, 11, 11, 32, 1, 65, 4, 106, 32, 2, 77, 4, 64, 32, 0, 32, 1, 53, 2, 0, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 23, 137, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 249, 243, 221, 241, 153, 246, 153, 171, 22, 124, 33, 0, 32, 1, 65, 4, 106, 33, 1, 11, 3, 64, 32, 1, 32, 2, 73, 4, 64, 32, 0, 32, 1, 49, 0, 0, 66, 197, 207, 217, 178, 241, 229, 186, 234, 39, 126, 133, 66, 11, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 0, 32, 1, 65, 1, 106, 33, 1, 12, 1, 11, 11, 32, 0, 32, 0, 66, 33, 136, 133, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 34, 0, 32, 0, 66, 29, 136, 133, 66, 249, 243, 221, 241, 153, 246, 153, 171, 22, 126, 34, 0, 32, 0, 66, 32, 136, 133, 11, 77, 0, 32, 0, 65, 8, 106, 32, 1, 66, 214, 235, 130, 238, 234, 253, 137, 245, 224, 0, 124, 55, 3, 0, 32, 0, 65, 16, 106, 32, 1, 66, 177, 169, 172, 193, 173, 184, 212, 166, 61, 125, 55, 3, 0, 32, 0, 65, 24, 106, 32, 1, 55, 3, 0, 32, 0, 65, 32, 106, 32, 1, 66, 249, 234, 208, 208, 231, 201, 161, 228, 225, 0, 124, 55, 3, 0, 11, 244, 4, 2, 3, 127, 4, 126, 32, 1, 32, 2, 106, 33, 5, 32, 0, 65, 40, 106, 33, 4, 32, 0, 65, 200, 0, 106, 40, 2, 0, 33, 3, 32, 0, 32, 0, 41, 3, 0, 32, 2, 173, 124, 55, 3, 0, 32, 2, 32, 3, 106, 65, 32, 73, 4, 64, 32, 3, 32, 4, 106, 32, 1, 32, 2, 252, 10, 0, 0, 32, 0, 65, 200, 0, 106, 32, 2, 32, 3, 106, 54, 2, 0, 15, 11, 32, 3, 4, 64, 32, 3, 32, 4, 106, 32, 1, 65, 32, 32, 3, 107, 34, 2, 252, 10, 0, 0, 32, 0, 65, 8, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 16, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 65, 8, 106, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 24, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 65, 16, 106, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 32, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 65, 24, 106, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 200, 0, 106, 65, 0, 54, 2, 0, 32, 1, 32, 2, 106, 33, 1, 11, 32, 1, 65, 32, 106, 32, 5, 77, 4, 64, 32, 5, 65, 32, 107, 33, 2, 32, 0, 65, 8, 106, 41, 3, 0, 33, 6, 32, 0, 65, 16, 106, 41, 3, 0, 33, 7, 32, 0, 65, 24, 106, 41, 3, 0, 33, 8, 32, 0, 65, 32, 106, 41, 3, 0, 33, 9, 3, 64, 32, 6, 32, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 6, 32, 7, 32, 1, 65, 8, 106, 34, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 7, 32, 8, 32, 1, 65, 8, 106, 34, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 8, 32, 9, 32, 1, 65, 8, 106, 34, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 9, 32, 2, 32, 1, 65, 8, 106, 34, 1, 79, 13, 0, 11, 32, 0, 65, 8, 106, 32, 6, 55, 3, 0, 32, 0, 65, 16, 106, 32, 7, 55, 3, 0, 32, 0, 65, 24, 106, 32, 8, 55, 3, 0, 32, 0, 65, 32, 106, 32, 9, 55, 3, 0, 11, 32, 1, 32, 5, 73, 4, 64, 32, 4, 32, 1, 32, 5, 32, 1, 107, 34, 1, 252, 10, 0, 0, 32, 0, 65, 200, 0, 106, 32, 1, 54, 2, 0, 11, 11, 188, 2, 1, 5, 126, 32, 0, 65, 24, 106, 41, 3, 0, 33, 1, 32, 0, 41, 3, 0, 34, 2, 66, 32, 90, 4, 126, 32, 0, 65, 8, 106, 41, 3, 0, 34, 3, 66, 1, 137, 32, 0, 65, 16, 106, 41, 3, 0, 34, 4, 66, 7, 137, 124, 32, 1, 66, 12, 137, 32, 0, 65, 32, 106, 41, 3, 0, 34, 5, 66, 18, 137, 124, 124, 32, 3, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 4, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 1, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 5, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 5, 32, 1, 66, 197, 207, 217, 178, 241, 229, 186, 234, 39, 124, 11, 32, 2, 124, 32, 0, 65, 40, 106, 32, 2, 66, 31, 131, 167, 16, 6, 11]);
+  }
+});
+
+// ../../packages/core/dist-esm/hashline.js
+function getXXHash() {
+  return globalThis[HASHLINE_KEY] ?? null;
+}
+function rotl32(value, bits) {
+  return (value << bits | value >>> 32 - bits) >>> 0;
+}
+function readUInt32LE(input, offset) {
+  return (input[offset] | input[offset + 1] << 8 | input[offset + 2] << 16 | input[offset + 3] << 24) >>> 0;
+}
+function xxh32Round(acc, value) {
+  acc = acc + Math.imul(value, XXH_PRIME32_2) >>> 0;
+  acc = rotl32(acc, 13);
+  return Math.imul(acc, XXH_PRIME32_1) >>> 0;
+}
+function xxh32Raw(input, seed = 0) {
+  let offset = 0;
+  const length = input.length;
+  const limit = length - 16;
+  let h32;
+  if (length >= 16) {
+    let v1 = seed + XXH_PRIME32_1 + XXH_PRIME32_2 >>> 0;
+    let v2 = seed + XXH_PRIME32_2 >>> 0;
+    let v3 = seed >>> 0;
+    let v4 = seed - XXH_PRIME32_1 >>> 0;
+    while (offset <= limit) {
+      v1 = xxh32Round(v1, readUInt32LE(input, offset));
+      offset += 4;
+      v2 = xxh32Round(v2, readUInt32LE(input, offset));
+      offset += 4;
+      v3 = xxh32Round(v3, readUInt32LE(input, offset));
+      offset += 4;
+      v4 = xxh32Round(v4, readUInt32LE(input, offset));
+      offset += 4;
+    }
+    h32 = rotl32(v1, 1) + rotl32(v2, 7) + rotl32(v3, 12) + rotl32(v4, 18) >>> 0;
+  } else {
+    h32 = seed + XXH_PRIME32_5 >>> 0;
+  }
+  h32 = h32 + length >>> 0;
+  while (offset <= length - 4) {
+    h32 = h32 + Math.imul(readUInt32LE(input, offset), XXH_PRIME32_3) >>> 0;
+    h32 = Math.imul(rotl32(h32, 17), XXH_PRIME32_4) >>> 0;
+    offset += 4;
+  }
+  while (offset < length) {
+    h32 = h32 + Math.imul(input[offset], XXH_PRIME32_5) >>> 0;
+    h32 = Math.imul(rotl32(h32, 11), XXH_PRIME32_1) >>> 0;
+    offset++;
+  }
+  h32 ^= h32 >>> 15;
+  h32 = Math.imul(h32, XXH_PRIME32_2) >>> 0;
+  h32 ^= h32 >>> 13;
+  h32 = Math.imul(h32, XXH_PRIME32_3) >>> 0;
+  h32 ^= h32 >>> 16;
+  return h32 >>> 0;
+}
+function createPureJsXXHash() {
+  return { h32Raw: (input) => xxh32Raw(input) };
+}
+async function initHashline() {
+  if (!getXXHash()) {
+    try {
+      globalThis[HASHLINE_KEY] = await e();
+    } catch (err) {
+      globalThis[HASHLINE_KEY] = createPureJsXXHash();
+    }
+  }
+}
+function stripForHash(line) {
+  return line.replace(/\r$/, "").replace(/\[\^cn-[\w.]+\]/g, "").replace(/\s+/g, "");
+}
+function computeLineHash(idx, line, allLines) {
+  const h = getXXHash();
+  if (!h) {
+    throw new Error("xxhash-wasm not initialized. Call `await initHashline()` or `await ensureHashlineReady()` before using hashline functions.");
+  }
+  const stripped = stripForHash(line);
+  if (stripped.length > 0 || !allLines) {
+    return DICT[h.h32Raw(encoder.encode(stripped)) % HASH_MOD];
+  }
+  let prevNonBlank = "";
+  let distFromPrev = 0;
+  for (let i = idx - 1; i >= 0; i--) {
+    distFromPrev++;
+    const s = stripForHash(allLines[i]);
+    if (s.length > 0) {
+      prevNonBlank = s;
+      break;
+    }
+  }
+  if (distFromPrev === 0)
+    distFromPrev = idx + 1;
+  let nextNonBlank = "";
+  for (let i = idx + 1; i < allLines.length; i++) {
+    const s = stripForHash(allLines[i]);
+    if (s.length > 0) {
+      nextNonBlank = s;
+      break;
+    }
+  }
+  const contextKey = prevNonBlank + "\0" + nextNonBlank + "\0" + distFromPrev;
+  return DICT[h.h32Raw(encoder.encode(contextKey)) % HASH_MOD];
+}
+function validateLineRef(ref, fileLines) {
+  if (ref.line < 1 || ref.line > fileLines.length) {
+    throw new Error(`Line ${ref.line} is out of range (file has ${fileLines.length} lines)`);
+  }
+  const actualHash = computeLineHash(ref.line - 1, fileLines[ref.line - 1], fileLines);
+  if (ref.hash.toLowerCase() !== actualHash.toLowerCase()) {
+    throw new HashlineMismatchError([{ line: ref.line, expected: ref.hash, actual: actualHash }], fileLines);
+  }
+}
+var HASH_LEN, RADIX, HASH_MOD, DICT, encoder, HASHLINE_KEY, XXH_PRIME32_1, XXH_PRIME32_2, XXH_PRIME32_3, XXH_PRIME32_4, XXH_PRIME32_5, ensureHashlineReady, HashlineMismatchError;
+var init_hashline = __esm({
+  "../../packages/core/dist-esm/hashline.js"() {
+    "use strict";
+    init_xxhash_wasm();
+    HASH_LEN = 2;
+    RADIX = 16;
+    HASH_MOD = RADIX ** HASH_LEN;
+    DICT = Array.from({ length: HASH_MOD }, (_, i) => i.toString(RADIX).padStart(HASH_LEN, "0"));
+    encoder = new TextEncoder();
+    HASHLINE_KEY = "__changedown_xxhash__";
+    XXH_PRIME32_1 = 2654435761;
+    XXH_PRIME32_2 = 2246822519;
+    XXH_PRIME32_3 = 3266489917;
+    XXH_PRIME32_4 = 668265263;
+    XXH_PRIME32_5 = 374761393;
+    ensureHashlineReady = initHashline;
+    HashlineMismatchError = class extends Error {
+      constructor(mismatches, fileLines) {
+        const CONTEXT = 2;
+        const remapEntries = mismatches.map((m) => [`${m.line}:${m.expected}`, `${m.line}:${m.actual}`]);
+        const regions = mismatches.map((m) => ({
+          start: Math.max(1, m.line - CONTEXT),
+          end: Math.min(fileLines.length, m.line + CONTEXT)
+        }));
+        const merged = [];
+        for (const region of regions) {
+          if (merged.length > 0 && region.start <= merged[merged.length - 1].end + 1) {
+            merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, region.end);
+          } else {
+            merged.push({ ...region });
+          }
+        }
+        const mismatchLines = new Set(mismatches.map((m) => m.line));
+        const outputParts = ["Hashline mismatch:"];
+        for (let r = 0; r < merged.length; r++) {
+          if (r > 0) {
+            outputParts.push("...");
+          }
+          const region = merged[r];
+          for (let lineNum = region.start; lineNum <= region.end; lineNum++) {
+            const content = fileLines[lineNum - 1];
+            const prefix = mismatchLines.has(lineNum) ? ">>>" : "   ";
+            outputParts.push(`${prefix} ${lineNum}:${computeLineHash(lineNum - 1, content, fileLines)}|${content}`);
+          }
+        }
+        outputParts.push("");
+        outputParts.push("Quick-fix remaps:");
+        for (const [oldRef, newRef] of remapEntries) {
+          outputParts.push(`  ${oldRef} \u2192 ${newRef}`);
+        }
+        outputParts.push("");
+        outputParts.push("Re-read the file with read_tracked_file to get updated coordinates.");
+        super(outputParts.join("\n"));
+        this.mismatches = mismatches;
+        this.name = "HashlineMismatchError";
+        this.remaps = new Map(remapEntries);
+      }
+    };
+  }
+});
+
+// ../../packages/core/dist-esm/op-parser.js
+function splitReasoning(op) {
+  const idx = op.lastIndexOf("{>>");
+  if (idx <= 0)
+    return [op, void 0];
+  const afterOpen = op.slice(idx + 3);
+  const closeIdx = afterOpen.indexOf("<<}");
+  if (closeIdx !== -1) {
+    const afterClose = afterOpen.slice(closeIdx + 3).trim();
+    if (afterClose.length > 0) {
+      return [op, void 0];
+    }
+    const reasoning2 = afterOpen.slice(0, closeIdx).trimStart();
+    const editPart2 = op.slice(0, idx).trimEnd();
+    if (reasoning2 === "")
+      return [op, void 0];
+    return [editPart2, reasoning2];
+  }
+  const editPart = op.slice(0, idx).trimEnd();
+  const reasoning = afterOpen.trimStart();
+  if (reasoning === "")
+    return [op, void 0];
+  return [editPart, reasoning];
+}
+function extractBetween(text, opener, closer) {
+  if (!text.startsWith(opener))
+    return null;
+  const closerIdx = text.lastIndexOf(closer);
+  if (closerIdx < opener.length)
+    return null;
+  return text.slice(opener.length, closerIdx);
+}
+function parseOp(op) {
+  if (op === "") {
+    throw new Error("Op string is empty \u2014 nothing to parse.");
+  }
+  if (op.startsWith("{>>")) {
+    let reasoning2 = op.slice(3);
+    if (reasoning2.endsWith("<<}")) {
+      reasoning2 = reasoning2.slice(0, -3);
+    }
+    return {
+      type: "comment",
+      oldText: "",
+      newText: "",
+      reasoning: reasoning2
+    };
+  }
+  const [withoutReasoning, reasoning] = splitReasoning(op);
+  const insContent = extractBetween(withoutReasoning, "{++", "++}");
+  if (insContent !== null) {
+    return {
+      type: "ins",
+      oldText: "",
+      newText: insContent,
+      reasoning
+    };
+  }
+  const delContent = extractBetween(withoutReasoning, "{--", "--}");
+  if (delContent !== null) {
+    return {
+      type: "del",
+      oldText: delContent,
+      newText: "",
+      reasoning
+    };
+  }
+  const subContent = extractBetween(withoutReasoning, "{~~", "~~}");
+  if (subContent !== null) {
+    const arrowIdx = subContent.indexOf("~>");
+    if (arrowIdx === -1) {
+      throw new Error(`Cannot parse op: "${op}". Substitution {~~...~~} requires ~> separator between old and new text.`);
+    }
+    const oldText = subContent.slice(0, arrowIdx);
+    const newText = subContent.slice(arrowIdx + 2);
+    return {
+      type: "sub",
+      oldText,
+      newText,
+      reasoning
+    };
+  }
+  const hlContent = extractBetween(withoutReasoning, "{==", "==}");
+  if (hlContent !== null) {
+    return {
+      type: "highlight",
+      oldText: hlContent,
+      newText: "",
+      reasoning
+    };
+  }
+  throw new Error(`Cannot parse op: "${op}". Expected CriticMarkup syntax: {++text++} (ins), {--text--} (del), {~~old~>new~~} (sub), {==text==} (highlight), {>>comment.`);
+}
+var init_op_parser = __esm({
+  "../../packages/core/dist-esm/op-parser.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/hashline-cleanup.js
+function stripHashlinePrefixes(lines) {
+  if (lines.length === 0)
+    return lines;
+  const nonEmptyLines = lines.filter((l) => l.length > 0);
+  if (nonEmptyLines.length === 0)
+    return lines;
+  const hashlineCount = nonEmptyLines.filter((l) => HASHLINE_PREFIX.test(l)).length;
+  if (hashlineCount >= nonEmptyLines.length / 2) {
+    return lines.map((l) => l.replace(HASHLINE_PREFIX, ""));
+  }
+  const diffCount = nonEmptyLines.filter((l) => DIFF_ADD_PREFIX.test(l)).length;
+  if (diffCount >= nonEmptyLines.length / 2) {
+    return lines.map((l) => l.replace(DIFF_ADD_PREFIX, ""));
+  }
+  return lines;
+}
+function relocateHashRef(ref, fileLines, computeHash) {
+  if (fileLines.length === 0)
+    return null;
+  const lineIdx = ref.line - 1;
+  if (lineIdx >= 0 && lineIdx < fileLines.length) {
+    const currentHash = computeHash(lineIdx, fileLines[lineIdx], fileLines);
+    if (currentHash.toLowerCase() === ref.hash.toLowerCase()) {
+      return null;
+    }
+  }
+  const hashToLine = /* @__PURE__ */ new Map();
+  const duplicateHashes = /* @__PURE__ */ new Set();
+  for (let i = 0; i < fileLines.length; i++) {
+    const h = computeHash(i, fileLines[i], fileLines).toLowerCase();
+    if (duplicateHashes.has(h))
+      continue;
+    if (hashToLine.has(h)) {
+      duplicateHashes.add(h);
+      hashToLine.delete(h);
+    } else {
+      hashToLine.set(h, i + 1);
+    }
+  }
+  const targetHash = ref.hash.toLowerCase();
+  const newLine = hashToLine.get(targetHash);
+  if (newLine === void 0) {
+    return null;
+  }
+  return { relocated: true, newLine };
+}
+function relocateHashRefMulti(ref, fileLines, strategies) {
+  const results = [];
+  const targetHash = ref.hash.toLowerCase();
+  for (const strategy of strategies) {
+    let uniqueIdx = -1;
+    let ambiguous = false;
+    for (let i = 0; i < fileLines.length; i++) {
+      const h = strategy.fn(i, fileLines[i]).toLowerCase();
+      if (h === targetHash) {
+        if (uniqueIdx !== -1) {
+          ambiguous = true;
+          break;
+        }
+        uniqueIdx = i;
+      }
+    }
+    if (!ambiguous && uniqueIdx !== -1) {
+      results.push({ newLine: uniqueIdx + 1, strategy: strategy.name });
+    }
+  }
+  if (results.length === 0)
+    return null;
+  const first = results[0];
+  for (let i = 1; i < results.length; i++) {
+    if (results[i].newLine !== first.newLine)
+      return null;
+  }
+  return first;
+}
+function equalsIgnoringWhitespace(a, b) {
+  return a.replace(/\s+/g, "") === b.replace(/\s+/g, "");
+}
+function stripBoundaryEcho(fileLines, startLine, endLine, newLines) {
+  if (newLines.length === 0)
+    return newLines;
+  const originalSpan = endLine - startLine + 1;
+  if (newLines.length <= originalSpan)
+    return newLines;
+  let result = [...newLines];
+  const beforeIdx = startLine - 2;
+  if (beforeIdx >= 0 && result.length > 0) {
+    if (equalsIgnoringWhitespace(result[0], fileLines[beforeIdx])) {
+      result = result.slice(1);
+    }
+  }
+  const afterIdx = endLine;
+  if (afterIdx < fileLines.length && result.length > 0) {
+    if (equalsIgnoringWhitespace(result[result.length - 1], fileLines[afterIdx])) {
+      result = result.slice(0, -1);
+    }
+  }
+  return result;
+}
+var HASHLINE_PREFIX, DIFF_ADD_PREFIX;
+var init_hashline_cleanup = __esm({
+  "../../packages/core/dist-esm/hashline-cleanup.js"() {
+    "use strict";
+    HASHLINE_PREFIX = /^\d+:[0-9a-zA-Z]{1,16}\|/;
+    DIFF_ADD_PREFIX = /^\+(?!\+)/;
+  }
+});
+
+// ../../packages/core/dist-esm/parser/contextual-edit-op.js
+function parseContextualEditOp(opString) {
+  let opStart = -1;
+  let opener = "";
+  for (const o of Object.keys(CM_OPENERS)) {
+    const idx = opString.indexOf(o);
+    if (idx !== -1 && (opStart === -1 || idx < opStart)) {
+      opStart = idx;
+      opener = o;
+    }
+  }
+  if (opStart === -1)
+    return null;
+  const contextBefore = opString.slice(0, opStart);
+  const expectedCloser = CM_OPENERS[opener];
+  let opEnd = -1;
+  if (opener === "{~~") {
+    const searchFrom = opStart + opener.length;
+    const closerIdx = opString.lastIndexOf("~~}");
+    opEnd = closerIdx >= searchFrom ? closerIdx + 3 : -1;
+  } else if (opener === "{>>") {
+    const searchFrom = opStart + opener.length;
+    const closerIdx = opString.indexOf("<<}", searchFrom);
+    if (closerIdx !== -1) {
+      opEnd = closerIdx + 3;
+    } else {
+      opEnd = opString.length;
+    }
+  } else {
+    const searchFrom = opStart + opener.length;
+    const closerIdx = opString.indexOf(expectedCloser, searchFrom);
+    opEnd = closerIdx !== -1 ? closerIdx + expectedCloser.length : -1;
+  }
+  if (opEnd === -1)
+    return null;
+  const extractedOp = opString.slice(opStart, opEnd);
+  const contextAfter = opString.slice(opEnd);
+  if (contextBefore.trim() === "" && contextAfter.trim() === "")
+    return null;
+  if (contextBefore.trim() === "" && contextAfter.trimStart().startsWith("@ctx:"))
+    return null;
+  if (contextBefore.trim() === "" && contextAfter.trimStart().startsWith("{>>"))
+    return null;
+  return { contextBefore, opString: extractedOp, contextAfter };
+}
+var CM_OPENERS;
+var init_contextual_edit_op = __esm({
+  "../../packages/core/dist-esm/parser/contextual-edit-op.js"() {
+    "use strict";
+    CM_OPENERS = {
+      "{++": "++}",
+      "{--": "--}",
+      "{~~": "~~}",
+      "{==": "==}",
+      "{>>": "<<}"
+      // optional closer for comments
+    };
+  }
+});
+
+// ../../packages/core/dist-esm/parser/footnote-block-parser.js
+function parseApprovalLine(match) {
+  return {
+    author: match[1],
+    date: match[2],
+    timestamp: parseTimestamp(match[2]),
+    reason: match[3] || void 0
+  };
+}
+function parseFootnoteBlock(lines, startLineOffset = 0) {
+  const footnotes = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (!FOOTNOTE_DEF_START.test(line)) {
+      i++;
+      continue;
+    }
+    const idMatch = line.match(/^\[\^(cn-[\w.]+)\]:/);
+    const headerRaw = parseFootnoteHeader(line);
+    if (!idMatch || !headerRaw) {
+      i++;
+      continue;
+    }
+    const id = idMatch[1];
+    const header = {
+      author: "@" + headerRaw.author,
+      date: headerRaw.date,
+      type: headerRaw.type,
+      status: headerRaw.status
+    };
+    const startLine = i;
+    i++;
+    const bodyLines = [];
+    let editOp = null;
+    let reason;
+    let context;
+    const discussion = [];
+    const approvals = [];
+    const rejections = [];
+    const requestChanges = [];
+    const revisions = [];
+    let inRevisions = false;
+    let resolution = null;
+    let imageMetadata;
+    let equationMetadata;
+    let supersedesTarget;
+    const supersededByTargets = [];
+    while (i < lines.length) {
+      const body = lines[i];
+      if (FOOTNOTE_DEF_START.test(body))
+        break;
+      if (body.length > 0 && body.trim() !== "" && !body.startsWith("    "))
+        break;
+      if (body === "" || body.trim() === "") {
+        bodyLines.push({ kind: "blank", raw: "" });
+        i++;
+        continue;
+      }
+      const opMatch = body.match(FOOTNOTE_L3_EDIT_OP);
+      if (opMatch && !editOp) {
+        const lineNumber = parseInt(opMatch[1], 10);
+        const hash2 = opMatch[2].toLowerCase();
+        const opString = opMatch[3];
+        let op = opString;
+        let contextBefore;
+        let contextAfter;
+        try {
+          const ctx = parseContextualEditOp(opString);
+          if (ctx) {
+            op = ctx.opString;
+            contextBefore = ctx.contextBefore;
+            contextAfter = ctx.contextAfter;
+          }
+        } catch {
+        }
+        if (contextBefore !== void 0 && contextAfter !== void 0) {
+          editOp = { resolutionPath: "context", lineNumber, hash: hash2, op, contextBefore, contextAfter };
+        } else {
+          editOp = { resolutionPath: "hash", lineNumber, hash: hash2, op };
+        }
+        bodyLines.push({ kind: "edit-op", editOp, raw: body });
+        i++;
+        continue;
+      }
+      const reasonMatch = body.match(REASON_RE);
+      if (reasonMatch) {
+        const text = reasonMatch[1];
+        if (reason === void 0)
+          reason = text;
+        bodyLines.push({ kind: "reason", text, raw: body });
+        i++;
+        continue;
+      }
+      const contextMatch = body.match(CONTEXT_RE);
+      if (contextMatch) {
+        const text = contextMatch[1];
+        if (context === void 0)
+          context = text;
+        bodyLines.push({ kind: "context", text, raw: body });
+        i++;
+        continue;
+      }
+      if (FOOTNOTE_THREAD_REPLY.test(body)) {
+        const replyMatch = body.match(/^\s+@(\S+)\s+(\S+)(?:\s+\[([^\]]+)\])?:\s*(.*)$/);
+        if (replyMatch) {
+          const reply = {
+            author: replyMatch[1],
+            date: replyMatch[2],
+            label: replyMatch[3] ?? void 0,
+            // group 3: optional [label]
+            timestamp: parseTimestamp(replyMatch[2]),
+            text: replyMatch[4],
+            // group 4: text (shifted from group 3)
+            depth: 0
+          };
+          discussion.push(reply);
+          bodyLines.push({ kind: "discussion", reply, raw: body });
+          i++;
+          continue;
+        }
+      }
+      const approvedMatch = body.match(APPROVED_RE);
+      if (approvedMatch) {
+        const action = parseApprovalLine(approvedMatch);
+        approvals.push(action);
+        bodyLines.push({ kind: "approval", action, raw: body });
+        i++;
+        continue;
+      }
+      const rejectedMatch = body.match(REJECTED_RE);
+      if (rejectedMatch) {
+        const action = parseApprovalLine(rejectedMatch);
+        rejections.push(action);
+        bodyLines.push({ kind: "rejection", action, raw: body });
+        i++;
+        continue;
+      }
+      const requestChangesMatch = body.match(REQUEST_CHANGES_RE);
+      if (requestChangesMatch) {
+        const action = parseApprovalLine(requestChangesMatch);
+        requestChanges.push(action);
+        bodyLines.push({ kind: "request-changes", action, raw: body });
+        i++;
+        continue;
+      }
+      if (body.trim() === "revisions:") {
+        inRevisions = true;
+        bodyLines.push({ kind: "revisions-header", raw: body });
+        i++;
+        continue;
+      }
+      if (inRevisions) {
+        const revMatch = body.match(REVISION_RE);
+        if (revMatch) {
+          const rev = {
+            label: revMatch[1],
+            author: revMatch[2],
+            date: revMatch[3],
+            timestamp: parseTimestamp(revMatch[3]),
+            text: revMatch[4]
+          };
+          revisions.push(rev);
+          bodyLines.push({ kind: "revision", revision: rev, raw: body });
+          i++;
+          continue;
+        }
+        inRevisions = false;
+      }
+      const resolvedMatch = body.match(RESOLVED_RE);
+      if (resolvedMatch) {
+        const res = {
+          type: "resolved",
+          author: resolvedMatch[1],
+          date: resolvedMatch[2],
+          timestamp: parseTimestamp(resolvedMatch[2]),
+          reason: resolvedMatch[3] || void 0
+        };
+        if (!resolution)
+          resolution = res;
+        bodyLines.push({ kind: "resolution", resolution: res, raw: body });
+        i++;
+        continue;
+      }
+      const openMatch = body.match(OPEN_RE);
+      if (openMatch) {
+        const res = { type: "open", reason: openMatch[1] || void 0 };
+        if (!resolution)
+          resolution = res;
+        bodyLines.push({ kind: "resolution", resolution: res, raw: body });
+        i++;
+        continue;
+      }
+      const supersedesMatch = body.match(SUPERSEDES_RE);
+      if (supersedesMatch) {
+        const target = supersedesMatch[1];
+        if (supersedesTarget === void 0)
+          supersedesTarget = target;
+        bodyLines.push({ kind: "supersedes", target, raw: body });
+        i++;
+        continue;
+      }
+      const supersededByMatch = body.match(SUPERSEDED_BY_RE);
+      if (supersededByMatch) {
+        const target = supersededByMatch[1];
+        supersededByTargets.push(target);
+        bodyLines.push({ kind: "superseded-by", target, raw: body });
+        i++;
+        continue;
+      }
+      const imgMatch = body.match(IMAGE_META_RE);
+      if (imgMatch) {
+        imageMetadata = imageMetadata ?? {};
+        imageMetadata[imgMatch[1]] = imgMatch[2].trim();
+        bodyLines.push({ kind: "image-meta", key: imgMatch[1], value: imgMatch[2].trim(), raw: body });
+        i++;
+        continue;
+      }
+      const eqMatch = body.match(EQUATION_META_RE);
+      if (eqMatch) {
+        equationMetadata = equationMetadata ?? {};
+        equationMetadata[eqMatch[1]] = eqMatch[2].trim();
+        bodyLines.push({ kind: "equation-meta", key: eqMatch[1], value: eqMatch[2].trim(), raw: body });
+        i++;
+        continue;
+      }
+      bodyLines.push({ kind: "unknown", raw: body });
+      i++;
+    }
+    const endLine = i - 1;
+    footnotes.push({
+      id,
+      header,
+      editOp,
+      bodyLines,
+      reason,
+      context,
+      discussion,
+      approvals,
+      rejections,
+      requestChanges,
+      revisions,
+      resolution,
+      imageMetadata: imageMetadata ? Object.freeze(imageMetadata) : void 0,
+      equationMetadata: equationMetadata ? Object.freeze(equationMetadata) : void 0,
+      supersedes: supersedesTarget,
+      supersededBy: Object.freeze(supersededByTargets),
+      sourceRange: { startLine: startLineOffset + startLine, endLine: startLineOffset + endLine }
+    });
+  }
+  return footnotes;
+}
+var APPROVED_RE, REJECTED_RE, REQUEST_CHANGES_RE, REVISION_RE, REASON_RE, CONTEXT_RE, RESOLVED_RE, OPEN_RE, SUPERSEDES_RE, SUPERSEDED_BY_RE, IMAGE_META_RE, EQUATION_META_RE;
+var init_footnote_block_parser = __esm({
+  "../../packages/core/dist-esm/parser/footnote-block-parser.js"() {
+    "use strict";
+    init_timestamp();
+    init_footnote_patterns();
+    init_footnote_utils();
+    init_contextual_edit_op();
+    APPROVED_RE = /^ {4}approved:\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?/;
+    REJECTED_RE = /^ {4}rejected:\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?/;
+    REQUEST_CHANGES_RE = /^ {4}request-changes:\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?/;
+    REVISION_RE = /^ {4,}(r\d+)\s+(@?\S+)\s+(\S+):\s+"([^"]*)"$/;
+    REASON_RE = /^ {4}reason:\s+(.*)$/;
+    CONTEXT_RE = /^ {4}context:\s+(.*)$/;
+    RESOLVED_RE = /^ {4}resolved:\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?/;
+    OPEN_RE = /^ {4}open(?:\s+--\s+(.*))?$/;
+    SUPERSEDES_RE = /^ {4}supersedes:\s+(\S+)\s*$/;
+    SUPERSEDED_BY_RE = /^ {4}superseded-by:\s+(\S+)\s*$/;
+    IMAGE_META_RE = /^ {4}(image-[\w-]+):\s*(.*)$/;
+    EQUATION_META_RE = /^ {4}(equation-[\w-]+):\s*(.*)$/;
+  }
+});
+
+// ../../packages/core/dist-esm/text-normalizer.js
+function defaultNormalizer(text) {
+  return text.normalize("NFKC");
+}
+function normalizedIndexOf(text, target, normalizer, startFrom) {
+  const norm = normalizer ?? defaultNormalizer;
+  const normalizedText = norm(text);
+  const normalizedTarget = norm(target);
+  return normalizedText.indexOf(normalizedTarget, startFrom ?? 0);
+}
+function collapseWhitespace(text) {
+  return text.replace(/\s+/g, " ");
+}
+function buildWhitespaceCollapseMap(original) {
+  const map2 = [];
+  let oi = 0;
+  while (oi < original.length) {
+    if (/\s/.test(original[oi])) {
+      map2.push(oi);
+      while (oi < original.length && /\s/.test(original[oi])) {
+        oi++;
+      }
+    } else {
+      map2.push(oi);
+      oi++;
+    }
+  }
+  map2.push(oi);
+  return map2;
+}
+function whitespaceCollapsedFind(text, target, startFrom) {
+  const collapsedText = collapseWhitespace(text);
+  const collapsedTarget = collapseWhitespace(target);
+  if (collapsedTarget.length === 0)
+    return null;
+  const map2 = buildWhitespaceCollapseMap(text);
+  let collapsedStartFrom = 0;
+  if (startFrom !== void 0 && startFrom > 0) {
+    for (let ci = 0; ci < map2.length; ci++) {
+      if (map2[ci] >= startFrom) {
+        collapsedStartFrom = ci;
+        break;
+      }
+    }
+  }
+  const collapsedIdx = collapsedText.indexOf(collapsedTarget, collapsedStartFrom);
+  if (collapsedIdx === -1)
+    return null;
+  const originalStart = map2[collapsedIdx];
+  const collapsedEnd = collapsedIdx + collapsedTarget.length;
+  const originalEnd = map2[collapsedEnd];
+  return {
+    index: originalStart,
+    length: originalEnd - originalStart,
+    originalText: text.slice(originalStart, originalEnd)
+  };
+}
+function whitespaceCollapsedIsAmbiguous(text, target) {
+  const first = whitespaceCollapsedFind(text, target);
+  if (!first)
+    return false;
+  const second = whitespaceCollapsedFind(text, target, first.index + 1);
+  return second !== null;
+}
+function unicodeName(codepoint) {
+  return UNICODE_NAMES[codepoint] ?? `U+${codepoint.toString(16).toUpperCase().padStart(4, "0")}`;
+}
+function diagnosticConfusableNormalize(text) {
+  let result = text;
+  for (const [codepoint, entry] of CONFUSABLE_MAP) {
+    const char = String.fromCodePoint(codepoint);
+    result = result.split(char).join(entry.replacement);
+  }
+  return result;
+}
+function findConfusableDifferences(agentText, fileText) {
+  const diffs = [];
+  const len = Math.min(agentText.length, fileText.length);
+  for (let i = 0; i < len; i++) {
+    if (agentText[i] !== fileText[i]) {
+      const agentCp = agentText.codePointAt(i);
+      const fileCp = fileText.codePointAt(i);
+      diffs.push({
+        position: i,
+        agentChar: agentText[i],
+        fileChar: fileText[i],
+        agentCodepoint: agentCp,
+        fileCodepoint: fileCp,
+        agentName: unicodeName(agentCp),
+        fileName: unicodeName(fileCp)
+      });
+    }
+  }
+  return diffs;
+}
+function tryDiagnosticConfusableMatch(documentText, target) {
+  const normDoc = diagnosticConfusableNormalize(documentText);
+  const normTarget = diagnosticConfusableNormalize(target);
+  const normIdx = normDoc.indexOf(normTarget);
+  if (normIdx === -1)
+    return null;
+  if (normDoc.indexOf(normTarget, normIdx + 1) !== -1)
+    return null;
+  const matchedText = documentText.slice(normIdx, normIdx + target.length);
+  const diffs = findConfusableDifferences(target, matchedText);
+  return diffs.length > 0 ? { matchedText, differences: diffs } : null;
+}
+var CONFUSABLE_MAP, UNICODE_NAMES;
+var init_text_normalizer = __esm({
+  "../../packages/core/dist-esm/text-normalizer.js"() {
+    "use strict";
+    CONFUSABLE_MAP = /* @__PURE__ */ new Map([
+      [8216, { replacement: "'", name: "LEFT SINGLE QUOTATION MARK" }],
+      [8217, { replacement: "'", name: "RIGHT SINGLE QUOTATION MARK" }],
+      [8218, { replacement: "'", name: "SINGLE LOW-9 QUOTATION MARK" }],
+      [8220, { replacement: '"', name: "LEFT DOUBLE QUOTATION MARK" }],
+      [8221, { replacement: '"', name: "RIGHT DOUBLE QUOTATION MARK" }],
+      [8222, { replacement: '"', name: "DOUBLE LOW-9 QUOTATION MARK" }],
+      [8212, { replacement: "-", name: "EM DASH" }],
+      [8211, { replacement: "-", name: "EN DASH" }]
+    ]);
+    UNICODE_NAMES = {
+      32: "SPACE",
+      45: "HYPHEN-MINUS",
+      34: "QUOTATION MARK",
+      39: "APOSTROPHE",
+      46: "FULL STOP",
+      8216: "LEFT SINGLE QUOTATION MARK",
+      8217: "RIGHT SINGLE QUOTATION MARK",
+      8218: "SINGLE LOW-9 QUOTATION MARK",
+      8220: "LEFT DOUBLE QUOTATION MARK",
+      8221: "RIGHT DOUBLE QUOTATION MARK",
+      8222: "DOUBLE LOW-9 QUOTATION MARK",
+      8211: "EN DASH",
+      8212: "EM DASH"
+    };
+  }
+});
+
+// ../../packages/core/dist-esm/operations/l2-to-l3.js
+function buildLineStarts(text) {
+  const starts = [0];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "\n")
+      starts.push(i + 1);
+  }
+  return starts;
+}
+function offsetToLineNumber(lineStarts, offset) {
+  let lo = 0;
+  let hi = lineStarts.length - 1;
+  while (lo < hi) {
+    const mid = lo + hi + 1 >> 1;
+    if (lineStarts[mid] <= offset)
+      lo = mid;
+    else
+      hi = mid - 1;
+  }
+  return lo + 1;
+}
+var init_l2_to_l3 = __esm({
+  "../../packages/core/dist-esm/operations/l2-to-l3.js"() {
+    "use strict";
+    init_types();
+    init_parser();
+    init_hashline();
+    init_footnote_patterns();
+    init_footnote_generator();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/scrub.js
+function stripLineHashPrefix(line) {
+  return line.replace(/^\s*\d+:[a-f0-9]+\s*/, "");
+}
+function isParticipating(op) {
+  return op.status !== "rejected" && op.type !== "highlight" && op.type !== "comment";
+}
+function extractOpTexts(opString) {
+  const ctxParsed = parseContextualEditOp(opString);
+  const parsed = parseOp(ctxParsed ? ctxParsed.opString : opString);
+  return { modifiedText: parsed.newText, originalText: parsed.oldText };
+}
+function searchInLineWindow(lines, targetIdx, searchText, maxDelta) {
+  for (let delta = 0; delta <= maxDelta; delta++) {
+    const deltas = delta === 0 ? [0] : [-delta, delta];
+    for (const d of deltas) {
+      const searchIdx = targetIdx + d;
+      if (searchIdx < 0 || searchIdx >= lines.length)
+        continue;
+      const match = tryFindUniqueMatch(lines[searchIdx], searchText);
+      if (match)
+        return { lineIdx: searchIdx, match };
+    }
+  }
+  return null;
+}
+function applySplice(body, op, offset, direction) {
+  if (direction === "apply") {
+    if (op.type === "insertion")
+      return body.slice(0, offset) + op.modifiedText + body.slice(offset);
+    if (op.type === "deletion")
+      return body.slice(0, offset) + body.slice(offset + op.originalText.length);
+    if (op.type === "substitution")
+      return body.slice(0, offset) + op.modifiedText + body.slice(offset + op.originalText.length);
+  } else {
+    if (op.type === "insertion")
+      return body.slice(0, offset) + body.slice(offset + op.modifiedText.length);
+    if (op.type === "deletion")
+      return body.slice(0, offset) + op.originalText + body.slice(offset);
+    if (op.type === "substitution")
+      return body.slice(0, offset) + op.originalText + body.slice(offset + op.modifiedText.length);
+  }
+  return body;
+}
+function buildSearchTarget(op, parsed) {
+  return op.type === "deletion" ? parsed.contextBefore + parsed.contextAfter : parsed.contextBefore + op.modifiedText + parsed.contextAfter;
+}
+function scrubBackward(body, operations) {
+  const positions = /* @__PURE__ */ new Map();
+  let currentBody = body;
+  const participating = operations.filter(isParticipating);
+  for (let i = participating.length - 1; i >= 0; i--) {
+    const op = participating[i];
+    const stripped = stripLineHashPrefix(op.editOpLine);
+    const parsed = parseContextualEditOp(stripped);
+    const lines = currentBody.split("\n");
+    const lineStarts = buildLineStarts(currentBody);
+    const targetLineIdx = Math.min(Math.max(op.lineNumber - 1, 0), lines.length - 1);
+    let offset = -1;
+    let resolved = false;
+    if (parsed) {
+      const hit = searchInLineWindow(lines, targetLineIdx, buildSearchTarget(op, parsed), MAX_DELTA);
+      if (hit) {
+        offset = lineStarts[hit.lineIdx] + hit.match.index + parsed.contextBefore.length;
+        resolved = true;
+      }
+    }
+    if (!resolved && !parsed && op.modifiedText && (op.type === "insertion" || op.type === "substitution")) {
+      const hit = searchInLineWindow(lines, targetLineIdx, op.modifiedText, MAX_DELTA);
+      if (hit) {
+        offset = lineStarts[hit.lineIdx] + hit.match.index;
+        resolved = true;
+      }
+    }
+    positions.set(op.id, { offset, lineIdx: targetLineIdx, resolved });
+    if (resolved) {
+      currentBody = applySplice(currentBody, op, offset, "unapply");
+    }
+  }
+  return { body0: currentBody, positions };
+}
+function scrubForward(body0, operations, positions) {
+  const anchors = /* @__PURE__ */ new Map();
+  const consumption = /* @__PURE__ */ new Map();
+  const activeSpans = /* @__PURE__ */ new Map();
+  let currentBody = body0;
+  const participating = operations.filter(isParticipating);
+  for (const op of participating) {
+    const pos = positions.get(op.id);
+    if (!pos || !pos.resolved)
+      continue;
+    const offset = pos.offset;
+    let targetStart = offset;
+    let targetEnd = offset;
+    if (op.type === "deletion" || op.type === "substitution") {
+      targetEnd = offset + op.originalText.length;
+    }
+    if (op.type === "deletion" || op.type === "substitution") {
+      for (const [earlierId, span] of activeSpans) {
+        if (span.start >= targetStart && span.end <= targetEnd) {
+          consumption.set(earlierId, { consumedBy: op.id, type: "full" });
+        } else if (span.start < targetEnd && span.end > targetStart) {
+          consumption.set(earlierId, { consumedBy: op.id, type: "partial" });
+        }
+      }
+    }
+    currentBody = applySplice(currentBody, op, offset, "apply");
+    const lines = currentBody.split("\n");
+    const lineStarts = buildLineStarts(currentBody);
+    const lineIdx = offsetToLineNumber(lineStarts, offset) - 1;
+    const lineContent = lines[lineIdx] ?? "";
+    const hash2 = computeLineHash(lineIdx, lineContent, lines);
+    const lineStartOff = lineIdx > 0 ? lineStarts[lineIdx] : 0;
+    const column = offset - lineStartOff;
+    const anchorLen = op.type === "insertion" || op.type === "substitution" ? op.modifiedText.length : 0;
+    const changeType = op.type === "insertion" ? ChangeType.Insertion : op.type === "deletion" ? ChangeType.Deletion : ChangeType.Substitution;
+    const freshAnchor = buildContextualL3EditOp({
+      changeType,
+      originalText: op.originalText,
+      currentText: op.modifiedText,
+      lineContent,
+      lineNumber: lineIdx + 1,
+      hash: hash2,
+      column,
+      anchorLen
+    });
+    anchors.set(op.id, freshAnchor);
+    const spanStart = offset;
+    let spanEnd = offset;
+    if (op.type === "insertion")
+      spanEnd = offset + op.modifiedText.length;
+    else if (op.type === "substitution")
+      spanEnd = offset + op.modifiedText.length;
+    activeSpans.set(op.id, { start: spanStart, end: spanEnd });
+    const lengthDelta = (op.type === "insertion" ? op.modifiedText.length : 0) - (op.type === "deletion" ? op.originalText.length : 0) + (op.type === "substitution" ? op.modifiedText.length - op.originalText.length : 0);
+    if (lengthDelta !== 0) {
+      for (const [id, span] of activeSpans) {
+        if (id === op.id)
+          continue;
+        if (span.start > offset) {
+          span.start += lengthDelta;
+          span.end += lengthDelta;
+        }
+      }
+    }
+  }
+  return { anchors, consumption, finalPositions: activeSpans, finalBody: currentBody };
+}
+function resolveReplayFromParsedFootnotes(bodyText, footnotes) {
+  const operations = [];
+  for (const fn of footnotes) {
+    if (!fn.editOpLine || fn.lineNumber === void 0 || !fn.hash)
+      continue;
+    const opType = ABBREV_TO_TYPE[fn.type] ?? fn.type;
+    let modifiedText = "";
+    let originalText = "";
+    if (fn.opString) {
+      try {
+        ({ modifiedText, originalText } = extractOpTexts(fn.opString));
+      } catch {
+      }
+    }
+    operations.push({
+      id: fn.id,
+      type: opType,
+      modifiedText,
+      originalText,
+      editOpLine: fn.editOpLine,
+      lineNumber: fn.lineNumber,
+      hash: fn.hash,
+      status: fn.status
+    });
+  }
+  const active = operations.filter(isParticipating);
+  if (active.length === 0) {
+    return {
+      freshAnchors: /* @__PURE__ */ new Map(),
+      consumption: /* @__PURE__ */ new Map(),
+      finalPositions: /* @__PURE__ */ new Map()
+    };
+  }
+  const backward = scrubBackward(bodyText, active);
+  const forward = scrubForward(backward.body0, active, backward.positions);
+  return {
+    freshAnchors: forward.anchors,
+    consumption: forward.consumption,
+    finalPositions: forward.finalPositions
+  };
+}
+var MAX_DELTA, ABBREV_TO_TYPE;
+var init_scrub = __esm({
+  "../../packages/core/dist-esm/operations/scrub.js"() {
+    "use strict";
+    init_file_ops();
+    init_contextual_edit_op();
+    init_hashline();
+    init_footnote_generator();
+    init_l2_to_l3();
+    init_types();
+    init_footnote_patterns();
+    init_footnote_utils();
+    init_op_parser();
+    init_format_aware_parse();
+    MAX_DELTA = 5;
+    ABBREV_TO_TYPE = {
+      ins: "insertion",
+      del: "deletion",
+      sub: "substitution",
+      hig: "highlight",
+      com: "comment"
+    };
+  }
+});
+
+// ../../packages/core/dist-esm/comment-syntax.js
+function lineOffset(lines, lineIndex) {
+  let offset = 0;
+  for (let i = 0; i < lineIndex; i++) {
+    offset += lines[i].length + 1;
+  }
+  return offset;
+}
+var init_comment_syntax = __esm({
+  "../../packages/core/dist-esm/comment-syntax.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/parser/footnote-native-parser.js
+function metadataFromUnknownLines(lines) {
+  const result = {};
+  for (const line of lines) {
+    const match = /^\s*([^:]+):\s*(.*)$/.exec(line);
+    if (match)
+      result[match[1].trim()] = match[2].trim();
+  }
+  return result;
+}
+function isDocumentScopeAcceptedInsertion(fn) {
+  const metadata = metadataFromUnknownLines(fn.unknownBodyLines ?? []);
+  return fn.type === "ins" && fn.status === "accepted" && fn.author === "@base-document" && fn.lineNumber === void 0 && fn.hash === void 0 && fn.opString === void 0 && metadata.source === "initial-word-body" && metadata.scope === "document" && metadata["body-hash"] !== void 0;
+}
+function isRejectedSupersededArchivalRecord(fn) {
+  return fn.status === "rejected" && (fn.supersededBy?.length ?? 0) > 0;
+}
+function toChangeDownRecord(fn) {
+  const bodyLines = fn.unknownBodyLines ?? [];
+  return {
+    id: fn.id,
+    author: fn.author,
+    date: fn.date,
+    type: fn.type,
+    status: fn.status,
+    reviewable: false,
+    metadata: metadataFromUnknownLines(bodyLines),
+    bodyLines
+  };
+}
+function parseDeletionContext(opString) {
+  const closerIdx = opString.indexOf("--}");
+  if (closerIdx < 0)
+    return null;
+  const remainder = opString.slice(closerIdx + 3);
+  const match = remainder.match(CTX_RE);
+  if (!match)
+    return null;
+  return { before: unescapeCtxString(match[1]), after: unescapeCtxString(match[2]) };
+}
+function truncate(s, n) {
+  return s.length > n ? s.slice(0, n) + "\u2026" : s;
+}
+var FootnoteNativeParser;
+var init_footnote_native_parser = __esm({
+  "../../packages/core/dist-esm/parser/footnote-native-parser.js"() {
+    "use strict";
+    init_types();
+    init_document();
+    init_op_parser();
+    init_timestamp();
+    init_hashline();
+    init_hashline_cleanup();
+    init_footnote_patterns();
+    init_footnote_block_parser();
+    init_file_ops();
+    init_text_normalizer();
+    init_scrub();
+    init_comment_syntax();
+    init_contextual_edit_op();
+    FootnoteNativeParser = class {
+      constructor() {
+        this.pendingDiagnostics = [];
+      }
+      parse(text) {
+        this.pendingDiagnostics = [];
+        const lines = text.split("\n");
+        const { bodyLines, footnoteLines } = splitBodyAndFootnotes(lines);
+        const footnotes = this.parseFootnotes(lines);
+        if (footnotes.length === 0) {
+          const emptyDoc = new VirtualDocument([]);
+          for (const d of this.pendingDiagnostics)
+            emptyDoc.addDiagnostic(d);
+          return emptyDoc;
+        }
+        const records = footnotes.filter(isDocumentScopeAcceptedInsertion).map(toChangeDownRecord);
+        const recordIds = new Set(records.map((record2) => record2.id));
+        const reviewableFootnotes = footnotes.filter((fn) => !recordIds.has(fn.id));
+        const changes = this.resolveChanges(reviewableFootnotes, bodyLines);
+        let freshAnchors = /* @__PURE__ */ new Map();
+        if (changes.some((c) => c.resolved === false)) {
+          try {
+            const bodyText = bodyLines.join("\n");
+            const replayFootnotes = reviewableFootnotes.map((fn) => ({
+              id: fn.id,
+              type: fn.type,
+              status: fn.status,
+              lineNumber: fn.lineNumber,
+              hash: fn.hash,
+              opString: fn.opString,
+              editOpLine: fn.opString && fn.lineNumber !== void 0 && fn.hash ? `    ${fn.lineNumber}:${fn.hash} ${fn.opString}` : void 0
+            }));
+            const replay = resolveReplayFromParsedFootnotes(bodyText, replayFootnotes);
+            for (const node of changes) {
+              if (node.resolved !== false)
+                continue;
+              const finalPos = replay.finalPositions.get(node.id);
+              const isConsumed = replay.consumption.has(node.id);
+              if (finalPos && !isConsumed) {
+                node.resolved = true;
+                node.range = { start: finalPos.start, end: finalPos.end };
+                node.contentRange = { ...node.range };
+                node.resolutionPath = "replay";
+                this.pendingDiagnostics = this.pendingDiagnostics.filter((d) => d.changeId !== node.id);
+              }
+              const freshAnchor = replay.freshAnchors.get(node.id);
+              if (freshAnchor)
+                node.freshAnchor = freshAnchor;
+              const consumed = replay.consumption.get(node.id);
+              if (consumed) {
+                node.consumedBy = consumed.consumedBy;
+                node.consumptionType = consumed.type;
+                if (node.footnoteLineRange) {
+                  const start = lineOffset(lines, node.footnoteLineRange.startLine);
+                  const end = lineOffset(lines, node.footnoteLineRange.endLine) + lines[node.footnoteLineRange.endLine].length;
+                  node.range = { start, end };
+                  node.contentRange = { ...node.range };
+                }
+              }
+            }
+            freshAnchors = replay.freshAnchors;
+          } catch {
+          }
+        }
+        const resolvableCount = changes.length;
+        const resolvedCount = changes.filter((c) => c.resolved !== false || !!c.consumedBy).length;
+        const coherenceRate = resolvableCount > 0 ? Math.round(resolvedCount / resolvableCount * 100) : 100;
+        let resolvedText;
+        if (freshAnchors.size > 0) {
+          const rebuiltFootnotes = [];
+          let anyChanged = false;
+          let fi = 0;
+          while (fi < footnoteLines.length) {
+            const fline = footnoteLines[fi];
+            const idMatch = fline.match(/^\[\^(cn-[\w.]+)\]:/);
+            if (idMatch) {
+              const freshAnchor = freshAnchors.get(idMatch[1]);
+              rebuiltFootnotes.push(fline);
+              fi++;
+              let editOpReplaced = false;
+              while (fi < footnoteLines.length) {
+                const contLine = footnoteLines[fi];
+                if (FOOTNOTE_DEF_START.test(contLine))
+                  break;
+                if (!editOpReplaced && FOOTNOTE_L3_EDIT_OP.test(contLine) && freshAnchor) {
+                  if (freshAnchor !== contLine)
+                    anyChanged = true;
+                  rebuiltFootnotes.push(freshAnchor);
+                  editOpReplaced = true;
+                  fi++;
+                } else if (/^\s/.test(contLine) || contLine.trim() === "") {
+                  rebuiltFootnotes.push(contLine);
+                  fi++;
+                } else {
+                  break;
+                }
+              }
+            } else {
+              rebuiltFootnotes.push(fline);
+              fi++;
+            }
+          }
+          if (anyChanged) {
+            resolvedText = bodyLines.join("\n") + "\n\n" + rebuiltFootnotes.join("\n") + "\n";
+          }
+        }
+        const doc = new VirtualDocument(changes, coherenceRate, [], resolvedText, records);
+        for (const d of this.pendingDiagnostics)
+          doc.addDiagnostic(d);
+        return doc;
+      }
+      /**
+       * Test-only hook: run just the footnote-scanning phase and return the raw
+       * ParsedFootnote structs before change resolution.  Used by
+       * parser-bug-fixes.test.ts to assert on `unknownBodyLines` directly.
+       *
+       * @internal Do NOT call from production code.
+       */
+      _testScanFootnotes(text) {
+        return this.parseFootnotes(text.split("\n"));
+      }
+      parseFootnotes(lines) {
+        const { footnoteLines } = splitBodyAndFootnotes(lines);
+        const startLineOffset = lines.length - footnoteLines.length;
+        const typed = parseFootnoteBlock(footnoteLines, startLineOffset);
+        return typed.map((f) => this.typedToLegacy(f));
+      }
+      /** Adapter: typed Footnote (new) → ParsedFootnote (legacy resolver input). */
+      typedToLegacy(f) {
+        let imageDimensions;
+        const dimRaw = f.imageMetadata?.["image-dimensions"];
+        if (dimRaw) {
+          const m = dimRaw.match(IMAGE_DIMENSIONS_RE);
+          if (m)
+            imageDimensions = { widthIn: parseFloat(m[1]), heightIn: parseFloat(m[2]) };
+        }
+        const contextBefore = f.editOp?.resolutionPath === "context" ? f.editOp.contextBefore : void 0;
+        const contextAfter = f.editOp?.resolutionPath === "context" ? f.editOp.contextAfter : void 0;
+        return {
+          id: f.id,
+          author: f.header.author,
+          date: f.header.date,
+          type: f.header.type,
+          status: f.header.status,
+          startLine: f.sourceRange.startLine,
+          endLine: f.sourceRange.endLine,
+          lineNumber: f.editOp?.lineNumber,
+          hash: f.editOp?.hash,
+          opString: f.editOp ? f.editOp.resolutionPath === "context" ? `${f.editOp.contextBefore ?? ""}${f.editOp.op}${f.editOp.contextAfter ?? ""}` : f.editOp.op : void 0,
+          contextBefore,
+          contextAfter,
+          replyCount: f.discussion.length,
+          approvals: f.approvals.length > 0 ? f.approvals.map((a) => ({ author: a.author, date: a.date, reason: a.reason ?? "" })) : void 0,
+          rejections: f.rejections.length > 0 ? f.rejections.map((a) => ({ author: a.author, date: a.date, reason: a.reason ?? "" })) : void 0,
+          imageDimensions,
+          imageMetadata: f.imageMetadata ? { ...f.imageMetadata } : void 0,
+          equationMetadata: f.equationMetadata ? { ...f.equationMetadata } : void 0,
+          discussion: f.discussion.length > 0 ? [...f.discussion] : void 0,
+          requestChanges: f.requestChanges.length > 0 ? f.requestChanges.map((a) => ({ author: a.author, date: a.date, reason: a.reason ?? "" })) : void 0,
+          revisions: f.revisions.length > 0 ? [...f.revisions] : void 0,
+          resolution: f.resolution ?? void 0,
+          supersedes: f.supersedes,
+          supersededBy: f.supersededBy.length > 0 ? [...f.supersededBy] : void 0,
+          unknownBodyLines: f.bodyLines.filter((l) => l.kind === "unknown").map((l) => l.raw.trim())
+        };
+      }
+      resolveChanges(footnotes, bodyLines) {
+        const changes = [];
+        const lineOffsets = [0];
+        for (let i = 0; i < bodyLines.length; i++) {
+          lineOffsets.push(lineOffsets[i] + bodyLines[i].length + 1);
+        }
+        for (const fn of footnotes) {
+          const changeType = this.resolveType(fn.type);
+          if (changeType === null)
+            continue;
+          const status = this.resolveStatus(fn.status);
+          let parsedOp = null;
+          let ctxResult = null;
+          if (fn.opString) {
+            try {
+              if (fn.contextBefore !== void 0 || fn.contextAfter !== void 0) {
+                const before = fn.contextBefore ?? "";
+                const after = fn.contextAfter ?? "";
+                const criticMarkupOp = fn.opString.slice(before.length, fn.opString.length - after.length);
+                ctxResult = { contextBefore: before, contextAfter: after, opString: criticMarkupOp };
+                parsedOp = parseOp(criticMarkupOp);
+              } else {
+                ctxResult = parseContextualEditOp(fn.opString);
+                parsedOp = parseOp(ctxResult ? ctxResult.opString : fn.opString);
+              }
+            } catch {
+              continue;
+            }
+          }
+          const rangeResult = this.resolveRangeAndContent(fn, parsedOp, ctxResult, changeType, status, bodyLines, lineOffsets);
+          const { range, originalText, modifiedText, comment, anchored: positionResolved, resolved: rangeResolved, resolutionPath } = rangeResult;
+          const node = {
+            id: fn.id,
+            type: changeType,
+            status,
+            range,
+            contentRange: { ...range },
+            // L3: range === contentRange (no delimiters in body)
+            level: 2,
+            anchored: true,
+            // L3 nodes always have a footnote ref by construction
+            resolved: rangeResolved !== void 0 ? rangeResolved : positionResolved !== false,
+            // false only when edit-op text could not be located
+            metadata: {
+              author: fn.author,
+              date: fn.date,
+              comment: comment ?? parsedOp?.reasoning ?? void 0
+            }
+          };
+          if (originalText !== void 0)
+            node.originalText = originalText;
+          if (modifiedText !== void 0)
+            node.modifiedText = modifiedText;
+          if (fn.startLine !== void 0) {
+            node.footnoteLineRange = { startLine: fn.startLine, endLine: fn.endLine ?? fn.startLine };
+          }
+          node.replyCount = fn.replyCount ?? 0;
+          if (fn.imageDimensions) {
+            node.metadata.imageDimensions = fn.imageDimensions;
+          }
+          if (fn.imageMetadata) {
+            node.metadata.imageMetadata = fn.imageMetadata;
+          }
+          if (fn.equationMetadata) {
+            node.metadata.equationMetadata = fn.equationMetadata;
+          }
+          if (resolutionPath !== void 0) {
+            node.resolutionPath = resolutionPath;
+          }
+          if (rangeResult.deletionSeamOffset !== void 0) {
+            node.deletionSeamOffset = rangeResult.deletionSeamOffset;
+          }
+          if (fn.approvals && fn.approvals.length > 0) {
+            node.metadata.approvals = fn.approvals.map((a) => ({
+              author: a.author,
+              date: a.date,
+              timestamp: parseTimestamp(a.date),
+              reason: a.reason || void 0
+            }));
+          }
+          if (fn.rejections && fn.rejections.length > 0) {
+            node.metadata.rejections = fn.rejections.map((r) => ({
+              author: r.author,
+              date: r.date,
+              timestamp: parseTimestamp(r.date),
+              reason: r.reason || void 0
+            }));
+          }
+          if (fn.discussion && fn.discussion.length > 0) {
+            node.metadata.discussion = fn.discussion;
+          }
+          if (fn.requestChanges && fn.requestChanges.length > 0) {
+            node.metadata.requestChanges = fn.requestChanges.map((a) => ({
+              author: a.author,
+              date: a.date,
+              timestamp: parseTimestamp(a.date),
+              reason: a.reason || void 0
+            }));
+          }
+          if (fn.revisions && fn.revisions.length > 0) {
+            node.metadata.revisions = fn.revisions;
+          }
+          if (fn.resolution) {
+            node.metadata.resolution = fn.resolution;
+          }
+          if (fn.supersedes)
+            node.supersedes = fn.supersedes;
+          if (fn.supersededBy && fn.supersededBy.length > 0)
+            node.supersededBy = fn.supersededBy;
+          changes.push(node);
+        }
+        changes.sort((a, b) => a.range.start - b.range.start);
+        return changes;
+      }
+      /**
+       * Resolve the character range for a change node in the body text.
+       *
+       * For L3:
+       * - Insertion: search for newText on the target line via findUniqueMatch; range covers the matched text
+       * - Deletion: range covers the full contextual anchor span (contextBefore + contextAfter).
+       *   `deletionSeamOffset` gives the byte offset within this span where the deletion occurred
+       *   (equals contextBefore.length). The spec's Contextual Uniqueness Guarantee ensures this
+       *   span appears exactly once on the target line (04-spec.md §"Contextual Embedding").
+       *   Zero-width ranges appear only as the {0,0} resolved:false sentinel (Invariant A).
+       *   This is deliberate — do NOT revert to zero-width seam without understanding
+       *   the plan builder's ghost-text injection and accept-change.ts's seam-based removal.
+       * - Substitution: search for newText (proposed/accepted) or oldText (rejected) on target line
+       * - Highlight: search for the highlighted text on the target line
+       * - Comment: fall back to line start (no text to anchor to)
+       * - Rejected insertion: text is not in body; zero-width range at line start
+       *
+       * DETERMINISTIC ANCHOR RESOLUTION INVARIANTS (spec §11):
+       *
+       * Invariant A — Non-deletion ops (ins, sub, highlight) MUST resolve uniquely via
+       * findUniqueMatch on the hash-resolved line. If the match fails (text not found or
+       * ambiguous), the node is marked resolved:false (with anchored:true). There is NO
+       * fallback to line-start for non-deletion ops. Silent fallback produces wrong
+       * decoration placement.
+       *
+       * Invariant B — Deletion ops resolve via @ctx:"before"||"after" ONLY. The deleted
+       * text is absent from the body so there is nothing to search for. Line-start fallback
+       * when @ctx is missing is acceptable degradation (not a silent error).
+       *
+       * Invariant C — resolved:false is an error path, not a silent default. Consumers
+       * must not render resolved:false nodes as correctly placed decorations.
+       *
+       * Task 3 enforced Invariant A by removing the fallbackRange branches for
+       * ins/sub/highlight and setting resolved:false + sentinel range {0,0} instead.
+       */
+      resolveRangeAndContent(fn, parsedOp, ctxResult, changeType, status, bodyLines, lineOffsets) {
+        let effectiveLineNumber = fn.lineNumber;
+        let hashMatched = false;
+        if (fn.lineNumber !== void 0 && fn.hash) {
+          const hashCheckIdx = fn.lineNumber - 1;
+          if (hashCheckIdx >= 0 && hashCheckIdx < bodyLines.length) {
+            const actualHash = computeLineHash(hashCheckIdx, bodyLines[hashCheckIdx], bodyLines);
+            if (actualHash.toLowerCase() === fn.hash.toLowerCase()) {
+              hashMatched = true;
+            } else {
+              const relocated = relocateHashRef({ line: fn.lineNumber, hash: fn.hash }, bodyLines, computeLineHash);
+              if (relocated?.relocated) {
+                effectiveLineNumber = relocated.newLine;
+                hashMatched = true;
+              }
+            }
+          }
+        }
+        const lineIdx = (effectiveLineNumber ?? 1) - 1;
+        const lineOffset2 = lineIdx >= 0 && lineIdx < lineOffsets.length ? lineOffsets[lineIdx] : 0;
+        const lineContent = lineIdx >= 0 && lineIdx < bodyLines.length ? bodyLines[lineIdx] : "";
+        const fallbackRange = { start: lineOffset2, end: lineOffset2 };
+        if (!parsedOp) {
+          if (!isRejectedSupersededArchivalRecord(fn)) {
+            this.pendingDiagnostics.push({
+              kind: "coordinate_failed",
+              changeId: fn.id,
+              message: `Footnote ${fn.id} has no parsedOp; cannot resolve position.`
+            });
+          }
+          return { range: fallbackRange, anchored: true, resolved: false, comment: fn.unknownBodyLines?.[0], resolutionPath: "rejected" };
+        }
+        const findOnLine = (searchText) => {
+          if (!searchText || !lineContent)
+            return null;
+          return tryFindUniqueMatch(lineContent, searchText, defaultNormalizer);
+        };
+        if (ctxResult && parsedOp) {
+          const { contextBefore, contextAfter } = ctxResult;
+          let bodyMatch;
+          switch (changeType) {
+            case ChangeType.Insertion:
+              if (status === ChangeStatus.Rejected) {
+                bodyMatch = contextBefore + contextAfter;
+              } else {
+                bodyMatch = contextBefore + parsedOp.newText + contextAfter;
+              }
+              break;
+            case ChangeType.Deletion:
+              bodyMatch = contextBefore + contextAfter;
+              break;
+            case ChangeType.Substitution:
+              if (status === ChangeStatus.Rejected) {
+                bodyMatch = contextBefore + parsedOp.oldText + contextAfter;
+              } else {
+                bodyMatch = contextBefore + parsedOp.newText + contextAfter;
+              }
+              break;
+            case ChangeType.Highlight:
+              bodyMatch = contextBefore + parsedOp.oldText + contextAfter;
+              break;
+            default:
+              bodyMatch = contextBefore + contextAfter;
+          }
+          const bodyMatchResult = findOnLine(bodyMatch);
+          if (bodyMatchResult) {
+            const matchStart = lineOffset2 + bodyMatchResult.index;
+            const opStart = matchStart + contextBefore.length;
+            let rangeStart;
+            let rangeEnd;
+            let deletionSeamOffset;
+            switch (changeType) {
+              case ChangeType.Insertion: {
+                rangeStart = opStart;
+                rangeEnd = opStart + (status === ChangeStatus.Rejected ? 0 : parsedOp.newText.length);
+                break;
+              }
+              case ChangeType.Deletion: {
+                rangeStart = matchStart;
+                rangeEnd = matchStart + bodyMatch.length;
+                deletionSeamOffset = contextBefore.length;
+                break;
+              }
+              case ChangeType.Substitution: {
+                rangeStart = opStart;
+                rangeEnd = opStart + (status === ChangeStatus.Rejected ? parsedOp.oldText.length : parsedOp.newText.length);
+                break;
+              }
+              case ChangeType.Highlight: {
+                rangeStart = opStart;
+                rangeEnd = opStart + parsedOp.oldText.length;
+                break;
+              }
+              default:
+                rangeStart = opStart;
+                rangeEnd = opStart;
+            }
+            return {
+              range: { start: rangeStart, end: rangeEnd },
+              originalText: parsedOp.oldText || void 0,
+              modifiedText: parsedOp.newText || void 0,
+              comment: parsedOp.reasoning ?? void 0,
+              deletionSeamOffset,
+              // When the hash also matched, label as 'hash' (same semantics as the
+              // old resolve() Phase A: hash gate passed, context match pinpointed position).
+              // When only context matched (hash mismatch or relocation), label as 'context'.
+              resolutionPath: hashMatched ? "hash" : "context"
+            };
+          }
+        }
+        switch (changeType) {
+          case ChangeType.Insertion: {
+            const text = parsedOp.newText;
+            if (text === "") {
+              return { range: fallbackRange, modifiedText: text, resolutionPath: hashMatched ? "hash" : void 0 };
+            }
+            const match = findOnLine(text);
+            if (!match) {
+              const targetLine = effectiveLineNumber ?? 1;
+              const matchCount = lineContent ? lineContent.split(text).length - 1 : 0;
+              this.pendingDiagnostics.push({
+                kind: "coordinate_failed",
+                changeId: fn.id,
+                message: `Insertion text "${truncate(text, 40)}" not uniquely found on line ${targetLine} (found ${matchCount} match${matchCount === 1 ? "" : "es"}).`,
+                evidence: { line: targetLine, expectedText: text, candidates: matchCount }
+              });
+              return { range: { start: 0, end: 0 }, modifiedText: text, anchored: true, resolved: false };
+            }
+            const range = {
+              start: lineOffset2 + match.index,
+              end: lineOffset2 + match.index + match.length
+            };
+            return { range, modifiedText: text, resolutionPath: hashMatched ? "hash" : void 0 };
+          }
+          case ChangeType.Deletion: {
+            const text = parsedOp.oldText;
+            const ctx = fn.opString ? parseDeletionContext(fn.opString) : null;
+            if (ctx) {
+              const joined = ctx.before + ctx.after;
+              if (joined.length > 0) {
+                const match = findOnLine(joined);
+                if (match) {
+                  return {
+                    range: {
+                      start: lineOffset2 + match.index,
+                      end: lineOffset2 + match.index + joined.length
+                    },
+                    originalText: text,
+                    deletionSeamOffset: ctx.before.length,
+                    resolutionPath: hashMatched ? "hash" : void 0
+                  };
+                }
+              }
+            }
+            const lineEnd = lineOffset2 + lineContent.length;
+            return {
+              range: { start: lineOffset2, end: lineEnd },
+              originalText: text,
+              resolutionPath: hashMatched ? "hash" : void 0
+            };
+          }
+          case ChangeType.Substitution: {
+            const oldText = parsedOp.oldText;
+            const newText = parsedOp.newText;
+            const searchTexts = status === ChangeStatus.Rejected ? [newText, oldText].filter((t2) => Boolean(t2)) : [newText].filter((t2) => Boolean(t2));
+            let match = null;
+            let matchedText = "";
+            for (const candidate of searchTexts) {
+              match = findOnLine(candidate);
+              if (match) {
+                matchedText = candidate;
+                break;
+              }
+            }
+            if (!match) {
+              const targetLine = effectiveLineNumber ?? 1;
+              const expectedText = searchTexts.join(" or ");
+              const matchCount = searchTexts.reduce((sum, candidate) => {
+                return sum + (lineContent ? lineContent.split(candidate).length - 1 : 0);
+              }, 0);
+              this.pendingDiagnostics.push({
+                kind: "coordinate_failed",
+                changeId: fn.id,
+                message: `Substitution text "${truncate(expectedText, 40)}" not uniquely found on line ${targetLine} (found ${matchCount} match${matchCount === 1 ? "" : "es"}).`,
+                evidence: { line: targetLine, expectedText, candidates: matchCount }
+              });
+              return { range: { start: 0, end: 0 }, originalText: oldText, modifiedText: newText, anchored: true, resolved: false };
+            }
+            const range = {
+              start: lineOffset2 + match.index,
+              end: lineOffset2 + match.index + matchedText.length
+            };
+            return { range, originalText: oldText, modifiedText: newText, resolutionPath: hashMatched ? "hash" : void 0 };
+          }
+          case ChangeType.Highlight: {
+            const text = parsedOp.oldText;
+            const comment = parsedOp.reasoning;
+            if (!text) {
+              return { range: fallbackRange, comment };
+            }
+            const match = findOnLine(text);
+            if (!match) {
+              return { range: fallbackRange, comment, resolutionPath: hashMatched ? "hash" : void 0 };
+            }
+            const range = {
+              start: lineOffset2 + match.index,
+              end: lineOffset2 + match.index + match.length
+            };
+            return { range, comment, resolutionPath: hashMatched ? "hash" : void 0 };
+          }
+          case ChangeType.Comment: {
+            const comment = (parsedOp.reasoning || void 0) ?? (parsedOp.oldText || fn.unknownBodyLines?.[0]);
+            return { range: fallbackRange, comment, resolutionPath: hashMatched ? "hash" : void 0 };
+          }
+          default:
+            return { range: fallbackRange, resolutionPath: hashMatched ? "hash" : void 0 };
+        }
+      }
+      resolveType(type) {
+        switch (type) {
+          case "ins":
+          case "insertion":
+            return ChangeType.Insertion;
+          case "del":
+          case "deletion":
+            return ChangeType.Deletion;
+          case "sub":
+          case "substitution":
+            return ChangeType.Substitution;
+          case "highlight":
+          case "hi":
+          case "hig":
+            return ChangeType.Highlight;
+          case "comment":
+          case "com":
+            return ChangeType.Comment;
+          default:
+            return null;
+        }
+      }
+      resolveStatus(status) {
+        switch (status) {
+          case "accepted":
+            return ChangeStatus.Accepted;
+          case "rejected":
+            return ChangeStatus.Rejected;
+          default:
+            return ChangeStatus.Proposed;
+        }
+      }
+    };
+  }
+});
+
+// ../../packages/core/dist-esm/format-aware-parse.js
+function parseForFormat(text, options) {
+  return isL3Format(text) ? l3Parser.parse(text) : l2Parser.parse(text, options);
+}
+var l2Parser, l3Parser;
+var init_format_aware_parse = __esm({
+  "../../packages/core/dist-esm/format-aware-parse.js"() {
+    "use strict";
+    init_footnote_patterns();
+    init_parser();
+    init_footnote_native_parser();
+    init_footnote_utils();
+    init_op_parser();
+    l2Parser = new CriticMarkupParser();
+    l3Parser = new FootnoteNativeParser();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/current-text.js
+function computeCurrentReplace(change) {
+  const rangeLength = change.range.end - change.range.start;
+  if (change.type === ChangeType.Comment) {
+    return { offset: change.range.start, length: rangeLength, newText: "" };
+  }
+  if (change.type === ChangeType.Highlight) {
+    return { offset: change.range.start, length: rangeLength, newText: change.originalText ?? "" };
+  }
+  switch (change.type) {
+    case ChangeType.Insertion:
+      return { offset: change.range.start, length: rangeLength, newText: change.modifiedText ?? "" };
+    case ChangeType.Deletion:
+      return { offset: change.range.start, length: rangeLength, newText: "" };
+    case ChangeType.Substitution:
+      return { offset: change.range.start, length: rangeLength, newText: change.modifiedText ?? "" };
+  }
+  throw new Error(`Unknown ChangeType: ${change.type}`);
+}
+function stripFootnoteDefinitions(text, zones) {
+  const lines = text.split("\n");
+  const kept = [];
+  let inFootnote = false;
+  let foundFootnote = false;
+  let charOffset = 0;
+  for (const line of lines) {
+    const inCodeZone = zones.some((z2) => charOffset >= z2.start && charOffset < z2.end);
+    if (!inCodeZone && FOOTNOTE_DEF_START.test(line)) {
+      inFootnote = true;
+      foundFootnote = true;
+      while (kept.length > 0 && kept[kept.length - 1].trim() === "") {
+        kept.pop();
+      }
+      charOffset += line.length + 1;
+      continue;
+    }
+    if (inFootnote) {
+      if (line.trim() === "" || /^[\t ]/.test(line)) {
+        charOffset += line.length + 1;
+        continue;
+      }
+      inFootnote = false;
+    }
+    kept.push(line);
+    charOffset += line.length + 1;
+  }
+  if (foundFootnote) {
+    while (kept.length > 0 && kept[kept.length - 1].trim() === "") {
+      kept.pop();
+    }
+  }
+  return kept.join("\n");
+}
+function stripInlineFootnoteRefs(text, zones) {
+  return text.replace(footnoteRefGlobal(), (match, offset) => {
+    if (zones.some((z2) => offset >= z2.start && offset < z2.end)) {
+      return match;
+    }
+    return "";
+  });
+}
+function computeCurrentTextL3(text) {
+  const { bodyLines } = splitBodyAndFootnotes(text.split("\n"));
+  return bodyLines.join("\n") + "\n";
+}
+function revertChangesInBody(body, changes) {
+  const sorted = [...changes].sort((a, b) => b.range.start - a.range.start);
+  for (const change of sorted) {
+    if (change.resolved === false)
+      continue;
+    switch (change.type) {
+      case ChangeType.Insertion:
+        body = body.slice(0, change.range.start) + body.slice(change.range.end);
+        break;
+      case ChangeType.Deletion:
+        if (change.originalText) {
+          body = body.slice(0, change.range.start) + change.originalText + body.slice(change.range.start);
+        }
+        break;
+      case ChangeType.Substitution:
+        if (change.originalText) {
+          body = body.slice(0, change.range.start) + change.originalText + body.slice(change.range.end);
+        }
+        break;
+    }
+  }
+  return body;
+}
+function computeOriginalTextL3(text) {
+  const doc = parseForFormat(text);
+  const allChanges = doc.getChanges();
+  const { bodyLines } = splitBodyAndFootnotes(text.split("\n"));
+  let body = bodyLines.join("\n");
+  if (allChanges.length > 0) {
+    body = revertChangesInBody(body, allChanges);
+  }
+  const zones = findCodeZones(body);
+  body = stripInlineFootnoteRefs(body, zones);
+  return body + "\n";
+}
+function computeCurrentText(text, options) {
+  if (isL3Format(text)) {
+    return computeCurrentTextL3(text);
+  }
+  const doc = parseForFormat(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
+  const changes = doc.getChanges();
+  if (changes.length === 0) {
+    const zones2 = findCodeZones(text);
+    return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones2), zones2);
+  }
+  const edits = [...changes].sort((a, b) => b.range.start - a.range.start).map(computeCurrentReplace);
+  let result = text;
+  for (const edit of edits) {
+    result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
+  }
+  const zones = findCodeZones(result);
+  result = stripFootnoteDefinitions(result, zones);
+  result = stripInlineFootnoteRefs(result, zones);
+  return result;
+}
+function computeOriginalText(text, options) {
+  if (isL3Format(text)) {
+    return computeOriginalTextL3(text);
+  }
+  const doc = parseForFormat(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
+  const changes = doc.getChanges();
+  if (changes.length === 0) {
+    const zones2 = findCodeZones(text);
+    return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones2), zones2);
+  }
+  const edits = [...changes].sort((a, b) => b.range.start - a.range.start).map(computeReject);
+  let result = text;
+  for (const edit of edits) {
+    result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
+  }
+  const zones = findCodeZones(result);
+  result = stripFootnoteDefinitions(result, zones);
+  result = stripInlineFootnoteRefs(result, zones);
+  return result;
+}
+function findContainingCodeZone(offset, zones) {
+  for (const zone of zones) {
+    if (offset >= zone.start && offset < zone.end)
+      return zone;
+  }
+  return void 0;
+}
+function buildSegmentsWithZoneAwareness(text, parts, zones) {
+  const segments = [];
+  const deferredRefs = [];
+  let cursor = 0;
+  const lineBreaks = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "\n")
+      lineBreaks.push(i);
+  }
+  function offsetToLine2(offset) {
+    let lo = 0;
+    let hi = lineBreaks.length;
+    while (lo < hi) {
+      const mid = lo + hi >> 1;
+      if (lineBreaks[mid] < offset)
+        lo = mid + 1;
+      else
+        hi = mid;
+    }
+    return lo;
+  }
+  for (const part of parts) {
+    if (part.offset > cursor) {
+      segments.push(text.slice(cursor, part.offset));
+    } else if (part.offset < cursor) {
+      continue;
+    }
+    const ref = part.refId ? `[^${part.refId}]` : "";
+    if (ref && findContainingCodeZone(part.offset, zones)) {
+      segments.push(part.text);
+      deferredRefs.push({ ref, origLineIndex: offsetToLine2(part.offset) });
+    } else if (ref && zones.length > 0) {
+      const targetLineIdx = offsetToLine2(part.offset);
+      const lineStartOff = targetLineIdx === 0 ? 0 : lineBreaks[targetLineIdx - 1] + 1;
+      const lineEndOff = targetLineIdx < lineBreaks.length ? lineBreaks[targetLineIdx] : text.length;
+      const targetLine = text.slice(lineStartOff, lineEndOff);
+      if (isFenceCloserLine(targetLine)) {
+        segments.push(part.text);
+        deferredRefs.push({ ref, origLineIndex: targetLineIdx + 1 });
+      } else {
+        segments.push(part.text + ref);
+      }
+    } else {
+      segments.push(part.text + ref);
+    }
+    cursor = part.offset + part.length;
+  }
+  if (cursor < text.length) {
+    segments.push(text.slice(cursor));
+  }
+  if (deferredRefs.length === 0) {
+    return segments.join("");
+  }
+  const result = segments.join("");
+  const lines = result.split("\n");
+  const refsByLine = /* @__PURE__ */ new Map();
+  for (const dr of deferredRefs) {
+    const existing = refsByLine.get(dr.origLineIndex) ?? [];
+    existing.push(dr.ref);
+    refsByLine.set(dr.origLineIndex, existing);
+  }
+  for (const [lineIdx, refs] of refsByLine) {
+    if (lineIdx < lines.length) {
+      lines[lineIdx] = lines[lineIdx] + refs.join("");
+    } else {
+      while (lines.length <= lineIdx)
+        lines.push("");
+      lines[lineIdx] = refs.join("");
+    }
+  }
+  return lines.join("\n");
+}
+function recoverL2EditOpPayload(change, sourceText) {
+  let orig = change.originalText ?? "";
+  let cur = change.modifiedText ?? "";
+  if (change.type === ChangeType.Insertion) {
+    if (!cur && change.contentRange) {
+      cur = sourceText.slice(change.contentRange.start, change.contentRange.end);
+    }
+  } else if (change.type === ChangeType.Substitution) {
+    if (!cur && change.modifiedRange) {
+      cur = sourceText.slice(change.modifiedRange.start, change.modifiedRange.end);
+    }
+    if (!orig && change.originalRange) {
+      orig = sourceText.slice(change.originalRange.start, change.originalRange.end);
+    }
+  }
+  return { originalText: orig, currentText: cur };
+}
+function settlementAnchorLength(change, projection, payload) {
+  if (projection === "accepted") {
+    switch (change.type) {
+      case ChangeType.Insertion:
+      case ChangeType.Substitution:
+        return payload.currentText.length;
+      case ChangeType.Deletion:
+        return 0;
+      case ChangeType.Highlight:
+        return payload.originalText.length;
+      default:
+        return 0;
+    }
+  }
+  switch (change.type) {
+    case ChangeType.Insertion:
+      return 0;
+    case ChangeType.Deletion:
+    case ChangeType.Substitution:
+    case ChangeType.Highlight:
+    case ChangeType.Move:
+      return payload.originalText.length;
+    default:
+      return 0;
+  }
+}
+function addL2SettlementEditOps(rawCurrentContent, changes, sourceText, projection) {
+  const { bodyLines, footnoteLines } = splitBodyAndFootnotes(rawCurrentContent.split("\n"));
+  const refRe = footnoteRefGlobal();
+  const cleanBodyLines = bodyLines.map((line) => line.replace(refRe, ""));
+  const refIndex = /* @__PURE__ */ new Map();
+  for (let i = 0; i < bodyLines.length; i++) {
+    const refPattern = /\[\^cn-[\w.]+\]/g;
+    let rm;
+    while ((rm = refPattern.exec(bodyLines[i])) !== null) {
+      refIndex.set(rm[0], { lineIdx: i, col: rm.index });
+    }
+  }
+  const footnoteHeaderIndex = /* @__PURE__ */ new Map();
+  for (let i = 0; i < footnoteLines.length; i++) {
+    const idMatch = footnoteLines[i].match(/^\[\^(cn-[\w.]+)\]:/);
+    if (idMatch)
+      footnoteHeaderIndex.set(idMatch[1], i);
+  }
+  const scanRe = footnoteRefGlobal();
+  const editOpInsertions = [];
+  for (const change of changes) {
+    const payload = recoverL2EditOpPayload(change, sourceText);
+    const refPos = refIndex.get(`[^${change.id}]`);
+    if (!refPos)
+      continue;
+    const { lineIdx, col: refColInLine } = refPos;
+    const anchorLen = settlementAnchorLength(change, projection, payload);
+    scanRe.lastIndex = 0;
+    let precedingRefBytes = 0;
+    let m;
+    while ((m = scanRe.exec(bodyLines[lineIdx])) !== null) {
+      if (m.index >= refColInLine)
+        break;
+      precedingRefBytes += m[0].length;
+    }
+    const changeCol = Math.max(0, refColInLine - precedingRefBytes - anchorLen);
+    const lineNumber = lineIdx + 1;
+    const hash2 = computeLineHash(lineIdx, cleanBodyLines[lineIdx], cleanBodyLines);
+    const editOpLine = buildContextualL3EditOp({
+      changeType: change.type,
+      originalText: payload.originalText,
+      currentText: payload.currentText,
+      lineContent: cleanBodyLines[lineIdx],
+      lineNumber,
+      hash: hash2,
+      column: changeCol,
+      anchorLen
+    });
+    const headerLine = footnoteHeaderIndex.get(change.id);
+    if (headerLine !== void 0) {
+      editOpInsertions.push({ headerLine, editOpLine });
+    }
+  }
+  editOpInsertions.sort((a, b) => b.headerLine - a.headerLine);
+  for (const { headerLine, editOpLine } of editOpInsertions) {
+    footnoteLines.splice(headerLine + 1, 0, editOpLine);
+  }
+  return [...bodyLines, "", ...footnoteLines].join("\n");
+}
+function applyAcceptedChanges(text) {
+  if (isL3Format(text)) {
+    return { currentContent: text, appliedIds: [] };
+  }
+  const doc = parseForFormat(text, { skipCodeBlocks: false });
+  assertResolved(doc);
+  const accepted = doc.getChanges().filter((c) => c.status === ChangeStatus.Accepted);
+  const appliedIds = accepted.map((c) => c.id);
+  if (accepted.length === 0) {
+    return { currentContent: text, appliedIds: [] };
+  }
+  const parts = [...accepted].sort((a, b) => a.range.start - b.range.start).map(computeAcceptParts);
+  const zones = findCodeZones(text);
+  const rawCurrentContent = buildSegmentsWithZoneAwareness(text, parts, zones);
+  const currentContent = addL2SettlementEditOps(rawCurrentContent, accepted, text, "accepted");
+  return { currentContent, appliedIds };
+}
+function applyRejectedChanges(text) {
+  if (isL3Format(text)) {
+    const doc2 = parseForFormat(text);
+    assertResolved(doc2);
+    const rejected2 = doc2.getChanges().filter((c) => c.status === ChangeStatus.Rejected);
+    if (rejected2.length === 0)
+      return { currentContent: text, appliedIds: [] };
+    const { bodyLines, footnoteLines } = splitBodyAndFootnotes(text.split("\n"));
+    const body = revertChangesInBody(bodyLines.join("\n"), rejected2);
+    const appliedIds2 = rejected2.filter((c) => c.resolved !== false).map((c) => c.id);
+    const currentContent2 = footnoteLines.length > 0 ? body + "\n\n" + footnoteLines.join("\n") : body;
+    return { currentContent: currentContent2, appliedIds: appliedIds2 };
+  }
+  const doc = parseForFormat(text, { skipCodeBlocks: false });
+  assertResolved(doc);
+  const rejected = doc.getChanges().filter((c) => c.status === ChangeStatus.Rejected);
+  if (rejected.length === 0) {
+    return { currentContent: text, appliedIds: [] };
+  }
+  const parts = [...rejected].sort((a, b) => a.range.start - b.range.start).map(computeRejectParts);
+  const zones = findCodeZones(text);
+  const rawCurrentContent = buildSegmentsWithZoneAwareness(text, parts, zones);
+  const currentContent = addL2SettlementEditOps(rawCurrentContent, rejected, text, "rejected");
+  const appliedIds = [];
+  for (const part of parts) {
+    if (!part.refId)
+      continue;
+    if (part.length === 0 && part.text === "")
+      continue;
+    appliedIds.push(part.refId);
+  }
+  return { currentContent, appliedIds };
+}
+function computeCurrentViewL3(rawText) {
+  const { bodyLines } = splitBodyAndFootnotes(rawText.split("\n"));
+  const lines = [];
+  const currentToRaw = /* @__PURE__ */ new Map();
+  const rawToCurrent = /* @__PURE__ */ new Map();
+  for (let i = 0; i < bodyLines.length; i++) {
+    const currentNum = i + 1;
+    const rawNum = i + 1;
+    lines.push({
+      currentLineNum: currentNum,
+      rawLineNum: rawNum,
+      text: bodyLines[i],
+      hash: computeLineHash(i, bodyLines[i], bodyLines)
+    });
+    currentToRaw.set(currentNum, rawNum);
+    rawToCurrent.set(rawNum, currentNum);
+  }
+  return { lines, currentToRaw, rawToCurrent };
+}
+function computeCurrentView(rawText, preParsed) {
+  if (isL3Format(rawText)) {
+    return computeCurrentViewL3(rawText);
+  }
+  const changes = preParsed ?? parseForFormat(rawText, { skipCodeBlocks: false }).getChanges();
+  const edits = [...changes].sort((a, b) => a.range.start - b.range.start).map(computeCurrentReplace);
+  const deltaTable = [];
+  let cumulativeDelta = 0;
+  for (const edit of edits) {
+    deltaTable.push({ rawOffset: edit.offset, delta: cumulativeDelta });
+    const oldLen = edit.length;
+    const newLen = edit.newText.length;
+    cumulativeDelta += newLen - oldLen;
+  }
+  const editsByOffset = new Map(edits.map((e2) => [e2.offset, e2]));
+  function currentOffsetToRawOffset(currentOffset) {
+    let delta = 0;
+    let rawConsumed = 0;
+    let currentConsumed = 0;
+    for (const entry of deltaTable) {
+      const rawGap = entry.rawOffset - rawConsumed;
+      if (currentOffset <= currentConsumed + rawGap) {
+        return rawConsumed + (currentOffset - currentConsumed);
+      }
+      currentConsumed += rawGap;
+      rawConsumed = entry.rawOffset;
+      delta = entry.delta;
+      const edit = editsByOffset.get(entry.rawOffset);
+      if (edit) {
+        const oldLen = edit.length;
+        const newLen = edit.newText.length;
+        if (currentOffset < currentConsumed + newLen) {
+          return rawConsumed;
+        }
+        currentConsumed += newLen;
+        rawConsumed += oldLen;
+      }
+    }
+    return rawConsumed + (currentOffset - currentConsumed);
+  }
+  const currentText = computeCurrentText(rawText);
+  const rawLines = rawText.split("\n");
+  const rawLineStarts = [0];
+  for (let i = 0; i < rawLines.length - 1; i++) {
+    rawLineStarts.push(rawLineStarts[i] + rawLines[i].length + 1);
+  }
+  function rawOffsetToLineNum(offset) {
+    let lo = 0;
+    let hi = rawLineStarts.length - 1;
+    while (lo < hi) {
+      const mid = lo + hi + 1 >> 1;
+      if (rawLineStarts[mid] <= offset)
+        lo = mid;
+      else
+        hi = mid - 1;
+    }
+    return lo + 1;
+  }
+  const currentTextLines = currentText.split("\n");
+  const currentLines = [];
+  const currentToRaw = /* @__PURE__ */ new Map();
+  const rawToCurrent = /* @__PURE__ */ new Map();
+  let currentCharOffset = 0;
+  for (let i = 0; i < currentTextLines.length; i++) {
+    const currentLineText = currentTextLines[i];
+    const currentLineNum = i + 1;
+    const rawOffset = currentOffsetToRawOffset(currentCharOffset);
+    const rawLineNum = rawOffsetToLineNum(rawOffset);
+    const hash2 = computeLineHash(currentLineNum - 1, currentLineText, currentTextLines);
+    currentLines.push({
+      currentLineNum,
+      rawLineNum,
+      text: currentLineText,
+      hash: hash2
+    });
+    currentToRaw.set(currentLineNum, rawLineNum);
+    if (!rawToCurrent.has(rawLineNum)) {
+      rawToCurrent.set(rawLineNum, currentLineNum);
+    }
+    currentCharOffset += currentLineText.length + 1;
+  }
+  return { lines: currentLines, currentToRaw, rawToCurrent, changes };
+}
+var init_current_text = __esm({
+  "../../packages/core/dist-esm/operations/current-text.js"() {
+    "use strict";
+    init_types();
+    init_accept_reject();
+    init_hashline();
+    init_footnote_patterns();
+    init_code_zones();
+    init_format_aware_parse();
+    init_footnote_generator();
+    init_document();
+  }
+});
+
+// ../../packages/core/dist-esm/view-surface.js
+function buildViewSurfaceMap(raw) {
+  const toRaw = [];
+  let surface = "";
+  let i = 0;
+  while (i < raw.length) {
+    const slice = raw.slice(i);
+    const refMatch = slice.match(/^\[\^cn-\d+(?:\.\d+)?\]/);
+    if (refMatch) {
+      i += refMatch[0].length;
+      continue;
+    }
+    toRaw.push(i);
+    surface += raw[i];
+    i++;
+  }
+  toRaw.push(i);
+  return { surface, toRaw };
+}
+function viewAwareFind(raw, target) {
+  const { surface, toRaw } = buildViewSurfaceMap(raw);
+  const cleanTarget = target.replace(/\[\^?cn-\d+(?:\.\d+)?\]/g, "");
+  const searchTarget = cleanTarget || target;
+  const firstIdx = surface.indexOf(searchTarget);
+  if (firstIdx === -1)
+    return null;
+  const secondIdx = surface.indexOf(searchTarget, firstIdx + 1);
+  if (secondIdx !== -1)
+    return null;
+  const rawStart = toRaw[firstIdx];
+  const rawEnd = toRaw[firstIdx + searchTarget.length];
+  const rawLength = rawEnd - rawStart;
+  return {
+    index: rawStart,
+    length: rawLength,
+    rawText: raw.slice(rawStart, rawEnd)
+  };
+}
+var init_view_surface = __esm({
+  "../../packages/core/dist-esm/view-surface.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/file-ops.js
+function level1Comment(author, changeType) {
+  const ts = nowTimestamp();
+  const authorPrefixed = author.startsWith("@") ? author : `@${author}`;
+  return `{>>${authorPrefixed}|${ts.raw}|${changeType}|proposed<<}`;
+}
+function containsCriticMarkup(text) {
+  return /\{\+\+|\{--|\{~~|\{==|\{>>/.test(text);
+}
+function resolveProposedChanges(text) {
+  const doc = parseForFormat(text);
+  const changes = doc.getChanges();
+  return { changes };
+}
+function checkCriticMarkupOverlap(text, matchStart, matchLength) {
+  const { changes } = resolveProposedChanges(text);
+  const matchEnd = matchStart + matchLength;
+  for (const node of changes) {
+    if (node.decided || node.status !== ChangeStatus.Proposed)
+      continue;
+    const spanStart = node.range.start;
+    const spanEnd = node.range.end;
+    if (matchStart < spanEnd && matchEnd > spanStart) {
+      const changeId = node.level >= 2 ? node.id : void 0;
+      let changeType;
+      switch (node.type) {
+        case ChangeType.Insertion:
+          changeType = "ins";
+          break;
+        case ChangeType.Deletion:
+          changeType = "del";
+          break;
+        case ChangeType.Substitution:
+          changeType = "sub";
+          break;
+        case ChangeType.Highlight:
+          changeType = "highlight";
+          break;
+        case ChangeType.Comment:
+          changeType = "comment";
+          break;
+        default:
+          changeType = "unknown";
+          break;
+      }
+      return { changeId, changeType, spanStart, spanEnd };
+    }
+  }
+  return null;
+}
+function findAllProposedOverlaps(text, matchStart, matchLength) {
+  const { changes } = resolveProposedChanges(text);
+  const matchEnd = matchStart + matchLength;
+  const results = [];
+  for (const node of changes) {
+    if (node.decided || node.status !== ChangeStatus.Proposed)
+      continue;
+    const spanStart = node.range.start;
+    const spanEnd = node.range.end;
+    if (matchStart < spanEnd && matchEnd > spanStart) {
+      const changeId = node.level >= 2 ? node.id : void 0;
+      let changeType;
+      switch (node.type) {
+        case ChangeType.Insertion:
+          changeType = "ins";
+          break;
+        case ChangeType.Deletion:
+          changeType = "del";
+          break;
+        case ChangeType.Substitution:
+          changeType = "sub";
+          break;
+        case ChangeType.Highlight:
+          changeType = "highlight";
+          break;
+        case ChangeType.Comment:
+          changeType = "comment";
+          break;
+        default:
+          changeType = "unknown";
+          break;
+      }
+      const author = node.metadata?.author;
+      results.push({ changeId, changeType, author, spanStart, spanEnd });
+    }
+  }
+  return results;
+}
+function guardOverlap(text, matchStart, matchLength) {
+  const overlap = checkCriticMarkupOverlap(text, matchStart, matchLength);
+  if (overlap) {
+    const idRef = overlap.changeId ? ` (${overlap.changeId})` : "";
+    throw new Error(`Target text overlaps with proposed change${idRef}. The matched text falls inside a ${overlap.changeType} change at positions ${overlap.spanStart}-${overlap.spanEnd}. Use amend_change to modify your own proposed change, or review_changes to accept/reject it.`);
+  }
+}
+function resolveOverlapWithAuthor(text, matchStart, matchLength, author) {
+  const overlaps = findAllProposedOverlaps(text, matchStart, matchLength);
+  if (overlaps.length === 0)
+    return null;
+  if (!author) {
+    guardOverlap(text, matchStart, matchLength);
+    return null;
+  }
+  const normalizedAuthor = author.startsWith("@") ? author : `@${author}`;
+  const allSameAuthor = overlaps.every((o) => o.author === normalizedAuthor);
+  if (!allSameAuthor) {
+    guardOverlap(text, matchStart, matchLength);
+    return null;
+  }
+  const supersededIds = overlaps.map((o) => o.changeId).filter((id) => Boolean(id));
+  let content = text;
+  for (const id of supersededIds) {
+    const result = applyReview(content, id, "reject", "Auto-superseded by new proposal", author);
+    if ("updatedContent" in result) {
+      content = result.updatedContent;
+    } else {
+      throw new Error(`Auto-supersede failed: could not reject change ${id}. ${"error" in result ? result.error : "Unknown error"}`);
+    }
+  }
+  const rejected = applyRejectedChanges(content);
+  return { currentContent: rejected.currentContent, supersededIds };
+}
+function stripRefsFromContent(text) {
+  const refs = [];
+  const cleaned = text.replace(/\[\^cn-\d+(?:\.\d+)?\]/g, (match) => {
+    refs.push(match);
+    return "";
+  });
+  return { cleaned, refs };
+}
+function stripCriticMarkupWithMap(text) {
+  const current = [];
+  const toRaw = [];
+  const markupRanges = [];
+  let i = 0;
+  while (i < text.length) {
+    if (text[i] === "[" && text[i + 1] === "^" && text.startsWith("cn-", i + 2)) {
+      const closeIdx = text.indexOf("]", i + 2);
+      if (closeIdx !== -1 && /^\[\^cn-\d+(?:\.\d+)?\]$/.test(text.slice(i, closeIdx + 1)) && text[closeIdx + 1] !== ":") {
+        markupRanges.push({ rawStart: i, rawEnd: closeIdx + 1 });
+        i = closeIdx + 1;
+        continue;
+      }
+    }
+    if (text[i] === "{" && i + 2 < text.length) {
+      const twoChar = text[i + 1] + text[i + 2];
+      if (twoChar === "++") {
+        const end = text.indexOf("++}", i + 3);
+        if (end !== -1) {
+          const constructStart = i;
+          const contentStart = i + 3;
+          const contentEnd = end;
+          const constructEnd = end + 3;
+          markupRanges.push({ rawStart: constructStart, rawEnd: constructEnd });
+          for (let j = contentStart; j < contentEnd; j++) {
+            current.push(text[j]);
+            toRaw.push(j);
+          }
+          i = constructEnd;
+          continue;
+        }
+      }
+      if (twoChar === "--") {
+        const end = text.indexOf("--}", i + 3);
+        if (end !== -1) {
+          const constructEnd = end + 3;
+          markupRanges.push({ rawStart: i, rawEnd: constructEnd });
+          i = constructEnd;
+          continue;
+        }
+      }
+      if (twoChar === "~~") {
+        const end = text.indexOf("~~}", i + 3);
+        if (end !== -1) {
+          const arrow = text.indexOf("~>", i + 3);
+          if (arrow !== -1 && arrow < end) {
+            const constructStart = i;
+            const newStart = arrow + 2;
+            const newEnd = end;
+            const constructEnd = end + 3;
+            markupRanges.push({ rawStart: constructStart, rawEnd: constructEnd });
+            for (let j = newStart; j < newEnd; j++) {
+              current.push(text[j]);
+              toRaw.push(j);
+            }
+            i = constructEnd;
+            continue;
+          }
+        }
+      }
+      if (twoChar === "==") {
+        const end = text.indexOf("==}", i + 3);
+        if (end !== -1) {
+          const constructStart = i;
+          const contentStart = i + 3;
+          const contentEnd = end;
+          const constructEnd = end + 3;
+          markupRanges.push({ rawStart: constructStart, rawEnd: constructEnd });
+          for (let j = contentStart; j < contentEnd; j++) {
+            current.push(text[j]);
+            toRaw.push(j);
+          }
+          i = constructEnd;
+          continue;
+        }
+      }
+      if (twoChar === ">>") {
+        const end = text.indexOf("<<}", i + 3);
+        if (end !== -1) {
+          const constructEnd = end + 3;
+          markupRanges.push({ rawStart: i, rawEnd: constructEnd });
+          i = constructEnd;
+          continue;
+        }
+      }
+    }
+    current.push(text[i]);
+    toRaw.push(i);
+    i++;
+  }
+  return { current: current.join(""), toRaw, markupRanges };
+}
+function stripCriticMarkup(text) {
+  return stripCriticMarkupWithMap(text).current;
+}
+function stripCriticMarkupToCommittedWithMap(text) {
+  const footnotes = extractFootnoteStatuses(text);
+  const committed = [];
+  const toRaw = [];
+  const markupRanges = [];
+  let i = 0;
+  function consumeFootnoteRef(pos) {
+    if (text[pos] !== "[" || text[pos + 1] !== "^" || !text.startsWith("cn-", pos + 2)) {
+      return void 0;
+    }
+    const closeIdx = text.indexOf("]", pos + 2);
+    if (closeIdx === -1)
+      return void 0;
+    const candidate = text.slice(pos, closeIdx + 1);
+    if (!/^\[\^cn-\d+(?:\.\d+)?\]$/.test(candidate))
+      return void 0;
+    if (text[closeIdx + 1] === ":")
+      return void 0;
+    const id = text.slice(pos + 2, closeIdx);
+    return { id, end: closeIdx + 1 };
+  }
+  while (i < text.length) {
+    if (text[i] === "[" && text[i + 1] === "^" && text.startsWith("cn-", i + 2)) {
+      const closeIdx = text.indexOf("]", i + 2);
+      if (closeIdx !== -1 && /^\[\^cn-\d+(?:\.\d+)?\]$/.test(text.slice(i, closeIdx + 1)) && text[closeIdx + 1] !== ":") {
+        markupRanges.push({ rawStart: i, rawEnd: closeIdx + 1 });
+        i = closeIdx + 1;
+        continue;
+      }
+    }
+    if (text[i] === "{" && i + 2 < text.length) {
+      const twoChar = text[i + 1] + text[i + 2];
+      if (twoChar === "++") {
+        const end = text.indexOf("++}", i + 3);
+        if (end !== -1) {
+          const constructStart = i;
+          const contentStart = i + 3;
+          const contentEnd = end;
+          const constructEnd = end + 3;
+          const ref = consumeFootnoteRef(constructEnd);
+          const refEnd = ref ? ref.end : constructEnd;
+          const changeId = ref?.id;
+          const status = changeId ? footnotes.get(changeId) : void 0;
+          const isAccepted = status === "accepted";
+          markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
+          if (isAccepted) {
+            for (let j = contentStart; j < contentEnd; j++) {
+              committed.push(text[j]);
+              toRaw.push(j);
+            }
+          }
+          i = refEnd;
+          continue;
+        }
+      }
+      if (twoChar === "--") {
+        const end = text.indexOf("--}", i + 3);
+        if (end !== -1) {
+          const constructStart = i;
+          const contentStart = i + 3;
+          const contentEnd = end;
+          const constructEnd = end + 3;
+          const ref = consumeFootnoteRef(constructEnd);
+          const refEnd = ref ? ref.end : constructEnd;
+          const changeId = ref?.id;
+          const status = changeId ? footnotes.get(changeId) : void 0;
+          const isAccepted = status === "accepted";
+          markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
+          if (!isAccepted) {
+            for (let j = contentStart; j < contentEnd; j++) {
+              committed.push(text[j]);
+              toRaw.push(j);
+            }
+          }
+          i = refEnd;
+          continue;
+        }
+      }
+      if (twoChar === "~~") {
+        const end = text.indexOf("~~}", i + 3);
+        if (end !== -1) {
+          const arrow = text.indexOf("~>", i + 3);
+          if (arrow !== -1 && arrow < end) {
+            const constructStart = i;
+            const oldStart = i + 3;
+            const oldEnd = arrow;
+            const newStart = arrow + 2;
+            const newEnd = end;
+            const constructEnd = end + 3;
+            const ref = consumeFootnoteRef(constructEnd);
+            const refEnd = ref ? ref.end : constructEnd;
+            const changeId = ref?.id;
+            const status = changeId ? footnotes.get(changeId) : void 0;
+            const isAccepted = status === "accepted";
+            markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
+            if (isAccepted) {
+              for (let j = newStart; j < newEnd; j++) {
+                committed.push(text[j]);
+                toRaw.push(j);
+              }
+            } else {
+              for (let j = oldStart; j < oldEnd; j++) {
+                committed.push(text[j]);
+                toRaw.push(j);
+              }
+            }
+            i = refEnd;
+            continue;
+          }
+        }
+      }
+      if (twoChar === "==") {
+        const end = text.indexOf("==}", i + 3);
+        if (end !== -1) {
+          const constructStart = i;
+          const contentStart = i + 3;
+          const contentEnd = end;
+          const constructEnd = end + 3;
+          markupRanges.push({ rawStart: constructStart, rawEnd: constructEnd });
+          for (let j = contentStart; j < contentEnd; j++) {
+            committed.push(text[j]);
+            toRaw.push(j);
+          }
+          i = constructEnd;
+          continue;
+        }
+      }
+      if (twoChar === ">>") {
+        const end = text.indexOf("<<}", i + 3);
+        if (end !== -1) {
+          const constructEnd = end + 3;
+          markupRanges.push({ rawStart: i, rawEnd: constructEnd });
+          i = constructEnd;
+          continue;
+        }
+      }
+    }
+    committed.push(text[i]);
+    toRaw.push(i);
+    i++;
+  }
+  return { committed: committed.join(""), toRaw, markupRanges };
+}
+function findUniqueMatch(text, target, normalizer) {
+  const firstIdx = text.indexOf(target);
+  if (firstIdx !== -1) {
+    const secondIdx = text.indexOf(target, firstIdx + 1);
+    if (secondIdx !== -1) {
+      throw new Error(`Text "${target}" found multiple times (ambiguous). Provide more context to uniquely identify the location. Use LINE:HASH coordinates from read_tracked_file for precise targeting (e.g., at: '15:a3').`);
+    }
+    return {
+      index: firstIdx,
+      length: target.length,
+      originalText: target,
+      wasNormalized: false
+    };
+  }
+  if (text.includes("[^cn-") || target.includes("[^cn-") || target.includes("[cn-")) {
+    const cleanTarget = target.replace(/\[\^?cn-\d+(?:\.\d+)?\]/g, "");
+    const viewMatch = viewAwareFind(text, cleanTarget);
+    if (viewMatch) {
+      return {
+        index: viewMatch.index,
+        length: viewMatch.length,
+        originalText: viewMatch.rawText,
+        wasNormalized: true
+      };
+    }
+  }
+  if (normalizer) {
+    const normalizedText = normalizer(text);
+    const normalizedTarget = normalizer(target);
+    const normIdx = normalizedText.indexOf(normalizedTarget);
+    if (normIdx !== -1) {
+      const normSecondIdx = normalizedText.indexOf(normalizedTarget, normIdx + 1);
+      if (normSecondIdx !== -1) {
+        throw new Error(`Text "${target}" found multiple times after normalization (ambiguous). Provide more context to uniquely identify the location. Use LINE:HASH coordinates from read_tracked_file for precise targeting (e.g., at: '15:a3').`);
+      }
+      const originalText = text.slice(normIdx, normIdx + target.length);
+      return {
+        index: normIdx,
+        length: target.length,
+        originalText,
+        wasNormalized: true
+      };
+    }
+  }
+  {
+    const wsMatch = whitespaceCollapsedFind(text, target);
+    if (wsMatch !== null) {
+      if (whitespaceCollapsedIsAmbiguous(text, target)) {
+        throw new Error(`Text "${target}" found multiple times after whitespace collapsing (ambiguous). Provide more context to uniquely identify the location. Use LINE:HASH coordinates from read_tracked_file for precise targeting (e.g., at: '15:a3').`);
+      }
+      return {
+        index: wsMatch.index,
+        length: wsMatch.length,
+        originalText: wsMatch.originalText,
+        wasNormalized: true
+      };
+    }
+  }
+  if (containsCriticMarkup(text)) {
+    const { committed, toRaw, markupRanges } = stripCriticMarkupToCommittedWithMap(text);
+    if (committed !== text) {
+      const committedIdx = committed.indexOf(target);
+      if (committedIdx !== -1) {
+        const committedSecondIdx = committed.indexOf(target, committedIdx + 1);
+        if (committedSecondIdx !== -1) {
+          throw new Error(`Text "${target}" found multiple times in committed text (ambiguous). Provide more context to uniquely identify the location. Use LINE:HASH coordinates from read_tracked_file for precise targeting (e.g., at: '15:a3').`);
+        }
+        const committedEnd = committedIdx + target.length - 1;
+        let rawStart = toRaw[committedIdx];
+        let rawEnd = toRaw[committedEnd] + 1;
+        let expanded = true;
+        while (expanded) {
+          expanded = false;
+          for (const range of markupRanges) {
+            if (range.rawStart < rawEnd && range.rawEnd > rawStart) {
+              if (range.rawStart < rawStart) {
+                rawStart = range.rawStart;
+                expanded = true;
+              }
+              if (range.rawEnd > rawEnd) {
+                rawEnd = range.rawEnd;
+                expanded = true;
+              }
+            }
+          }
+        }
+        for (const range of markupRanges) {
+          if (range.rawStart === rawEnd && /^\[\^cn-/.test(text.slice(range.rawStart))) {
+            rawEnd = range.rawEnd;
+          }
+        }
+        return {
+          index: rawStart,
+          length: rawEnd - rawStart,
+          originalText: text.slice(rawStart, rawEnd),
+          // Return raw text covering constructs
+          wasNormalized: true,
+          wasCommittedMatch: true
+        };
+      }
+    }
+  }
+  if (containsCriticMarkup(text)) {
+    const { current, toRaw, markupRanges } = stripCriticMarkupWithMap(text);
+    const currentIdx = current.indexOf(target);
+    if (currentIdx !== -1) {
+      const currentSecondIdx = current.indexOf(target, currentIdx + 1);
+      if (currentSecondIdx !== -1) {
+        throw new Error(`Text "${target}" found multiple times in current text (ambiguous). Provide more context to uniquely identify the location. Use LINE:HASH coordinates from read_tracked_file for precise targeting (e.g., at: '15:a3').`);
+      }
+      const currentEnd = currentIdx + target.length - 1;
+      let rawStart = toRaw[currentIdx];
+      let rawEnd = toRaw[currentEnd] + 1;
+      let expanded = true;
+      while (expanded) {
+        expanded = false;
+        for (const range of markupRanges) {
+          if (range.rawStart < rawEnd && range.rawEnd > rawStart) {
+            if (range.rawStart < rawStart) {
+              rawStart = range.rawStart;
+              expanded = true;
+            }
+            if (range.rawEnd > rawEnd) {
+              rawEnd = range.rawEnd;
+              expanded = true;
+            }
+          }
+        }
+      }
+      for (const range of markupRanges) {
+        if (range.rawStart === rawEnd && /^\[\^cn-/.test(text.slice(range.rawStart))) {
+          rawEnd = range.rawEnd;
+        }
+      }
+      return {
+        index: rawStart,
+        length: rawEnd - rawStart,
+        originalText: target,
+        // Return the settled text as originalText for clean CriticMarkup
+        wasNormalized: true,
+        wasSettledMatch: true
+      };
+    }
+  }
+  const hint = normalizer ? "Tried: exact match, normalized match (NFKC), whitespace-collapsed match, view-surface match, decided-text match, current-text match." : "Tried: exact match only (no normalizer), whitespace-collapsed match, view-surface match, decided-text match, current-text match.";
+  const preview = target.length > 80 ? target.slice(0, 80) + "..." : target;
+  const haystackPreview = text.length > 200 ? text.slice(0, 200) + "..." : text;
+  const haystackLineCount = text.split("\n").length;
+  const searchedInLine = `Searched in (${haystackLineCount} line${haystackLineCount === 1 ? "" : "s"}, first 200 chars): "${haystackPreview}"`;
+  const diagnosticResult = tryDiagnosticConfusableMatch(text, target);
+  if (diagnosticResult) {
+    const diffLines = diagnosticResult.differences.map((d) => `  Position ${d.position}: you sent ${d.agentName} (U+${d.agentCodepoint.toString(16).toUpperCase().padStart(4, "0")}), file has ${d.fileName} (U+${d.fileCodepoint.toString(16).toUpperCase().padStart(4, "0")})`).join("\n");
+    const diagPreview = diagnosticResult.matchedText.length > 80 ? diagnosticResult.matchedText.slice(0, 80) + "..." : diagnosticResult.matchedText;
+    throw new Error(`Text not found in document.
+${hint}
+${searchedInLine}
+
+Unicode mismatch detected -- your text would match with character substitution:
+${diffLines}
+
+Copy the exact text from file for retry:
+  "${diagPreview}"`);
+  }
+  throw new Error(`Text not found in document.
+${hint}
+Input (first 80 chars): "${preview}"
+${searchedInLine}
+Hint: Re-read the file for current content, or use LINE:HASH addressing.`);
+}
+function tryFindUniqueMatch(text, target, normalizer) {
+  try {
+    return findUniqueMatch(text, target, normalizer);
+  } catch {
+    return null;
+  }
+}
+function replaceUnique(text, target, replacement, normalizer) {
+  const match = findUniqueMatch(text, target, normalizer);
+  return text.slice(0, match.index) + replacement + text.slice(match.index + match.length);
+}
+function contentZoneText(fullText) {
+  const lines = fullText.split("\n");
+  const blockStart = findFootnoteBlockStart(lines);
+  if (blockStart >= lines.length)
+    return fullText;
+  let offset = 0;
+  for (let i = 0; i < blockStart; i++) {
+    offset += lines[i].length + 1;
+  }
+  return fullText.slice(0, offset);
+}
+function hasL3ProposedChanges(text) {
+  const lines = text.split("\n");
+  let inProposedFootnote = false;
+  for (const line of lines) {
+    if (FOOTNOTE_DEF_STATUS_VALUE.test(line)) {
+      inProposedFootnote = /\|\s*proposed\s*$/.test(line);
+    } else if (inProposedFootnote && FOOTNOTE_L3_EDIT_OP.test(line)) {
+      return true;
+    } else if (line.trim() === "" || line.startsWith("[^") && !line.startsWith("    ")) {
+      inProposedFootnote = false;
+    }
+  }
+  return false;
+}
+async function applyProposeChange(params) {
+  const { text, oldText, newText, changeId, author, reasoning, insertAfter, level = 2 } = params;
+  let kind = params.kind;
+  if (kind === "comment" && oldText !== "") {
+    kind = "highlight";
+  }
+  const isL3 = level === 3;
+  if (isL3)
+    await initHashline();
+  if (!isL3 && text.includes("[^cn-") && isL3Format(text) && hasL3ProposedChanges(text)) {
+    throw new Error("L3 format detected but level is not 3. Pass level: 3 for L3 text to avoid garbled output.");
+  }
+  let bodyText;
+  if (isL3) {
+    const split = splitBodyAndFootnotes(text.split("\n"));
+    bodyText = split.bodyLines.join("\n");
+  } else {
+    bodyText = text;
+  }
+  if (kind === "highlight") {
+    if (oldText === "") {
+      throw new Error("Highlight requires oldText (the text to highlight) \u2014 oldText must not be empty.");
+    }
+    const hlSearchText = isL3 ? bodyText : contentZoneText(text);
+    const match = findUniqueMatch(hlSearchText, oldText, defaultNormalizer);
+    if (!isL3 && !match.wasSettledMatch && !match.wasCommittedMatch) {
+      guardOverlap(text, match.index, match.length);
+    }
+    const changeOffset2 = match.index;
+    if (isL3) {
+      const modifiedBody3 = text;
+      const split = splitBodyAndFootnotes(modifiedBody3.split("\n"));
+      const mutatedBodyText = split.bodyLines.join("\n");
+      const lineStarts = buildLineStarts(mutatedBodyText);
+      const lineNumber = offsetToLineNumber(lineStarts, changeOffset2);
+      const lineIdx = lineNumber - 1;
+      const lineContent = split.bodyLines[lineIdx] ?? "";
+      const hash2 = computeLineHash(lineIdx, lineContent, split.bodyLines);
+      const rawOp = reasoning ? `{==${match.originalText}==}{>>${reasoning}` : `{==${match.originalText}==}`;
+      const editOpLine = formatL3EditOpLine(lineNumber, hash2, rawOp);
+      const footnoteHeader3 = generateFootnoteDefinition(changeId, "hig", author);
+      const footnoteBlock3 = footnoteHeader3 + "\n" + editOpLine;
+      const modifiedText3 = appendFootnote(modifiedBody3, footnoteBlock3);
+      return { modifiedText: modifiedText3, changeType: "highlight" };
+    }
+    const actualOldText = match.originalText;
+    const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
+    const commentSuffix = reasoning ? `{>>${reasoning}<<}` : "";
+    const refSuffix2 = level === 2 ? `[^${changeId}]` : "";
+    const inlineMarkup2 = `{==${cleanedOld}==}${refSuffix2}${preservedRefs.join("")}${commentSuffix}${level === 1 ? level1Comment(author, "highlight") : ""}`;
+    const modifiedBody2 = text.slice(0, match.index) + inlineMarkup2 + text.slice(match.index + match.length);
+    if (level === 1) {
+      return { modifiedText: modifiedBody2, changeType: "highlight" };
+    }
+    const footnoteHeader2 = generateFootnoteDefinition(changeId, "hig", author);
+    const footnoteBlock2 = footnoteHeader2;
+    const modifiedText2 = appendFootnote(modifiedBody2, footnoteBlock2);
+    return { modifiedText: modifiedText2, changeType: "highlight" };
+  }
+  if (kind === "comment") {
+    if (!reasoning || reasoning.trim() === "") {
+      throw new Error("Comment requires reasoning (the comment body) \u2014 reasoning must not be empty.");
+    }
+    if (isL3) {
+      const modifiedBody3 = text;
+      const split = splitBodyAndFootnotes(modifiedBody3.split("\n"));
+      const mutatedBodyText = split.bodyLines.join("\n");
+      let targetOffset = mutatedBodyText.length > 0 ? mutatedBodyText.length - 1 : 0;
+      if (insertAfter) {
+        const anchorIdx = mutatedBodyText.lastIndexOf(insertAfter);
+        if (anchorIdx !== -1)
+          targetOffset = anchorIdx + insertAfter.length - 1;
+      }
+      const lineStarts = buildLineStarts(mutatedBodyText);
+      const lineNumber = offsetToLineNumber(lineStarts, Math.max(0, targetOffset));
+      const lineIdx = lineNumber - 1;
+      const lineContent = split.bodyLines[lineIdx] ?? "";
+      const hash2 = computeLineHash(lineIdx, lineContent, split.bodyLines);
+      const rawOp = `{>>${reasoning}`;
+      const editOpLine = formatL3EditOpLine(lineNumber, hash2, rawOp);
+      const footnoteHeader3 = generateFootnoteDefinition(changeId, "com", author);
+      const footnoteBlock3 = footnoteHeader3 + "\n" + editOpLine;
+      const modifiedText3 = appendFootnote(modifiedBody3, footnoteBlock3);
+      return { modifiedText: modifiedText3, changeType: "comment" };
+    }
+    const insertPos = (() => {
+      if (insertAfter) {
+        const anchorIdx = text.lastIndexOf(insertAfter);
+        if (anchorIdx !== -1) {
+          const afterAnchor = anchorIdx + insertAfter.length;
+          const nlIdx = text.indexOf("\n", afterAnchor);
+          return nlIdx !== -1 ? nlIdx : text.length;
+        }
+      }
+      const lines = text.split("\n");
+      const blockStart = findFootnoteBlockStart(lines);
+      if (blockStart >= lines.length)
+        return text.length;
+      let offset = 0;
+      for (let i = 0; i < blockStart; i++)
+        offset += lines[i].length + 1;
+      return Math.max(0, offset - 1);
+    })();
+    const refSuffix2 = level === 2 ? `[^${changeId}]` : "";
+    const inlineMarkup2 = `{>>${reasoning}<<}${refSuffix2}${level === 1 ? level1Comment(author, "comment") : ""}`;
+    const modifiedBody2 = text.slice(0, insertPos) + inlineMarkup2 + text.slice(insertPos);
+    if (level === 1) {
+      return { modifiedText: modifiedBody2, changeType: "comment" };
+    }
+    const footnoteHeader2 = generateFootnoteDefinition(changeId, "com", author);
+    const footnoteBlock2 = footnoteHeader2;
+    const modifiedText2 = appendFootnote(modifiedBody2, footnoteBlock2);
+    return { modifiedText: modifiedText2, changeType: "comment" };
+  }
+  if (oldText === "" && newText === "") {
+    throw new Error("Both oldText and newText are empty \u2014 nothing to change.");
+  }
+  let changeType;
+  let inlineMarkup = "";
+  let modifiedBody;
+  let changeOffset = 0;
+  const refSuffix = level === 2 ? `[^${changeId}]` : "";
+  if (oldText === "") {
+    changeType = "ins";
+    if (!insertAfter) {
+      throw new Error("Insertion requires an insertAfter anchor to locate where to insert.");
+    }
+    const searchTarget = isL3 ? bodyText : text;
+    let anchorIndex = searchTarget.indexOf(insertAfter);
+    let anchorLength = insertAfter.length;
+    if (anchorIndex === -1) {
+      anchorIndex = normalizedIndexOf(searchTarget, insertAfter, defaultNormalizer);
+    }
+    if (anchorIndex === -1) {
+      const wsMatch = whitespaceCollapsedFind(searchTarget, insertAfter);
+      if (wsMatch !== null) {
+        anchorIndex = wsMatch.index;
+        anchorLength = wsMatch.length;
+      }
+    }
+    if (anchorIndex === -1) {
+      throw new Error(`insertAfter anchor not found in text: "${insertAfter}"`);
+    }
+    if (!isL3) {
+      guardOverlap(text, anchorIndex, anchorLength);
+    }
+    const insertPos = anchorIndex + anchorLength;
+    changeOffset = insertPos;
+    if (isL3) {
+      modifiedBody = text.slice(0, insertPos) + newText + text.slice(insertPos);
+    } else {
+      const insPad = /^[+\-~]/.test(newText) ? " " : "";
+      inlineMarkup = `{++${insPad}${newText}++}${refSuffix}${level === 1 ? level1Comment(author, "ins") : ""}`;
+      const charBefore = insertPos > 0 ? text[insertPos - 1] : "\n";
+      const needsNewlineBefore = charBefore !== "\n";
+      const isBlockContent = /^[-#>*\d]/.test(newText) || newText.includes("\n");
+      const prefix = needsNewlineBefore && isBlockContent ? "\n" : "";
+      modifiedBody = text.slice(0, insertPos) + prefix + inlineMarkup + text.slice(insertPos);
+    }
+  } else if (newText === "") {
+    changeType = "del";
+    const delSearchText = isL3 ? bodyText : contentZoneText(text);
+    const match = findUniqueMatch(delSearchText, oldText, defaultNormalizer);
+    if (!isL3 && !match.wasSettledMatch && !match.wasCommittedMatch) {
+      guardOverlap(text, match.index, match.length);
+    }
+    changeOffset = match.index;
+    if (isL3) {
+      modifiedBody = text.slice(0, match.index) + text.slice(match.index + match.length);
+    } else {
+      const actualOldText = match.originalText;
+      const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
+      const delPad = /^[+\-~]/.test(cleanedOld) ? " " : "";
+      inlineMarkup = `{--${delPad}${cleanedOld}--}${refSuffix}${preservedRefs.join("")}${level === 1 ? level1Comment(author, "del") : ""}`;
+      modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
+    }
+  } else {
+    changeType = "sub";
+    const subSearchText = isL3 ? bodyText : contentZoneText(text);
+    const match = findUniqueMatch(subSearchText, oldText, defaultNormalizer);
+    if (!isL3 && !match.wasSettledMatch && !match.wasCommittedMatch) {
+      guardOverlap(text, match.index, match.length);
+    }
+    changeOffset = match.index;
+    if (isL3) {
+      modifiedBody = text.slice(0, match.index) + newText + text.slice(match.index + match.length);
+    } else {
+      const actualOldText = match.originalText;
+      const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
+      const subPad = /^[+\-~]/.test(cleanedOld) ? " " : "";
+      inlineMarkup = `{~~${subPad}${cleanedOld}~>${newText}~~}${refSuffix}${preservedRefs.join("")}${level === 1 ? level1Comment(author, "sub") : ""}`;
+      modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
+    }
+  }
+  if (isL3) {
+    const mutatedSplit = splitBodyAndFootnotes(modifiedBody.split("\n"));
+    const mutatedBodyText = mutatedSplit.bodyLines.join("\n");
+    const lineStarts = buildLineStarts(mutatedBodyText);
+    const lineNumber = offsetToLineNumber(lineStarts, changeOffset);
+    const lineIdx = lineNumber - 1;
+    const lineContent = mutatedSplit.bodyLines[lineIdx] ?? "";
+    const hash2 = computeLineHash(lineIdx, lineContent, mutatedSplit.bodyLines);
+    const column = changeOffset - (lineStarts[lineIdx] ?? 0);
+    const anchorLen = changeType === "del" ? 0 : newText.length;
+    const changeTypeEnum = changeType === "ins" ? ChangeType.Insertion : changeType === "del" ? ChangeType.Deletion : ChangeType.Substitution;
+    const editOpLine = buildContextualL3EditOp({
+      changeType: changeTypeEnum,
+      originalText: oldText,
+      currentText: newText,
+      lineContent,
+      lineNumber,
+      hash: hash2,
+      column,
+      anchorLen
+    });
+    const footnoteHeader2 = generateFootnoteDefinition(changeId, changeType, author);
+    const reasonLine2 = reasoning ? `
+    @${author} ${nowTimestamp().raw}: ${reasoning}` : "";
+    const footnoteBlock2 = footnoteHeader2 + "\n" + editOpLine + reasonLine2;
+    const modifiedText2 = appendFootnote(modifiedBody, footnoteBlock2);
+    return { modifiedText: modifiedText2, changeType };
+  }
+  if (level === 1) {
+    return { modifiedText: modifiedBody, changeType };
+  }
+  const footnoteHeader = generateFootnoteDefinition(changeId, changeType, author);
+  const reasonLine = reasoning ? `
+    @${author} ${nowTimestamp().raw}: ${reasoning}` : "";
+  const footnoteBlock = footnoteHeader + reasonLine;
+  const modifiedText = appendFootnote(modifiedBody, footnoteBlock);
+  return { modifiedText, changeType };
+}
+function extractLineRange(fileLines, startLine, endLine) {
+  if (startLine < 1 || startLine > fileLines.length) {
+    throw new Error(`start_line ${startLine} is out of range (file has ${fileLines.length} lines)`);
+  }
+  if (endLine < startLine || endLine > fileLines.length) {
+    throw new Error(`end_line ${endLine} is out of range (file has ${fileLines.length} lines, start_line is ${startLine})`);
+  }
+  let startOffset = 0;
+  for (let i = 0; i < startLine - 1; i++) {
+    startOffset += fileLines[i].length + 1;
+  }
+  const extractedLines = fileLines.slice(startLine - 1, endLine);
+  const content = extractedLines.join("\n");
+  const endOffset = startOffset + content.length;
+  return { content, startOffset, endOffset };
+}
+function appendFootnote(text, footnoteBlock) {
+  const lines = text.split("\n");
+  const blockStart = findFootnoteBlockStart(lines);
+  if (blockStart >= lines.length) {
+    return text + footnoteBlock;
+  }
+  let lastFootnoteEnd = blockStart;
+  for (let i = blockStart; i < lines.length; i++) {
+    if (FOOTNOTE_DEF_START.test(lines[i])) {
+      lastFootnoteEnd = i;
+      let j = i + 1;
+      while (j < lines.length) {
+        if (FOOTNOTE_CONTINUATION.test(lines[j])) {
+          lastFootnoteEnd = j;
+          j++;
+        } else if (lines[j].trim() === "") {
+          let k = j + 1;
+          while (k < lines.length && lines[k].trim() === "")
+            k++;
+          if (k < lines.length && FOOTNOTE_CONTINUATION.test(lines[k])) {
+            lastFootnoteEnd = j;
+            j++;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  const before = lines.slice(0, lastFootnoteEnd + 1).join("\n");
+  const after = lines.slice(lastFootnoteEnd + 1).join("\n");
+  const block = footnoteBlock.startsWith("\n") ? footnoteBlock : "\n\n" + footnoteBlock;
+  if (after.length > 0) {
+    return before + block + "\n" + after;
+  }
+  return before + block;
+}
+async function applySingleOperation(params) {
+  const { fileContent, oldText, newText, changeId, author, reasoning, insertAfter, afterLine, startLine, endLine } = params;
+  if (oldText === "" && newText === "") {
+    throw new Error("Both oldText and newText are empty \u2014 nothing to change.");
+  }
+  const fileLines = fileContent.split("\n");
+  if (afterLine !== void 0 && oldText === "") {
+    const changeType = "ins";
+    let cleanedNewText = newText;
+    const newTextLines = cleanedNewText.split("\n");
+    const strippedLines = stripHashlinePrefixes(newTextLines);
+    cleanedNewText = strippedLines.join("\n");
+    const insPad = /^[+\-~]/.test(cleanedNewText) ? " " : "";
+    const inlineMarkup = `{++${insPad}${cleanedNewText}++}[^${changeId}]`;
+    const footnoteHeader = generateFootnoteDefinition(changeId, changeType, author);
+    const reasonLine = reasoning ? `
+    @${author} ${nowTimestamp().raw}: ${reasoning}` : "";
+    const footnoteBlock = footnoteHeader + reasonLine;
+    const insertPos = fileLines.slice(0, afterLine).join("\n").length;
+    let modifiedText = fileContent.slice(0, insertPos) + "\n" + inlineMarkup + fileContent.slice(insertPos);
+    modifiedText = appendFootnote(modifiedText, footnoteBlock);
+    const affectedEnd = Math.min(modifiedText.split("\n").length, afterLine + 3);
+    return { modifiedText, changeType, affectedStartLine: afterLine, affectedEndLine: affectedEnd };
+  }
+  if (startLine !== void 0) {
+    const effectiveEndLine = endLine ?? startLine;
+    const extracted = extractLineRange(fileLines, startLine, effectiveEndLine);
+    let cleanedNewText = newText;
+    let newTextLines = cleanedNewText.split("\n");
+    newTextLines = stripHashlinePrefixes(newTextLines);
+    newTextLines = stripBoundaryEcho(fileLines, startLine, effectiveEndLine, newTextLines);
+    cleanedNewText = newTextLines.join("\n");
+    let modifiedBody;
+    let changeType;
+    if (oldText !== "") {
+      const match = findUniqueMatch(contentZoneText(extracted.content), oldText, defaultNormalizer);
+      const absPos = extracted.startOffset + match.index;
+      guardOverlap(fileContent, absPos, match.length);
+      const actualOldText = match.originalText;
+      const { cleaned: cleanedOldText, refs: preservedRefs } = stripRefsFromContent(actualOldText);
+      changeType = cleanedNewText === "" ? "del" : "sub";
+      const pad = /^[+\-~]/.test(cleanedOldText) ? " " : "";
+      const inlineMarkup = changeType === "del" ? `{--${pad}${cleanedOldText}--}[^${changeId}]${preservedRefs.join("")}` : `{~~${pad}${cleanedOldText}~>${cleanedNewText}~~}[^${changeId}]${preservedRefs.join("")}`;
+      const absEnd = absPos + match.length;
+      modifiedBody = fileContent.slice(0, absPos) + inlineMarkup + fileContent.slice(absEnd);
+    } else {
+      const { cleaned: cleanedExtracted, refs: preservedRefs } = stripRefsFromContent(extracted.content);
+      changeType = cleanedNewText === "" ? "del" : "sub";
+      const pad = /^[+\-~]/.test(cleanedExtracted) ? " " : "";
+      const inlineMarkup = changeType === "del" ? `{--${pad}${cleanedExtracted}--}[^${changeId}]${preservedRefs.join("")}` : `{~~${pad}${cleanedExtracted}~>${cleanedNewText}~~}[^${changeId}]${preservedRefs.join("")}`;
+      modifiedBody = fileContent.slice(0, extracted.startOffset) + inlineMarkup + fileContent.slice(extracted.endOffset);
+    }
+    const footnoteHeader = generateFootnoteDefinition(changeId, changeType, author);
+    const reasonLine = reasoning ? `
+    @${author} ${nowTimestamp().raw}: ${reasoning}` : "";
+    const modifiedText = appendFootnote(modifiedBody, footnoteHeader + reasonLine);
+    const affectedEnd = Math.min(modifiedText.split("\n").length, effectiveEndLine + 5);
+    return { modifiedText, changeType, affectedStartLine: startLine, affectedEndLine: affectedEnd };
+  }
+  const applied = await applyProposeChange({
+    text: fileContent,
+    oldText,
+    newText,
+    changeId,
+    author,
+    reasoning,
+    insertAfter
+  });
+  const lines = applied.modifiedText.split("\n");
+  let matchLine = 1;
+  for (let i = 0; i < lines.length; i++) {
+    if (/\{\+\+|\{--|\{~~|\{==/.test(lines[i])) {
+      matchLine = i + 1;
+      break;
+    }
+  }
+  return {
+    modifiedText: applied.modifiedText,
+    changeType: applied.changeType,
+    affectedStartLine: Math.max(1, matchLine - 2),
+    affectedEndLine: Math.min(lines.length, matchLine + 5)
+  };
+}
+var init_file_ops = __esm({
+  "../../packages/core/dist-esm/file-ops.js"() {
+    "use strict";
+    init_footnote_generator();
+    init_timestamp();
+    init_apply_review();
+    init_current_text();
+    init_text_normalizer();
+    init_hashline_cleanup();
+    init_format_aware_parse();
+    init_types();
+    init_footnote_utils();
+    init_footnote_patterns();
+    init_hashline();
+    init_l2_to_l3();
+    init_view_surface();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/ensure-l2.js
+function ensureL2(text, changeOffset, opts) {
+  if (opts.existingId) {
+    return { text, changeId: opts.existingId, promoted: false };
+  }
+  const parser = new CriticMarkupParser();
+  const doc = parser.parse(text);
+  const changes = doc.getChanges();
+  const change = changes.find((c) => c.range.start <= changeOffset && changeOffset < c.range.end);
+  if (!change) {
+    return { text, changeId: "", promoted: false };
+  }
+  if (change.level !== 0) {
+    return { text, changeId: change.id, promoted: false };
+  }
+  const maxId = scanMaxCnId(text);
+  const nextId = `cn-${maxId + 1}`;
+  const typeAbbrev = changeTypeToAbbrev(change.type) ?? opts.type;
+  const insertPos = change.range.end;
+  const withRef = text.slice(0, insertPos) + `[^${nextId}]` + text.slice(insertPos);
+  const footnoteDef = generateFootnoteDefinition(nextId, typeAbbrev, opts.author);
+  const result = appendFootnote(withRef, footnoteDef);
+  return { text: result, changeId: nextId, promoted: true };
+}
+var init_ensure_l2 = __esm({
+  "../../packages/core/dist-esm/operations/ensure-l2.js"() {
+    "use strict";
+    init_parser();
+    init_types();
+    init_footnote_generator();
+    init_file_ops();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/amend.js
+var init_amend = __esm({
+  "../../packages/core/dist-esm/operations/amend.js"() {
+    "use strict";
+    init_format_aware_parse();
+    init_document();
+    init_types();
+    init_footnote_utils();
+    init_timestamp();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/supersede.js
+async function computeSupersedeResult(text, changeId, opts) {
+  const { newText, oldText = "", reason, author, insertAfter } = opts;
+  const lines = text.split("\n");
+  const block = findFootnoteBlock(lines, changeId);
+  if (!block) {
+    return { isError: true, error: `Change "${changeId}" not found in file.` };
+  }
+  const header = parseFootnoteHeader(lines[block.headerLine]);
+  if (!header) {
+    return {
+      isError: true,
+      error: `Malformed metadata for change "${changeId}". Expected format: @author | date | type | status`
+    };
+  }
+  if (header.status === "accepted") {
+    return {
+      isError: true,
+      error: `Cannot supersede change "${changeId}": it is already accepted. Only proposed changes can be superseded.`
+    };
+  }
+  if (header.status === "rejected") {
+    return {
+      isError: true,
+      error: `Cannot supersede change "${changeId}": it is already rejected. Only proposed changes can be superseded.`
+    };
+  }
+  if (header.status !== "proposed") {
+    return {
+      isError: true,
+      error: `Cannot supersede change "${changeId}": unexpected status "${header.status}". Only proposed changes can be superseded.`
+    };
+  }
+  const inputDoc = parseForFormat(text);
+  assertResolved(inputDoc);
+  const rejectResult = applyReview(text, changeId, "reject", reason ?? "Superseded by new change", author);
+  if ("error" in rejectResult) {
+    return { isError: true, error: `Failed to reject old change: ${rejectResult.error}` };
+  }
+  let fileContent = rejectResult.updatedContent;
+  const level = isL3Format(text) ? 3 : 2;
+  const doc = parseForFormat(fileContent);
+  const rejectedChange = doc.getChanges().find((c) => c.id === changeId);
+  const isDirectReplace = rejectedChange && !oldText && !insertAfter && (rejectedChange.type === ChangeType.Insertion || rejectedChange.type === ChangeType.Comment);
+  if (isDirectReplace && rejectedChange) {
+    const maxId2 = scanMaxCnId(fileContent);
+    const newChangeId2 = `cn-${maxId2 + 1}`;
+    let newMarkup;
+    let changeType;
+    if (rejectedChange.type === ChangeType.Comment) {
+      newMarkup = `{>>${newText}<<}[^${newChangeId2}]`;
+      changeType = "com";
+    } else {
+      const insPad = /^[+\-~]/.test(newText) ? " " : "";
+      newMarkup = `{++${insPad}${newText}++}[^${newChangeId2}]`;
+      changeType = "ins";
+    }
+    const rangeStart = rejectedChange.range.start;
+    let rangeEnd = rejectedChange.range.end;
+    const refStr = `[^${changeId}]`;
+    if (fileContent.slice(rangeEnd, rangeEnd + refStr.length) === refStr) {
+      rangeEnd += refStr.length;
+    }
+    fileContent = fileContent.slice(0, rangeStart) + newMarkup + fileContent.slice(rangeEnd);
+    const footnoteHeader = generateFootnoteDefinition(newChangeId2, changeType, author);
+    const reasonLine = reason ? `
+    @${author} ${nowTimestamp().raw}: ${reason}` : "";
+    fileContent = appendFootnote(fileContent, footnoteHeader + reasonLine);
+    const modifiedLines2 = fileContent.split("\n");
+    const newBlock2 = findFootnoteBlock(modifiedLines2, newChangeId2);
+    if (newBlock2) {
+      const supersedesLine = `    supersedes: ${changeId}`;
+      modifiedLines2.splice(newBlock2.headerLine + 1, 0, supersedesLine);
+      fileContent = modifiedLines2.join("\n");
+    }
+    const updatedLines2 = fileContent.split("\n");
+    const origBlock2 = findFootnoteBlock(updatedLines2, changeId);
+    if (origBlock2) {
+      const supersededByLine = `    superseded-by: ${newChangeId2}`;
+      updatedLines2.splice(origBlock2.headerLine + 1, 0, supersededByLine);
+      fileContent = updatedLines2.join("\n");
+    }
+    return {
+      isError: false,
+      text: fileContent,
+      newChangeId: newChangeId2,
+      originalChangeId: changeId
+    };
+  }
+  let preRevertContent;
+  if (rejectedChange) {
+    preRevertContent = stripConsumedReferenceFromBody(fileContent, changeId);
+    const rejectEdit = computeReject(rejectedChange);
+    fileContent = fileContent.slice(0, rejectEdit.offset) + rejectEdit.newText + fileContent.slice(rejectEdit.offset + rejectEdit.length);
+    fileContent = stripConsumedReferenceFromBody(fileContent, changeId);
+  }
+  const maxId = scanMaxCnId(fileContent);
+  const newChangeId = `cn-${maxId + 1}`;
+  let proposeOldText = oldText;
+  if (rejectedChange) {
+    if (!proposeOldText) {
+      if (rejectedChange.type === ChangeType.Substitution || rejectedChange.type === ChangeType.Deletion) {
+        proposeOldText = rejectedChange.originalText ?? "";
+      }
+    }
+  }
+  let proposeResult;
+  try {
+    proposeResult = await applyProposeChange({
+      text: fileContent,
+      oldText: proposeOldText,
+      newText,
+      changeId: newChangeId,
+      author,
+      reasoning: reason,
+      insertAfter,
+      level
+    });
+  } catch (err) {
+    if (!preRevertContent)
+      throw err;
+    proposeResult = await applyProposeChange({
+      text: preRevertContent,
+      oldText: proposeOldText,
+      newText,
+      changeId: newChangeId,
+      author,
+      reasoning: reason,
+      insertAfter,
+      level
+    });
+  }
+  fileContent = proposeResult.modifiedText;
+  const modifiedLines = fileContent.split("\n");
+  const newBlock = findFootnoteBlock(modifiedLines, newChangeId);
+  if (newBlock) {
+    const supersedesLine = `    supersedes: ${changeId}`;
+    modifiedLines.splice(newBlock.headerLine + 1, 0, supersedesLine);
+    fileContent = modifiedLines.join("\n");
+  }
+  const updatedLines = fileContent.split("\n");
+  const origBlock = findFootnoteBlock(updatedLines, changeId);
+  if (origBlock) {
+    const supersededByLine = `    superseded-by: ${newChangeId}`;
+    updatedLines.splice(origBlock.headerLine + 1, 0, supersededByLine);
+    fileContent = updatedLines.join("\n");
+  }
+  return {
+    isError: false,
+    text: fileContent,
+    newChangeId,
+    originalChangeId: changeId
+  };
+}
+function stripConsumedReferenceFromBody(text, consumedId) {
+  const footnoteStart = text.search(/(?:^|\n)\[\^[^\]]+\]:/);
+  const bodyEnd = footnoteStart >= 0 ? footnoteStart : text.length;
+  const body = text.slice(0, bodyEnd);
+  const footer = text.slice(bodyEnd);
+  return stripConsumedReference(body, consumedId) + footer;
+}
+function stripConsumedReference(text, consumedId) {
+  const escaped = consumedId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text.replace(new RegExp(`\\[\\^${escaped}\\]`, "g"), "");
+}
+var init_supersede = __esm({
+  "../../packages/core/dist-esm/operations/supersede.js"() {
+    "use strict";
+    init_footnote_utils();
+    init_apply_review();
+    init_file_ops();
+    init_footnote_generator();
+    init_footnote_patterns();
+    init_format_aware_parse();
+    init_document();
+    init_accept_reject();
+    init_types();
+    init_timestamp();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/level-promotion.js
+var init_level_promotion = __esm({
+  "../../packages/core/dist-esm/operations/level-promotion.js"() {
+    "use strict";
+    init_parser();
+    init_tokens();
+    init_timestamp();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/level-descent.js
+var init_level_descent = __esm({
+  "../../packages/core/dist-esm/operations/level-descent.js"() {
+    "use strict";
+    init_parser();
+    init_footnote_utils();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/l3-to-l2.js
+function buildInlineMarkup(change, bodyText) {
+  const { type, status, range, originalText, modifiedText, metadata } = change;
+  const ref = `[^${change.id}]`;
+  switch (type) {
+    case ChangeType.Insertion: {
+      if (status === ChangeStatus.Rejected) {
+        return { replacement: `{++${modifiedText ?? ""}++}${ref}` };
+      }
+      const bodySlice = bodyText.slice(range.start, range.end);
+      return { replacement: `{++${bodySlice}++}${ref}` };
+    }
+    case ChangeType.Deletion: {
+      return { replacement: `{--${originalText ?? ""}--}${ref}` };
+    }
+    case ChangeType.Substitution: {
+      if (status === ChangeStatus.Rejected) {
+        const bodySlice2 = bodyText.slice(range.start, range.end);
+        return { replacement: `{~~${bodySlice2}~>${modifiedText ?? ""}~~}${ref}` };
+      }
+      const bodySlice = bodyText.slice(range.start, range.end);
+      return { replacement: `{~~${originalText ?? ""}~>${bodySlice}~~}${ref}` };
+    }
+    case ChangeType.Highlight: {
+      const bodySlice = bodyText.slice(range.start, range.end);
+      const comment = metadata?.comment;
+      const commentPart = comment ? `{>>${comment}<<}` : "";
+      return { replacement: `{==${bodySlice}==}${commentPart}${ref}` };
+    }
+    case ChangeType.Comment: {
+      const comment = metadata?.comment ?? "";
+      return { replacement: `{>>${comment}<<}${ref}` };
+    }
+    case ChangeType.Move: {
+      const bodySlice = bodyText.slice(range.start, range.end);
+      return { replacement: `{++${bodySlice}++}${ref}` };
+    }
+  }
+}
+async function convertL3ToL2(text) {
+  await initHashline();
+  const parser = new FootnoteNativeParser();
+  const doc = parser.parse(text);
+  const changes = doc.getChanges();
+  if (changes.length === 0)
+    return text;
+  const hasProposed = changes.some((c) => c.status === ChangeStatus.Proposed);
+  if (!hasProposed)
+    return text;
+  const unresolvedIds = new Set(changes.filter((c) => c.resolved === false).map((c) => c.id));
+  const { bodyLines, footnoteLines } = splitBodyAndFootnotes(text.split("\n"));
+  const sortedDesc = [...changes].sort((a, b) => b.range.start - a.range.start);
+  let body = bodyLines.join("\n");
+  const statusMap = /* @__PURE__ */ new Map();
+  for (const change of changes) {
+    statusMap.set(change.id, change.status);
+  }
+  for (const change of sortedDesc) {
+    if (change.status !== ChangeStatus.Proposed)
+      continue;
+    if (unresolvedIds.has(change.id))
+      continue;
+    const { replacement } = buildInlineMarkup(change, body);
+    if (change.type === ChangeType.Deletion || change.type === ChangeType.Comment) {
+      body = body.slice(0, change.range.start) + replacement + body.slice(change.range.start);
+    } else {
+      body = body.slice(0, change.range.start) + replacement + body.slice(change.range.end);
+    }
+  }
+  const rebuiltFootnotes = [];
+  let i = 0;
+  while (i < footnoteLines.length) {
+    const line = footnoteLines[i];
+    if (FOOTNOTE_DEF_START.test(line)) {
+      const idMatch = line.match(/^\[\^(cn-[\w.]+)\]:/);
+      const changeId = idMatch ? idMatch[1] : "";
+      const changeStatus = statusMap.get(changeId);
+      rebuiltFootnotes.push(line);
+      i++;
+      while (i < footnoteLines.length) {
+        const bodyLine = footnoteLines[i];
+        if (FOOTNOTE_DEF_START.test(bodyLine))
+          break;
+        if (FOOTNOTE_L3_EDIT_OP.test(bodyLine)) {
+          if (changeStatus === ChangeStatus.Proposed && !unresolvedIds.has(changeId)) {
+            i++;
+            continue;
+          }
+          rebuiltFootnotes.push(bodyLine);
+          i++;
+          continue;
+        }
+        if (FOOTNOTE_CONTINUATION.test(bodyLine) || bodyLine.trim() === "") {
+          rebuiltFootnotes.push(bodyLine);
+          i++;
+        } else {
+          break;
+        }
+      }
+    } else {
+      rebuiltFootnotes.push(line);
+      i++;
+    }
+  }
+  const footnoteSection = rebuiltFootnotes.join("\n");
+  if (rebuiltFootnotes.length === 0) {
+    return body + "\n";
+  }
+  return body + "\n\n" + footnoteSection + "\n";
+}
+var init_l3_to_l2 = __esm({
+  "../../packages/core/dist-esm/operations/l3-to-l2.js"() {
+    "use strict";
+    init_types();
+    init_footnote_native_parser();
+    init_hashline();
+    init_footnote_patterns();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/compact.js
+var l3Parser2, RE_SUPERSEDES;
+var init_compact = __esm({
+  "../../packages/core/dist-esm/operations/compact.js"() {
+    "use strict";
+    init_footnote_patterns();
+    init_footnote_generator();
+    init_footnote_native_parser();
+    init_hashline();
+    init_accept_reject();
+    init_types();
+    init_l2_to_l3();
+    init_l3_to_l2();
+    init_scrub();
+    l3Parser2 = new FootnoteNativeParser();
+    RE_SUPERSEDES = new RegExp(`^\\s+supersedes:\\s+(${FOOTNOTE_ID_PATTERN})\\s*$`);
+  }
+});
+
+// ../../packages/core/dist-esm/constants.js
+var init_constants = __esm({
+  "../../packages/core/dist-esm/constants.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/parser/sidecar-parser.js
+var init_sidecar_parser = __esm({
+  "../../packages/core/dist-esm/parser/sidecar-parser.js"() {
+    "use strict";
+    init_types();
+    init_document();
+    init_comment_syntax();
+    init_constants();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/sidecar-accept-reject.js
+var init_sidecar_accept_reject = __esm({
+  "../../packages/core/dist-esm/operations/sidecar-accept-reject.js"() {
+    "use strict";
+    init_comment_syntax();
+    init_constants();
+  }
+});
+
+// ../../packages/core/dist-esm/workspace.js
+var init_workspace = __esm({
+  "../../packages/core/dist-esm/workspace.js"() {
+    "use strict";
+    init_document();
+    init_parser();
+    init_sidecar_parser();
+    init_footnote_native_parser();
+    init_accept_reject();
+    init_sidecar_accept_reject();
+    init_comment_syntax();
+    init_navigation();
+    init_tracking();
+    init_comment();
+    init_constants();
+    init_footnote_patterns();
+    init_format_aware_parse();
+    init_current_text();
+  }
+});
+
+// ../../packages/core/dist-esm/annotators/markdown-annotator.js
+var init_markdown_annotator = __esm({
+  "../../packages/core/dist-esm/annotators/markdown-annotator.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/annotators/sidecar-annotator.js
+var init_sidecar_annotator = __esm({
+  "../../packages/core/dist-esm/annotators/sidecar-annotator.js"() {
+    "use strict";
+    init_comment_syntax();
+    init_constants();
+  }
+});
+
+// ../../packages/core/dist-esm/tracking-header.js
+function parseTrackingHeader(text) {
+  const lines = text.split("\n");
+  const scanLimit = Math.min(lines.length, MAX_SCAN_LINES);
+  let offset = 0;
+  for (let i = 0; i < scanLimit; i++) {
+    const match = TRACKING_HEADER_RE.exec(lines[i]);
+    if (match) {
+      return {
+        version: parseInt(match[1], 10),
+        status: match[2],
+        line: i,
+        offset: offset + match.index,
+        length: match[0].length
+      };
+    }
+    offset += lines[i].length + 1;
+  }
+  return null;
+}
+function generateTrackingHeader(status) {
+  return `<!-- changedown.com/v1: ${status} -->`;
+}
+function insertTrackingHeader(text) {
+  if (parseTrackingHeader(text) !== null) {
+    return { newText: text, headerInserted: false };
+  }
+  const header = generateTrackingHeader("tracked");
+  if (text === "") {
+    return { newText: header + "\n", headerInserted: true };
+  }
+  if (text.startsWith("---")) {
+    const lines = text.split("\n");
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].trimEnd() === "---") {
+        const before = lines.slice(0, i + 1).join("\n");
+        const after = lines.slice(i + 1).join("\n");
+        return {
+          newText: before + "\n" + header + "\n" + after,
+          headerInserted: true
+        };
+      }
+    }
+  }
+  return { newText: header + "\n" + text, headerInserted: true };
+}
+var TRACKING_HEADER_RE, MAX_SCAN_LINES;
+var init_tracking_header = __esm({
+  "../../packages/core/dist-esm/tracking-header.js"() {
+    "use strict";
+    TRACKING_HEADER_RE = /<!--\s*(?:changedown\.com|ctrcks\.com)\/v(\d+):\s*(tracked|untracked)\s*-->/;
+    MAX_SCAN_LINES = 5;
+  }
+});
+
+// ../../packages/core/dist-esm/critic-regex.js
+function multiLineSubstitution() {
+  return /\{~~([\s\S]*?)~>([\s\S]*?)~~\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
+}
+function multiLineInsertion() {
+  return /\{\+\+([\s\S]*?)\+\+\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
+}
+function multiLineDeletion() {
+  return /\{--([\s\S]*?)--\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
+}
+function multiLineHighlight() {
+  return /\{==([\s\S]*?)==\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
+}
+function multiLineComment() {
+  return /\{>>([\s\S]*?)<<\}/g;
+}
+function hasCriticMarkup(line) {
+  return HAS_CRITIC_MARKUP.test(line);
+}
+var HAS_CRITIC_MARKUP;
+var init_critic_regex = __esm({
+  "../../packages/core/dist-esm/critic-regex.js"() {
+    "use strict";
+    HAS_CRITIC_MARKUP = /\{\+\+|\{--|\{~~|\{==|\{>>|\[\^cn-\d/;
+  }
+});
+
+// ../../packages/core/dist-esm/hashline-tracked.js
+var init_hashline_tracked = __esm({
+  "../../packages/core/dist-esm/hashline-tracked.js"() {
+    "use strict";
+    init_hashline();
+    init_critic_regex();
+    init_footnote_patterns();
+  }
+});
+
+// ../../packages/core/dist-esm/footnote-parser.js
+var init_footnote_parser = __esm({
+  "../../packages/core/dist-esm/footnote-parser.js"() {
+    "use strict";
+    init_footnote_patterns();
+    init_footnote_utils();
+    init_timestamp();
+  }
+});
+
+// ../../packages/core/dist-esm/decided-text.js
+function resolveStatus(changeId, footnotes) {
+  if (!changeId)
+    return "proposed";
+  const info = footnotes.get(changeId);
+  if (!info)
+    return "proposed";
+  return info.status;
+}
+function applyDecidedReplacementsOnce(text, footnotes, trackStatus) {
+  let result = text;
+  result = result.replace(multiLineSubstitution(), (_match, old, newText, _refFull, refId) => {
+    const status = resolveStatus(refId, footnotes);
+    trackStatus(status, refId);
+    return status === "accepted" ? newText : old;
+  });
+  result = result.replace(multiLineInsertion(), (_match, content, _refFull, refId) => {
+    const status = resolveStatus(refId, footnotes);
+    trackStatus(status, refId);
+    return status === "accepted" ? content : "";
+  });
+  result = result.replace(multiLineDeletion(), (_match, content, _refFull, refId) => {
+    const status = resolveStatus(refId, footnotes);
+    trackStatus(status, refId);
+    return status === "accepted" ? "" : content;
+  });
+  result = result.replace(multiLineHighlight(), (_match, content) => {
+    return content;
+  });
+  result = result.replace(multiLineComment(), "");
+  result = result.replace(footnoteRefGlobal(), "");
+  return result;
+}
+function computeDecidedLine(line, footnotes) {
+  let result = line;
+  const changeIds = [];
+  let hasProposed = false;
+  let hasAccepted = false;
+  function trackStatus(status, changeId) {
+    if (changeId)
+      changeIds.push(changeId);
+    if (status === "proposed")
+      hasProposed = true;
+    else if (status === "accepted")
+      hasAccepted = true;
+  }
+  let depth = 0;
+  while (depth < MAX_DECIDED_DEPTH && hasCriticMarkup(result)) {
+    result = applyDecidedReplacementsOnce(result, footnotes, trackStatus);
+    depth++;
+  }
+  let flag = "";
+  if (hasProposed)
+    flag = "P";
+  else if (hasAccepted)
+    flag = "A";
+  return { text: result, flag, changeIds };
+}
+function findFootnoteLineIndices(lines) {
+  const indices = /* @__PURE__ */ new Set();
+  const blockStart = findFootnoteBlockStart(lines);
+  for (let i = blockStart; i < lines.length; i++) {
+    if (!FOOTNOTE_DEF_START_QUICK.test(lines[i]))
+      continue;
+    indices.add(i);
+    let j = i + 1;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (line.trim() === "") {
+        let k = j + 1;
+        while (k < lines.length && lines[k].trim() === "")
+          k++;
+        if (k < lines.length && /^\s+\S/.test(lines[k])) {
+          indices.add(j);
+          j++;
+          continue;
+        }
+        break;
+      }
+      if (/^\s+\S/.test(line)) {
+        indices.add(j);
+        j++;
+        continue;
+      }
+      break;
+    }
+  }
+  return indices;
+}
+function computeDecidedView(rawText, preParsed) {
+  const rawLines = rawText.split("\n");
+  const changes = preParsed ?? parseForFormat(rawText).getChanges();
+  const statusMap = /* @__PURE__ */ new Map();
+  for (const node of changes) {
+    const rawStatus = nodeStatus(node);
+    statusMap.set(node.id, {
+      status: rawStatus === "accepted" || rawStatus === "rejected" ? rawStatus : "proposed"
+    });
+  }
+  const footnoteLineIndices = findFootnoteLineIndices(rawLines);
+  const preLines = [];
+  let decidedLineNum = 0;
+  let cleanCount = 0;
+  for (let rawIdx = 0; rawIdx < rawLines.length; rawIdx++) {
+    if (footnoteLineIndices.has(rawIdx))
+      continue;
+    const rawLine = rawLines[rawIdx];
+    const lineResult = computeDecidedLine(rawLine, statusMap);
+    const rawIsBlank = rawLine.trim() === "";
+    const committedIsBlank = lineResult.text.trim() === "";
+    if (!rawIsBlank && committedIsBlank && hasCriticMarkup(rawLine)) {
+      continue;
+    }
+    decidedLineNum++;
+    const rawLineNum = rawIdx + 1;
+    if (lineResult.flag === "") {
+      cleanCount++;
+    }
+    preLines.push({
+      decidedLineNum,
+      rawLineNum,
+      text: lineResult.text,
+      flag: lineResult.flag,
+      changeIds: lineResult.changeIds
+    });
+  }
+  const allCommittedTexts = preLines.map((l) => l.text);
+  const decidedLines = [];
+  const decidedToRaw = /* @__PURE__ */ new Map();
+  const rawToDecided = /* @__PURE__ */ new Map();
+  for (const pre of preLines) {
+    const hash2 = computeLineHash(pre.decidedLineNum - 1, pre.text, allCommittedTexts);
+    decidedLines.push({
+      decidedLineNum: pre.decidedLineNum,
+      rawLineNum: pre.rawLineNum,
+      text: pre.text,
+      hash: hash2,
+      flag: pre.flag,
+      changeIds: pre.changeIds
+    });
+    decidedToRaw.set(pre.decidedLineNum, pre.rawLineNum);
+    rawToDecided.set(pre.rawLineNum, pre.decidedLineNum);
+  }
+  const summary = { proposed: 0, accepted: 0, rejected: 0, clean: cleanCount };
+  for (const node of changes) {
+    const s = nodeStatus(node);
+    if (s === "proposed")
+      summary.proposed++;
+    else if (s === "accepted")
+      summary.accepted++;
+    else if (s === "rejected")
+      summary.rejected++;
+  }
+  return { lines: decidedLines, summary, decidedToRaw, rawToDecided, changes };
+}
+var MAX_DECIDED_DEPTH;
+var init_decided_text = __esm({
+  "../../packages/core/dist-esm/decided-text.js"() {
+    "use strict";
+    init_footnote_utils();
+    init_format_aware_parse();
+    init_types();
+    init_hashline();
+    init_critic_regex();
+    init_footnote_patterns();
+    MAX_DECIDED_DEPTH = 3;
+  }
+});
+
+// ../../packages/core/dist-esm/at-resolver.js
+function parseAt(at) {
+  if (!at || at.trim() === "") {
+    throw new Error("at coordinate is empty.");
+  }
+  const dashIdx = at.indexOf("-");
+  if (dashIdx === -1) {
+    const m = at.match(LINE_HASH_RE);
+    if (!m) {
+      if (DUAL_HASH_RE.test(at)) {
+        const rawPart = at.split(".")[0];
+        throw new Error(`at must be LINE:HASH (e.g. ${rawPart}). Dual hashes (LINE:RAW.SETTLED) appear in read output \u2014 use only the first hash (before the dot).`);
+      }
+      throw new Error(`Invalid at coordinate: "${at}". Expected format: LINE:HASH (e.g., "12:a1").`);
+    }
+    const line = parseInt(m[1], 10);
+    return { startLine: line, startHash: m[2], endLine: line, endHash: m[2] };
+  }
+  const startPart = at.slice(0, dashIdx);
+  const endPart = at.slice(dashIdx + 1);
+  const startMatch = startPart.match(LINE_HASH_RE);
+  const endMatch = endPart.match(LINE_HASH_RE);
+  if (!startMatch || !endMatch) {
+    const hasDualHash = DUAL_HASH_RE.test(startPart) || DUAL_HASH_RE.test(endPart);
+    if (hasDualHash) {
+      throw new Error(`at range contains dual hash \u2014 use only the first hash (before the dot) in each LINE:HASH. Example: "${startPart.split(".")[0]}-${endPart.split(".")[0]}".`);
+    }
+    throw new Error(`Invalid at range: "${at}". Expected format: LINE:HASH-LINE:HASH (e.g., "12:a1-15:b3").`);
+  }
+  const startLine = parseInt(startMatch[1], 10);
+  const endLine = parseInt(endMatch[1], 10);
+  if (endLine < startLine) {
+    throw new Error(`Invalid at range: end line ${endLine} < start line ${startLine}.`);
+  }
+  return {
+    startLine,
+    startHash: startMatch[2],
+    endLine,
+    endHash: endMatch[2]
+  };
+}
+function resolveAt(at, fileLines) {
+  const parsed = parseAt(at);
+  if (parsed.startLine < 1 || parsed.startLine > fileLines.length) {
+    throw new Error(`Line ${parsed.startLine} out of range (file has ${fileLines.length} lines).`);
+  }
+  if (parsed.endLine < 1 || parsed.endLine > fileLines.length) {
+    throw new Error(`Line ${parsed.endLine} out of range (file has ${fileLines.length} lines).`);
+  }
+  const actualStartHash = computeLineHash(parsed.startLine - 1, fileLines[parsed.startLine - 1], fileLines);
+  if (actualStartHash !== parsed.startHash) {
+    throw new Error(`Hash mismatch at line ${parsed.startLine}: expected ${parsed.startHash}, current hash is ${actualStartHash}. Re-read the file with read_tracked_file to get updated coordinates. For batch edits, consider single edits with re-reads between them.`);
+  }
+  if (parsed.endLine !== parsed.startLine) {
+    const actualEndHash = computeLineHash(parsed.endLine - 1, fileLines[parsed.endLine - 1], fileLines);
+    if (actualEndHash !== parsed.endHash) {
+      throw new Error(`Hash mismatch at line ${parsed.endLine}: expected ${parsed.endHash}, current hash is ${actualEndHash}. Re-read the file with read_tracked_file to get updated coordinates. For batch edits, consider single edits with re-reads between them.`);
+    }
+  }
+  let startOffset = 0;
+  for (let i = 0; i < parsed.startLine - 1; i++) {
+    startOffset += fileLines[i].length + 1;
+  }
+  let endOffset = startOffset;
+  for (let i = parsed.startLine - 1; i <= parsed.endLine - 1; i++) {
+    endOffset += fileLines[i].length + (i < parsed.endLine - 1 ? 1 : 0);
+  }
+  const content = fileLines.slice(parsed.startLine - 1, parsed.endLine).join("\n");
+  return {
+    startLine: parsed.startLine,
+    endLine: parsed.endLine,
+    startOffset,
+    endOffset,
+    content
+  };
+}
+var LINE_HASH_RE, DUAL_HASH_RE;
+var init_at_resolver = __esm({
+  "../../packages/core/dist-esm/at-resolver.js"() {
+    "use strict";
+    init_hashline();
+    LINE_HASH_RE = /^(\d+):([0-9a-f]{2})$/;
+    DUAL_HASH_RE = /^\d+:[0-9a-f]{2}\.[0-9a-f]{2}$/;
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/formatters/plain-text.js
+function formatPlainText(doc) {
+  const parts = [];
+  const header = formatHeader(doc.header, doc.view);
+  if (header) {
+    parts.push(header);
+    parts.push("");
+  }
+  const padWidth = doc.lines.length > 0 ? Math.max(String(doc.lines[doc.lines.length - 1].margin.lineNumber).length, 2) : 2;
+  for (const line of doc.lines) {
+    parts.push(formatLine(line, padWidth, doc.view));
+  }
+  const footer = formatDecidedFooter(doc);
+  if (footer) {
+    parts.push(footer);
+  }
+  return parts.join("\n");
+}
+function formatHeader(header, view) {
+  if (view === "raw")
+    return "";
+  const lines = [];
+  if (view === "decided") {
+    lines.push("## view: decided");
+  }
+  const counts = `proposed: ${header.counts.proposed} | accepted: ${header.counts.accepted} | rejected: ${header.counts.rejected}`;
+  const threads = header.threadCount > 0 ? ` | threads: ${header.threadCount}` : "";
+  lines.push(`## ${counts}${threads}`);
+  if (header.authors.length > 0) {
+    lines.push(`## authors: ${header.authors.join(", ")}`);
+  }
+  lines.push("---");
+  return lines.join("\n");
+}
+function formatDecidedFooter(doc) {
+  if (doc.view !== "decided")
+    return "";
+  const { counts, threadCount } = doc.header;
+  const anyCount = counts.proposed > 0 || counts.accepted > 0 || counts.rejected > 0 || threadCount > 0;
+  if (!anyCount)
+    return "";
+  return `\u2500\u2500 accepted ${counts.accepted} \xB7 rejected ${counts.rejected} \xB7 proposed ${counts.proposed} \xB7 threads ${threadCount} \u2500\u2500`;
+}
+function formatLine(line, padWidth, view) {
+  const num = String(line.margin.lineNumber).padStart(padWidth, " ");
+  const flag = line.margin.flags.length > 0 ? line.margin.flags[0] : " ";
+  const margin = `${num}:${line.margin.hash} ${flag}|`;
+  const content = line.content.map((s) => s.text).join("");
+  const meta3 = formatMetadata(line.metadata);
+  return meta3 ? `${margin} ${content} ${meta3}` : `${margin} ${content}`;
+}
+function truncateByCodePoints(text, max) {
+  if (text.length <= max)
+    return text;
+  const cps = [...text];
+  if (cps.length <= max)
+    return text;
+  return cps.slice(0, max).join("") + "\u2026";
+}
+function withAtPrefix(handle) {
+  return handle.startsWith("@") ? handle : `@${handle}`;
+}
+function formatMetadata(metadata) {
+  if (metadata.length === 0)
+    return "";
+  return metadata.map((m) => {
+    const parts = [m.changeId];
+    if (m.author)
+      parts.push(withAtPrefix(m.author));
+    if (m.type)
+      parts.push(m.type);
+    if (m.status)
+      parts.push(m.status);
+    let head = parts.join(" ");
+    if (m.reason) {
+      head += `: "${m.reason}"`;
+    }
+    if (m.latestThreadTurn) {
+      const turnAuthor = m.latestThreadTurn.author ? `${withAtPrefix(m.latestThreadTurn.author)}: ` : "";
+      const turnText = truncateByCodePoints(m.latestThreadTurn.text, MAX_TURN_CODE_POINTS);
+      head += ` | ${turnAuthor}${turnText}`;
+    }
+    return `[${head}]`;
+  }).join(" ");
+}
+var MAX_TURN_CODE_POINTS;
+var init_plain_text = __esm({
+  "../../packages/core/dist-esm/renderers/formatters/plain-text.js"() {
+    "use strict";
+    MAX_TURN_CODE_POINTS = 60;
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/formatters/ansi.js
+var init_ansi = __esm({
+  "../../packages/core/dist-esm/renderers/formatters/ansi.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/formatters/html.js
+var init_html = __esm({
+  "../../packages/core/dist-esm/renderers/formatters/html.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/formatters/index.js
+var init_formatters = __esm({
+  "../../packages/core/dist-esm/renderers/formatters/index.js"() {
+    "use strict";
+    init_plain_text();
+    init_ansi();
+    init_plain_text();
+    init_ansi();
+    init_html();
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/view-builders/session-hashes.js
+function buildSessionHashes(rawContent, changes) {
+  const rawLines = rawContent.split("\n");
+  const decidedResult = computeDecidedView(rawContent, changes);
+  const currentResult = computeCurrentView(rawContent, changes);
+  const committedByRaw = /* @__PURE__ */ new Map();
+  for (const cl of decidedResult.lines) {
+    committedByRaw.set(cl.rawLineNum, cl.hash);
+  }
+  const currentViewByRaw = /* @__PURE__ */ new Map();
+  for (const sl of currentResult.lines) {
+    currentViewByRaw.set(sl.rawLineNum, sl.hash);
+  }
+  const byRawLine = /* @__PURE__ */ new Map();
+  for (let i = 0; i < rawLines.length; i++) {
+    const rawLineNum = i + 1;
+    const rawHash = computeLineHash(i, rawLines[i], rawLines);
+    byRawLine.set(rawLineNum, {
+      raw: rawHash,
+      committed: committedByRaw.get(rawLineNum),
+      currentView: currentViewByRaw.get(rawLineNum)
+    });
+  }
+  const decidedLineByRaw = /* @__PURE__ */ new Map();
+  const rawLineByDecided = /* @__PURE__ */ new Map();
+  for (const cl of decidedResult.lines) {
+    decidedLineByRaw.set(cl.rawLineNum, cl.decidedLineNum);
+    rawLineByDecided.set(cl.decidedLineNum, cl.rawLineNum);
+  }
+  const currentLineByRaw = /* @__PURE__ */ new Map();
+  const rawLineByCurrent = /* @__PURE__ */ new Map();
+  for (const sl of currentResult.lines) {
+    currentLineByRaw.set(sl.rawLineNum, sl.currentLineNum);
+    rawLineByCurrent.set(sl.currentLineNum, sl.rawLineNum);
+  }
+  return {
+    byRawLine,
+    decidedResult,
+    currentResult,
+    decidedLineByRaw,
+    currentLineByRaw,
+    rawLineByDecided,
+    rawLineByCurrent
+  };
+}
+var init_session_hashes = __esm({
+  "../../packages/core/dist-esm/renderers/view-builders/session-hashes.js"() {
+    "use strict";
+    init_decided_text();
+    init_current_text();
+    init_hashline();
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/view-builders/line-metadata.js
+function buildLineMetadataFromFootnotes(refIds, footnoteMap) {
+  if (!refIds)
+    return [];
+  const metadata = [];
+  for (const id of refIds) {
+    const node = footnoteMap.get(id);
+    if (!node)
+      continue;
+    const status = nodeStatus(node);
+    const discussion = node.metadata?.discussion ?? [];
+    const reason = node.metadata?.comment || discussion[0]?.text || void 0;
+    const latestThreadTurn = discussion.length >= 2 ? { author: discussion[discussion.length - 1].author, text: discussion[discussion.length - 1].text } : void 0;
+    metadata.push({
+      changeId: node.id,
+      type: changeTypeToShortCode(node.type),
+      status,
+      author: node.metadata?.author ?? node.inlineMetadata?.author,
+      reason,
+      replyCount: (node.replyCount ?? 0) > 0 ? node.replyCount : void 0,
+      latestThreadTurn
+    });
+  }
+  return metadata;
+}
+var init_line_metadata = __esm({
+  "../../packages/core/dist-esm/renderers/view-builders/line-metadata.js"() {
+    "use strict";
+    init_types();
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/view-builder-utils.js
+function buildDeliberationHeader(options) {
+  const { changes } = options;
+  let proposed = 0, accepted = 0, rejected = 0, threadCount = 0;
+  const authorSet = /* @__PURE__ */ new Set();
+  for (const node of changes) {
+    const status = nodeStatus(node);
+    if (status === "proposed")
+      proposed++;
+    else if (status === "accepted")
+      accepted++;
+    else if (status === "rejected")
+      rejected++;
+    if ((node.replyCount ?? 0) > 0)
+      threadCount++;
+    const author = node.metadata?.author ?? node.inlineMetadata?.author;
+    if (author)
+      authorSet.add(author);
+  }
+  return {
+    filePath: options.filePath,
+    trackingStatus: options.trackingStatus,
+    protocolMode: options.protocolMode,
+    defaultView: options.defaultView,
+    viewPolicy: options.viewPolicy,
+    counts: { proposed, accepted, rejected },
+    authors: [...authorSet].sort(),
+    threadCount,
+    lineRange: options.lineRange
+  };
+}
+function buildLineRefMap(lines) {
+  const map2 = /* @__PURE__ */ new Map();
+  for (let i = 0; i < lines.length; i++) {
+    const refs = /* @__PURE__ */ new Set();
+    for (const match of lines[i].matchAll(REF_EXTRACT_RE)) {
+      refs.add(match[1]);
+    }
+    if (refs.size > 0)
+      map2.set(i, refs);
+  }
+  return map2;
+}
+function findFootnoteSectionRange(changes) {
+  if (changes.length === 0)
+    return null;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const node of changes) {
+    if (!node.footnoteLineRange)
+      continue;
+    if (node.footnoteLineRange.startLine < min)
+      min = node.footnoteLineRange.startLine;
+    if (node.footnoteLineRange.endLine > max)
+      max = node.footnoteLineRange.endLine;
+  }
+  if (min === Infinity)
+    return null;
+  return [min, max];
+}
+function computePAFlags(refIds, footnoteMap) {
+  if (!refIds)
+    return [];
+  let hasProposed = false;
+  let hasAccepted = false;
+  for (const id of refIds) {
+    const node = footnoteMap.get(id);
+    if (!node)
+      continue;
+    const status = nodeStatus(node);
+    if (status === "proposed")
+      hasProposed = true;
+    if (status === "accepted")
+      hasAccepted = true;
+  }
+  if (hasProposed)
+    return ["P"];
+  if (hasAccepted)
+    return ["A"];
+  return [];
+}
+function computeContinuationLines(content, preParsed) {
+  const changes = preParsed ?? parseForFormat(content).getChanges();
+  if (changes.length === 0)
+    return /* @__PURE__ */ new Set();
+  const lineStarts = [0];
+  for (let i = 0; i < content.length; i++) {
+    if (content[i] === "\n")
+      lineStarts.push(i + 1);
+  }
+  function byteToLine(offset) {
+    let lo = 0, hi = lineStarts.length - 1;
+    while (lo < hi) {
+      const mid = lo + hi + 1 >> 1;
+      if (lineStarts[mid] <= offset)
+        lo = mid;
+      else
+        hi = mid - 1;
+    }
+    return lo;
+  }
+  const continuations = /* @__PURE__ */ new Set();
+  for (const change of changes) {
+    const startLine = byteToLine(change.range.start);
+    const endLine = byteToLine(change.range.end - 1);
+    if (endLine > startLine) {
+      for (let line = startLine + 1; line <= endLine; line++) {
+        continuations.add(line);
+      }
+    }
+  }
+  return continuations;
+}
+var REF_EXTRACT_RE;
+var init_view_builder_utils = __esm({
+  "../../packages/core/dist-esm/renderers/view-builder-utils.js"() {
+    "use strict";
+    init_format_aware_parse();
+    init_types();
+    REF_EXTRACT_RE = /\[\^(cn-\d+(?:\.\d+)?)\]/g;
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/view-builders/working.js
+function buildReviewDocument(content, options) {
+  const changes = parseForFormat(content).getChanges();
+  const sessionHashesResult = buildSessionHashes(content, changes);
+  const rawLines = content.split("\n");
+  const footnoteMap = /* @__PURE__ */ new Map();
+  for (const node of changes) {
+    footnoteMap.set(node.id, node);
+  }
+  let fnRange = findFootnoteSectionRange(changes);
+  if (!fnRange) {
+    const blockStart = findFootnoteBlockStart(rawLines);
+    if (blockStart < rawLines.length) {
+      fnRange = [blockStart, rawLines.length - 1];
+    }
+  }
+  const lineRefMap = buildLineRefMap(rawLines);
+  const continuations = computeContinuationLines(content, changes);
+  const outputLines = [];
+  for (let i = 0; i < rawLines.length; i++) {
+    if (fnRange && i >= fnRange[0] && i <= fnRange[1])
+      continue;
+    if (fnRange && i === fnRange[0] - 1 && rawLines[i].trim() === "")
+      continue;
+    const rawLine = rawLines[i];
+    const lineNum = i + 1;
+    const contentSpans = buildContentSpans(rawLine, footnoteMap);
+    const refIds = lineRefMap.get(i);
+    const metadata = buildLineMetadataFromFootnotes(refIds, footnoteMap);
+    const flags = computePAFlags(refIds, footnoteMap);
+    const sh = sessionHashesResult.byRawLine.get(lineNum);
+    const marginHash = sh.raw;
+    outputLines.push({
+      margin: { lineNumber: lineNum, hash: marginHash, flags },
+      content: contentSpans,
+      metadata,
+      rawLineNumber: lineNum,
+      continuesChange: continuations.has(i) || void 0,
+      sessionHashes: {
+        raw: sh.raw,
+        committed: sh.committed,
+        currentView: sh.currentView
+      }
+    });
+  }
+  const header = buildDeliberationHeader({
+    filePath: options.filePath,
+    trackingStatus: options.trackingStatus,
+    protocolMode: options.protocolMode,
+    defaultView: options.defaultView,
+    viewPolicy: options.viewPolicy,
+    changes
+  });
+  return {
+    view: "working",
+    header,
+    lines: outputLines
+  };
+}
+function buildContentSpans(line, footnoteMap) {
+  const spans = [];
+  let lastIndex = 0;
+  const re = new RegExp(CRITIC_MARKUP_RE.source, "g");
+  for (const match of line.matchAll(re)) {
+    const matchStart = match.index;
+    if (matchStart > lastIndex) {
+      const between = line.slice(lastIndex, matchStart);
+      emitPlainAndAnchors(between, footnoteMap, spans);
+    }
+    if (match[1] !== void 0) {
+      spans.push({ type: "delimiter", text: "{++" });
+      spans.push({ type: "insertion", text: match[1] });
+      spans.push({ type: "delimiter", text: "++}" });
+    } else if (match[2] !== void 0) {
+      spans.push({ type: "delimiter", text: "{--" });
+      spans.push({ type: "deletion", text: match[2] });
+      spans.push({ type: "delimiter", text: "--}" });
+    } else if (match[3] !== void 0 || match[4] !== void 0) {
+      spans.push({ type: "delimiter", text: "{~~" });
+      spans.push({ type: "sub_old", text: match[3] ?? "" });
+      spans.push({ type: "sub_arrow", text: "~>" });
+      spans.push({ type: "sub_new", text: match[4] ?? "" });
+      spans.push({ type: "delimiter", text: "~~}" });
+    } else if (match[5] !== void 0) {
+      spans.push({ type: "delimiter", text: "{==" });
+      spans.push({ type: "highlight", text: match[5] });
+      spans.push({ type: "delimiter", text: "==}" });
+    } else if (match[6] !== void 0) {
+      spans.push({ type: "delimiter", text: "{>>" });
+      spans.push({ type: "comment", text: match[6] });
+      spans.push({ type: "delimiter", text: "<<}" });
+    }
+    lastIndex = matchStart + match[0].length;
+  }
+  if (lastIndex < line.length) {
+    const remaining = line.slice(lastIndex);
+    emitPlainAndAnchors(remaining, footnoteMap, spans);
+  }
+  if (spans.length === 0) {
+    spans.push({ type: "plain", text: "" });
+  }
+  return spans;
+}
+function emitPlainAndAnchors(text, footnoteMap, spans) {
+  let lastIdx = 0;
+  const re = new RegExp(FOOTNOTE_REF_RE.source, "g");
+  for (const match of text.matchAll(re)) {
+    const matchStart = match.index;
+    const id = match[1];
+    const node = footnoteMap.get(id);
+    if (matchStart > lastIdx) {
+      spans.push({ type: "plain", text: text.slice(lastIdx, matchStart) });
+    }
+    if (node) {
+      spans.push({ type: "anchor", text: `[^${node.id}]` });
+    } else {
+      spans.push({ type: "plain", text: match[0] });
+    }
+    lastIdx = matchStart + match[0].length;
+  }
+  if (lastIdx < text.length) {
+    spans.push({ type: "plain", text: text.slice(lastIdx) });
+  }
+}
+var CRITIC_MARKUP_RE, FOOTNOTE_REF_RE;
+var init_working = __esm({
+  "../../packages/core/dist-esm/renderers/view-builders/working.js"() {
+    "use strict";
+    init_session_hashes();
+    init_line_metadata();
+    init_format_aware_parse();
+    init_footnote_utils();
+    init_view_builder_utils();
+    CRITIC_MARKUP_RE = /\{\+\+((?:[^+]|\+(?!\+\}))*?)\+\+\}|\{--((?:[^-]|-(?!-\}))*?)--\}|\{~~((?:[^~]|~(?!>))*?)~>((?:[^~]|~(?!~\}))*?)~~\}|\{==((?:[^=]|=(?!=\}))*?)==\}|\{>>((?:[^<]|<(?!<\}))*?)<<\}/g;
+    FOOTNOTE_REF_RE = /\[\^(cn-\d+(?:\.\d+)?)\]/g;
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/view-builders/simple.js
+function buildSimpleDocument(rawContent, options) {
+  const changes = parseForFormat(rawContent, { skipCodeBlocks: false }).getChanges();
+  const sessionHashesResult = buildSessionHashes(rawContent, changes);
+  const currentResult = sessionHashesResult.currentResult;
+  const footnoteMap = /* @__PURE__ */ new Map();
+  for (const node of changes)
+    footnoteMap.set(node.id, node);
+  const currentLines = [...currentResult.lines];
+  while (currentLines.length > 0 && currentLines[currentLines.length - 1].text.trim() === "") {
+    currentLines.pop();
+  }
+  const rawLines = rawContent.split("\n");
+  const lineRefMap = buildLineRefMap(rawLines);
+  const continuations = computeContinuationLines(rawContent, changes);
+  const lines = currentLines.map((sl) => {
+    const refIds = lineRefMap.get(sl.rawLineNum - 1);
+    const metadata = buildLineMetadataFromFootnotes(refIds, footnoteMap);
+    const flags = computePAFlags(refIds, footnoteMap);
+    const sh = sessionHashesResult.byRawLine.get(sl.rawLineNum);
+    return {
+      margin: {
+        lineNumber: sl.currentLineNum,
+        hash: sh.currentView ?? sl.hash,
+        // currentView hash
+        flags
+      },
+      content: [{ type: "plain", text: sl.text }],
+      metadata,
+      rawLineNumber: sl.rawLineNum,
+      continuesChange: continuations.has(sl.rawLineNum - 1) || void 0,
+      sessionHashes: {
+        raw: sh.raw,
+        committed: sh.committed,
+        currentView: sh.currentView
+      }
+    };
+  });
+  const header = buildDeliberationHeader({
+    filePath: options.filePath,
+    trackingStatus: options.trackingStatus,
+    protocolMode: options.protocolMode,
+    defaultView: options.defaultView,
+    viewPolicy: options.viewPolicy,
+    changes,
+    lineRange: { start: 1, end: lines.length, total: lines.length }
+  });
+  return { view: "simple", header, lines };
+}
+var init_simple = __esm({
+  "../../packages/core/dist-esm/renderers/view-builders/simple.js"() {
+    "use strict";
+    init_format_aware_parse();
+    init_session_hashes();
+    init_line_metadata();
+    init_view_builder_utils();
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/view-builders/decided.js
+function buildDecidedDocument(rawContent, options) {
+  const changes = parseForFormat(rawContent, { skipCodeBlocks: false }).getChanges();
+  const sessionHashesResult = buildSessionHashes(rawContent, changes);
+  const decidedResult = sessionHashesResult.decidedResult;
+  const decidedLines = [...decidedResult.lines];
+  while (decidedLines.length > 0 && decidedLines[decidedLines.length - 1].text.trim() === "") {
+    decidedLines.pop();
+  }
+  const continuations = computeContinuationLines(rawContent, changes);
+  const lines = decidedLines.map((cl) => {
+    const sh = sessionHashesResult.byRawLine.get(cl.rawLineNum);
+    const flags = cl.flag ? [cl.flag] : [];
+    return {
+      margin: {
+        lineNumber: cl.decidedLineNum,
+        hash: cl.hash,
+        flags
+      },
+      content: [{ type: "plain", text: cl.text }],
+      metadata: [],
+      rawLineNumber: cl.rawLineNum,
+      continuesChange: continuations.has(cl.rawLineNum - 1) || void 0,
+      sessionHashes: {
+        raw: sh.raw,
+        committed: sh.committed,
+        currentView: sh.currentView
+      }
+    };
+  });
+  const header = buildDeliberationHeader({
+    filePath: options.filePath,
+    trackingStatus: options.trackingStatus,
+    protocolMode: options.protocolMode,
+    defaultView: options.defaultView,
+    viewPolicy: options.viewPolicy,
+    changes,
+    lineRange: { start: 1, end: lines.length, total: lines.length }
+  });
+  return { view: "decided", header, lines };
+}
+var init_decided = __esm({
+  "../../packages/core/dist-esm/renderers/view-builders/decided.js"() {
+    "use strict";
+    init_format_aware_parse();
+    init_session_hashes();
+    init_view_builder_utils();
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/view-builders/raw.js
+function buildRawDocument(rawContent, options) {
+  const changes = parseForFormat(rawContent).getChanges();
+  const sessionHashesResult = buildSessionHashes(rawContent, changes);
+  const rawLines = rawContent.split("\n");
+  const continuations = computeContinuationLines(rawContent, changes);
+  const lines = rawLines.map((text, i) => {
+    const lineNum = i + 1;
+    const sh = sessionHashesResult.byRawLine.get(lineNum);
+    return {
+      margin: {
+        lineNumber: lineNum,
+        hash: sh.raw,
+        flags: []
+      },
+      content: [{ type: "plain", text }],
+      metadata: [],
+      rawLineNumber: lineNum,
+      continuesChange: continuations.has(i) || void 0,
+      sessionHashes: {
+        raw: sh.raw,
+        committed: sh.committed,
+        currentView: sh.currentView
+      }
+    };
+  });
+  const header = buildDeliberationHeader({
+    ...options,
+    changes,
+    lineRange: { start: 1, end: lines.length, total: lines.length }
+  });
+  const fnRange = findFootnoteSectionRange(changes);
+  const footnoteSection = fnRange ? rawLines.slice(fnRange[0], fnRange[1] + 1).join("\n") : void 0;
+  return { view: "raw", header, lines, footnoteSection };
+}
+var init_raw = __esm({
+  "../../packages/core/dist-esm/renderers/view-builders/raw.js"() {
+    "use strict";
+    init_session_hashes();
+    init_format_aware_parse();
+    init_view_builder_utils();
+  }
+});
+
+// ../../packages/core/dist-esm/renderers/view-builders/index.js
+function buildViewDocument(rawContent, view, options) {
+  switch (view) {
+    case "working":
+      return buildReviewDocument(rawContent, options);
+    case "simple":
+      return buildSimpleDocument(rawContent, options);
+    case "decided":
+      return buildDecidedDocument(rawContent, options);
+    case "raw":
+      return buildRawDocument(rawContent, options);
+    case "original":
+      throw new Error("View 'original' is not supported by buildViewDocument. Host-side consumers should call computeOriginalText directly. MCP agents should not receive this view name (rejected by resolveView enum).");
+    default:
+      throw new Error(`Unknown view: ${String(view)}`);
+  }
+}
+var init_view_builders = __esm({
+  "../../packages/core/dist-esm/renderers/view-builders/index.js"() {
+    "use strict";
+    init_working();
+    init_simple();
+    init_decided();
+    init_raw();
+  }
+});
+
+// ../../packages/core/dist-esm/edit-boundary/types.js
+var init_types2 = __esm({
+  "../../packages/core/dist-esm/edit-boundary/types.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/edit-boundary/pending-buffer.js
+var init_pending_buffer = __esm({
+  "../../packages/core/dist-esm/edit-boundary/pending-buffer.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/edit-boundary/signal-classifier.js
+var init_signal_classifier = __esm({
+  "../../packages/core/dist-esm/edit-boundary/signal-classifier.js"() {
+    "use strict";
+    init_pending_buffer();
+  }
+});
+
+// ../../packages/core/dist-esm/edit-boundary/state-machine.js
+var cmParser;
+var init_state_machine = __esm({
+  "../../packages/core/dist-esm/edit-boundary/state-machine.js"() {
+    "use strict";
+    init_signal_classifier();
+    init_pending_buffer();
+    init_tracking();
+    init_footnote_generator();
+    init_hashline();
+    init_l2_to_l3();
+    init_types();
+    init_parser();
+    cmParser = new CriticMarkupParser();
+  }
+});
+
+// ../../packages/core/dist-esm/edit-boundary/index.js
+var init_edit_boundary = __esm({
+  "../../packages/core/dist-esm/edit-boundary/index.js"() {
+    "use strict";
+    init_types2();
+    init_pending_buffer();
+    init_signal_classifier();
+    init_state_machine();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/structural-integrity.js
+function validateStructuralIntegrity(text) {
+  const violations = [];
+  let doc;
+  try {
+    doc = parseForFormat(text);
+  } catch (err) {
+    violations.push({
+      kind: "structural_invalid",
+      message: `Parser threw: ${err.message}`
+    });
+    return violations;
+  }
+  for (const d of doc.getDiagnostics()) {
+    violations.push(d);
+  }
+  violations.push(...detectNestedMarkup(text));
+  violations.push(...detectOrphans(text, doc));
+  return violations;
+}
+function detectNestedMarkup(text) {
+  const inCodeZone = buildCodeZoneMask(text);
+  const violations = [];
+  let currentOpen = null;
+  let pos = 0;
+  while (pos < text.length) {
+    if (inCodeZone[pos]) {
+      pos++;
+      continue;
+    }
+    const ch = text[pos];
+    if (currentOpen !== null && CM_CLOSE_FIRST_CHARS.has(ch)) {
+      let closedSpan = false;
+      for (const [close, matchingOpen] of CM_CLOSE_TO_OPEN) {
+        if (currentOpen === matchingOpen && text.startsWith(close, pos)) {
+          currentOpen = null;
+          pos += close.length;
+          closedSpan = true;
+          break;
+        }
+      }
+      if (closedSpan)
+        continue;
+    }
+    if (ch === "{") {
+      for (const [open2] of CM_DELIMITERS) {
+        if (text.startsWith(open2, pos)) {
+          if (currentOpen !== null) {
+            violations.push({
+              kind: "structural_invalid",
+              message: `Nested CriticMarkup: found '${open2}' inside '${currentOpen}' (at offset ${pos}).`
+            });
+          } else {
+            currentOpen = open2;
+          }
+          pos += open2.length;
+          break;
+        }
+      }
+      if (text[pos] === "{")
+        pos++;
+      continue;
+    }
+    pos++;
+  }
+  return violations;
+}
+function detectOrphans(text, doc) {
+  const violations = [];
+  const { bodyLines, footnoteLines } = splitBodyAndFootnotes(text.split("\n"));
+  const bodyText = bodyLines.join("\n");
+  const footnoteText = footnoteLines.join("\n");
+  const bodyRefs = /* @__PURE__ */ new Set();
+  const bodyCodeZones = findCodeZones(bodyText);
+  INLINE_REF_GLOBAL.lastIndex = 0;
+  let m;
+  while ((m = INLINE_REF_GLOBAL.exec(bodyText)) !== null) {
+    const refStart = m.index;
+    const inZone = bodyCodeZones.some((z2) => refStart >= z2.start && refStart < z2.end);
+    if (!inZone) {
+      bodyRefs.add(m[1]);
+    }
+  }
+  const footnoteDefs = /* @__PURE__ */ new Map();
+  FOOTNOTE_DEF_STATUS_GM.lastIndex = 0;
+  while ((m = FOOTNOTE_DEF_STATUS_GM.exec(footnoteText)) !== null) {
+    footnoteDefs.set(m[1], m[2]);
+  }
+  for (const change of doc.getChanges()) {
+    if (!footnoteDefs.has(change.id)) {
+      const status = change.status === ChangeStatus.Accepted ? "accepted" : change.status === ChangeStatus.Rejected ? "rejected" : "proposed";
+      footnoteDefs.set(change.id, status);
+    }
+  }
+  for (const ref of bodyRefs) {
+    if (!footnoteDefs.has(ref)) {
+      violations.push({
+        kind: "record_orphaned",
+        changeId: ref,
+        message: `Inline ref [^${ref}] has no matching footnote definition.`
+      });
+    }
+  }
+  for (const [id, status] of footnoteDefs) {
+    if (DECIDED_STATUSES.has(status) && !bodyRefs.has(id)) {
+      violations.push({
+        kind: "surface_orphaned",
+        changeId: id,
+        message: `Footnote def [^${id}] is decided (${status}) but has no matching inline ref in the body.`
+      });
+    }
+  }
+  return violations;
+}
+var CM_DELIMITERS, CM_CLOSE_TO_OPEN, CM_CLOSE_FIRST_CHARS, INLINE_REF_GLOBAL, FOOTNOTE_DEF_STATUS_GM, DECIDED_STATUSES;
+var init_structural_integrity = __esm({
+  "../../packages/core/dist-esm/operations/structural-integrity.js"() {
+    "use strict";
+    init_format_aware_parse();
+    init_code_zones();
+    init_footnote_patterns();
+    init_types();
+    CM_DELIMITERS = [
+      ["{++", "++}"],
+      ["{--", "--}"],
+      ["{~~", "~~}"],
+      ["{==", "==}"],
+      ["{>>", "<<}"]
+    ];
+    CM_CLOSE_TO_OPEN = /* @__PURE__ */ new Map([
+      ["++}", "{++"],
+      ["--}", "{--"],
+      ["~~}", "{~~"],
+      ["==}", "{=="],
+      ["<<}", "{>>"]
+    ]);
+    CM_CLOSE_FIRST_CHARS = /* @__PURE__ */ new Set(["+", "-", "~", "=", "<"]);
+    INLINE_REF_GLOBAL = new RegExp(`\\[\\^(${FOOTNOTE_ID_PATTERN})\\]`, "g");
+    FOOTNOTE_DEF_STATUS_GM = new RegExp(FOOTNOTE_DEF_STATUS.source, "gm");
+    DECIDED_STATUSES = /* @__PURE__ */ new Set(["accepted", "rejected"]);
+  }
+});
+
+// ../../packages/core/dist-esm/operations/export-settlement.js
+var init_export_settlement = __esm({
+  "../../packages/core/dist-esm/operations/export-settlement.js"() {
+    "use strict";
+    init_current_text();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/markup-by-id.js
+var init_markup_by_id = __esm({
+  "../../packages/core/dist-esm/operations/markup-by-id.js"() {
+    "use strict";
+    init_code_zones();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/parse-document.js
+var init_parse_document = __esm({
+  "../../packages/core/dist-esm/operations/parse-document.js"() {
+    "use strict";
+    init_footnote_patterns();
+    init_footnote_block_parser();
+  }
+});
+
+// ../../packages/core/dist-esm/operations/changes-to-document.js
+var init_changes_to_document = __esm({
+  "../../packages/core/dist-esm/operations/changes-to-document.js"() {
+    "use strict";
+    init_types();
+    init_footnote_generator();
+  }
+});
+
+// ../../packages/core/dist-esm/backend/types.js
+function wordSessionResourceName(sessionUri) {
+  return `Active Word Document (${sessionUri.split("/").pop() ?? sessionUri})`;
+}
+function parseUri(uri) {
+  const colonIdx = uri.indexOf(":");
+  if (!uri || colonIdx <= 0) {
+    throw new Error(`Invalid URI: "${uri}"`);
+  }
+  return {
+    scheme: uri.slice(0, colonIdx).toLowerCase(),
+    rest: uri.slice(colonIdx + 1)
+  };
+}
+var AGENTS_UPDATED_METHOD;
+var init_types3 = __esm({
+  "../../packages/core/dist-esm/backend/types.js"() {
+    "use strict";
+    AGENTS_UPDATED_METHOD = "agents_updated";
+  }
+});
+
+// ../../packages/core/dist-esm/backend/registry.js
+var BackendRegistry;
+var init_registry = __esm({
+  "../../packages/core/dist-esm/backend/registry.js"() {
+    "use strict";
+    init_types3();
+    BackendRegistry = class {
+      constructor() {
+        this.backends = /* @__PURE__ */ new Map();
+        this.changeListeners = [];
+      }
+      /**
+       * Register a backend for all schemes it declares.
+       * If a scheme is already registered, the new backend replaces it and
+       * `onDidChange` fires.
+       */
+      register(backend) {
+        for (const scheme of backend.schemes) {
+          this.backends.set(scheme, backend);
+        }
+        this.fireChange();
+      }
+      /**
+       * Resolve a URI to its backend. Throws with
+       * "BackendNotFoundError: no backend for scheme '<scheme>'" when the scheme
+       * is not registered.
+       */
+      resolve(uri) {
+        const { scheme } = parseUri(uri);
+        const backend = this.backends.get(scheme);
+        if (!backend) {
+          throw new Error(`BackendNotFoundError: no backend for scheme '${scheme}'`);
+        }
+        return backend;
+      }
+      /**
+       * Snapshot of all registered backends as `{scheme, backend}` pairs.
+       * Used by diagnostics. See `listResources()` for the MCP-facing equivalent.
+       */
+      list() {
+        return Array.from(this.backends.entries()).map(([scheme, backend]) => ({
+          scheme,
+          backend
+        }));
+      }
+      /**
+       * Aggregate `DocumentResourceDescriptor[]` from every registered backend.
+       * Called by `ResourceLister` to build the `resources/list` response.
+       *
+       * Deduplicates by backend instance (not by scheme): when multiple scheme
+       * keys map to the same backend object, `list()` is called only once.
+       */
+      listResources() {
+        const seen = /* @__PURE__ */ new Set();
+        const result = [];
+        for (const backend of this.backends.values()) {
+          if (seen.has(backend))
+            continue;
+          seen.add(backend);
+          result.push(...backend.list());
+        }
+        return result;
+      }
+      /**
+       * Remove the backend registered for `scheme`. No-op if the scheme is not
+       * registered. Fires `onDidChange` when a backend is actually removed.
+       */
+      unregister(scheme) {
+        if (this.backends.delete(scheme)) {
+          this.fireChange();
+        }
+      }
+      /**
+       * Subscribe to change notifications. Fires whenever `register()` is called.
+       * Returns a disposal function.
+       */
+      onDidChange(listener) {
+        this.changeListeners.push(listener);
+        return () => {
+          const idx = this.changeListeners.indexOf(listener);
+          if (idx !== -1)
+            this.changeListeners.splice(idx, 1);
+        };
+      }
+      fireChange() {
+        for (const l of this.changeListeners) {
+          try {
+            l();
+          } catch (err) {
+            console.error("[BackendRegistry] change listener threw:", err instanceof Error ? err.message : err);
+          }
+        }
+      }
+    };
+  }
+});
+
+// ../../packages/core/dist-esm/index.js
+var init_dist_esm = __esm({
+  "../../packages/core/dist-esm/index.js"() {
+    "use strict";
+    init_config();
+    init_review_permissions();
+    init_timestamp();
+    init_types();
+    init_document();
+    init_tokens();
+    init_parser();
+    init_code_zones();
+    init_accept_reject();
+    init_resolution();
+    init_reply();
+    init_navigation();
+    init_tracking();
+    init_comment();
+    init_footnote_generator();
+    init_ensure_l2();
+    init_apply_review();
+    init_amend();
+    init_supersede();
+    init_level_promotion();
+    init_level_descent();
+    init_compact();
+    init_l2_to_l3();
+    init_l3_to_l2();
+    init_scrub();
+    init_workspace();
+    init_comment_syntax();
+    init_markdown_annotator();
+    init_sidecar_annotator();
+    init_sidecar_parser();
+    init_footnote_native_parser();
+    init_sidecar_accept_reject();
+    init_tracking_header();
+    init_text_normalizer();
+    init_current_text();
+    init_hashline();
+    init_hashline_tracked();
+    init_hashline_cleanup();
+    init_footnote_utils();
+    init_footnote_parser();
+    init_decided_text();
+    init_constants();
+    init_critic_regex();
+    init_footnote_patterns();
+    init_view_surface();
+    init_file_ops();
+    init_footnote_utils();
+    init_at_resolver();
+    init_op_parser();
+    init_formatters();
+    init_view_builders();
+    init_view_builder_utils();
+    init_edit_boundary();
+    init_edit_boundary();
+    init_edit_boundary();
+    init_structural_integrity();
+    init_export_settlement();
+    init_markup_by_id();
+    init_format_aware_parse();
+    init_session_hashes();
+    init_parse_document();
+    init_changes_to_document();
+    init_diagnostic();
+    init_types3();
+    init_registry();
+  }
+});
+
 // ../../node_modules/ajv/dist/compile/codegen/code.js
 var require_code = __commonJS({
   "../../node_modules/ajv/dist/compile/codegen/code.js"(exports) {
@@ -6801,7017 +13986,6 @@ var require_dist = __commonJS({
   }
 });
 
-// ../../packages/core/dist-esm/config/index.js
-var DEFAULT_CONFIG;
-var init_config = __esm({
-  "../../packages/core/dist-esm/config/index.js"() {
-    "use strict";
-    DEFAULT_CONFIG = {
-      tracking: {
-        include: ["**/*.md"],
-        exclude: ["node_modules/**", "dist/**"],
-        include_absolute: [],
-        default: "tracked",
-        auto_header: true
-      },
-      author: {
-        default: "",
-        enforcement: "optional"
-      },
-      matching: { mode: "normalized" },
-      hashline: { enabled: false, auto_remap: true },
-      settlement: { auto_on_approve: false, auto_on_reject: false },
-      coherence: { threshold: 98 },
-      review: {
-        may_review: { human: true, agent: true },
-        self_acceptance: { human: true, agent: true },
-        cross_withdrawal: { human: false, agent: false },
-        blocking_labels: {}
-      },
-      reasoning: {
-        propose: { human: false, agent: true },
-        review: { human: false, agent: true }
-      },
-      policy: {
-        mode: "safety-net",
-        creation_tracking: "footnote",
-        default_view: "working",
-        view_policy: "suggest"
-      }
-    };
-  }
-});
-
-// ../../packages/core/dist-esm/config/review-permissions.js
-function reviewerType(author) {
-  const stripped = author.startsWith("@") ? author.slice(1) : author;
-  if (stripped.startsWith("ai:") || stripped.startsWith("ci:"))
-    return "agent";
-  return "human";
-}
-function canAccept(reviewer, changeAuthor, config2) {
-  const rt = reviewerType(reviewer);
-  if (!config2.review.may_review[rt]) {
-    return { allowed: false, reason: `${rt} participants cannot review in this project` };
-  }
-  if (!config2.review.self_acceptance[rt] && reviewer === changeAuthor) {
-    return { allowed: false, reason: `${rt} participants cannot accept their own changes in this project` };
-  }
-  return { allowed: true };
-}
-var init_review_permissions = __esm({
-  "../../packages/core/dist-esm/config/review-permissions.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/timestamp.js
-function normalizeHour(hour, ampm) {
-  if (!ampm)
-    return hour;
-  const upper = ampm.toUpperCase();
-  if (upper === "AM")
-    return hour === 12 ? 0 : hour;
-  if (upper === "PM")
-    return hour === 12 ? 12 : hour + 12;
-  return hour;
-}
-function parseTimestamp(raw) {
-  const m = TIMESTAMP_RE.exec(raw.trim());
-  if (!m) {
-    const dateMatch = /^(\d{4}-\d{2}-\d{2})/.exec(raw.trim());
-    const date5 = dateMatch ? dateMatch[1] : raw.trim();
-    return { raw, date: date5, sortable: date5 ? `${date5}T00:00:00Z` : raw };
-  }
-  const date4 = m[1];
-  const hourRaw = m[2];
-  const minuteRaw = m[3];
-  const secondRaw = m[4];
-  const ampm = m[5];
-  const zulu = m[6];
-  if (hourRaw === void 0) {
-    return { raw, date: date4, sortable: `${date4}T00:00:00Z` };
-  }
-  const hour = normalizeHour(parseInt(hourRaw, 10), ampm);
-  const minute = parseInt(minuteRaw, 10);
-  const second = secondRaw ? parseInt(secondRaw, 10) : 0;
-  const time3 = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:${String(second).padStart(2, "0")}`;
-  const utc = zulu === "Z";
-  const sortable = `${date4}T${time3}${utc ? "Z" : ""}`;
-  return { raw, date: date4, time: time3, utc, sortable };
-}
-function nowTimestamp() {
-  const iso = (/* @__PURE__ */ new Date()).toISOString();
-  const raw = iso.replace(/\.\d{3}Z$/, "Z");
-  return parseTimestamp(raw);
-}
-var TIMESTAMP_RE;
-var init_timestamp = __esm({
-  "../../packages/core/dist-esm/timestamp.js"() {
-    "use strict";
-    TIMESTAMP_RE = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?\s?([AaPp][Mm])?(Z)?)?$/;
-  }
-});
-
-// ../../packages/core/dist-esm/model/types.js
-function changeTypeToAbbrev(type) {
-  switch (type) {
-    case ChangeType.Insertion:
-      return "ins";
-    case ChangeType.Deletion:
-      return "del";
-    case ChangeType.Substitution:
-      return "sub";
-    case ChangeType.Highlight:
-      return "hig";
-    case ChangeType.Comment:
-      return "com";
-    case ChangeType.Move:
-      return "mov";
-  }
-}
-function changeTypeToShortCode(type) {
-  switch (type) {
-    case ChangeType.Insertion:
-      return "ins";
-    case ChangeType.Deletion:
-      return "del";
-    case ChangeType.Substitution:
-      return "sub";
-    case ChangeType.Highlight:
-      return "hl";
-    case ChangeType.Comment:
-      return "com";
-    case ChangeType.Move:
-      return "mov";
-  }
-}
-function isGhostNode(node) {
-  return node.resolved === false && !node.consumedBy;
-}
-function nodeStatus(node) {
-  return (node.metadata?.status ?? node.inlineMetadata?.status ?? node.status).toString().toLowerCase();
-}
-var ChangeType, ChangeStatus;
-var init_types = __esm({
-  "../../packages/core/dist-esm/model/types.js"() {
-    "use strict";
-    (function(ChangeType2) {
-      ChangeType2["Insertion"] = "Insertion";
-      ChangeType2["Deletion"] = "Deletion";
-      ChangeType2["Substitution"] = "Substitution";
-      ChangeType2["Highlight"] = "Highlight";
-      ChangeType2["Comment"] = "Comment";
-      ChangeType2["Move"] = "Move";
-    })(ChangeType || (ChangeType = {}));
-    (function(ChangeStatus2) {
-      ChangeStatus2["Proposed"] = "Proposed";
-      ChangeStatus2["Accepted"] = "Accepted";
-      ChangeStatus2["Rejected"] = "Rejected";
-    })(ChangeStatus || (ChangeStatus = {}));
-  }
-});
-
-// ../../packages/core/dist-esm/model/diagnostic.js
-var UnresolvedChangesError, StructuralIntegrityError;
-var init_diagnostic = __esm({
-  "../../packages/core/dist-esm/model/diagnostic.js"() {
-    "use strict";
-    UnresolvedChangesError = class extends Error {
-      constructor(diagnostics) {
-        super(`Document has ${diagnostics.length} unresolved change(s); cannot mutate.`);
-        this.name = "UnresolvedChangesError";
-        this.diagnostics = diagnostics;
-      }
-    };
-    StructuralIntegrityError = class extends Error {
-      constructor(violations) {
-        super(`Structural integrity violated: ${violations.map((v) => v.kind).join(", ")}.`);
-        this.name = "StructuralIntegrityError";
-        this.violations = violations;
-      }
-    };
-  }
-});
-
-// ../../packages/core/dist-esm/model/document.js
-function assertResolved(doc, options) {
-  const allowed = new Set(options?.allow ?? []);
-  const violations = doc.getDiagnostics().filter((d) => BLOCKING_KINDS.has(d.kind) && !allowed.has(d.kind));
-  if (violations.length > 0)
-    throw new UnresolvedChangesError(violations);
-}
-var VirtualDocument, BLOCKING_KINDS;
-var init_document = __esm({
-  "../../packages/core/dist-esm/model/document.js"() {
-    "use strict";
-    init_types();
-    init_diagnostic();
-    VirtualDocument = class _VirtualDocument {
-      constructor(changes = [], coherenceRate = 100, unresolvedDiagnostics = [], resolvedText, records = []) {
-        this.diagnostics = [];
-        this.changes = changes;
-        this.records = records;
-        this.coherenceRate = coherenceRate;
-        this.unresolvedDiagnostics = unresolvedDiagnostics;
-        this.resolvedText = resolvedText;
-      }
-      /**
-       * Create a VirtualDocument from a pending overlay only (no parse).
-       * Used when LSP is disconnected and overlay exists — enables display of
-       * pending insertion before LSP connects.
-       */
-      static fromOverlayOnly(overlay) {
-        const change = {
-          id: overlay.scId ?? `cn-pending-${overlay.range.start}`,
-          type: ChangeType.Insertion,
-          status: ChangeStatus.Proposed,
-          range: overlay.range,
-          contentRange: overlay.range,
-          modifiedText: overlay.text,
-          level: 1,
-          anchored: false,
-          resolved: true
-        };
-        return new _VirtualDocument([change]);
-      }
-      getChanges() {
-        return this.changes;
-      }
-      getRecords() {
-        return this.records.slice();
-      }
-      getReviewableChanges() {
-        return this.changes.filter((change) => String(change.metadata?.status ?? change.inlineMetadata?.status ?? change.status).toLowerCase() === "proposed");
-      }
-      /** Returns L2+ ghost nodes that failed anchor resolution. L0/L1 unanchored nodes are excluded. */
-      getUnresolvedChanges() {
-        return this.changes.filter((c) => isGhostNode(c));
-      }
-      changeAtOffset(offset) {
-        for (const change of this.changes) {
-          if (change.range.start === change.range.end ? offset === change.range.start : offset >= change.range.start && offset < change.range.end) {
-            return change;
-          }
-        }
-        return null;
-      }
-      acceptChange(id) {
-        const change = this.changes.find((c) => c.id === id);
-        if (change) {
-          change.status = ChangeStatus.Accepted;
-        }
-      }
-      rejectChange(id) {
-        const change = this.changes.find((c) => c.id === id);
-        if (change) {
-          change.status = ChangeStatus.Rejected;
-        }
-      }
-      /**
-       * Returns all changes belonging to a given group (e.g., a move operation).
-       * Changes are identified by their groupId field.
-       */
-      getGroupMembers(groupId) {
-        return this.changes.filter((c) => c.groupId === groupId);
-      }
-      /**
-       * Returns a readonly view of diagnostics emitted during parsing or
-       * subsequent operations on this document. Diagnostics live on the
-       * document, not on individual ChangeNodes — see model/diagnostic.ts.
-       */
-      getDiagnostics() {
-        return this.diagnostics;
-      }
-      /**
-       * Append a diagnostic. Called by parsers during construction and by
-       * recovery paths that detect new issues. Not part of the read API
-       * surface for ordinary consumers.
-       */
-      addDiagnostic(d) {
-        this.diagnostics.push(d);
-      }
-      /**
-       * Remove all diagnostics whose changeId matches. Used by the replay
-       * protocol in footnote-native-parser when a previously-failed change
-       * is recovered, and by review-changes when a change settles.
-       */
-      removeDiagnosticsForChange(changeId) {
-        this.diagnostics = this.diagnostics.filter((d) => d.changeId !== changeId);
-      }
-    };
-    BLOCKING_KINDS = /* @__PURE__ */ new Set([
-      "coordinate_failed",
-      "anchor_ambiguous",
-      "anchor_missing",
-      "structural_invalid"
-    ]);
-  }
-});
-
-// ../../packages/core/dist-esm/parser/tokens.js
-var TokenType;
-var init_tokens = __esm({
-  "../../packages/core/dist-esm/parser/tokens.js"() {
-    "use strict";
-    (function(TokenType2) {
-      TokenType2["AdditionOpen"] = "{++";
-      TokenType2["AdditionClose"] = "++}";
-      TokenType2["DeletionOpen"] = "{--";
-      TokenType2["DeletionClose"] = "--}";
-      TokenType2["SubstitutionOpen"] = "{~~";
-      TokenType2["SubstitutionClose"] = "~~}";
-      TokenType2["SubstitutionSeparator"] = "~>";
-      TokenType2["HighlightOpen"] = "{==";
-      TokenType2["HighlightClose"] = "==}";
-      TokenType2["CommentOpen"] = "{>>";
-      TokenType2["CommentClose"] = "<<}";
-    })(TokenType || (TokenType = {}));
-  }
-});
-
-// ../../packages/core/dist-esm/parser/code-zones.js
-function buildCodeZoneMask(text) {
-  const mask = new Uint8Array(text.length);
-  for (const zone of findCodeZones(text)) {
-    const end = Math.min(zone.end, text.length);
-    for (let i = zone.start; i < end; i++) {
-      mask[i] = 1;
-    }
-  }
-  return mask;
-}
-function findCodeZones(text) {
-  const zones = [];
-  let position = 0;
-  let atLineStart = true;
-  let inFence = false;
-  let fenceStart = 0;
-  let fenceMarkerCode = 0;
-  let fenceLength = 0;
-  while (position < text.length) {
-    const ch = text.charCodeAt(position);
-    if (inFence) {
-      if (atLineStart) {
-        const closeResult = tryMatchFenceClose(text, position, fenceMarkerCode, fenceLength);
-        if (closeResult >= 0) {
-          zones.push({ start: fenceStart, end: closeResult, type: "fence" });
-          inFence = false;
-          position = closeResult;
-          atLineStart = true;
-          continue;
-        }
-      }
-      const nextNewline = text.indexOf("\n", position);
-      if (nextNewline === -1) {
-        position = text.length;
-      } else {
-        position = nextNewline + 1;
-        atLineStart = true;
-      }
-      continue;
-    }
-    if (atLineStart) {
-      const fenceResult = tryMatchFenceOpen(text, position);
-      if (fenceResult) {
-        inFence = true;
-        fenceStart = position;
-        fenceMarkerCode = fenceResult.markerCode;
-        fenceLength = fenceResult.length;
-        position = fenceResult.nextPos;
-        atLineStart = true;
-        continue;
-      }
-    }
-    if (ch === 96) {
-      const codeStart = position;
-      let openEnd = position;
-      while (openEnd < text.length && text.charCodeAt(openEnd) === 96) {
-        openEnd++;
-      }
-      const runLength = openEnd - position;
-      let scanPos = openEnd;
-      let found = false;
-      while (scanPos < text.length) {
-        if (text.charCodeAt(scanPos) !== 96) {
-          scanPos++;
-          continue;
-        }
-        const closeRunStart = scanPos;
-        while (scanPos < text.length && text.charCodeAt(scanPos) === 96) {
-          scanPos++;
-        }
-        if (scanPos - closeRunStart === runLength) {
-          zones.push({ start: codeStart, end: scanPos, type: "inline" });
-          atLineStart = text.charCodeAt(scanPos - 1) === 10;
-          position = scanPos;
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        atLineStart = false;
-        position = openEnd;
-      }
-      continue;
-    }
-    atLineStart = ch === 10;
-    position++;
-  }
-  if (inFence) {
-    zones.push({ start: fenceStart, end: text.length, type: "fence" });
-  }
-  return zones;
-}
-function tryMatchFenceOpen(text, position) {
-  let pos = position;
-  let spaces = 0;
-  while (spaces < 3 && pos < text.length && text.charCodeAt(pos) === 32) {
-    spaces++;
-    pos++;
-  }
-  if (pos >= text.length)
-    return null;
-  const markerCode = text.charCodeAt(pos);
-  if (markerCode !== 96 && markerCode !== 126)
-    return null;
-  let runLength = 0;
-  while (pos < text.length && text.charCodeAt(pos) === markerCode) {
-    runLength++;
-    pos++;
-  }
-  if (runLength < 3)
-    return null;
-  if (markerCode === 96) {
-    const lineEnd = text.indexOf("\n", pos);
-    const infoEnd = lineEnd === -1 ? text.length : lineEnd;
-    const infoString = text.substring(pos, infoEnd);
-    if (infoString.includes("`"))
-      return null;
-  }
-  const nextNewline = text.indexOf("\n", pos);
-  const nextPos = nextNewline === -1 ? text.length : nextNewline + 1;
-  return { markerCode, length: runLength, nextPos };
-}
-function tryMatchFenceClose(text, position, fenceMarkerCode, fenceLength) {
-  let pos = position;
-  let spaces = 0;
-  while (spaces < 3 && pos < text.length && text.charCodeAt(pos) === 32) {
-    spaces++;
-    pos++;
-  }
-  if (pos >= text.length)
-    return -1;
-  if (text.charCodeAt(pos) !== fenceMarkerCode)
-    return -1;
-  let runLength = 0;
-  while (pos < text.length && text.charCodeAt(pos) === fenceMarkerCode) {
-    runLength++;
-    pos++;
-  }
-  if (runLength < fenceLength)
-    return -1;
-  while (pos < text.length && text.charCodeAt(pos) !== 10) {
-    const c = text.charCodeAt(pos);
-    if (c !== 32 && c !== 9)
-      return -1;
-    pos++;
-  }
-  if (pos < text.length && text.charCodeAt(pos) === 10) {
-    pos++;
-  }
-  return pos;
-}
-function isFenceCloserLine(line) {
-  let pos = 0;
-  let spaces = 0;
-  while (spaces < 3 && pos < line.length && line.charCodeAt(pos) === 32) {
-    spaces++;
-    pos++;
-  }
-  if (pos >= line.length)
-    return false;
-  const marker = line.charCodeAt(pos);
-  if (marker !== 96 && marker !== 126)
-    return false;
-  let runLength = 0;
-  while (pos < line.length && line.charCodeAt(pos) === marker) {
-    runLength++;
-    pos++;
-  }
-  if (runLength < 3)
-    return false;
-  while (pos < line.length) {
-    const c = line.charCodeAt(pos);
-    if (c !== 32 && c !== 9)
-      return false;
-    pos++;
-  }
-  return true;
-}
-function skipInlineCode(text, position) {
-  let openEnd = position;
-  while (openEnd < text.length && text.charCodeAt(openEnd) === 96) {
-    openEnd++;
-  }
-  const runLength = openEnd - position;
-  let scanPos = openEnd;
-  while (scanPos < text.length) {
-    if (text.charCodeAt(scanPos) !== 96) {
-      scanPos++;
-      continue;
-    }
-    const closeRunStart = scanPos;
-    while (scanPos < text.length && text.charCodeAt(scanPos) === 96) {
-      scanPos++;
-    }
-    if (scanPos - closeRunStart === runLength) {
-      return scanPos;
-    }
-  }
-  return position;
-}
-var init_code_zones = __esm({
-  "../../packages/core/dist-esm/parser/code-zones.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/footnote-patterns.js
-function footnoteRefGlobal() {
-  return new RegExp(`\\[\\^${FOOTNOTE_ID_PATTERN}\\]`, "g");
-}
-function footnoteRefNumericGlobal() {
-  return new RegExp(`\\[\\^${FOOTNOTE_ID_NUMERIC_PATTERN}\\]`, "g");
-}
-function isL3Format(text) {
-  const zones = findCodeZones(text);
-  const defRe = new RegExp(FOOTNOTE_DEF_START.source, "gm");
-  let defMatch;
-  let firstFootnote = -1;
-  while ((defMatch = defRe.exec(text)) !== null) {
-    if (!zones.some((z2) => defMatch.index >= z2.start && defMatch.index < z2.end)) {
-      firstFootnote = defMatch.index;
-      break;
-    }
-  }
-  if (firstFootnote < 0)
-    return false;
-  const body = text.slice(0, firstFootnote);
-  const cmRe = /\{\+\+|\{--|\{~~|\{==|\{>>/g;
-  if (cmRe.test(body)) {
-    cmRe.lastIndex = 0;
-    let m;
-    while ((m = cmRe.exec(body)) !== null) {
-      if (!zones.some((z2) => m.index >= z2.start && m.index < z2.end)) {
-        return false;
-      }
-    }
-  }
-  const footnoteSection = text.slice(firstFootnote);
-  const footnoteLines = footnoteSection.split("\n");
-  if (footnoteLines.some((line) => FOOTNOTE_L3_EDIT_OP.test(line)))
-    return true;
-  for (let i = 0; i < footnoteLines.length; i++) {
-    if (!FOOTNOTE_L3_HISTORY_HEADER.test(footnoteLines[i]))
-      continue;
-    for (let j = i + 1; j < footnoteLines.length; j++) {
-      const line = footnoteLines[j];
-      if (FOOTNOTE_DEF_START.test(line))
-        break;
-      if (/^ {4}source:\s*\S/.test(line))
-        return true;
-      if (line.trim() !== "" && !line.startsWith("    "))
-        break;
-    }
-  }
-  return false;
-}
-function unescapeCtxString(s) {
-  return s.replace(/\\"/g, '"').replace(/\\\\/g, "\\");
-}
-function splitBodyAndFootnotes(lines) {
-  const text = lines.join("\n");
-  const zones = findCodeZones(text);
-  let firstFootnoteLine = lines.length;
-  let charOffset = 0;
-  for (let i = 0; i < lines.length; i++) {
-    const inCodeZone = zones.some((z2) => charOffset >= z2.start && charOffset < z2.end);
-    if (!inCodeZone && FOOTNOTE_DEF_START.test(lines[i])) {
-      firstFootnoteLine = i;
-      break;
-    }
-    charOffset += lines[i].length + 1;
-  }
-  let bodyEnd = firstFootnoteLine;
-  while (bodyEnd > 0 && lines[bodyEnd - 1].trim() === "") {
-    bodyEnd--;
-  }
-  return {
-    bodyLines: lines.slice(0, bodyEnd),
-    footnoteLines: lines.slice(firstFootnoteLine),
-    bodyEndIndex: bodyEnd
-  };
-}
-var FOOTNOTE_ID_PATTERN, FOOTNOTE_ID_NUMERIC_PATTERN, FOOTNOTE_REF_ANCHORED, FOOTNOTE_DEF_START, FOOTNOTE_DEF_START_QUICK, FOOTNOTE_DEF_LENIENT, FOOTNOTE_DEF_STRICT, FOOTNOTE_DEF_STATUS, FOOTNOTE_DEF_STATUS_VALUE, FOOTNOTE_L3_EDIT_OP, FOOTNOTE_L3_HISTORY_HEADER, IMAGE_DIMENSIONS_RE, CTX_RE, FOOTNOTE_CONTINUATION, FOOTNOTE_THREAD_REPLY;
-var init_footnote_patterns = __esm({
-  "../../packages/core/dist-esm/footnote-patterns.js"() {
-    "use strict";
-    init_code_zones();
-    FOOTNOTE_ID_PATTERN = "cn-\\d+(?:\\.\\d+)?";
-    FOOTNOTE_ID_NUMERIC_PATTERN = "cn-(\\d+)(?:\\.\\d+)?";
-    FOOTNOTE_REF_ANCHORED = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]`);
-    FOOTNOTE_DEF_START = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:`);
-    FOOTNOTE_DEF_START_QUICK = /^\[\^cn-\d+/;
-    FOOTNOTE_DEF_LENIENT = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s*@(\\S+)\\s*\\|\\s*(\\S+)\\s*\\|\\s*(\\S+)\\s*\\|\\s*(\\S+)`);
-    FOOTNOTE_DEF_STRICT = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s+(?:(@\\S+)\\s+\\|\\s+)?(\\S+)\\s+\\|\\s+(\\S+)\\s+\\|\\s+(\\S+)`);
-    FOOTNOTE_DEF_STATUS = new RegExp(`^\\[\\^(${FOOTNOTE_ID_PATTERN})\\]:\\s+(?:@\\S+\\s+\\|\\s+)?\\S+\\s+\\|\\s+\\S+\\s+\\|\\s+(\\S+)`);
-    FOOTNOTE_DEF_STATUS_VALUE = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:\\s.*\\|\\s*(proposed|accepted|rejected)`);
-    FOOTNOTE_L3_EDIT_OP = /^ {4}(\d+):([0-9a-fA-F]{2,}) (.*)/;
-    FOOTNOTE_L3_HISTORY_HEADER = new RegExp(`^\\[\\^${FOOTNOTE_ID_PATTERN}\\]:\\s.*\\|\\s*(?:ins|del|sub|format|equation|image|field|object)\\s*\\|\\s*accepted\\s*$`);
-    IMAGE_DIMENSIONS_RE = /^([\d.]+)in\s*x\s*([\d.]+)in$/;
-    CTX_RE = /@ctx:"((?:[^"\\]|\\.)*)"\|\|"((?:[^"\\]|\\.)*)"/;
-    FOOTNOTE_CONTINUATION = /^\s+\S/;
-    FOOTNOTE_THREAD_REPLY = /^\s+@\S+\s+\d{4}-\d{2}-\d{2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?Z?)?(?:\s+\[[^\]]+\])?:/;
-  }
-});
-
-// ../../packages/core/dist-esm/operations/footnote-generator.js
-function generateFootnoteDefinition(id, type, author, date4) {
-  const d = date4 ?? nowTimestamp().date;
-  const authorPart = author ? `@${author} | ` : "";
-  return `
-
-[^${id}]: ${authorPart}${d} | ${type} | proposed`;
-}
-function buildEditOpFromParts(changeType, originalText, currentText) {
-  switch (changeType) {
-    case "insertion":
-      return `{++${currentText}++}`;
-    case "deletion":
-      return `{--${originalText}--}`;
-    case "highlight":
-      return `{==${originalText}==}`;
-    case "comment":
-      return `{>>${originalText}<<}`;
-    default:
-      return `{~~${originalText}~>${currentText}~~}`;
-  }
-}
-function formatL3EditOpLine(lineNumber, hash2, editOp) {
-  return `    ${lineNumber}:${hash2} ${editOp}`;
-}
-function buildContextualL3EditOp(params) {
-  const { changeType, lineContent, lineNumber, hash: hash2, column, anchorLen } = params;
-  let originalText = params.originalText ?? "";
-  let currentText = params.currentText ?? "";
-  const typeKey = CHANGE_TYPE_KEY[changeType];
-  let rawOp = buildEditOpFromParts(typeKey, originalText, currentText);
-  if (lineContent.length > 0 && anchorLen > 0) {
-    const col = Math.max(0, Math.min(column, lineContent.length));
-    const end = Math.min(col + anchorLen, lineContent.length);
-    const bodySlice = lineContent.slice(col, end);
-    if (changeType === ChangeType.Insertion && rawOp === "{++++}" && bodySlice.length > 0) {
-      currentText = bodySlice;
-      rawOp = buildEditOpFromParts(typeKey, originalText, currentText);
-    }
-    if (changeType === ChangeType.Substitution && rawOp === "{~~~>~~}") {
-      if (bodySlice.length > 0)
-        currentText = bodySlice;
-      if (!originalText && currentText)
-        originalText = UNKNOWN_PRIOR_SUB;
-      rawOp = buildEditOpFromParts(typeKey, originalText, currentText);
-    }
-  }
-  if (!lineContent) {
-    return formatL3EditOpLine(lineNumber, hash2, rawOp);
-  }
-  const clampedCol = Math.max(0, Math.min(column, lineContent.length));
-  const clampedEnd = Math.max(clampedCol, Math.min(clampedCol + anchorLen, lineContent.length));
-  let spanStart = clampedCol;
-  let spanEnd = clampedEnd;
-  let expandLeft = false;
-  let unique = false;
-  while (!unique) {
-    if (!expandLeft) {
-      if (spanEnd < lineContent.length)
-        spanEnd++;
-      expandLeft = true;
-    } else {
-      if (spanStart > 0)
-        spanStart--;
-      expandLeft = false;
-    }
-    const candidate = lineContent.slice(spanStart, spanEnd);
-    const first = lineContent.indexOf(candidate);
-    const second = lineContent.indexOf(candidate, first + 1);
-    unique = second === -1;
-    if (spanStart === 0 && spanEnd === lineContent.length) {
-      unique = true;
-    }
-  }
-  const preSnapStart = spanStart;
-  const preSnapEnd = spanEnd;
-  while (spanEnd < lineContent.length && lineContent[spanEnd] !== " ")
-    spanEnd++;
-  while (spanStart > 0 && lineContent[spanStart - 1] !== " ")
-    spanStart--;
-  const snapped = lineContent.slice(spanStart, spanEnd);
-  const snapFirst = lineContent.indexOf(snapped);
-  const snapSecond = lineContent.indexOf(snapped, snapFirst + 1);
-  if (snapSecond !== -1) {
-    spanStart = preSnapStart;
-    spanEnd = preSnapEnd;
-  }
-  const contextBefore = lineContent.slice(spanStart, clampedCol);
-  const contextAfter = lineContent.slice(clampedEnd, spanEnd);
-  return `    ${lineNumber}:${hash2} ${contextBefore}${rawOp}${contextAfter}`;
-}
-function scanMaxCnId(text) {
-  const pattern = footnoteRefNumericGlobal();
-  let max = 0;
-  let match;
-  while ((match = pattern.exec(text)) !== null) {
-    const n = parseInt(match[1], 10);
-    if (n > max) {
-      max = n;
-    }
-  }
-  return max;
-}
-var CHANGE_TYPE_KEY, UNKNOWN_PRIOR_SUB;
-var init_footnote_generator = __esm({
-  "../../packages/core/dist-esm/operations/footnote-generator.js"() {
-    "use strict";
-    init_footnote_patterns();
-    init_timestamp();
-    init_types();
-    CHANGE_TYPE_KEY = {
-      [ChangeType.Insertion]: "insertion",
-      [ChangeType.Deletion]: "deletion",
-      [ChangeType.Substitution]: "substitution",
-      [ChangeType.Highlight]: "highlight",
-      [ChangeType.Comment]: "comment",
-      [ChangeType.Move]: "move"
-    };
-    UNKNOWN_PRIOR_SUB = "\u2026";
-  }
-});
-
-// ../../packages/core/dist-esm/parser/parser.js
-function parseInlineMetadata(raw) {
-  const result = { raw };
-  const fields = raw.split("|").map((f) => f.trim());
-  for (const field of fields) {
-    if (!field)
-      continue;
-    if (field.startsWith("@")) {
-      result.author = field;
-    } else if (/^\d{4}-\d{2}-\d{2}$/.test(field)) {
-      result.date = field;
-    } else if (["ins", "del", "sub", "highlight", "comment"].includes(field)) {
-      result.type = field;
-    } else if (["proposed", "accepted", "rejected", "approved"].includes(field)) {
-      result.status = field;
-    } else {
-      result.freeText = result.freeText ? `${result.freeText}|${field}` : field;
-    }
-  }
-  return result;
-}
-function applyImageExtraMetadata(def, metadata) {
-  if (!def.extraMetadata)
-    return;
-  const dimStr = def.extraMetadata["image-dimensions"];
-  if (dimStr) {
-    const dimMatch = dimStr.match(IMAGE_DIMENSIONS_RE);
-    if (dimMatch) {
-      metadata.imageDimensions = {
-        widthIn: parseFloat(dimMatch[1]),
-        heightIn: parseFloat(dimMatch[2])
-      };
-    }
-  }
-  const imageMeta = {};
-  for (const [key, value] of Object.entries(def.extraMetadata)) {
-    if (key.startsWith("image-") && key !== "image-dimensions") {
-      imageMeta[key] = value;
-    }
-  }
-  if (Object.keys(imageMeta).length > 0) {
-    metadata.imageMetadata = imageMeta;
-  }
-}
-function applyEquationExtraMetadata(def, metadata) {
-  if (!def.extraMetadata)
-    return;
-  const equationMeta = {};
-  for (const [key, value] of Object.entries(def.extraMetadata)) {
-    if (key.startsWith("equation-")) {
-      equationMeta[key] = value;
-    }
-  }
-  if (Object.keys(equationMeta).length > 0) {
-    metadata.equationMetadata = equationMeta;
-  }
-}
-var CriticMarkupParser;
-var init_parser = __esm({
-  "../../packages/core/dist-esm/parser/parser.js"() {
-    "use strict";
-    init_types();
-    init_document();
-    init_tokens();
-    init_footnote_patterns();
-    init_code_zones();
-    init_timestamp();
-    init_footnote_generator();
-    CriticMarkupParser = class _CriticMarkupParser {
-      constructor() {
-        this.idBase = 0;
-      }
-      parse(text, options) {
-        this.idBase = scanMaxCnId(text);
-        const changes = [];
-        let position = 0;
-        let changeCounter = 0;
-        const skipCodeBlocks = options?.skipCodeBlocks !== false;
-        const settledRefs = /* @__PURE__ */ new Map();
-        let atLineStart = true;
-        let inFence = false;
-        let fenceMarkerCode = 0;
-        let fenceLength = 0;
-        while (position < text.length) {
-          const ch = text.charCodeAt(position);
-          if (skipCodeBlocks && inFence) {
-            if (atLineStart) {
-              const closeResult = tryMatchFenceClose(text, position, fenceMarkerCode, fenceLength);
-              if (closeResult >= 0) {
-                inFence = false;
-                position = closeResult;
-                atLineStart = true;
-                continue;
-              }
-            }
-            const nextNewline = text.indexOf("\n", position);
-            if (nextNewline === -1) {
-              position = text.length;
-            } else {
-              position = nextNewline + 1;
-              atLineStart = true;
-            }
-            continue;
-          }
-          if (skipCodeBlocks && atLineStart) {
-            const fenceResult = tryMatchFenceOpen(text, position);
-            if (fenceResult) {
-              inFence = true;
-              fenceMarkerCode = fenceResult.markerCode;
-              fenceLength = fenceResult.length;
-              position = fenceResult.nextPos;
-              atLineStart = true;
-              continue;
-            }
-          }
-          if (skipCodeBlocks && ch === 96) {
-            const skipTo = skipInlineCode(text, position);
-            if (skipTo > position) {
-              atLineStart = text.charCodeAt(skipTo - 1) === 10;
-              position = skipTo;
-              continue;
-            }
-            let runEnd = position + 1;
-            while (runEnd < text.length && text.charCodeAt(runEnd) === 96) {
-              runEnd++;
-            }
-            atLineStart = false;
-            position = runEnd;
-            continue;
-          }
-          const node = this.tryParseNode(text, position, changeCounter);
-          if (node) {
-            this.tryAttachAdjacentComment(text, node);
-            this.tryAttachFootnoteRef(text, node);
-            changeCounter++;
-            changes.push(node);
-            position = node.range.end;
-            atLineStart = position > 0 && text.charCodeAt(position - 1) === 10;
-          } else {
-            if (ch === 91 && text.charCodeAt(position + 1) === 94) {
-              const remaining = text.substring(position, position + 30);
-              const refMatch = remaining.match(_CriticMarkupParser.FOOTNOTE_REF);
-              if (refMatch) {
-                const afterRef = position + refMatch[0].length;
-                if (text.charCodeAt(afterRef) !== 58) {
-                  const refId = refMatch[1];
-                  if (!changes.some((c) => c.id === refId)) {
-                    settledRefs.set(refId, position);
-                  }
-                  position = afterRef;
-                  atLineStart = false;
-                  continue;
-                }
-              }
-            }
-            atLineStart = ch === 10;
-            position++;
-          }
-        }
-        const footnotes = this.parseFootnoteDefinitions(text);
-        this.mergeFootnoteMetadata(changes, footnotes, settledRefs);
-        this.resolveMoveGroups(changes, footnotes);
-        const usedIds = /* @__PURE__ */ new Set();
-        for (const c of changes) {
-          if (c.anchored) {
-            const m = c.id.match(/^cn-(\d+)(?:\.\d+)?$/);
-            if (m)
-              usedIds.add(parseInt(m[1], 10));
-          }
-        }
-        let nextId = this.idBase;
-        const unanchored = changes.filter((c) => !c.anchored && c.id.startsWith("cn-"));
-        for (const c of unanchored) {
-          do {
-            nextId++;
-          } while (usedIds.has(nextId));
-          c.id = `cn-${nextId}`;
-        }
-        return new VirtualDocument(changes);
-      }
-      tryParseNode(text, startPos, counter) {
-        if (this.matchesAt(text, startPos, TokenType.AdditionOpen)) {
-          return this.parseInsertion(text, startPos, counter);
-        }
-        if (this.matchesAt(text, startPos, TokenType.DeletionOpen)) {
-          return this.parseDeletion(text, startPos, counter);
-        }
-        if (this.matchesAt(text, startPos, TokenType.SubstitutionOpen)) {
-          return this.parseSubstitution(text, startPos, counter);
-        }
-        if (this.matchesAt(text, startPos, TokenType.HighlightOpen)) {
-          return this.parseHighlight(text, startPos, counter);
-        }
-        if (this.matchesAt(text, startPos, TokenType.CommentOpen)) {
-          return this.parseComment(text, startPos, counter);
-        }
-        return null;
-      }
-      parseInsertion(text, startPos, counter) {
-        const contentStart = startPos + TokenType.AdditionOpen.length;
-        const closePos = text.indexOf(TokenType.AdditionClose, contentStart);
-        if (closePos === -1) {
-          return null;
-        }
-        const endPos = closePos + TokenType.AdditionClose.length;
-        const content = text.substring(contentStart, closePos);
-        return {
-          id: this.assignId(counter),
-          type: ChangeType.Insertion,
-          status: ChangeStatus.Proposed,
-          range: { start: startPos, end: endPos },
-          contentRange: { start: contentStart, end: closePos },
-          modifiedText: content,
-          level: 0,
-          anchored: false,
-          resolved: true
-        };
-      }
-      parseDeletion(text, startPos, counter) {
-        const contentStart = startPos + TokenType.DeletionOpen.length;
-        const closePos = text.indexOf(TokenType.DeletionClose, contentStart);
-        if (closePos === -1) {
-          return null;
-        }
-        const endPos = closePos + TokenType.DeletionClose.length;
-        const content = text.substring(contentStart, closePos);
-        return {
-          id: this.assignId(counter),
-          type: ChangeType.Deletion,
-          status: ChangeStatus.Proposed,
-          range: { start: startPos, end: endPos },
-          contentRange: { start: contentStart, end: closePos },
-          originalText: content,
-          level: 0,
-          anchored: false,
-          resolved: true
-        };
-      }
-      /**
-       * Finds the next ~~} at or after searchStart that is not inside a backtick-quoted
-       * span (so that substitutions whose new text contains literal `` `~~}` `` parse correctly).
-       */
-      indexOfSubstitutionCloseOutsideBackticks(text, searchStart) {
-        const close = TokenType.SubstitutionClose;
-        let pos = searchStart;
-        while (pos < text.length) {
-          const next = text.indexOf(close, pos);
-          if (next === -1)
-            return -1;
-          const between = text.substring(searchStart, next);
-          const backtickCount = (between.match(/`/g) ?? []).length;
-          if (backtickCount % 2 === 0)
-            return next;
-          pos = next + close.length;
-        }
-        return -1;
-      }
-      parseSubstitution(text, startPos, counter) {
-        const contentStart = startPos + TokenType.SubstitutionOpen.length;
-        const separatorPos = text.indexOf(TokenType.SubstitutionSeparator, contentStart);
-        if (separatorPos === -1)
-          return null;
-        const modifiedStart = separatorPos + TokenType.SubstitutionSeparator.length;
-        const closePos = this.indexOfSubstitutionCloseOutsideBackticks(text, modifiedStart);
-        if (closePos === -1 || separatorPos >= closePos) {
-          return null;
-        }
-        const originalText = text.substring(contentStart, separatorPos);
-        const modifiedText = text.substring(modifiedStart, closePos);
-        const endPos = closePos + TokenType.SubstitutionClose.length;
-        return {
-          id: this.assignId(counter),
-          type: ChangeType.Substitution,
-          status: ChangeStatus.Proposed,
-          range: { start: startPos, end: endPos },
-          contentRange: { start: contentStart, end: closePos },
-          originalRange: { start: contentStart, end: separatorPos },
-          modifiedRange: { start: modifiedStart, end: closePos },
-          originalText,
-          modifiedText,
-          level: 0,
-          anchored: false,
-          resolved: true
-        };
-      }
-      parseHighlight(text, startPos, counter) {
-        const contentStart = startPos + TokenType.HighlightOpen.length;
-        const closePos = text.indexOf(TokenType.HighlightClose, contentStart);
-        if (closePos === -1) {
-          return null;
-        }
-        const highlightedText = text.substring(contentStart, closePos);
-        let endPos = closePos + TokenType.HighlightClose.length;
-        let comment;
-        if (this.matchesAt(text, endPos, TokenType.CommentOpen)) {
-          const commentContentStart = endPos + TokenType.CommentOpen.length;
-          const commentClosePos = text.indexOf(TokenType.CommentClose, commentContentStart);
-          if (commentClosePos !== -1) {
-            comment = text.substring(commentContentStart, commentClosePos);
-            endPos = commentClosePos + TokenType.CommentClose.length;
-          }
-        }
-        return {
-          id: this.assignId(counter),
-          type: ChangeType.Highlight,
-          status: ChangeStatus.Proposed,
-          range: { start: startPos, end: endPos },
-          contentRange: { start: contentStart, end: closePos },
-          originalText: highlightedText,
-          metadata: comment !== void 0 ? { comment } : void 0,
-          level: 0,
-          anchored: false,
-          resolved: true
-        };
-      }
-      parseComment(text, startPos, counter) {
-        const contentStart = startPos + TokenType.CommentOpen.length;
-        const closePos = text.indexOf(TokenType.CommentClose, contentStart);
-        if (closePos === -1) {
-          return null;
-        }
-        const endPos = closePos + TokenType.CommentClose.length;
-        const comment = text.substring(contentStart, closePos);
-        return {
-          id: this.assignId(counter),
-          type: ChangeType.Comment,
-          status: ChangeStatus.Proposed,
-          range: { start: startPos, end: endPos },
-          contentRange: { start: contentStart, end: closePos },
-          metadata: { comment },
-          level: 0,
-          anchored: false,
-          resolved: true
-        };
-      }
-      parseFootnoteDefinitions(text) {
-        const map2 = /* @__PURE__ */ new Map();
-        let searchStart = 0;
-        if (text.startsWith("[^cn-")) {
-          searchStart = 0;
-        } else {
-          const firstDef = text.indexOf("\n[^cn-");
-          if (firstDef === -1)
-            return map2;
-          searchStart = firstDef + 1;
-        }
-        const lines = text.substring(searchStart).split(/\r?\n/);
-        let lineOffset2 = 0;
-        for (let k = 0; k < searchStart; k++) {
-          if (text.charCodeAt(k) === 10)
-            lineOffset2++;
-        }
-        let currentId = null;
-        let currentDef = null;
-        let lastDiscussionComment = null;
-        let inRevisions = false;
-        for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
-          const line = lines[lineIdx];
-          const absLine = lineIdx + lineOffset2;
-          const defMatch = line.match(_CriticMarkupParser.FOOTNOTE_DEF);
-          if (defMatch) {
-            currentId = defMatch[1];
-            currentDef = {
-              author: defMatch[2],
-              date: defMatch[3],
-              type: defMatch[4],
-              status: defMatch[5],
-              startLine: absLine,
-              endLine: absLine,
-              replyCount: 0
-            };
-            map2.set(currentId, currentDef);
-            lastDiscussionComment = null;
-            inRevisions = false;
-            continue;
-          }
-          if (!currentId || !currentDef) {
-            continue;
-          }
-          if (line.trim() === "") {
-            continue;
-          }
-          if (!/^[\t ]/.test(line)) {
-            currentId = null;
-            currentDef = null;
-            lastDiscussionComment = null;
-            inRevisions = false;
-            continue;
-          }
-          currentDef.endLine = absLine;
-          const rawIndent = line.length - line.replace(/^[\t ]+/, "").length;
-          const trimmed = line.trim();
-          if (trimmed === "revisions:") {
-            inRevisions = true;
-            lastDiscussionComment = null;
-            continue;
-          }
-          if (inRevisions) {
-            const revMatch = trimmed.match(_CriticMarkupParser.REVISION_RE);
-            if (revMatch) {
-              if (!currentDef.revisions)
-                currentDef.revisions = [];
-              currentDef.revisions.push({
-                label: revMatch[1],
-                author: revMatch[2],
-                date: revMatch[3],
-                timestamp: parseTimestamp(revMatch[3]),
-                text: revMatch[4]
-              });
-              continue;
-            }
-            inRevisions = false;
-          }
-          const ctxMatch = trimmed.match(_CriticMarkupParser.CONTEXT_RE);
-          if (ctxMatch) {
-            currentDef.context = ctxMatch[1];
-            lastDiscussionComment = null;
-            continue;
-          }
-          const apprMatch = trimmed.match(_CriticMarkupParser.APPROVAL_RE);
-          if (apprMatch) {
-            const approval = {
-              author: apprMatch[2],
-              date: apprMatch[3],
-              timestamp: parseTimestamp(apprMatch[3])
-            };
-            if (apprMatch[4] !== void 0) {
-              approval.reason = apprMatch[4];
-            }
-            switch (apprMatch[1]) {
-              case "approved":
-                if (!currentDef.approvals)
-                  currentDef.approvals = [];
-                currentDef.approvals.push(approval);
-                break;
-              case "rejected":
-                if (!currentDef.rejections)
-                  currentDef.rejections = [];
-                currentDef.rejections.push(approval);
-                break;
-              case "request-changes":
-                if (!currentDef.requestChanges)
-                  currentDef.requestChanges = [];
-                currentDef.requestChanges.push(approval);
-                break;
-            }
-            lastDiscussionComment = null;
-            continue;
-          }
-          const resolvedMatch = trimmed.match(_CriticMarkupParser.RESOLVED_RE);
-          if (resolvedMatch) {
-            currentDef.resolution = {
-              type: "resolved",
-              author: resolvedMatch[1],
-              date: resolvedMatch[2],
-              timestamp: parseTimestamp(resolvedMatch[2]),
-              reason: resolvedMatch[3] || void 0
-            };
-            lastDiscussionComment = null;
-            continue;
-          }
-          const openMatch = trimmed.match(_CriticMarkupParser.OPEN_RE);
-          if (openMatch) {
-            currentDef.resolution = {
-              type: "open",
-              reason: openMatch[1] || void 0
-            };
-            lastDiscussionComment = null;
-            continue;
-          }
-          const reasonMatch = trimmed.match(_CriticMarkupParser.REASON_RE);
-          if (reasonMatch) {
-            const comment = {
-              author: currentDef.author || "unknown",
-              date: currentDef.date || "unknown",
-              timestamp: parseTimestamp(currentDef.date || "unknown"),
-              text: reasonMatch[1],
-              depth: 0
-            };
-            if (!currentDef.discussion)
-              currentDef.discussion = [];
-            currentDef.discussion.push(comment);
-            lastDiscussionComment = comment;
-            continue;
-          }
-          const supersedesMatch = trimmed.match(_CriticMarkupParser.SUPERSEDES_RE);
-          if (supersedesMatch) {
-            if (!currentDef.supersedes)
-              currentDef.supersedes = supersedesMatch[1];
-            lastDiscussionComment = null;
-            continue;
-          }
-          const supersededByMatch = trimmed.match(_CriticMarkupParser.SUPERSEDED_BY_RE);
-          if (supersededByMatch) {
-            if (!currentDef.supersededBy)
-              currentDef.supersededBy = [];
-            currentDef.supersededBy.push(supersededByMatch[1]);
-            lastDiscussionComment = null;
-            continue;
-          }
-          const discMatch = trimmed.match(_CriticMarkupParser.DISCUSSION_RE);
-          if (discMatch) {
-            const depth = Math.max(0, Math.floor((rawIndent - 4) / 2));
-            const comment = {
-              author: discMatch[1],
-              date: discMatch[2],
-              timestamp: parseTimestamp(discMatch[2]),
-              text: discMatch[4],
-              depth
-            };
-            if (discMatch[3]) {
-              comment.label = discMatch[3];
-            }
-            if (!currentDef.discussion)
-              currentDef.discussion = [];
-            currentDef.discussion.push(comment);
-            lastDiscussionComment = comment;
-            currentDef.replyCount = (currentDef.replyCount ?? 0) + 1;
-            continue;
-          }
-          if (lastDiscussionComment) {
-            lastDiscussionComment.text += "\n" + trimmed;
-            continue;
-          }
-          const kvMatch = trimmed.match(/^([\w-]+):\s+(.*)/);
-          if (kvMatch) {
-            if (!currentDef.extraMetadata)
-              currentDef.extraMetadata = {};
-            currentDef.extraMetadata[kvMatch[1]] = kvMatch[2];
-            lastDiscussionComment = null;
-            continue;
-          }
-        }
-        return map2;
-      }
-      mergeFootnoteMetadata(changes, footnotes, settledRefs) {
-        for (const node of changes) {
-          const def = footnotes.get(node.id);
-          if (!def)
-            continue;
-          node.level = 2;
-          if (def.status === "accepted") {
-            node.status = ChangeStatus.Accepted;
-          } else if (def.status === "rejected") {
-            node.status = ChangeStatus.Rejected;
-          }
-          const existingComment = node.metadata?.comment;
-          node.metadata = {
-            ...node.metadata,
-            author: def.author,
-            date: def.date
-          };
-          if (existingComment !== void 0) {
-            node.metadata.comment = existingComment;
-          }
-          if (def.context !== void 0) {
-            node.metadata.context = def.context;
-          }
-          if (def.approvals) {
-            node.metadata.approvals = def.approvals;
-          }
-          if (def.rejections) {
-            node.metadata.rejections = def.rejections;
-          }
-          if (def.requestChanges) {
-            node.metadata.requestChanges = def.requestChanges;
-          }
-          if (def.revisions) {
-            node.metadata.revisions = def.revisions;
-          }
-          if (def.discussion) {
-            node.metadata.discussion = def.discussion;
-          }
-          if (def.resolution) {
-            node.metadata.resolution = def.resolution;
-          }
-          applyImageExtraMetadata(def, node.metadata);
-          applyEquationExtraMetadata(def, node.metadata);
-          if (def.supersedes)
-            node.supersedes = def.supersedes;
-          if (def.supersededBy && def.supersededBy.length > 0)
-            node.supersededBy = def.supersededBy;
-          if (def.startLine !== void 0) {
-            node.footnoteLineRange = { startLine: def.startLine, endLine: def.endLine ?? def.startLine };
-          }
-          node.replyCount = def.replyCount ?? 0;
-        }
-        if (settledRefs) {
-          const claimedIds = new Set(changes.map((c) => c.id));
-          for (const [id, offset] of settledRefs) {
-            if (claimedIds.has(id))
-              continue;
-            const def = footnotes.get(id);
-            if (!def)
-              continue;
-            const refLength = `[^${id}]`.length;
-            let status = ChangeStatus.Proposed;
-            if (def.status === "accepted")
-              status = ChangeStatus.Accepted;
-            else if (def.status === "rejected")
-              status = ChangeStatus.Rejected;
-            const TYPE_MAP2 = {
-              ins: ChangeType.Insertion,
-              del: ChangeType.Deletion,
-              sub: ChangeType.Substitution,
-              highlight: ChangeType.Highlight,
-              comment: ChangeType.Comment,
-              insertion: ChangeType.Insertion,
-              deletion: ChangeType.Deletion,
-              substitution: ChangeType.Substitution
-            };
-            const type = TYPE_MAP2[def.type ?? ""] ?? ChangeType.Substitution;
-            const node = {
-              id,
-              type,
-              status,
-              range: { start: offset, end: offset + refLength },
-              contentRange: { start: offset, end: offset + refLength },
-              // covers [^cn-N] ref
-              level: 2,
-              decided: true,
-              anchored: true,
-              resolved: true,
-              metadata: {
-                author: def.author,
-                date: def.date,
-                type: def.type,
-                status: def.status
-              }
-            };
-            if (def.context !== void 0)
-              node.metadata.context = def.context;
-            if (def.approvals)
-              node.metadata.approvals = def.approvals;
-            if (def.rejections)
-              node.metadata.rejections = def.rejections;
-            if (def.requestChanges)
-              node.metadata.requestChanges = def.requestChanges;
-            if (def.revisions)
-              node.metadata.revisions = def.revisions;
-            if (def.discussion)
-              node.metadata.discussion = def.discussion;
-            if (def.resolution)
-              node.metadata.resolution = def.resolution;
-            applyImageExtraMetadata(def, node.metadata);
-            applyEquationExtraMetadata(def, node.metadata);
-            if (def.supersedes)
-              node.supersedes = def.supersedes;
-            if (def.supersededBy && def.supersededBy.length > 0)
-              node.supersededBy = def.supersededBy;
-            if (def.startLine !== void 0) {
-              node.footnoteLineRange = { startLine: def.startLine, endLine: def.endLine ?? def.startLine };
-            }
-            node.replyCount = def.replyCount ?? 0;
-            changes.push(node);
-          }
-          changes.sort((a, b) => a.range.start - b.range.start);
-        }
-      }
-      resolveMoveGroups(changes, footnotes) {
-        for (const [id, def] of footnotes) {
-          if (def.type !== "move")
-            continue;
-          const parentId = id;
-          const prefix = parentId + ".";
-          for (const node of changes) {
-            if (!node.id.startsWith(prefix))
-              continue;
-            node.groupId = parentId;
-            if (node.type === ChangeType.Deletion) {
-              node.moveRole = "from";
-            } else if (node.type === ChangeType.Insertion) {
-              node.moveRole = "to";
-            }
-          }
-        }
-      }
-      tryAttachAdjacentComment(text, node) {
-        const pos = node.range.end;
-        if (!this.matchesAt(text, pos, TokenType.CommentOpen))
-          return;
-        const contentStart = pos + TokenType.CommentOpen.length;
-        const closePos = text.indexOf(TokenType.CommentClose, contentStart);
-        if (closePos === -1)
-          return;
-        const content = text.substring(contentStart, closePos);
-        const endPos = closePos + TokenType.CommentClose.length;
-        node.inlineMetadata = parseInlineMetadata(content);
-        node.level = 1;
-        node.range = { start: node.range.start, end: endPos };
-      }
-      tryAttachFootnoteRef(text, node) {
-        if (text.charCodeAt(node.range.end) !== 91)
-          return;
-        const remaining = text.substring(node.range.end, node.range.end + 30);
-        const match = remaining.match(_CriticMarkupParser.FOOTNOTE_REF);
-        if (match) {
-          node.id = match[1];
-          node.footnoteRefStart = node.range.end;
-          node.range = { start: node.range.start, end: node.range.end + match[0].length };
-          node.level = 2;
-          node.anchored = true;
-          node.resolved = true;
-        }
-      }
-      matchesAt(text, position, delimiter) {
-        return text.startsWith(delimiter, position);
-      }
-      assignId(counter) {
-        return `cn-${this.idBase + counter + 1}`;
-      }
-    };
-    CriticMarkupParser.FOOTNOTE_REF = FOOTNOTE_REF_ANCHORED;
-    CriticMarkupParser.FOOTNOTE_DEF = FOOTNOTE_DEF_STRICT;
-    CriticMarkupParser.APPROVAL_RE = /^(approved|rejected|request-changes):\s+(@\S+)\s+(\S+)(?:\s+"([^"]*)")?$/;
-    CriticMarkupParser.SUPERSEDES_RE = /^supersedes:\s+(\S+)\s*$/;
-    CriticMarkupParser.SUPERSEDED_BY_RE = /^superseded-by:\s+(\S+)\s*$/;
-    CriticMarkupParser.DISCUSSION_RE = /^(@\S+)\s+(\S+)(?:\s+\[([^\]]+)\])?:\s*(.*)$/;
-    CriticMarkupParser.RESOLVED_RE = /^resolved:?\s+(@\S+)\s+(\S+)(?::\s*(.*))?$/;
-    CriticMarkupParser.OPEN_RE = /^open(?:\s+--\s+(.*))?$/;
-    CriticMarkupParser.REVISION_RE = /^(r\d+)\s+(@\S+)\s+(\S+):\s+"([^"]*)"$/;
-    CriticMarkupParser.CONTEXT_RE = /^context:\s+"([^"]*)"$/;
-    CriticMarkupParser.REASON_RE = /^reason:\s+(.+)$/;
-  }
-});
-
-// ../../packages/core/dist-esm/footnote-utils.js
-function countFootnoteHeadersWithStatus(content, status) {
-  let count = 0;
-  for (const s of extractFootnoteStatuses(content).values()) {
-    if (s === status)
-      count++;
-  }
-  return count;
-}
-function findFootnoteBlock(lines, changeId) {
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith(`[^${changeId}]:`)) {
-      let end = i;
-      let j = i + 1;
-      while (j < lines.length) {
-        if (lines[j].startsWith("[^cn-"))
-          break;
-        if (lines[j].startsWith("    ")) {
-          end = j;
-          j++;
-          continue;
-        }
-        if (lines[j].trim() === "") {
-          let k = j + 1;
-          let hasMore = false;
-          while (k < lines.length && !lines[k].startsWith("[^cn-")) {
-            if (lines[k].startsWith("    ")) {
-              hasMore = true;
-              break;
-            }
-            if (lines[k].trim() !== "")
-              break;
-            k++;
-          }
-          if (hasMore) {
-            j++;
-            continue;
-          }
-          break;
-        }
-        break;
-      }
-      return { headerLine: i, blockEnd: end, headerContent: lines[i] };
-    }
-  }
-  return null;
-}
-function parseFootnoteHeader(headerLine) {
-  const colonIdx = headerLine.indexOf(":");
-  if (colonIdx === -1)
-    return null;
-  const content = headerLine.slice(colonIdx + 1).trim();
-  const parts = content.split("|").map((p) => p.trim());
-  if (parts.length < 4)
-    return null;
-  return {
-    author: parts[0].replace(/^@/, ""),
-    date: parts[1],
-    type: parts[2],
-    status: parts[3]
-  };
-}
-function findDiscussionInsertionIndex(lines, headerLine, blockEnd) {
-  let insertAfter = headerLine;
-  for (let i = headerLine + 1; i <= blockEnd; i++) {
-    const trimmed = lines[i].trim();
-    if (trimmed === "")
-      continue;
-    if (isApprovalOrResolutionLine(trimmed)) {
-      return i - 1;
-    }
-    insertAfter = i;
-  }
-  return insertAfter;
-}
-function findReviewInsertionIndex(lines, headerLine, blockEnd) {
-  let insertAfter = headerLine;
-  for (let i = headerLine + 1; i <= blockEnd; i++) {
-    const trimmed = lines[i].trim();
-    if (trimmed === "")
-      continue;
-    if (isResolutionLine(trimmed)) {
-      return i - 1;
-    }
-    insertAfter = i;
-  }
-  return insertAfter;
-}
-function findChildFootnoteIds(lines, parentId) {
-  const prefix = `[^${parentId}.`;
-  const children = [];
-  for (const line of lines) {
-    if (line.startsWith(prefix)) {
-      const closeBracket = line.indexOf("]:");
-      if (closeBracket !== -1) {
-        children.push(line.slice(2, closeBracket));
-      }
-    }
-  }
-  return children;
-}
-function findFootnoteBlockStart(lines) {
-  let lastDefIdx = -1;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (FOOTNOTE_DEF_START.test(lines[i])) {
-      lastDefIdx = i;
-      break;
-    }
-  }
-  if (lastDefIdx === -1) {
-    return lines.length;
-  }
-  let candidate = lastDefIdx;
-  while (candidate >= 0) {
-    let j = candidate + 1;
-    let isTerminal2 = true;
-    while (j < lines.length) {
-      const line = lines[j];
-      if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
-        j++;
-      } else if (line.trim() === "") {
-        j++;
-      } else {
-        isTerminal2 = false;
-        break;
-      }
-    }
-    if (isTerminal2) {
-      lastDefIdx = candidate;
-      break;
-    }
-    candidate--;
-    while (candidate >= 0 && !FOOTNOTE_DEF_START.test(lines[candidate])) {
-      candidate--;
-    }
-  }
-  if (candidate < 0) {
-    return lines.length;
-  }
-  let blockStart = lastDefIdx;
-  for (let i = lastDefIdx - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
-      blockStart = i;
-    } else if (line.trim() === "") {
-      let hasFootnoteBefore = false;
-      for (let k = i - 1; k >= 0; k--) {
-        if (lines[k].trim() === "")
-          continue;
-        if (FOOTNOTE_DEF_START.test(lines[k]) || FOOTNOTE_CONTINUATION.test(lines[k])) {
-          hasFootnoteBefore = true;
-        }
-        break;
-      }
-      if (hasFootnoteBefore) {
-        blockStart = i;
-      } else {
-        break;
-      }
-    } else {
-      break;
-    }
-  }
-  return blockStart;
-}
-function isApprovalOrResolutionLine(trimmed) {
-  return trimmed.startsWith("approved:") || trimmed.startsWith("rejected:") || trimmed.startsWith("request-changes:") || trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
-}
-function isResolutionLine(trimmed) {
-  return trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
-}
-function extractFootnoteStatuses(text) {
-  const statuses = /* @__PURE__ */ new Map();
-  const lines = text.split("\n");
-  for (const line of lines) {
-    const m = FOOTNOTE_ID_AND_STATUS_RE.exec(line);
-    if (m) {
-      statuses.set(m[1], m[2].toLowerCase());
-    }
-  }
-  return statuses;
-}
-var FOOTNOTE_ID_AND_STATUS_RE;
-var init_footnote_utils = __esm({
-  "../../packages/core/dist-esm/footnote-utils.js"() {
-    "use strict";
-    init_footnote_patterns();
-    FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(cn-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
-  }
-});
-
-// ../../packages/core/dist-esm/host/decorations/helpers.js
-function hasInlineDelimiters(change) {
-  return change.range.start < change.contentRange.start || change.range.end > change.contentRange.end;
-}
-var init_helpers = __esm({
-  "../../packages/core/dist-esm/host/decorations/helpers.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/operations/accept-reject.js
-function computeAcceptParts(change) {
-  const rangeLength = change.range.end - change.range.start;
-  const refId = change.level >= 2 ? change.id : "";
-  switch (change.type) {
-    case ChangeType.Insertion:
-      return { offset: change.range.start, length: rangeLength, text: change.modifiedText ?? "", refId };
-    case ChangeType.Deletion:
-      return { offset: change.range.start, length: rangeLength, text: "", refId };
-    case ChangeType.Substitution:
-      return { offset: change.range.start, length: rangeLength, text: change.modifiedText ?? "", refId };
-    case ChangeType.Highlight:
-      return { offset: change.range.start, length: rangeLength, text: change.originalText ?? "", refId };
-    case ChangeType.Comment:
-      return { offset: change.range.start, length: rangeLength, text: "", refId: "" };
-    case ChangeType.Move:
-      return { offset: change.range.start, length: rangeLength, text: change.modifiedText ?? "", refId };
-  }
-}
-function computeRejectParts(change) {
-  const rangeLength = change.range.end - change.range.start;
-  const refId = change.level >= 2 ? change.id : "";
-  switch (change.type) {
-    case ChangeType.Insertion:
-      return { offset: change.range.start, length: rangeLength, text: "", refId };
-    case ChangeType.Deletion:
-      return { offset: change.range.start, length: rangeLength, text: change.originalText ?? "", refId };
-    case ChangeType.Substitution:
-      return { offset: change.range.start, length: rangeLength, text: change.originalText ?? "", refId };
-    case ChangeType.Highlight:
-      return { offset: change.range.start, length: rangeLength, text: change.originalText ?? "", refId };
-    case ChangeType.Comment:
-      return { offset: change.range.start, length: rangeLength, text: "", refId: "" };
-    case ChangeType.Move:
-      return { offset: change.range.start, length: rangeLength, text: change.originalText ?? "", refId };
-  }
-}
-function computeReject(change) {
-  if (!hasInlineDelimiters(change)) {
-    switch (change.type) {
-      case ChangeType.Insertion:
-        return { offset: change.range.start, length: change.range.end - change.range.start, newText: "" };
-      case ChangeType.Deletion:
-        return { offset: change.range.start, length: 0, newText: change.originalText ?? "" };
-      case ChangeType.Substitution:
-        return { offset: change.range.start, length: change.range.end - change.range.start, newText: change.originalText ?? "" };
-      case ChangeType.Highlight:
-        return { offset: change.range.start, length: 0, newText: "" };
-      case ChangeType.Comment:
-        return { offset: change.range.start, length: 0, newText: "" };
-      case ChangeType.Move:
-        return { offset: change.range.start, length: change.range.end - change.range.start, newText: "" };
-    }
-  }
-  const parts = computeRejectParts(change);
-  const ref = parts.refId ? `[^${parts.refId}]` : "";
-  return { offset: parts.offset, length: parts.length, newText: parts.text + ref };
-}
-var init_accept_reject = __esm({
-  "../../packages/core/dist-esm/operations/accept-reject.js"() {
-    "use strict";
-    init_types();
-    init_footnote_patterns();
-    init_timestamp();
-    init_footnote_utils();
-    init_helpers();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/resolution.js
-function computeResolutionEdit(text, changeId, opts) {
-  const lines = text.split("\n");
-  const block = findFootnoteBlock(lines, changeId);
-  if (!block)
-    return null;
-  const date4 = opts.date ?? nowTimestamp().raw;
-  const author = opts.author.startsWith("@") ? opts.author : `@${opts.author}`;
-  const line = `    resolved: ${author} ${date4}`;
-  const offset = lines.slice(0, block.blockEnd + 1).join("\n").length;
-  return { offset, length: 0, newText: "\n" + line };
-}
-function computeUnresolveEdit(text, changeId) {
-  const lines = text.split("\n");
-  const block = findFootnoteBlock(lines, changeId);
-  if (!block)
-    return null;
-  for (let i = block.headerLine + 1; i <= block.blockEnd; i++) {
-    const trimmed = lines[i].trim();
-    if (trimmed.startsWith("resolved:") || trimmed.startsWith("resolved ")) {
-      const linesBefore = lines.slice(0, i).join("\n");
-      const lineOffset2 = linesBefore.length;
-      const lineLength = lines[i].length + 1;
-      return { offset: lineOffset2, length: lineLength, newText: "" };
-    }
-  }
-  return null;
-}
-var init_resolution = __esm({
-  "../../packages/core/dist-esm/operations/resolution.js"() {
-    "use strict";
-    init_footnote_utils();
-    init_timestamp();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/reply.js
-function computeReplyEdit(docText, changeId, opts) {
-  const lines = docText.split("\n");
-  const block = findFootnoteBlock(lines, changeId);
-  if (!block) {
-    return { isError: true, error: `Footnote not found for ${changeId}` };
-  }
-  const date4 = opts.date ?? nowTimestamp().raw;
-  const labelPart = opts.label ? ` [${opts.label}]` : "";
-  const replyLines = opts.text.split("\n");
-  const indent = "    ";
-  const continuationIndent = "      ";
-  const firstLine = `${indent}@${opts.author} ${date4}${labelPart}: ${replyLines[0]}`;
-  const continuationLines = replyLines.slice(1).map((l) => `${continuationIndent}${l}`);
-  const newLines = [firstLine, ...continuationLines];
-  const insertIndex = findDiscussionInsertionIndex(lines, block.headerLine, block.blockEnd) + 1;
-  lines.splice(insertIndex, 0, ...newLines);
-  return { isError: false, text: lines.join("\n") };
-}
-var init_reply = __esm({
-  "../../packages/core/dist-esm/operations/reply.js"() {
-    "use strict";
-    init_footnote_utils();
-    init_timestamp();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/navigation.js
-var init_navigation = __esm({
-  "../../packages/core/dist-esm/operations/navigation.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/operations/tracking.js
-var init_tracking = __esm({
-  "../../packages/core/dist-esm/operations/tracking.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/operations/comment.js
-var init_comment = __esm({
-  "../../packages/core/dist-esm/operations/comment.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/operations/apply-review.js
-function decisionToKeyword(decision) {
-  switch (decision) {
-    case "approve":
-      return "approved:";
-    case "reject":
-      return "rejected:";
-    case "request_changes":
-      return "request-changes:";
-    case "withdraw":
-      return "withdrew:";
-    default: {
-      const _exhaustive = decision;
-      return _exhaustive;
-    }
-  }
-}
-function checkBlocks(lines, block) {
-  const blockers = [];
-  const resolved = /* @__PURE__ */ new Set();
-  for (let i = block.headerLine + 1; i <= block.blockEnd; i++) {
-    const line = lines[i].trim();
-    const colonIdx = line.indexOf(":");
-    if (colonIdx < 1)
-      continue;
-    const keyword = line.slice(0, colonIdx);
-    const authorMatch = line.slice(colonIdx + 1).match(/^\s*@(\S+)/);
-    if (!authorMatch)
-      continue;
-    const author = "@" + authorMatch[1];
-    if (keyword === "blocked")
-      blockers.push(author);
-    else if (keyword === "withdrew" || keyword === "approved")
-      resolved.add(author);
-  }
-  const unresolvedBlockers = blockers.filter((b) => !resolved.has(b));
-  return { blocked: unresolvedBlockers.length > 0, blockers: unresolvedBlockers };
-}
-function promoteLevel0ToLevel2(fileContent, changeId, author) {
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(fileContent);
-  const changes = doc.getChanges();
-  const change = changes.find((c) => c.id === changeId);
-  if (!change) {
-    return null;
-  }
-  if (change.level !== 0) {
-    return null;
-  }
-  const typeAbbrev = changeTypeToAbbrev(change.type);
-  const result = ensureL2(fileContent, change.range.start, { author, type: typeAbbrev });
-  if (!result.promoted) {
-    return null;
-  }
-  return result.text;
-}
-function formatReviewAuthor(author) {
-  return author.startsWith("@") ? author : `@${author}`;
-}
-function applyReview(fileContent, changeId, decision, reasoning, author, config2) {
-  let lines = fileContent.split("\n");
-  let block = findFootnoteBlock(lines, changeId);
-  if (!block) {
-    const promoted = promoteLevel0ToLevel2(fileContent, changeId, author);
-    if (!promoted) {
-      return { error: `Change "${changeId}" not found in file.` };
-    }
-    fileContent = promoted;
-    lines = fileContent.split("\n");
-    block = findFootnoteBlock(lines, changeId);
-    if (!block) {
-      return { error: `Change "${changeId}" not found in file after promotion attempt.` };
-    }
-  }
-  const header = parseFootnoteHeader(lines[block.headerLine]);
-  if (!header) {
-    return {
-      error: `Malformed metadata for change "${changeId}". Expected format: @author | date | type | status`
-    };
-  }
-  const currentStatus = header.status;
-  if (config2 && (decision === "approve" || decision === "reject")) {
-    const acceptCheck = canAccept(author, header.author, config2);
-    if (!acceptCheck.allowed) {
-      return { error: acceptCheck.reason };
-    }
-  }
-  if (decision === "approve" && currentStatus === "accepted") {
-    return {
-      updatedContent: fileContent,
-      result: { change_id: changeId, decision, status_updated: false, reason: "already_accepted" }
-    };
-  }
-  if (decision === "reject" && currentStatus === "rejected") {
-    return {
-      updatedContent: fileContent,
-      result: { change_id: changeId, decision, status_updated: false, reason: "already_rejected" }
-    };
-  }
-  if (decision === "approve") {
-    const blockResult = checkBlocks(lines, block);
-    if (blockResult.blocked) {
-      return { error: `Acceptance blocked by unresolved request-changes from ${blockResult.blockers.join(", ")}` };
-    }
-  }
-  const keyword = decisionToKeyword(decision);
-  const ts = nowTimestamp();
-  const reviewLine = `    ${keyword} ${formatReviewAuthor(author)} ${ts.raw} "${reasoning}"`;
-  const insertAfterIdx = findReviewInsertionIndex(lines, block.headerLine, block.blockEnd);
-  lines.splice(insertAfterIdx + 1, 0, reviewLine);
-  let statusUpdated = false;
-  let reason;
-  if (decision === "approve" && currentStatus === "proposed") {
-    lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*proposed\s*$/, "| accepted");
-    statusUpdated = true;
-  } else if (decision === "reject" && currentStatus === "proposed") {
-    lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*proposed\s*$/, "| rejected");
-    statusUpdated = true;
-  } else if (decision === "reject" && currentStatus === "accepted") {
-    lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*accepted\s*$/, "| rejected");
-    statusUpdated = true;
-  } else if (decision === "approve" && currentStatus === "rejected") {
-    lines[block.headerLine] = lines[block.headerLine].replace(/\|\s*rejected\s*$/, "| accepted");
-    statusUpdated = true;
-  } else if (decision === "request_changes") {
-    reason = "request_changes_no_status_change";
-  }
-  let cascadedChildren;
-  if (statusUpdated && (decision === "approve" || decision === "reject")) {
-    const childIds = findChildFootnoteIds(lines, changeId);
-    if (childIds.length > 0) {
-      cascadedChildren = [];
-      const targetStatus = decision === "approve" ? "accepted" : "rejected";
-      for (const childId of childIds) {
-        const childBlock = findFootnoteBlock(lines, childId);
-        if (!childBlock)
-          continue;
-        const childHeader = parseFootnoteHeader(lines[childBlock.headerLine]);
-        if (!childHeader)
-          continue;
-        if (childHeader.status !== "proposed")
-          continue;
-        lines[childBlock.headerLine] = lines[childBlock.headerLine].replace(/\|\s*proposed\s*$/, `| ${targetStatus}`);
-        const childInsertIdx = findReviewInsertionIndex(lines, childBlock.headerLine, childBlock.blockEnd);
-        const childReviewLine = `    ${keyword} ${formatReviewAuthor(author)} ${ts.raw} "${reasoning}" (cascaded from ${changeId})`;
-        lines.splice(childInsertIdx + 1, 0, childReviewLine);
-        cascadedChildren.push(childId);
-      }
-      if (cascadedChildren.length === 0)
-        cascadedChildren = void 0;
-    }
-  }
-  const result = { change_id: changeId, decision, status_updated: statusUpdated };
-  if (reason) {
-    result.reason = reason;
-  }
-  if (cascadedChildren) {
-    result.cascaded_children = cascadedChildren;
-  }
-  return {
-    updatedContent: lines.join("\n"),
-    result
-  };
-}
-var VALID_DECISIONS;
-var init_apply_review = __esm({
-  "../../packages/core/dist-esm/operations/apply-review.js"() {
-    "use strict";
-    init_parser();
-    init_types();
-    init_footnote_utils();
-    init_timestamp();
-    init_ensure_l2();
-    init_review_permissions();
-    VALID_DECISIONS = ["approve", "reject", "request_changes", "withdraw"];
-  }
-});
-
-// ../../node_modules/xxhash-wasm/esm/xxhash-wasm.js
-async function e() {
-  return (function(t2) {
-    const { exports: { mem: e2, xxh32: n, xxh64: r, init32: i, update32: a, digest32: o, init64: s, update64: u, digest64: c } } = t2;
-    let h = new Uint8Array(e2.buffer);
-    function g(t3, n2) {
-      if (e2.buffer.byteLength < t3 + n2) {
-        const r2 = Math.ceil((t3 + n2 - e2.buffer.byteLength) / 65536);
-        e2.grow(r2), h = new Uint8Array(e2.buffer);
-      }
-    }
-    function f(t3, e3, n2, r2, i2, a2) {
-      g(t3);
-      const o2 = new Uint8Array(t3);
-      return h.set(o2), n2(0, e3), o2.set(h.subarray(0, t3)), { update(e4) {
-        let n3;
-        return h.set(o2), "string" == typeof e4 ? (g(3 * e4.length, t3), n3 = w.encodeInto(e4, h.subarray(t3)).written) : (g(e4.byteLength, t3), h.set(e4, t3), n3 = e4.byteLength), r2(0, t3, n3), o2.set(h.subarray(0, t3)), this;
-      }, digest: () => (h.set(o2), a2(i2(0))) };
-    }
-    function y(t3) {
-      return t3 >>> 0;
-    }
-    const b = 2n ** 64n - 1n;
-    function d(t3) {
-      return t3 & b;
-    }
-    const w = new TextEncoder(), l = 0, p = 0n;
-    function x(t3, e3 = l) {
-      return g(3 * t3.length, 0), y(n(0, w.encodeInto(t3, h).written, e3));
-    }
-    function L(t3, e3 = p) {
-      return g(3 * t3.length, 0), d(r(0, w.encodeInto(t3, h).written, e3));
-    }
-    return { h32: x, h32ToString: (t3, e3 = l) => x(t3, e3).toString(16).padStart(8, "0"), h32Raw: (t3, e3 = l) => (g(t3.byteLength, 0), h.set(t3), y(n(0, t3.byteLength, e3))), create32: (t3 = l) => f(48, t3, i, a, o, y), h64: L, h64ToString: (t3, e3 = p) => L(t3, e3).toString(16).padStart(16, "0"), h64Raw: (t3, e3 = p) => (g(t3.byteLength, 0), h.set(t3), d(r(0, t3.byteLength, e3))), create64: (t3 = p) => f(88, t3, s, u, c, d) };
-  })((await WebAssembly.instantiate(t)).instance);
-}
-var t;
-var init_xxhash_wasm = __esm({
-  "../../node_modules/xxhash-wasm/esm/xxhash-wasm.js"() {
-    t = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 48, 8, 96, 3, 127, 127, 127, 1, 127, 96, 3, 127, 127, 127, 0, 96, 2, 127, 127, 0, 96, 1, 127, 1, 127, 96, 3, 127, 127, 126, 1, 126, 96, 3, 126, 127, 127, 1, 126, 96, 2, 127, 126, 0, 96, 1, 127, 1, 126, 3, 11, 10, 0, 0, 2, 1, 3, 4, 5, 6, 1, 7, 5, 3, 1, 0, 1, 7, 85, 9, 3, 109, 101, 109, 2, 0, 5, 120, 120, 104, 51, 50, 0, 0, 6, 105, 110, 105, 116, 51, 50, 0, 2, 8, 117, 112, 100, 97, 116, 101, 51, 50, 0, 3, 8, 100, 105, 103, 101, 115, 116, 51, 50, 0, 4, 5, 120, 120, 104, 54, 52, 0, 5, 6, 105, 110, 105, 116, 54, 52, 0, 7, 8, 117, 112, 100, 97, 116, 101, 54, 52, 0, 8, 8, 100, 105, 103, 101, 115, 116, 54, 52, 0, 9, 10, 251, 22, 10, 242, 1, 1, 4, 127, 32, 0, 32, 1, 106, 33, 3, 32, 1, 65, 16, 79, 4, 127, 32, 3, 65, 16, 107, 33, 6, 32, 2, 65, 168, 136, 141, 161, 2, 106, 33, 3, 32, 2, 65, 137, 235, 208, 208, 7, 107, 33, 4, 32, 2, 65, 207, 140, 162, 142, 6, 106, 33, 5, 3, 64, 32, 3, 32, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 3, 32, 4, 32, 0, 65, 4, 106, 34, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 4, 32, 2, 32, 0, 65, 4, 106, 34, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 2, 32, 5, 32, 0, 65, 4, 106, 34, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 5, 32, 6, 32, 0, 65, 4, 106, 34, 0, 79, 13, 0, 11, 32, 2, 65, 12, 119, 32, 5, 65, 18, 119, 106, 32, 4, 65, 7, 119, 106, 32, 3, 65, 1, 119, 106, 5, 32, 2, 65, 177, 207, 217, 178, 1, 106, 11, 32, 1, 106, 32, 0, 32, 1, 65, 15, 113, 16, 1, 11, 146, 1, 0, 32, 1, 32, 2, 106, 33, 2, 3, 64, 32, 1, 65, 4, 106, 32, 2, 75, 69, 4, 64, 32, 0, 32, 1, 40, 2, 0, 65, 189, 220, 202, 149, 124, 108, 106, 65, 17, 119, 65, 175, 214, 211, 190, 2, 108, 33, 0, 32, 1, 65, 4, 106, 33, 1, 12, 1, 11, 11, 3, 64, 32, 1, 32, 2, 79, 69, 4, 64, 32, 0, 32, 1, 45, 0, 0, 65, 177, 207, 217, 178, 1, 108, 106, 65, 11, 119, 65, 177, 243, 221, 241, 121, 108, 33, 0, 32, 1, 65, 1, 106, 33, 1, 12, 1, 11, 11, 32, 0, 32, 0, 65, 15, 118, 115, 65, 247, 148, 175, 175, 120, 108, 34, 0, 65, 13, 118, 32, 0, 115, 65, 189, 220, 202, 149, 124, 108, 34, 0, 65, 16, 118, 32, 0, 115, 11, 63, 0, 32, 0, 65, 8, 106, 32, 1, 65, 168, 136, 141, 161, 2, 106, 54, 2, 0, 32, 0, 65, 12, 106, 32, 1, 65, 137, 235, 208, 208, 7, 107, 54, 2, 0, 32, 0, 65, 16, 106, 32, 1, 54, 2, 0, 32, 0, 65, 20, 106, 32, 1, 65, 207, 140, 162, 142, 6, 106, 54, 2, 0, 11, 195, 4, 1, 6, 127, 32, 1, 32, 2, 106, 33, 6, 32, 0, 65, 24, 106, 33, 4, 32, 0, 65, 40, 106, 40, 2, 0, 33, 3, 32, 0, 32, 0, 40, 2, 0, 32, 2, 106, 54, 2, 0, 32, 0, 65, 4, 106, 34, 5, 32, 5, 40, 2, 0, 32, 2, 65, 16, 79, 32, 0, 40, 2, 0, 65, 16, 79, 114, 114, 54, 2, 0, 32, 2, 32, 3, 106, 65, 16, 73, 4, 64, 32, 3, 32, 4, 106, 32, 1, 32, 2, 252, 10, 0, 0, 32, 0, 65, 40, 106, 32, 2, 32, 3, 106, 54, 2, 0, 15, 11, 32, 3, 4, 64, 32, 3, 32, 4, 106, 32, 1, 65, 16, 32, 3, 107, 34, 2, 252, 10, 0, 0, 32, 0, 65, 8, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 12, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 65, 4, 106, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 16, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 65, 8, 106, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 20, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 65, 12, 106, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 40, 106, 65, 0, 54, 2, 0, 32, 1, 32, 2, 106, 33, 1, 11, 32, 1, 32, 6, 65, 16, 107, 77, 4, 64, 32, 6, 65, 16, 107, 33, 8, 32, 0, 65, 8, 106, 40, 2, 0, 33, 2, 32, 0, 65, 12, 106, 40, 2, 0, 33, 3, 32, 0, 65, 16, 106, 40, 2, 0, 33, 5, 32, 0, 65, 20, 106, 40, 2, 0, 33, 7, 3, 64, 32, 2, 32, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 2, 32, 3, 32, 1, 65, 4, 106, 34, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 3, 32, 5, 32, 1, 65, 4, 106, 34, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 5, 32, 7, 32, 1, 65, 4, 106, 34, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 7, 32, 8, 32, 1, 65, 4, 106, 34, 1, 79, 13, 0, 11, 32, 0, 65, 8, 106, 32, 2, 54, 2, 0, 32, 0, 65, 12, 106, 32, 3, 54, 2, 0, 32, 0, 65, 16, 106, 32, 5, 54, 2, 0, 32, 0, 65, 20, 106, 32, 7, 54, 2, 0, 11, 32, 1, 32, 6, 73, 4, 64, 32, 4, 32, 1, 32, 6, 32, 1, 107, 34, 1, 252, 10, 0, 0, 32, 0, 65, 40, 106, 32, 1, 54, 2, 0, 11, 11, 97, 1, 1, 127, 32, 0, 65, 16, 106, 40, 2, 0, 33, 1, 32, 0, 65, 4, 106, 40, 2, 0, 4, 127, 32, 1, 65, 12, 119, 32, 0, 65, 20, 106, 40, 2, 0, 65, 18, 119, 106, 32, 0, 65, 12, 106, 40, 2, 0, 65, 7, 119, 106, 32, 0, 65, 8, 106, 40, 2, 0, 65, 1, 119, 106, 5, 32, 1, 65, 177, 207, 217, 178, 1, 106, 11, 32, 0, 40, 2, 0, 106, 32, 0, 65, 24, 106, 32, 0, 65, 40, 106, 40, 2, 0, 16, 1, 11, 255, 3, 2, 3, 126, 1, 127, 32, 0, 32, 1, 106, 33, 6, 32, 1, 65, 32, 79, 4, 126, 32, 6, 65, 32, 107, 33, 6, 32, 2, 66, 214, 235, 130, 238, 234, 253, 137, 245, 224, 0, 124, 33, 3, 32, 2, 66, 177, 169, 172, 193, 173, 184, 212, 166, 61, 125, 33, 4, 32, 2, 66, 249, 234, 208, 208, 231, 201, 161, 228, 225, 0, 124, 33, 5, 3, 64, 32, 3, 32, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 3, 32, 4, 32, 0, 65, 8, 106, 34, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 4, 32, 2, 32, 0, 65, 8, 106, 34, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 2, 32, 5, 32, 0, 65, 8, 106, 34, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 5, 32, 6, 32, 0, 65, 8, 106, 34, 0, 79, 13, 0, 11, 32, 2, 66, 12, 137, 32, 5, 66, 18, 137, 124, 32, 4, 66, 7, 137, 124, 32, 3, 66, 1, 137, 124, 32, 3, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 4, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 2, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 5, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 5, 32, 2, 66, 197, 207, 217, 178, 241, 229, 186, 234, 39, 124, 11, 32, 1, 173, 124, 32, 0, 32, 1, 65, 31, 113, 16, 6, 11, 134, 2, 0, 32, 1, 32, 2, 106, 33, 2, 3, 64, 32, 2, 32, 1, 65, 8, 106, 79, 4, 64, 32, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 32, 0, 133, 66, 27, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 33, 0, 32, 1, 65, 8, 106, 33, 1, 12, 1, 11, 11, 32, 1, 65, 4, 106, 32, 2, 77, 4, 64, 32, 0, 32, 1, 53, 2, 0, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 23, 137, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 249, 243, 221, 241, 153, 246, 153, 171, 22, 124, 33, 0, 32, 1, 65, 4, 106, 33, 1, 11, 3, 64, 32, 1, 32, 2, 73, 4, 64, 32, 0, 32, 1, 49, 0, 0, 66, 197, 207, 217, 178, 241, 229, 186, 234, 39, 126, 133, 66, 11, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 0, 32, 1, 65, 1, 106, 33, 1, 12, 1, 11, 11, 32, 0, 32, 0, 66, 33, 136, 133, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 34, 0, 32, 0, 66, 29, 136, 133, 66, 249, 243, 221, 241, 153, 246, 153, 171, 22, 126, 34, 0, 32, 0, 66, 32, 136, 133, 11, 77, 0, 32, 0, 65, 8, 106, 32, 1, 66, 214, 235, 130, 238, 234, 253, 137, 245, 224, 0, 124, 55, 3, 0, 32, 0, 65, 16, 106, 32, 1, 66, 177, 169, 172, 193, 173, 184, 212, 166, 61, 125, 55, 3, 0, 32, 0, 65, 24, 106, 32, 1, 55, 3, 0, 32, 0, 65, 32, 106, 32, 1, 66, 249, 234, 208, 208, 231, 201, 161, 228, 225, 0, 124, 55, 3, 0, 11, 244, 4, 2, 3, 127, 4, 126, 32, 1, 32, 2, 106, 33, 5, 32, 0, 65, 40, 106, 33, 4, 32, 0, 65, 200, 0, 106, 40, 2, 0, 33, 3, 32, 0, 32, 0, 41, 3, 0, 32, 2, 173, 124, 55, 3, 0, 32, 2, 32, 3, 106, 65, 32, 73, 4, 64, 32, 3, 32, 4, 106, 32, 1, 32, 2, 252, 10, 0, 0, 32, 0, 65, 200, 0, 106, 32, 2, 32, 3, 106, 54, 2, 0, 15, 11, 32, 3, 4, 64, 32, 3, 32, 4, 106, 32, 1, 65, 32, 32, 3, 107, 34, 2, 252, 10, 0, 0, 32, 0, 65, 8, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 16, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 65, 8, 106, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 24, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 65, 16, 106, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 32, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 65, 24, 106, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 200, 0, 106, 65, 0, 54, 2, 0, 32, 1, 32, 2, 106, 33, 1, 11, 32, 1, 65, 32, 106, 32, 5, 77, 4, 64, 32, 5, 65, 32, 107, 33, 2, 32, 0, 65, 8, 106, 41, 3, 0, 33, 6, 32, 0, 65, 16, 106, 41, 3, 0, 33, 7, 32, 0, 65, 24, 106, 41, 3, 0, 33, 8, 32, 0, 65, 32, 106, 41, 3, 0, 33, 9, 3, 64, 32, 6, 32, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 6, 32, 7, 32, 1, 65, 8, 106, 34, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 7, 32, 8, 32, 1, 65, 8, 106, 34, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 8, 32, 9, 32, 1, 65, 8, 106, 34, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 9, 32, 2, 32, 1, 65, 8, 106, 34, 1, 79, 13, 0, 11, 32, 0, 65, 8, 106, 32, 6, 55, 3, 0, 32, 0, 65, 16, 106, 32, 7, 55, 3, 0, 32, 0, 65, 24, 106, 32, 8, 55, 3, 0, 32, 0, 65, 32, 106, 32, 9, 55, 3, 0, 11, 32, 1, 32, 5, 73, 4, 64, 32, 4, 32, 1, 32, 5, 32, 1, 107, 34, 1, 252, 10, 0, 0, 32, 0, 65, 200, 0, 106, 32, 1, 54, 2, 0, 11, 11, 188, 2, 1, 5, 126, 32, 0, 65, 24, 106, 41, 3, 0, 33, 1, 32, 0, 41, 3, 0, 34, 2, 66, 32, 90, 4, 126, 32, 0, 65, 8, 106, 41, 3, 0, 34, 3, 66, 1, 137, 32, 0, 65, 16, 106, 41, 3, 0, 34, 4, 66, 7, 137, 124, 32, 1, 66, 12, 137, 32, 0, 65, 32, 106, 41, 3, 0, 34, 5, 66, 18, 137, 124, 124, 32, 3, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 4, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 1, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 5, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 5, 32, 1, 66, 197, 207, 217, 178, 241, 229, 186, 234, 39, 124, 11, 32, 2, 124, 32, 0, 65, 40, 106, 32, 2, 66, 31, 131, 167, 16, 6, 11]);
-  }
-});
-
-// ../../packages/core/dist-esm/hashline.js
-function getXXHash() {
-  return globalThis[HASHLINE_KEY] ?? null;
-}
-async function initHashline() {
-  if (!getXXHash()) {
-    globalThis[HASHLINE_KEY] = await e();
-  }
-}
-function stripForHash(line) {
-  return line.replace(/\r$/, "").replace(/\[\^cn-[\w.]+\]/g, "").replace(/\s+/g, "");
-}
-function computeLineHash(idx, line, allLines) {
-  const h = getXXHash();
-  if (!h) {
-    throw new Error("xxhash-wasm not initialized. Call `await initHashline()` or `await ensureHashlineReady()` before using hashline functions.");
-  }
-  const stripped = stripForHash(line);
-  if (stripped.length > 0 || !allLines) {
-    return DICT[h.h32Raw(encoder.encode(stripped)) % HASH_MOD];
-  }
-  let prevNonBlank = "";
-  let distFromPrev = 0;
-  for (let i = idx - 1; i >= 0; i--) {
-    distFromPrev++;
-    const s = stripForHash(allLines[i]);
-    if (s.length > 0) {
-      prevNonBlank = s;
-      break;
-    }
-  }
-  if (distFromPrev === 0)
-    distFromPrev = idx + 1;
-  let nextNonBlank = "";
-  for (let i = idx + 1; i < allLines.length; i++) {
-    const s = stripForHash(allLines[i]);
-    if (s.length > 0) {
-      nextNonBlank = s;
-      break;
-    }
-  }
-  const contextKey = prevNonBlank + "\0" + nextNonBlank + "\0" + distFromPrev;
-  return DICT[h.h32Raw(encoder.encode(contextKey)) % HASH_MOD];
-}
-function validateLineRef(ref, fileLines) {
-  if (ref.line < 1 || ref.line > fileLines.length) {
-    throw new Error(`Line ${ref.line} is out of range (file has ${fileLines.length} lines)`);
-  }
-  const actualHash = computeLineHash(ref.line - 1, fileLines[ref.line - 1], fileLines);
-  if (ref.hash.toLowerCase() !== actualHash.toLowerCase()) {
-    throw new HashlineMismatchError([{ line: ref.line, expected: ref.hash, actual: actualHash }], fileLines);
-  }
-}
-var HASH_LEN, RADIX, HASH_MOD, DICT, encoder, HASHLINE_KEY, ensureHashlineReady, HashlineMismatchError;
-var init_hashline = __esm({
-  "../../packages/core/dist-esm/hashline.js"() {
-    "use strict";
-    init_xxhash_wasm();
-    HASH_LEN = 2;
-    RADIX = 16;
-    HASH_MOD = RADIX ** HASH_LEN;
-    DICT = Array.from({ length: HASH_MOD }, (_, i) => i.toString(RADIX).padStart(HASH_LEN, "0"));
-    encoder = new TextEncoder();
-    HASHLINE_KEY = "__changedown_xxhash__";
-    ensureHashlineReady = initHashline;
-    HashlineMismatchError = class extends Error {
-      constructor(mismatches, fileLines) {
-        const CONTEXT = 2;
-        const remapEntries = mismatches.map((m) => [`${m.line}:${m.expected}`, `${m.line}:${m.actual}`]);
-        const regions = mismatches.map((m) => ({
-          start: Math.max(1, m.line - CONTEXT),
-          end: Math.min(fileLines.length, m.line + CONTEXT)
-        }));
-        const merged = [];
-        for (const region of regions) {
-          if (merged.length > 0 && region.start <= merged[merged.length - 1].end + 1) {
-            merged[merged.length - 1].end = Math.max(merged[merged.length - 1].end, region.end);
-          } else {
-            merged.push({ ...region });
-          }
-        }
-        const mismatchLines = new Set(mismatches.map((m) => m.line));
-        const outputParts = ["Hashline mismatch:"];
-        for (let r = 0; r < merged.length; r++) {
-          if (r > 0) {
-            outputParts.push("...");
-          }
-          const region = merged[r];
-          for (let lineNum = region.start; lineNum <= region.end; lineNum++) {
-            const content = fileLines[lineNum - 1];
-            const prefix = mismatchLines.has(lineNum) ? ">>>" : "   ";
-            outputParts.push(`${prefix} ${lineNum}:${computeLineHash(lineNum - 1, content, fileLines)}|${content}`);
-          }
-        }
-        outputParts.push("");
-        outputParts.push("Quick-fix remaps:");
-        for (const [oldRef, newRef] of remapEntries) {
-          outputParts.push(`  ${oldRef} \u2192 ${newRef}`);
-        }
-        outputParts.push("");
-        outputParts.push("Re-read the file with read_tracked_file to get updated coordinates.");
-        super(outputParts.join("\n"));
-        this.mismatches = mismatches;
-        this.name = "HashlineMismatchError";
-        this.remaps = new Map(remapEntries);
-      }
-    };
-  }
-});
-
-// ../../packages/core/dist-esm/op-parser.js
-function splitReasoning(op) {
-  const idx = op.lastIndexOf("{>>");
-  if (idx <= 0)
-    return [op, void 0];
-  const afterOpen = op.slice(idx + 3);
-  const closeIdx = afterOpen.indexOf("<<}");
-  if (closeIdx !== -1) {
-    const afterClose = afterOpen.slice(closeIdx + 3).trim();
-    if (afterClose.length > 0) {
-      return [op, void 0];
-    }
-    const reasoning2 = afterOpen.slice(0, closeIdx).trimStart();
-    const editPart2 = op.slice(0, idx).trimEnd();
-    if (reasoning2 === "")
-      return [op, void 0];
-    return [editPart2, reasoning2];
-  }
-  const editPart = op.slice(0, idx).trimEnd();
-  const reasoning = afterOpen.trimStart();
-  if (reasoning === "")
-    return [op, void 0];
-  return [editPart, reasoning];
-}
-function extractBetween(text, opener, closer) {
-  if (!text.startsWith(opener))
-    return null;
-  const closerIdx = text.lastIndexOf(closer);
-  if (closerIdx < opener.length)
-    return null;
-  return text.slice(opener.length, closerIdx);
-}
-function parseOp(op) {
-  if (op === "") {
-    throw new Error("Op string is empty \u2014 nothing to parse.");
-  }
-  if (op.startsWith("{>>")) {
-    let reasoning2 = op.slice(3);
-    if (reasoning2.endsWith("<<}")) {
-      reasoning2 = reasoning2.slice(0, -3);
-    }
-    return {
-      type: "comment",
-      oldText: "",
-      newText: "",
-      reasoning: reasoning2
-    };
-  }
-  const [withoutReasoning, reasoning] = splitReasoning(op);
-  const insContent = extractBetween(withoutReasoning, "{++", "++}");
-  if (insContent !== null) {
-    return {
-      type: "ins",
-      oldText: "",
-      newText: insContent,
-      reasoning
-    };
-  }
-  const delContent = extractBetween(withoutReasoning, "{--", "--}");
-  if (delContent !== null) {
-    return {
-      type: "del",
-      oldText: delContent,
-      newText: "",
-      reasoning
-    };
-  }
-  const subContent = extractBetween(withoutReasoning, "{~~", "~~}");
-  if (subContent !== null) {
-    const arrowIdx = subContent.indexOf("~>");
-    if (arrowIdx === -1) {
-      throw new Error(`Cannot parse op: "${op}". Substitution {~~...~~} requires ~> separator between old and new text.`);
-    }
-    const oldText = subContent.slice(0, arrowIdx);
-    const newText = subContent.slice(arrowIdx + 2);
-    return {
-      type: "sub",
-      oldText,
-      newText,
-      reasoning
-    };
-  }
-  const hlContent = extractBetween(withoutReasoning, "{==", "==}");
-  if (hlContent !== null) {
-    return {
-      type: "highlight",
-      oldText: hlContent,
-      newText: "",
-      reasoning
-    };
-  }
-  throw new Error(`Cannot parse op: "${op}". Expected CriticMarkup syntax: {++text++} (ins), {--text--} (del), {~~old~>new~~} (sub), {==text==} (highlight), {>>comment.`);
-}
-var init_op_parser = __esm({
-  "../../packages/core/dist-esm/op-parser.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/hashline-cleanup.js
-function stripHashlinePrefixes(lines) {
-  if (lines.length === 0)
-    return lines;
-  const nonEmptyLines = lines.filter((l) => l.length > 0);
-  if (nonEmptyLines.length === 0)
-    return lines;
-  const hashlineCount = nonEmptyLines.filter((l) => HASHLINE_PREFIX.test(l)).length;
-  if (hashlineCount >= nonEmptyLines.length / 2) {
-    return lines.map((l) => l.replace(HASHLINE_PREFIX, ""));
-  }
-  const diffCount = nonEmptyLines.filter((l) => DIFF_ADD_PREFIX.test(l)).length;
-  if (diffCount >= nonEmptyLines.length / 2) {
-    return lines.map((l) => l.replace(DIFF_ADD_PREFIX, ""));
-  }
-  return lines;
-}
-function relocateHashRef(ref, fileLines, computeHash) {
-  if (fileLines.length === 0)
-    return null;
-  const lineIdx = ref.line - 1;
-  if (lineIdx >= 0 && lineIdx < fileLines.length) {
-    const currentHash = computeHash(lineIdx, fileLines[lineIdx], fileLines);
-    if (currentHash.toLowerCase() === ref.hash.toLowerCase()) {
-      return null;
-    }
-  }
-  const hashToLine = /* @__PURE__ */ new Map();
-  const duplicateHashes = /* @__PURE__ */ new Set();
-  for (let i = 0; i < fileLines.length; i++) {
-    const h = computeHash(i, fileLines[i], fileLines).toLowerCase();
-    if (duplicateHashes.has(h))
-      continue;
-    if (hashToLine.has(h)) {
-      duplicateHashes.add(h);
-      hashToLine.delete(h);
-    } else {
-      hashToLine.set(h, i + 1);
-    }
-  }
-  const targetHash = ref.hash.toLowerCase();
-  const newLine = hashToLine.get(targetHash);
-  if (newLine === void 0) {
-    return null;
-  }
-  return { relocated: true, newLine };
-}
-function relocateHashRefMulti(ref, fileLines, strategies) {
-  const results = [];
-  const targetHash = ref.hash.toLowerCase();
-  for (const strategy of strategies) {
-    let uniqueIdx = -1;
-    let ambiguous = false;
-    for (let i = 0; i < fileLines.length; i++) {
-      const h = strategy.fn(i, fileLines[i]).toLowerCase();
-      if (h === targetHash) {
-        if (uniqueIdx !== -1) {
-          ambiguous = true;
-          break;
-        }
-        uniqueIdx = i;
-      }
-    }
-    if (!ambiguous && uniqueIdx !== -1) {
-      results.push({ newLine: uniqueIdx + 1, strategy: strategy.name });
-    }
-  }
-  if (results.length === 0)
-    return null;
-  const first = results[0];
-  for (let i = 1; i < results.length; i++) {
-    if (results[i].newLine !== first.newLine)
-      return null;
-  }
-  return first;
-}
-function equalsIgnoringWhitespace(a, b) {
-  return a.replace(/\s+/g, "") === b.replace(/\s+/g, "");
-}
-function stripBoundaryEcho(fileLines, startLine, endLine, newLines) {
-  if (newLines.length === 0)
-    return newLines;
-  const originalSpan = endLine - startLine + 1;
-  if (newLines.length <= originalSpan)
-    return newLines;
-  let result = [...newLines];
-  const beforeIdx = startLine - 2;
-  if (beforeIdx >= 0 && result.length > 0) {
-    if (equalsIgnoringWhitespace(result[0], fileLines[beforeIdx])) {
-      result = result.slice(1);
-    }
-  }
-  const afterIdx = endLine;
-  if (afterIdx < fileLines.length && result.length > 0) {
-    if (equalsIgnoringWhitespace(result[result.length - 1], fileLines[afterIdx])) {
-      result = result.slice(0, -1);
-    }
-  }
-  return result;
-}
-var HASHLINE_PREFIX, DIFF_ADD_PREFIX;
-var init_hashline_cleanup = __esm({
-  "../../packages/core/dist-esm/hashline-cleanup.js"() {
-    "use strict";
-    HASHLINE_PREFIX = /^\d+:[0-9a-zA-Z]{1,16}\|/;
-    DIFF_ADD_PREFIX = /^\+(?!\+)/;
-  }
-});
-
-// ../../packages/core/dist-esm/parser/contextual-edit-op.js
-function parseContextualEditOp(opString) {
-  let opStart = -1;
-  let opener = "";
-  for (const o of Object.keys(CM_OPENERS)) {
-    const idx = opString.indexOf(o);
-    if (idx !== -1 && (opStart === -1 || idx < opStart)) {
-      opStart = idx;
-      opener = o;
-    }
-  }
-  if (opStart === -1)
-    return null;
-  const contextBefore = opString.slice(0, opStart);
-  const expectedCloser = CM_OPENERS[opener];
-  let opEnd = -1;
-  if (opener === "{~~") {
-    const searchFrom = opStart + opener.length;
-    const closerIdx = opString.lastIndexOf("~~}");
-    opEnd = closerIdx >= searchFrom ? closerIdx + 3 : -1;
-  } else if (opener === "{>>") {
-    const searchFrom = opStart + opener.length;
-    const closerIdx = opString.indexOf("<<}", searchFrom);
-    if (closerIdx !== -1) {
-      opEnd = closerIdx + 3;
-    } else {
-      opEnd = opString.length;
-    }
-  } else {
-    const searchFrom = opStart + opener.length;
-    const closerIdx = opString.indexOf(expectedCloser, searchFrom);
-    opEnd = closerIdx !== -1 ? closerIdx + expectedCloser.length : -1;
-  }
-  if (opEnd === -1)
-    return null;
-  const extractedOp = opString.slice(opStart, opEnd);
-  const contextAfter = opString.slice(opEnd);
-  if (contextBefore.trim() === "" && contextAfter.trim() === "")
-    return null;
-  if (contextBefore.trim() === "" && contextAfter.trimStart().startsWith("@ctx:"))
-    return null;
-  if (contextBefore.trim() === "" && contextAfter.trimStart().startsWith("{>>"))
-    return null;
-  return { contextBefore, opString: extractedOp, contextAfter };
-}
-var CM_OPENERS;
-var init_contextual_edit_op = __esm({
-  "../../packages/core/dist-esm/parser/contextual-edit-op.js"() {
-    "use strict";
-    CM_OPENERS = {
-      "{++": "++}",
-      "{--": "--}",
-      "{~~": "~~}",
-      "{==": "==}",
-      "{>>": "<<}"
-      // optional closer for comments
-    };
-  }
-});
-
-// ../../packages/core/dist-esm/parser/footnote-block-parser.js
-function parseApprovalLine(match) {
-  return {
-    author: match[1],
-    date: match[2],
-    timestamp: parseTimestamp(match[2]),
-    reason: match[3] || void 0
-  };
-}
-function parseFootnoteBlock(lines, startLineOffset = 0) {
-  const footnotes = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    if (!FOOTNOTE_DEF_START.test(line)) {
-      i++;
-      continue;
-    }
-    const idMatch = line.match(/^\[\^(cn-[\w.]+)\]:/);
-    const headerRaw = parseFootnoteHeader(line);
-    if (!idMatch || !headerRaw) {
-      i++;
-      continue;
-    }
-    const id = idMatch[1];
-    const header = {
-      author: "@" + headerRaw.author,
-      date: headerRaw.date,
-      type: headerRaw.type,
-      status: headerRaw.status
-    };
-    const startLine = i;
-    i++;
-    const bodyLines = [];
-    let editOp = null;
-    let reason;
-    let context;
-    const discussion = [];
-    const approvals = [];
-    const rejections = [];
-    const requestChanges = [];
-    const revisions = [];
-    let inRevisions = false;
-    let resolution = null;
-    let imageMetadata;
-    let equationMetadata;
-    let supersedesTarget;
-    const supersededByTargets = [];
-    while (i < lines.length) {
-      const body = lines[i];
-      if (FOOTNOTE_DEF_START.test(body))
-        break;
-      if (body.length > 0 && body.trim() !== "" && !body.startsWith("    "))
-        break;
-      if (body === "" || body.trim() === "") {
-        bodyLines.push({ kind: "blank", raw: "" });
-        i++;
-        continue;
-      }
-      const opMatch = body.match(FOOTNOTE_L3_EDIT_OP);
-      if (opMatch && !editOp) {
-        const lineNumber = parseInt(opMatch[1], 10);
-        const hash2 = opMatch[2].toLowerCase();
-        const opString = opMatch[3];
-        let op = opString;
-        let contextBefore;
-        let contextAfter;
-        try {
-          const ctx = parseContextualEditOp(opString);
-          if (ctx) {
-            op = ctx.opString;
-            contextBefore = ctx.contextBefore;
-            contextAfter = ctx.contextAfter;
-          }
-        } catch {
-        }
-        if (contextBefore !== void 0 && contextAfter !== void 0) {
-          editOp = { resolutionPath: "context", lineNumber, hash: hash2, op, contextBefore, contextAfter };
-        } else {
-          editOp = { resolutionPath: "hash", lineNumber, hash: hash2, op };
-        }
-        bodyLines.push({ kind: "edit-op", editOp, raw: body });
-        i++;
-        continue;
-      }
-      const reasonMatch = body.match(REASON_RE);
-      if (reasonMatch) {
-        const text = reasonMatch[1];
-        if (reason === void 0)
-          reason = text;
-        bodyLines.push({ kind: "reason", text, raw: body });
-        i++;
-        continue;
-      }
-      const contextMatch = body.match(CONTEXT_RE);
-      if (contextMatch) {
-        const text = contextMatch[1];
-        if (context === void 0)
-          context = text;
-        bodyLines.push({ kind: "context", text, raw: body });
-        i++;
-        continue;
-      }
-      if (FOOTNOTE_THREAD_REPLY.test(body)) {
-        const replyMatch = body.match(/^\s+@(\S+)\s+(\S+)(?:\s+\[([^\]]+)\])?:\s*(.*)$/);
-        if (replyMatch) {
-          const reply = {
-            author: replyMatch[1],
-            date: replyMatch[2],
-            label: replyMatch[3] ?? void 0,
-            // group 3: optional [label]
-            timestamp: parseTimestamp(replyMatch[2]),
-            text: replyMatch[4],
-            // group 4: text (shifted from group 3)
-            depth: 0
-          };
-          discussion.push(reply);
-          bodyLines.push({ kind: "discussion", reply, raw: body });
-          i++;
-          continue;
-        }
-      }
-      const approvedMatch = body.match(APPROVED_RE);
-      if (approvedMatch) {
-        const action = parseApprovalLine(approvedMatch);
-        approvals.push(action);
-        bodyLines.push({ kind: "approval", action, raw: body });
-        i++;
-        continue;
-      }
-      const rejectedMatch = body.match(REJECTED_RE);
-      if (rejectedMatch) {
-        const action = parseApprovalLine(rejectedMatch);
-        rejections.push(action);
-        bodyLines.push({ kind: "rejection", action, raw: body });
-        i++;
-        continue;
-      }
-      const requestChangesMatch = body.match(REQUEST_CHANGES_RE);
-      if (requestChangesMatch) {
-        const action = parseApprovalLine(requestChangesMatch);
-        requestChanges.push(action);
-        bodyLines.push({ kind: "request-changes", action, raw: body });
-        i++;
-        continue;
-      }
-      if (body.trim() === "revisions:") {
-        inRevisions = true;
-        bodyLines.push({ kind: "revisions-header", raw: body });
-        i++;
-        continue;
-      }
-      if (inRevisions) {
-        const revMatch = body.match(REVISION_RE);
-        if (revMatch) {
-          const rev = {
-            label: revMatch[1],
-            author: revMatch[2],
-            date: revMatch[3],
-            timestamp: parseTimestamp(revMatch[3]),
-            text: revMatch[4]
-          };
-          revisions.push(rev);
-          bodyLines.push({ kind: "revision", revision: rev, raw: body });
-          i++;
-          continue;
-        }
-        inRevisions = false;
-      }
-      const resolvedMatch = body.match(RESOLVED_RE);
-      if (resolvedMatch) {
-        const res = {
-          type: "resolved",
-          author: resolvedMatch[1],
-          date: resolvedMatch[2],
-          timestamp: parseTimestamp(resolvedMatch[2]),
-          reason: resolvedMatch[3] || void 0
-        };
-        if (!resolution)
-          resolution = res;
-        bodyLines.push({ kind: "resolution", resolution: res, raw: body });
-        i++;
-        continue;
-      }
-      const openMatch = body.match(OPEN_RE);
-      if (openMatch) {
-        const res = { type: "open", reason: openMatch[1] || void 0 };
-        if (!resolution)
-          resolution = res;
-        bodyLines.push({ kind: "resolution", resolution: res, raw: body });
-        i++;
-        continue;
-      }
-      const supersedesMatch = body.match(SUPERSEDES_RE);
-      if (supersedesMatch) {
-        const target = supersedesMatch[1];
-        if (supersedesTarget === void 0)
-          supersedesTarget = target;
-        bodyLines.push({ kind: "supersedes", target, raw: body });
-        i++;
-        continue;
-      }
-      const supersededByMatch = body.match(SUPERSEDED_BY_RE);
-      if (supersededByMatch) {
-        const target = supersededByMatch[1];
-        supersededByTargets.push(target);
-        bodyLines.push({ kind: "superseded-by", target, raw: body });
-        i++;
-        continue;
-      }
-      const imgMatch = body.match(IMAGE_META_RE);
-      if (imgMatch) {
-        imageMetadata = imageMetadata ?? {};
-        imageMetadata[imgMatch[1]] = imgMatch[2].trim();
-        bodyLines.push({ kind: "image-meta", key: imgMatch[1], value: imgMatch[2].trim(), raw: body });
-        i++;
-        continue;
-      }
-      const eqMatch = body.match(EQUATION_META_RE);
-      if (eqMatch) {
-        equationMetadata = equationMetadata ?? {};
-        equationMetadata[eqMatch[1]] = eqMatch[2].trim();
-        bodyLines.push({ kind: "equation-meta", key: eqMatch[1], value: eqMatch[2].trim(), raw: body });
-        i++;
-        continue;
-      }
-      bodyLines.push({ kind: "unknown", raw: body });
-      i++;
-    }
-    const endLine = i - 1;
-    footnotes.push({
-      id,
-      header,
-      editOp,
-      bodyLines,
-      reason,
-      context,
-      discussion,
-      approvals,
-      rejections,
-      requestChanges,
-      revisions,
-      resolution,
-      imageMetadata: imageMetadata ? Object.freeze(imageMetadata) : void 0,
-      equationMetadata: equationMetadata ? Object.freeze(equationMetadata) : void 0,
-      supersedes: supersedesTarget,
-      supersededBy: Object.freeze(supersededByTargets),
-      sourceRange: { startLine: startLineOffset + startLine, endLine: startLineOffset + endLine }
-    });
-  }
-  return footnotes;
-}
-var APPROVED_RE, REJECTED_RE, REQUEST_CHANGES_RE, REVISION_RE, REASON_RE, CONTEXT_RE, RESOLVED_RE, OPEN_RE, SUPERSEDES_RE, SUPERSEDED_BY_RE, IMAGE_META_RE, EQUATION_META_RE;
-var init_footnote_block_parser = __esm({
-  "../../packages/core/dist-esm/parser/footnote-block-parser.js"() {
-    "use strict";
-    init_timestamp();
-    init_footnote_patterns();
-    init_footnote_utils();
-    init_contextual_edit_op();
-    APPROVED_RE = /^ {4}approved:\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?/;
-    REJECTED_RE = /^ {4}rejected:\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?/;
-    REQUEST_CHANGES_RE = /^ {4}request-changes:\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?/;
-    REVISION_RE = /^ {4,}(r\d+)\s+(@?\S+)\s+(\S+):\s+"([^"]*)"$/;
-    REASON_RE = /^ {4}reason:\s+(.*)$/;
-    CONTEXT_RE = /^ {4}context:\s+(.*)$/;
-    RESOLVED_RE = /^ {4}resolved:\s+(\S+)\s+(\S+)(?:\s+"([^"]*)")?/;
-    OPEN_RE = /^ {4}open(?:\s+--\s+(.*))?$/;
-    SUPERSEDES_RE = /^ {4}supersedes:\s+(\S+)\s*$/;
-    SUPERSEDED_BY_RE = /^ {4}superseded-by:\s+(\S+)\s*$/;
-    IMAGE_META_RE = /^ {4}(image-[\w-]+):\s*(.*)$/;
-    EQUATION_META_RE = /^ {4}(equation-[\w-]+):\s*(.*)$/;
-  }
-});
-
-// ../../packages/core/dist-esm/text-normalizer.js
-function defaultNormalizer(text) {
-  return text.normalize("NFKC");
-}
-function normalizedIndexOf(text, target, normalizer, startFrom) {
-  const norm = normalizer ?? defaultNormalizer;
-  const normalizedText = norm(text);
-  const normalizedTarget = norm(target);
-  return normalizedText.indexOf(normalizedTarget, startFrom ?? 0);
-}
-function collapseWhitespace(text) {
-  return text.replace(/\s+/g, " ");
-}
-function buildWhitespaceCollapseMap(original) {
-  const map2 = [];
-  let oi = 0;
-  while (oi < original.length) {
-    if (/\s/.test(original[oi])) {
-      map2.push(oi);
-      while (oi < original.length && /\s/.test(original[oi])) {
-        oi++;
-      }
-    } else {
-      map2.push(oi);
-      oi++;
-    }
-  }
-  map2.push(oi);
-  return map2;
-}
-function whitespaceCollapsedFind(text, target, startFrom) {
-  const collapsedText = collapseWhitespace(text);
-  const collapsedTarget = collapseWhitespace(target);
-  if (collapsedTarget.length === 0)
-    return null;
-  const map2 = buildWhitespaceCollapseMap(text);
-  let collapsedStartFrom = 0;
-  if (startFrom !== void 0 && startFrom > 0) {
-    for (let ci = 0; ci < map2.length; ci++) {
-      if (map2[ci] >= startFrom) {
-        collapsedStartFrom = ci;
-        break;
-      }
-    }
-  }
-  const collapsedIdx = collapsedText.indexOf(collapsedTarget, collapsedStartFrom);
-  if (collapsedIdx === -1)
-    return null;
-  const originalStart = map2[collapsedIdx];
-  const collapsedEnd = collapsedIdx + collapsedTarget.length;
-  const originalEnd = map2[collapsedEnd];
-  return {
-    index: originalStart,
-    length: originalEnd - originalStart,
-    originalText: text.slice(originalStart, originalEnd)
-  };
-}
-function whitespaceCollapsedIsAmbiguous(text, target) {
-  const first = whitespaceCollapsedFind(text, target);
-  if (!first)
-    return false;
-  const second = whitespaceCollapsedFind(text, target, first.index + 1);
-  return second !== null;
-}
-function unicodeName(codepoint) {
-  return UNICODE_NAMES[codepoint] ?? `U+${codepoint.toString(16).toUpperCase().padStart(4, "0")}`;
-}
-function diagnosticConfusableNormalize(text) {
-  let result = text;
-  for (const [codepoint, entry] of CONFUSABLE_MAP) {
-    const char = String.fromCodePoint(codepoint);
-    result = result.split(char).join(entry.replacement);
-  }
-  return result;
-}
-function findConfusableDifferences(agentText, fileText) {
-  const diffs = [];
-  const len = Math.min(agentText.length, fileText.length);
-  for (let i = 0; i < len; i++) {
-    if (agentText[i] !== fileText[i]) {
-      const agentCp = agentText.codePointAt(i);
-      const fileCp = fileText.codePointAt(i);
-      diffs.push({
-        position: i,
-        agentChar: agentText[i],
-        fileChar: fileText[i],
-        agentCodepoint: agentCp,
-        fileCodepoint: fileCp,
-        agentName: unicodeName(agentCp),
-        fileName: unicodeName(fileCp)
-      });
-    }
-  }
-  return diffs;
-}
-function tryDiagnosticConfusableMatch(documentText, target) {
-  const normDoc = diagnosticConfusableNormalize(documentText);
-  const normTarget = diagnosticConfusableNormalize(target);
-  const normIdx = normDoc.indexOf(normTarget);
-  if (normIdx === -1)
-    return null;
-  if (normDoc.indexOf(normTarget, normIdx + 1) !== -1)
-    return null;
-  const matchedText = documentText.slice(normIdx, normIdx + target.length);
-  const diffs = findConfusableDifferences(target, matchedText);
-  return diffs.length > 0 ? { matchedText, differences: diffs } : null;
-}
-var CONFUSABLE_MAP, UNICODE_NAMES;
-var init_text_normalizer = __esm({
-  "../../packages/core/dist-esm/text-normalizer.js"() {
-    "use strict";
-    CONFUSABLE_MAP = /* @__PURE__ */ new Map([
-      [8216, { replacement: "'", name: "LEFT SINGLE QUOTATION MARK" }],
-      [8217, { replacement: "'", name: "RIGHT SINGLE QUOTATION MARK" }],
-      [8218, { replacement: "'", name: "SINGLE LOW-9 QUOTATION MARK" }],
-      [8220, { replacement: '"', name: "LEFT DOUBLE QUOTATION MARK" }],
-      [8221, { replacement: '"', name: "RIGHT DOUBLE QUOTATION MARK" }],
-      [8222, { replacement: '"', name: "DOUBLE LOW-9 QUOTATION MARK" }],
-      [8212, { replacement: "-", name: "EM DASH" }],
-      [8211, { replacement: "-", name: "EN DASH" }]
-    ]);
-    UNICODE_NAMES = {
-      32: "SPACE",
-      45: "HYPHEN-MINUS",
-      34: "QUOTATION MARK",
-      39: "APOSTROPHE",
-      46: "FULL STOP",
-      8216: "LEFT SINGLE QUOTATION MARK",
-      8217: "RIGHT SINGLE QUOTATION MARK",
-      8218: "SINGLE LOW-9 QUOTATION MARK",
-      8220: "LEFT DOUBLE QUOTATION MARK",
-      8221: "RIGHT DOUBLE QUOTATION MARK",
-      8222: "DOUBLE LOW-9 QUOTATION MARK",
-      8211: "EN DASH",
-      8212: "EM DASH"
-    };
-  }
-});
-
-// ../../packages/core/dist-esm/operations/l2-to-l3.js
-function buildLineStarts(text) {
-  const starts = [0];
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === "\n")
-      starts.push(i + 1);
-  }
-  return starts;
-}
-function offsetToLineNumber(lineStarts, offset) {
-  let lo = 0;
-  let hi = lineStarts.length - 1;
-  while (lo < hi) {
-    const mid = lo + hi + 1 >> 1;
-    if (lineStarts[mid] <= offset)
-      lo = mid;
-    else
-      hi = mid - 1;
-  }
-  return lo + 1;
-}
-var init_l2_to_l3 = __esm({
-  "../../packages/core/dist-esm/operations/l2-to-l3.js"() {
-    "use strict";
-    init_types();
-    init_parser();
-    init_hashline();
-    init_footnote_patterns();
-    init_footnote_generator();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/scrub.js
-function stripLineHashPrefix(line) {
-  return line.replace(/^\s*\d+:[a-f0-9]+\s*/, "");
-}
-function isParticipating(op) {
-  return op.status !== "rejected" && op.type !== "highlight" && op.type !== "comment";
-}
-function extractOpTexts(opString) {
-  const ctxParsed = parseContextualEditOp(opString);
-  const parsed = parseOp(ctxParsed ? ctxParsed.opString : opString);
-  return { modifiedText: parsed.newText, originalText: parsed.oldText };
-}
-function searchInLineWindow(lines, targetIdx, searchText, maxDelta) {
-  for (let delta = 0; delta <= maxDelta; delta++) {
-    const deltas = delta === 0 ? [0] : [-delta, delta];
-    for (const d of deltas) {
-      const searchIdx = targetIdx + d;
-      if (searchIdx < 0 || searchIdx >= lines.length)
-        continue;
-      const match = tryFindUniqueMatch(lines[searchIdx], searchText);
-      if (match)
-        return { lineIdx: searchIdx, match };
-    }
-  }
-  return null;
-}
-function applySplice(body, op, offset, direction) {
-  if (direction === "apply") {
-    if (op.type === "insertion")
-      return body.slice(0, offset) + op.modifiedText + body.slice(offset);
-    if (op.type === "deletion")
-      return body.slice(0, offset) + body.slice(offset + op.originalText.length);
-    if (op.type === "substitution")
-      return body.slice(0, offset) + op.modifiedText + body.slice(offset + op.originalText.length);
-  } else {
-    if (op.type === "insertion")
-      return body.slice(0, offset) + body.slice(offset + op.modifiedText.length);
-    if (op.type === "deletion")
-      return body.slice(0, offset) + op.originalText + body.slice(offset);
-    if (op.type === "substitution")
-      return body.slice(0, offset) + op.originalText + body.slice(offset + op.modifiedText.length);
-  }
-  return body;
-}
-function buildSearchTarget(op, parsed) {
-  return op.type === "deletion" ? parsed.contextBefore + parsed.contextAfter : parsed.contextBefore + op.modifiedText + parsed.contextAfter;
-}
-function scrubBackward(body, operations) {
-  const positions = /* @__PURE__ */ new Map();
-  let currentBody = body;
-  const participating = operations.filter(isParticipating);
-  for (let i = participating.length - 1; i >= 0; i--) {
-    const op = participating[i];
-    const stripped = stripLineHashPrefix(op.editOpLine);
-    const parsed = parseContextualEditOp(stripped);
-    const lines = currentBody.split("\n");
-    const lineStarts = buildLineStarts(currentBody);
-    const targetLineIdx = Math.min(Math.max(op.lineNumber - 1, 0), lines.length - 1);
-    let offset = -1;
-    let resolved = false;
-    if (parsed) {
-      const hit = searchInLineWindow(lines, targetLineIdx, buildSearchTarget(op, parsed), MAX_DELTA);
-      if (hit) {
-        offset = lineStarts[hit.lineIdx] + hit.match.index + parsed.contextBefore.length;
-        resolved = true;
-      }
-    }
-    if (!resolved && !parsed && op.modifiedText && (op.type === "insertion" || op.type === "substitution")) {
-      const hit = searchInLineWindow(lines, targetLineIdx, op.modifiedText, MAX_DELTA);
-      if (hit) {
-        offset = lineStarts[hit.lineIdx] + hit.match.index;
-        resolved = true;
-      }
-    }
-    positions.set(op.id, { offset, lineIdx: targetLineIdx, resolved });
-    if (resolved) {
-      currentBody = applySplice(currentBody, op, offset, "unapply");
-    }
-  }
-  return { body0: currentBody, positions };
-}
-function scrubForward(body0, operations, positions) {
-  const anchors = /* @__PURE__ */ new Map();
-  const consumption = /* @__PURE__ */ new Map();
-  const activeSpans = /* @__PURE__ */ new Map();
-  let currentBody = body0;
-  const participating = operations.filter(isParticipating);
-  for (const op of participating) {
-    const pos = positions.get(op.id);
-    if (!pos || !pos.resolved)
-      continue;
-    const offset = pos.offset;
-    let targetStart = offset;
-    let targetEnd = offset;
-    if (op.type === "deletion" || op.type === "substitution") {
-      targetEnd = offset + op.originalText.length;
-    }
-    if (op.type === "deletion" || op.type === "substitution") {
-      for (const [earlierId, span] of activeSpans) {
-        if (span.start >= targetStart && span.end <= targetEnd) {
-          consumption.set(earlierId, { consumedBy: op.id, type: "full" });
-        } else if (span.start < targetEnd && span.end > targetStart) {
-          consumption.set(earlierId, { consumedBy: op.id, type: "partial" });
-        }
-      }
-    }
-    currentBody = applySplice(currentBody, op, offset, "apply");
-    const lines = currentBody.split("\n");
-    const lineStarts = buildLineStarts(currentBody);
-    const lineIdx = offsetToLineNumber(lineStarts, offset) - 1;
-    const lineContent = lines[lineIdx] ?? "";
-    const hash2 = computeLineHash(lineIdx, lineContent, lines);
-    const lineStartOff = lineIdx > 0 ? lineStarts[lineIdx] : 0;
-    const column = offset - lineStartOff;
-    const anchorLen = op.type === "insertion" || op.type === "substitution" ? op.modifiedText.length : 0;
-    const changeType = op.type === "insertion" ? ChangeType.Insertion : op.type === "deletion" ? ChangeType.Deletion : ChangeType.Substitution;
-    const freshAnchor = buildContextualL3EditOp({
-      changeType,
-      originalText: op.originalText,
-      currentText: op.modifiedText,
-      lineContent,
-      lineNumber: lineIdx + 1,
-      hash: hash2,
-      column,
-      anchorLen
-    });
-    anchors.set(op.id, freshAnchor);
-    const spanStart = offset;
-    let spanEnd = offset;
-    if (op.type === "insertion")
-      spanEnd = offset + op.modifiedText.length;
-    else if (op.type === "substitution")
-      spanEnd = offset + op.modifiedText.length;
-    activeSpans.set(op.id, { start: spanStart, end: spanEnd });
-    const lengthDelta = (op.type === "insertion" ? op.modifiedText.length : 0) - (op.type === "deletion" ? op.originalText.length : 0) + (op.type === "substitution" ? op.modifiedText.length - op.originalText.length : 0);
-    if (lengthDelta !== 0) {
-      for (const [id, span] of activeSpans) {
-        if (id === op.id)
-          continue;
-        if (span.start > offset) {
-          span.start += lengthDelta;
-          span.end += lengthDelta;
-        }
-      }
-    }
-  }
-  return { anchors, consumption, finalPositions: activeSpans, finalBody: currentBody };
-}
-function resolveReplayFromParsedFootnotes(bodyText, footnotes) {
-  const operations = [];
-  for (const fn of footnotes) {
-    if (!fn.editOpLine || fn.lineNumber === void 0 || !fn.hash)
-      continue;
-    const opType = ABBREV_TO_TYPE[fn.type] ?? fn.type;
-    let modifiedText = "";
-    let originalText = "";
-    if (fn.opString) {
-      try {
-        ({ modifiedText, originalText } = extractOpTexts(fn.opString));
-      } catch {
-      }
-    }
-    operations.push({
-      id: fn.id,
-      type: opType,
-      modifiedText,
-      originalText,
-      editOpLine: fn.editOpLine,
-      lineNumber: fn.lineNumber,
-      hash: fn.hash,
-      status: fn.status
-    });
-  }
-  const active = operations.filter(isParticipating);
-  if (active.length === 0) {
-    return {
-      freshAnchors: /* @__PURE__ */ new Map(),
-      consumption: /* @__PURE__ */ new Map(),
-      finalPositions: /* @__PURE__ */ new Map()
-    };
-  }
-  const backward = scrubBackward(bodyText, active);
-  const forward = scrubForward(backward.body0, active, backward.positions);
-  return {
-    freshAnchors: forward.anchors,
-    consumption: forward.consumption,
-    finalPositions: forward.finalPositions
-  };
-}
-var MAX_DELTA, ABBREV_TO_TYPE;
-var init_scrub = __esm({
-  "../../packages/core/dist-esm/operations/scrub.js"() {
-    "use strict";
-    init_file_ops();
-    init_contextual_edit_op();
-    init_hashline();
-    init_footnote_generator();
-    init_l2_to_l3();
-    init_types();
-    init_footnote_patterns();
-    init_footnote_utils();
-    init_op_parser();
-    init_format_aware_parse();
-    MAX_DELTA = 5;
-    ABBREV_TO_TYPE = {
-      ins: "insertion",
-      del: "deletion",
-      sub: "substitution",
-      hig: "highlight",
-      com: "comment"
-    };
-  }
-});
-
-// ../../packages/core/dist-esm/comment-syntax.js
-function lineOffset(lines, lineIndex) {
-  let offset = 0;
-  for (let i = 0; i < lineIndex; i++) {
-    offset += lines[i].length + 1;
-  }
-  return offset;
-}
-var init_comment_syntax = __esm({
-  "../../packages/core/dist-esm/comment-syntax.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/parser/footnote-native-parser.js
-function metadataFromUnknownLines(lines) {
-  const result = {};
-  for (const line of lines) {
-    const match = /^\s*([^:]+):\s*(.*)$/.exec(line);
-    if (match)
-      result[match[1].trim()] = match[2].trim();
-  }
-  return result;
-}
-function isDocumentScopeAcceptedInsertion(fn) {
-  const metadata = metadataFromUnknownLines(fn.unknownBodyLines ?? []);
-  return fn.type === "ins" && fn.status === "accepted" && fn.author === "@base-document" && fn.lineNumber === void 0 && fn.hash === void 0 && fn.opString === void 0 && metadata.source === "initial-word-body" && metadata.scope === "document" && metadata["body-hash"] !== void 0;
-}
-function isRejectedSupersededArchivalRecord(fn) {
-  return fn.status === "rejected" && (fn.supersededBy?.length ?? 0) > 0;
-}
-function toChangeDownRecord(fn) {
-  const bodyLines = fn.unknownBodyLines ?? [];
-  return {
-    id: fn.id,
-    author: fn.author,
-    date: fn.date,
-    type: fn.type,
-    status: fn.status,
-    reviewable: false,
-    metadata: metadataFromUnknownLines(bodyLines),
-    bodyLines
-  };
-}
-function parseDeletionContext(opString) {
-  const closerIdx = opString.indexOf("--}");
-  if (closerIdx < 0)
-    return null;
-  const remainder = opString.slice(closerIdx + 3);
-  const match = remainder.match(CTX_RE);
-  if (!match)
-    return null;
-  return { before: unescapeCtxString(match[1]), after: unescapeCtxString(match[2]) };
-}
-function truncate(s, n) {
-  return s.length > n ? s.slice(0, n) + "\u2026" : s;
-}
-var FootnoteNativeParser;
-var init_footnote_native_parser = __esm({
-  "../../packages/core/dist-esm/parser/footnote-native-parser.js"() {
-    "use strict";
-    init_types();
-    init_document();
-    init_op_parser();
-    init_timestamp();
-    init_hashline();
-    init_hashline_cleanup();
-    init_footnote_patterns();
-    init_footnote_block_parser();
-    init_file_ops();
-    init_text_normalizer();
-    init_scrub();
-    init_comment_syntax();
-    init_contextual_edit_op();
-    FootnoteNativeParser = class {
-      constructor() {
-        this.pendingDiagnostics = [];
-      }
-      parse(text) {
-        this.pendingDiagnostics = [];
-        const lines = text.split("\n");
-        const { bodyLines, footnoteLines } = splitBodyAndFootnotes(lines);
-        const footnotes = this.parseFootnotes(lines);
-        if (footnotes.length === 0) {
-          const emptyDoc = new VirtualDocument([]);
-          for (const d of this.pendingDiagnostics)
-            emptyDoc.addDiagnostic(d);
-          return emptyDoc;
-        }
-        const records = footnotes.filter(isDocumentScopeAcceptedInsertion).map(toChangeDownRecord);
-        const recordIds = new Set(records.map((record2) => record2.id));
-        const reviewableFootnotes = footnotes.filter((fn) => !recordIds.has(fn.id));
-        const changes = this.resolveChanges(reviewableFootnotes, bodyLines);
-        let freshAnchors = /* @__PURE__ */ new Map();
-        if (changes.some((c) => c.resolved === false)) {
-          try {
-            const bodyText = bodyLines.join("\n");
-            const replayFootnotes = reviewableFootnotes.map((fn) => ({
-              id: fn.id,
-              type: fn.type,
-              status: fn.status,
-              lineNumber: fn.lineNumber,
-              hash: fn.hash,
-              opString: fn.opString,
-              editOpLine: fn.opString && fn.lineNumber !== void 0 && fn.hash ? `    ${fn.lineNumber}:${fn.hash} ${fn.opString}` : void 0
-            }));
-            const replay = resolveReplayFromParsedFootnotes(bodyText, replayFootnotes);
-            for (const node of changes) {
-              if (node.resolved !== false)
-                continue;
-              const finalPos = replay.finalPositions.get(node.id);
-              const isConsumed = replay.consumption.has(node.id);
-              if (finalPos && !isConsumed) {
-                node.resolved = true;
-                node.range = { start: finalPos.start, end: finalPos.end };
-                node.contentRange = { ...node.range };
-                node.resolutionPath = "replay";
-                this.pendingDiagnostics = this.pendingDiagnostics.filter((d) => d.changeId !== node.id);
-              }
-              const freshAnchor = replay.freshAnchors.get(node.id);
-              if (freshAnchor)
-                node.freshAnchor = freshAnchor;
-              const consumed = replay.consumption.get(node.id);
-              if (consumed) {
-                node.consumedBy = consumed.consumedBy;
-                node.consumptionType = consumed.type;
-                if (node.footnoteLineRange) {
-                  const start = lineOffset(lines, node.footnoteLineRange.startLine);
-                  const end = lineOffset(lines, node.footnoteLineRange.endLine) + lines[node.footnoteLineRange.endLine].length;
-                  node.range = { start, end };
-                  node.contentRange = { ...node.range };
-                }
-              }
-            }
-            freshAnchors = replay.freshAnchors;
-          } catch {
-          }
-        }
-        const resolvableCount = changes.length;
-        const resolvedCount = changes.filter((c) => c.resolved !== false || !!c.consumedBy).length;
-        const coherenceRate = resolvableCount > 0 ? Math.round(resolvedCount / resolvableCount * 100) : 100;
-        let resolvedText;
-        if (freshAnchors.size > 0) {
-          const rebuiltFootnotes = [];
-          let anyChanged = false;
-          let fi = 0;
-          while (fi < footnoteLines.length) {
-            const fline = footnoteLines[fi];
-            const idMatch = fline.match(/^\[\^(cn-[\w.]+)\]:/);
-            if (idMatch) {
-              const freshAnchor = freshAnchors.get(idMatch[1]);
-              rebuiltFootnotes.push(fline);
-              fi++;
-              let editOpReplaced = false;
-              while (fi < footnoteLines.length) {
-                const contLine = footnoteLines[fi];
-                if (FOOTNOTE_DEF_START.test(contLine))
-                  break;
-                if (!editOpReplaced && FOOTNOTE_L3_EDIT_OP.test(contLine) && freshAnchor) {
-                  if (freshAnchor !== contLine)
-                    anyChanged = true;
-                  rebuiltFootnotes.push(freshAnchor);
-                  editOpReplaced = true;
-                  fi++;
-                } else if (/^\s/.test(contLine) || contLine.trim() === "") {
-                  rebuiltFootnotes.push(contLine);
-                  fi++;
-                } else {
-                  break;
-                }
-              }
-            } else {
-              rebuiltFootnotes.push(fline);
-              fi++;
-            }
-          }
-          if (anyChanged) {
-            resolvedText = bodyLines.join("\n") + "\n\n" + rebuiltFootnotes.join("\n") + "\n";
-          }
-        }
-        const doc = new VirtualDocument(changes, coherenceRate, [], resolvedText, records);
-        for (const d of this.pendingDiagnostics)
-          doc.addDiagnostic(d);
-        return doc;
-      }
-      /**
-       * Test-only hook: run just the footnote-scanning phase and return the raw
-       * ParsedFootnote structs before change resolution.  Used by
-       * parser-bug-fixes.test.ts to assert on `unknownBodyLines` directly.
-       *
-       * @internal Do NOT call from production code.
-       */
-      _testScanFootnotes(text) {
-        return this.parseFootnotes(text.split("\n"));
-      }
-      parseFootnotes(lines) {
-        const { footnoteLines } = splitBodyAndFootnotes(lines);
-        const startLineOffset = lines.length - footnoteLines.length;
-        const typed = parseFootnoteBlock(footnoteLines, startLineOffset);
-        return typed.map((f) => this.typedToLegacy(f));
-      }
-      /** Adapter: typed Footnote (new) → ParsedFootnote (legacy resolver input). */
-      typedToLegacy(f) {
-        let imageDimensions;
-        const dimRaw = f.imageMetadata?.["image-dimensions"];
-        if (dimRaw) {
-          const m = dimRaw.match(IMAGE_DIMENSIONS_RE);
-          if (m)
-            imageDimensions = { widthIn: parseFloat(m[1]), heightIn: parseFloat(m[2]) };
-        }
-        const contextBefore = f.editOp?.resolutionPath === "context" ? f.editOp.contextBefore : void 0;
-        const contextAfter = f.editOp?.resolutionPath === "context" ? f.editOp.contextAfter : void 0;
-        return {
-          id: f.id,
-          author: f.header.author,
-          date: f.header.date,
-          type: f.header.type,
-          status: f.header.status,
-          startLine: f.sourceRange.startLine,
-          endLine: f.sourceRange.endLine,
-          lineNumber: f.editOp?.lineNumber,
-          hash: f.editOp?.hash,
-          opString: f.editOp ? f.editOp.resolutionPath === "context" ? `${f.editOp.contextBefore ?? ""}${f.editOp.op}${f.editOp.contextAfter ?? ""}` : f.editOp.op : void 0,
-          contextBefore,
-          contextAfter,
-          replyCount: f.discussion.length,
-          approvals: f.approvals.length > 0 ? f.approvals.map((a) => ({ author: a.author, date: a.date, reason: a.reason ?? "" })) : void 0,
-          rejections: f.rejections.length > 0 ? f.rejections.map((a) => ({ author: a.author, date: a.date, reason: a.reason ?? "" })) : void 0,
-          imageDimensions,
-          imageMetadata: f.imageMetadata ? { ...f.imageMetadata } : void 0,
-          equationMetadata: f.equationMetadata ? { ...f.equationMetadata } : void 0,
-          discussion: f.discussion.length > 0 ? [...f.discussion] : void 0,
-          requestChanges: f.requestChanges.length > 0 ? f.requestChanges.map((a) => ({ author: a.author, date: a.date, reason: a.reason ?? "" })) : void 0,
-          revisions: f.revisions.length > 0 ? [...f.revisions] : void 0,
-          resolution: f.resolution ?? void 0,
-          supersedes: f.supersedes,
-          supersededBy: f.supersededBy.length > 0 ? [...f.supersededBy] : void 0,
-          unknownBodyLines: f.bodyLines.filter((l) => l.kind === "unknown").map((l) => l.raw.trim())
-        };
-      }
-      resolveChanges(footnotes, bodyLines) {
-        const changes = [];
-        const lineOffsets = [0];
-        for (let i = 0; i < bodyLines.length; i++) {
-          lineOffsets.push(lineOffsets[i] + bodyLines[i].length + 1);
-        }
-        for (const fn of footnotes) {
-          const changeType = this.resolveType(fn.type);
-          if (changeType === null)
-            continue;
-          const status = this.resolveStatus(fn.status);
-          let parsedOp = null;
-          let ctxResult = null;
-          if (fn.opString) {
-            try {
-              if (fn.contextBefore !== void 0 || fn.contextAfter !== void 0) {
-                const before = fn.contextBefore ?? "";
-                const after = fn.contextAfter ?? "";
-                const criticMarkupOp = fn.opString.slice(before.length, fn.opString.length - after.length);
-                ctxResult = { contextBefore: before, contextAfter: after, opString: criticMarkupOp };
-                parsedOp = parseOp(criticMarkupOp);
-              } else {
-                ctxResult = parseContextualEditOp(fn.opString);
-                parsedOp = parseOp(ctxResult ? ctxResult.opString : fn.opString);
-              }
-            } catch {
-              continue;
-            }
-          }
-          const rangeResult = this.resolveRangeAndContent(fn, parsedOp, ctxResult, changeType, status, bodyLines, lineOffsets);
-          const { range, originalText, modifiedText, comment, anchored: positionResolved, resolved: rangeResolved, resolutionPath } = rangeResult;
-          const node = {
-            id: fn.id,
-            type: changeType,
-            status,
-            range,
-            contentRange: { ...range },
-            // L3: range === contentRange (no delimiters in body)
-            level: 2,
-            anchored: true,
-            // L3 nodes always have a footnote ref by construction
-            resolved: rangeResolved !== void 0 ? rangeResolved : positionResolved !== false,
-            // false only when edit-op text could not be located
-            metadata: {
-              author: fn.author,
-              date: fn.date,
-              comment: comment ?? parsedOp?.reasoning ?? void 0
-            }
-          };
-          if (originalText !== void 0)
-            node.originalText = originalText;
-          if (modifiedText !== void 0)
-            node.modifiedText = modifiedText;
-          if (fn.startLine !== void 0) {
-            node.footnoteLineRange = { startLine: fn.startLine, endLine: fn.endLine ?? fn.startLine };
-          }
-          node.replyCount = fn.replyCount ?? 0;
-          if (fn.imageDimensions) {
-            node.metadata.imageDimensions = fn.imageDimensions;
-          }
-          if (fn.imageMetadata) {
-            node.metadata.imageMetadata = fn.imageMetadata;
-          }
-          if (fn.equationMetadata) {
-            node.metadata.equationMetadata = fn.equationMetadata;
-          }
-          if (resolutionPath !== void 0) {
-            node.resolutionPath = resolutionPath;
-          }
-          if (rangeResult.deletionSeamOffset !== void 0) {
-            node.deletionSeamOffset = rangeResult.deletionSeamOffset;
-          }
-          if (fn.approvals && fn.approvals.length > 0) {
-            node.metadata.approvals = fn.approvals.map((a) => ({
-              author: a.author,
-              date: a.date,
-              timestamp: parseTimestamp(a.date),
-              reason: a.reason || void 0
-            }));
-          }
-          if (fn.rejections && fn.rejections.length > 0) {
-            node.metadata.rejections = fn.rejections.map((r) => ({
-              author: r.author,
-              date: r.date,
-              timestamp: parseTimestamp(r.date),
-              reason: r.reason || void 0
-            }));
-          }
-          if (fn.discussion && fn.discussion.length > 0) {
-            node.metadata.discussion = fn.discussion;
-          }
-          if (fn.requestChanges && fn.requestChanges.length > 0) {
-            node.metadata.requestChanges = fn.requestChanges.map((a) => ({
-              author: a.author,
-              date: a.date,
-              timestamp: parseTimestamp(a.date),
-              reason: a.reason || void 0
-            }));
-          }
-          if (fn.revisions && fn.revisions.length > 0) {
-            node.metadata.revisions = fn.revisions;
-          }
-          if (fn.resolution) {
-            node.metadata.resolution = fn.resolution;
-          }
-          if (fn.supersedes)
-            node.supersedes = fn.supersedes;
-          if (fn.supersededBy && fn.supersededBy.length > 0)
-            node.supersededBy = fn.supersededBy;
-          changes.push(node);
-        }
-        changes.sort((a, b) => a.range.start - b.range.start);
-        return changes;
-      }
-      /**
-       * Resolve the character range for a change node in the body text.
-       *
-       * For L3:
-       * - Insertion: search for newText on the target line via findUniqueMatch; range covers the matched text
-       * - Deletion: range covers the full contextual anchor span (contextBefore + contextAfter).
-       *   `deletionSeamOffset` gives the byte offset within this span where the deletion occurred
-       *   (equals contextBefore.length). The spec's Contextual Uniqueness Guarantee ensures this
-       *   span appears exactly once on the target line (04-spec.md §"Contextual Embedding").
-       *   Zero-width ranges appear only as the {0,0} resolved:false sentinel (Invariant A).
-       *   This is deliberate — do NOT revert to zero-width seam without understanding
-       *   the plan builder's ghost-text injection and accept-change.ts's seam-based removal.
-       * - Substitution: search for newText (proposed/accepted) or oldText (rejected) on target line
-       * - Highlight: search for the highlighted text on the target line
-       * - Comment: fall back to line start (no text to anchor to)
-       * - Rejected insertion: text is not in body; zero-width range at line start
-       *
-       * DETERMINISTIC ANCHOR RESOLUTION INVARIANTS (spec §11):
-       *
-       * Invariant A — Non-deletion ops (ins, sub, highlight) MUST resolve uniquely via
-       * findUniqueMatch on the hash-resolved line. If the match fails (text not found or
-       * ambiguous), the node is marked resolved:false (with anchored:true). There is NO
-       * fallback to line-start for non-deletion ops. Silent fallback produces wrong
-       * decoration placement.
-       *
-       * Invariant B — Deletion ops resolve via @ctx:"before"||"after" ONLY. The deleted
-       * text is absent from the body so there is nothing to search for. Line-start fallback
-       * when @ctx is missing is acceptable degradation (not a silent error).
-       *
-       * Invariant C — resolved:false is an error path, not a silent default. Consumers
-       * must not render resolved:false nodes as correctly placed decorations.
-       *
-       * Task 3 enforced Invariant A by removing the fallbackRange branches for
-       * ins/sub/highlight and setting resolved:false + sentinel range {0,0} instead.
-       */
-      resolveRangeAndContent(fn, parsedOp, ctxResult, changeType, status, bodyLines, lineOffsets) {
-        let effectiveLineNumber = fn.lineNumber;
-        let hashMatched = false;
-        if (fn.lineNumber !== void 0 && fn.hash) {
-          const hashCheckIdx = fn.lineNumber - 1;
-          if (hashCheckIdx >= 0 && hashCheckIdx < bodyLines.length) {
-            const actualHash = computeLineHash(hashCheckIdx, bodyLines[hashCheckIdx], bodyLines);
-            if (actualHash.toLowerCase() === fn.hash.toLowerCase()) {
-              hashMatched = true;
-            } else {
-              const relocated = relocateHashRef({ line: fn.lineNumber, hash: fn.hash }, bodyLines, computeLineHash);
-              if (relocated?.relocated) {
-                effectiveLineNumber = relocated.newLine;
-                hashMatched = true;
-              }
-            }
-          }
-        }
-        const lineIdx = (effectiveLineNumber ?? 1) - 1;
-        const lineOffset2 = lineIdx >= 0 && lineIdx < lineOffsets.length ? lineOffsets[lineIdx] : 0;
-        const lineContent = lineIdx >= 0 && lineIdx < bodyLines.length ? bodyLines[lineIdx] : "";
-        const fallbackRange = { start: lineOffset2, end: lineOffset2 };
-        if (!parsedOp) {
-          if (!isRejectedSupersededArchivalRecord(fn)) {
-            this.pendingDiagnostics.push({
-              kind: "coordinate_failed",
-              changeId: fn.id,
-              message: `Footnote ${fn.id} has no parsedOp; cannot resolve position.`
-            });
-          }
-          return { range: fallbackRange, anchored: true, resolved: false, comment: fn.unknownBodyLines?.[0], resolutionPath: "rejected" };
-        }
-        const findOnLine = (searchText) => {
-          if (!searchText || !lineContent)
-            return null;
-          return tryFindUniqueMatch(lineContent, searchText, defaultNormalizer);
-        };
-        if (ctxResult && parsedOp) {
-          const { contextBefore, contextAfter } = ctxResult;
-          let bodyMatch;
-          switch (changeType) {
-            case ChangeType.Insertion:
-              if (status === ChangeStatus.Rejected) {
-                bodyMatch = contextBefore + contextAfter;
-              } else {
-                bodyMatch = contextBefore + parsedOp.newText + contextAfter;
-              }
-              break;
-            case ChangeType.Deletion:
-              bodyMatch = contextBefore + contextAfter;
-              break;
-            case ChangeType.Substitution:
-              if (status === ChangeStatus.Rejected) {
-                bodyMatch = contextBefore + parsedOp.oldText + contextAfter;
-              } else {
-                bodyMatch = contextBefore + parsedOp.newText + contextAfter;
-              }
-              break;
-            case ChangeType.Highlight:
-              bodyMatch = contextBefore + parsedOp.oldText + contextAfter;
-              break;
-            default:
-              bodyMatch = contextBefore + contextAfter;
-          }
-          const bodyMatchResult = findOnLine(bodyMatch);
-          if (bodyMatchResult) {
-            const matchStart = lineOffset2 + bodyMatchResult.index;
-            const opStart = matchStart + contextBefore.length;
-            let rangeStart;
-            let rangeEnd;
-            let deletionSeamOffset;
-            switch (changeType) {
-              case ChangeType.Insertion: {
-                rangeStart = opStart;
-                rangeEnd = opStart + (status === ChangeStatus.Rejected ? 0 : parsedOp.newText.length);
-                break;
-              }
-              case ChangeType.Deletion: {
-                rangeStart = matchStart;
-                rangeEnd = matchStart + bodyMatch.length;
-                deletionSeamOffset = contextBefore.length;
-                break;
-              }
-              case ChangeType.Substitution: {
-                rangeStart = opStart;
-                rangeEnd = opStart + (status === ChangeStatus.Rejected ? parsedOp.oldText.length : parsedOp.newText.length);
-                break;
-              }
-              case ChangeType.Highlight: {
-                rangeStart = opStart;
-                rangeEnd = opStart + parsedOp.oldText.length;
-                break;
-              }
-              default:
-                rangeStart = opStart;
-                rangeEnd = opStart;
-            }
-            return {
-              range: { start: rangeStart, end: rangeEnd },
-              originalText: parsedOp.oldText || void 0,
-              modifiedText: parsedOp.newText || void 0,
-              comment: parsedOp.reasoning ?? void 0,
-              deletionSeamOffset,
-              // When the hash also matched, label as 'hash' (same semantics as the
-              // old resolve() Phase A: hash gate passed, context match pinpointed position).
-              // When only context matched (hash mismatch or relocation), label as 'context'.
-              resolutionPath: hashMatched ? "hash" : "context"
-            };
-          }
-        }
-        switch (changeType) {
-          case ChangeType.Insertion: {
-            const text = parsedOp.newText;
-            if (text === "") {
-              return { range: fallbackRange, modifiedText: text, resolutionPath: hashMatched ? "hash" : void 0 };
-            }
-            const match = findOnLine(text);
-            if (!match) {
-              const targetLine = effectiveLineNumber ?? 1;
-              const matchCount = lineContent ? lineContent.split(text).length - 1 : 0;
-              this.pendingDiagnostics.push({
-                kind: "coordinate_failed",
-                changeId: fn.id,
-                message: `Insertion text "${truncate(text, 40)}" not uniquely found on line ${targetLine} (found ${matchCount} match${matchCount === 1 ? "" : "es"}).`,
-                evidence: { line: targetLine, expectedText: text, candidates: matchCount }
-              });
-              return { range: { start: 0, end: 0 }, modifiedText: text, anchored: true, resolved: false };
-            }
-            const range = {
-              start: lineOffset2 + match.index,
-              end: lineOffset2 + match.index + match.length
-            };
-            return { range, modifiedText: text, resolutionPath: hashMatched ? "hash" : void 0 };
-          }
-          case ChangeType.Deletion: {
-            const text = parsedOp.oldText;
-            const ctx = fn.opString ? parseDeletionContext(fn.opString) : null;
-            if (ctx) {
-              const joined = ctx.before + ctx.after;
-              if (joined.length > 0) {
-                const match = findOnLine(joined);
-                if (match) {
-                  return {
-                    range: {
-                      start: lineOffset2 + match.index,
-                      end: lineOffset2 + match.index + joined.length
-                    },
-                    originalText: text,
-                    deletionSeamOffset: ctx.before.length,
-                    resolutionPath: hashMatched ? "hash" : void 0
-                  };
-                }
-              }
-            }
-            const lineEnd = lineOffset2 + lineContent.length;
-            return {
-              range: { start: lineOffset2, end: lineEnd },
-              originalText: text,
-              resolutionPath: hashMatched ? "hash" : void 0
-            };
-          }
-          case ChangeType.Substitution: {
-            const oldText = parsedOp.oldText;
-            const newText = parsedOp.newText;
-            const searchTexts = status === ChangeStatus.Rejected ? [newText, oldText].filter((t2) => Boolean(t2)) : [newText].filter((t2) => Boolean(t2));
-            let match = null;
-            let matchedText = "";
-            for (const candidate of searchTexts) {
-              match = findOnLine(candidate);
-              if (match) {
-                matchedText = candidate;
-                break;
-              }
-            }
-            if (!match) {
-              const targetLine = effectiveLineNumber ?? 1;
-              const expectedText = searchTexts.join(" or ");
-              const matchCount = searchTexts.reduce((sum, candidate) => {
-                return sum + (lineContent ? lineContent.split(candidate).length - 1 : 0);
-              }, 0);
-              this.pendingDiagnostics.push({
-                kind: "coordinate_failed",
-                changeId: fn.id,
-                message: `Substitution text "${truncate(expectedText, 40)}" not uniquely found on line ${targetLine} (found ${matchCount} match${matchCount === 1 ? "" : "es"}).`,
-                evidence: { line: targetLine, expectedText, candidates: matchCount }
-              });
-              return { range: { start: 0, end: 0 }, originalText: oldText, modifiedText: newText, anchored: true, resolved: false };
-            }
-            const range = {
-              start: lineOffset2 + match.index,
-              end: lineOffset2 + match.index + matchedText.length
-            };
-            return { range, originalText: oldText, modifiedText: newText, resolutionPath: hashMatched ? "hash" : void 0 };
-          }
-          case ChangeType.Highlight: {
-            const text = parsedOp.oldText;
-            const comment = parsedOp.reasoning;
-            if (!text) {
-              return { range: fallbackRange, comment };
-            }
-            const match = findOnLine(text);
-            if (!match) {
-              return { range: fallbackRange, comment, resolutionPath: hashMatched ? "hash" : void 0 };
-            }
-            const range = {
-              start: lineOffset2 + match.index,
-              end: lineOffset2 + match.index + match.length
-            };
-            return { range, comment, resolutionPath: hashMatched ? "hash" : void 0 };
-          }
-          case ChangeType.Comment: {
-            const comment = (parsedOp.reasoning || void 0) ?? (parsedOp.oldText || fn.unknownBodyLines?.[0]);
-            return { range: fallbackRange, comment, resolutionPath: hashMatched ? "hash" : void 0 };
-          }
-          default:
-            return { range: fallbackRange, resolutionPath: hashMatched ? "hash" : void 0 };
-        }
-      }
-      resolveType(type) {
-        switch (type) {
-          case "ins":
-          case "insertion":
-            return ChangeType.Insertion;
-          case "del":
-          case "deletion":
-            return ChangeType.Deletion;
-          case "sub":
-          case "substitution":
-            return ChangeType.Substitution;
-          case "highlight":
-          case "hi":
-          case "hig":
-            return ChangeType.Highlight;
-          case "comment":
-          case "com":
-            return ChangeType.Comment;
-          default:
-            return null;
-        }
-      }
-      resolveStatus(status) {
-        switch (status) {
-          case "accepted":
-            return ChangeStatus.Accepted;
-          case "rejected":
-            return ChangeStatus.Rejected;
-          default:
-            return ChangeStatus.Proposed;
-        }
-      }
-    };
-  }
-});
-
-// ../../packages/core/dist-esm/format-aware-parse.js
-function parseForFormat(text, options) {
-  return isL3Format(text) ? l3Parser.parse(text) : l2Parser.parse(text, options);
-}
-var l2Parser, l3Parser;
-var init_format_aware_parse = __esm({
-  "../../packages/core/dist-esm/format-aware-parse.js"() {
-    "use strict";
-    init_footnote_patterns();
-    init_parser();
-    init_footnote_native_parser();
-    init_footnote_utils();
-    init_op_parser();
-    l2Parser = new CriticMarkupParser();
-    l3Parser = new FootnoteNativeParser();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/current-text.js
-function computeCurrentReplace(change) {
-  const rangeLength = change.range.end - change.range.start;
-  if (change.type === ChangeType.Comment) {
-    return { offset: change.range.start, length: rangeLength, newText: "" };
-  }
-  if (change.type === ChangeType.Highlight) {
-    return { offset: change.range.start, length: rangeLength, newText: change.originalText ?? "" };
-  }
-  switch (change.type) {
-    case ChangeType.Insertion:
-      return { offset: change.range.start, length: rangeLength, newText: change.modifiedText ?? "" };
-    case ChangeType.Deletion:
-      return { offset: change.range.start, length: rangeLength, newText: "" };
-    case ChangeType.Substitution:
-      return { offset: change.range.start, length: rangeLength, newText: change.modifiedText ?? "" };
-  }
-  throw new Error(`Unknown ChangeType: ${change.type}`);
-}
-function stripFootnoteDefinitions(text, zones) {
-  const lines = text.split("\n");
-  const kept = [];
-  let inFootnote = false;
-  let foundFootnote = false;
-  let charOffset = 0;
-  for (const line of lines) {
-    const inCodeZone = zones.some((z2) => charOffset >= z2.start && charOffset < z2.end);
-    if (!inCodeZone && FOOTNOTE_DEF_START.test(line)) {
-      inFootnote = true;
-      foundFootnote = true;
-      while (kept.length > 0 && kept[kept.length - 1].trim() === "") {
-        kept.pop();
-      }
-      charOffset += line.length + 1;
-      continue;
-    }
-    if (inFootnote) {
-      if (line.trim() === "" || /^[\t ]/.test(line)) {
-        charOffset += line.length + 1;
-        continue;
-      }
-      inFootnote = false;
-    }
-    kept.push(line);
-    charOffset += line.length + 1;
-  }
-  if (foundFootnote) {
-    while (kept.length > 0 && kept[kept.length - 1].trim() === "") {
-      kept.pop();
-    }
-  }
-  return kept.join("\n");
-}
-function stripInlineFootnoteRefs(text, zones) {
-  return text.replace(footnoteRefGlobal(), (match, offset) => {
-    if (zones.some((z2) => offset >= z2.start && offset < z2.end)) {
-      return match;
-    }
-    return "";
-  });
-}
-function computeCurrentTextL3(text) {
-  const { bodyLines } = splitBodyAndFootnotes(text.split("\n"));
-  return bodyLines.join("\n") + "\n";
-}
-function revertChangesInBody(body, changes) {
-  const sorted = [...changes].sort((a, b) => b.range.start - a.range.start);
-  for (const change of sorted) {
-    if (change.resolved === false)
-      continue;
-    switch (change.type) {
-      case ChangeType.Insertion:
-        body = body.slice(0, change.range.start) + body.slice(change.range.end);
-        break;
-      case ChangeType.Deletion:
-        if (change.originalText) {
-          body = body.slice(0, change.range.start) + change.originalText + body.slice(change.range.start);
-        }
-        break;
-      case ChangeType.Substitution:
-        if (change.originalText) {
-          body = body.slice(0, change.range.start) + change.originalText + body.slice(change.range.end);
-        }
-        break;
-    }
-  }
-  return body;
-}
-function computeOriginalTextL3(text) {
-  const doc = parseForFormat(text);
-  const allChanges = doc.getChanges();
-  const { bodyLines } = splitBodyAndFootnotes(text.split("\n"));
-  let body = bodyLines.join("\n");
-  if (allChanges.length > 0) {
-    body = revertChangesInBody(body, allChanges);
-  }
-  const zones = findCodeZones(body);
-  body = stripInlineFootnoteRefs(body, zones);
-  return body + "\n";
-}
-function computeCurrentText(text, options) {
-  if (isL3Format(text)) {
-    return computeCurrentTextL3(text);
-  }
-  const doc = parseForFormat(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
-  const changes = doc.getChanges();
-  if (changes.length === 0) {
-    const zones2 = findCodeZones(text);
-    return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones2), zones2);
-  }
-  const edits = [...changes].sort((a, b) => b.range.start - a.range.start).map(computeCurrentReplace);
-  let result = text;
-  for (const edit of edits) {
-    result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
-  }
-  const zones = findCodeZones(result);
-  result = stripFootnoteDefinitions(result, zones);
-  result = stripInlineFootnoteRefs(result, zones);
-  return result;
-}
-function computeOriginalText(text, options) {
-  if (isL3Format(text)) {
-    return computeOriginalTextL3(text);
-  }
-  const doc = parseForFormat(text, { skipCodeBlocks: options?.skipCodeBlocks ?? false });
-  const changes = doc.getChanges();
-  if (changes.length === 0) {
-    const zones2 = findCodeZones(text);
-    return stripInlineFootnoteRefs(stripFootnoteDefinitions(text, zones2), zones2);
-  }
-  const edits = [...changes].sort((a, b) => b.range.start - a.range.start).map(computeReject);
-  let result = text;
-  for (const edit of edits) {
-    result = result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
-  }
-  const zones = findCodeZones(result);
-  result = stripFootnoteDefinitions(result, zones);
-  result = stripInlineFootnoteRefs(result, zones);
-  return result;
-}
-function findContainingCodeZone(offset, zones) {
-  for (const zone of zones) {
-    if (offset >= zone.start && offset < zone.end)
-      return zone;
-  }
-  return void 0;
-}
-function buildSegmentsWithZoneAwareness(text, parts, zones) {
-  const segments = [];
-  const deferredRefs = [];
-  let cursor = 0;
-  const lineBreaks = [];
-  for (let i = 0; i < text.length; i++) {
-    if (text[i] === "\n")
-      lineBreaks.push(i);
-  }
-  function offsetToLine2(offset) {
-    let lo = 0;
-    let hi = lineBreaks.length;
-    while (lo < hi) {
-      const mid = lo + hi >> 1;
-      if (lineBreaks[mid] < offset)
-        lo = mid + 1;
-      else
-        hi = mid;
-    }
-    return lo;
-  }
-  for (const part of parts) {
-    if (part.offset > cursor) {
-      segments.push(text.slice(cursor, part.offset));
-    } else if (part.offset < cursor) {
-      continue;
-    }
-    const ref = part.refId ? `[^${part.refId}]` : "";
-    if (ref && findContainingCodeZone(part.offset, zones)) {
-      segments.push(part.text);
-      deferredRefs.push({ ref, origLineIndex: offsetToLine2(part.offset) });
-    } else if (ref && zones.length > 0) {
-      const targetLineIdx = offsetToLine2(part.offset);
-      const lineStartOff = targetLineIdx === 0 ? 0 : lineBreaks[targetLineIdx - 1] + 1;
-      const lineEndOff = targetLineIdx < lineBreaks.length ? lineBreaks[targetLineIdx] : text.length;
-      const targetLine = text.slice(lineStartOff, lineEndOff);
-      if (isFenceCloserLine(targetLine)) {
-        segments.push(part.text);
-        deferredRefs.push({ ref, origLineIndex: targetLineIdx + 1 });
-      } else {
-        segments.push(part.text + ref);
-      }
-    } else {
-      segments.push(part.text + ref);
-    }
-    cursor = part.offset + part.length;
-  }
-  if (cursor < text.length) {
-    segments.push(text.slice(cursor));
-  }
-  if (deferredRefs.length === 0) {
-    return segments.join("");
-  }
-  const result = segments.join("");
-  const lines = result.split("\n");
-  const refsByLine = /* @__PURE__ */ new Map();
-  for (const dr of deferredRefs) {
-    const existing = refsByLine.get(dr.origLineIndex) ?? [];
-    existing.push(dr.ref);
-    refsByLine.set(dr.origLineIndex, existing);
-  }
-  for (const [lineIdx, refs] of refsByLine) {
-    if (lineIdx < lines.length) {
-      lines[lineIdx] = lines[lineIdx] + refs.join("");
-    } else {
-      while (lines.length <= lineIdx)
-        lines.push("");
-      lines[lineIdx] = refs.join("");
-    }
-  }
-  return lines.join("\n");
-}
-function recoverL2EditOpPayload(change, sourceText) {
-  let orig = change.originalText ?? "";
-  let cur = change.modifiedText ?? "";
-  if (change.type === ChangeType.Insertion) {
-    if (!cur && change.contentRange) {
-      cur = sourceText.slice(change.contentRange.start, change.contentRange.end);
-    }
-  } else if (change.type === ChangeType.Substitution) {
-    if (!cur && change.modifiedRange) {
-      cur = sourceText.slice(change.modifiedRange.start, change.modifiedRange.end);
-    }
-    if (!orig && change.originalRange) {
-      orig = sourceText.slice(change.originalRange.start, change.originalRange.end);
-    }
-  }
-  return { originalText: orig, currentText: cur };
-}
-function settlementAnchorLength(change, projection, payload) {
-  if (projection === "accepted") {
-    switch (change.type) {
-      case ChangeType.Insertion:
-      case ChangeType.Substitution:
-        return payload.currentText.length;
-      case ChangeType.Deletion:
-        return 0;
-      case ChangeType.Highlight:
-        return payload.originalText.length;
-      default:
-        return 0;
-    }
-  }
-  switch (change.type) {
-    case ChangeType.Insertion:
-      return 0;
-    case ChangeType.Deletion:
-    case ChangeType.Substitution:
-    case ChangeType.Highlight:
-    case ChangeType.Move:
-      return payload.originalText.length;
-    default:
-      return 0;
-  }
-}
-function addL2SettlementEditOps(rawCurrentContent, changes, sourceText, projection) {
-  const { bodyLines, footnoteLines } = splitBodyAndFootnotes(rawCurrentContent.split("\n"));
-  const refRe = footnoteRefGlobal();
-  const cleanBodyLines = bodyLines.map((line) => line.replace(refRe, ""));
-  const refIndex = /* @__PURE__ */ new Map();
-  for (let i = 0; i < bodyLines.length; i++) {
-    const refPattern = /\[\^cn-[\w.]+\]/g;
-    let rm;
-    while ((rm = refPattern.exec(bodyLines[i])) !== null) {
-      refIndex.set(rm[0], { lineIdx: i, col: rm.index });
-    }
-  }
-  const footnoteHeaderIndex = /* @__PURE__ */ new Map();
-  for (let i = 0; i < footnoteLines.length; i++) {
-    const idMatch = footnoteLines[i].match(/^\[\^(cn-[\w.]+)\]:/);
-    if (idMatch)
-      footnoteHeaderIndex.set(idMatch[1], i);
-  }
-  const scanRe = footnoteRefGlobal();
-  const editOpInsertions = [];
-  for (const change of changes) {
-    const payload = recoverL2EditOpPayload(change, sourceText);
-    const refPos = refIndex.get(`[^${change.id}]`);
-    if (!refPos)
-      continue;
-    const { lineIdx, col: refColInLine } = refPos;
-    const anchorLen = settlementAnchorLength(change, projection, payload);
-    scanRe.lastIndex = 0;
-    let precedingRefBytes = 0;
-    let m;
-    while ((m = scanRe.exec(bodyLines[lineIdx])) !== null) {
-      if (m.index >= refColInLine)
-        break;
-      precedingRefBytes += m[0].length;
-    }
-    const changeCol = Math.max(0, refColInLine - precedingRefBytes - anchorLen);
-    const lineNumber = lineIdx + 1;
-    const hash2 = computeLineHash(lineIdx, cleanBodyLines[lineIdx], cleanBodyLines);
-    const editOpLine = buildContextualL3EditOp({
-      changeType: change.type,
-      originalText: payload.originalText,
-      currentText: payload.currentText,
-      lineContent: cleanBodyLines[lineIdx],
-      lineNumber,
-      hash: hash2,
-      column: changeCol,
-      anchorLen
-    });
-    const headerLine = footnoteHeaderIndex.get(change.id);
-    if (headerLine !== void 0) {
-      editOpInsertions.push({ headerLine, editOpLine });
-    }
-  }
-  editOpInsertions.sort((a, b) => b.headerLine - a.headerLine);
-  for (const { headerLine, editOpLine } of editOpInsertions) {
-    footnoteLines.splice(headerLine + 1, 0, editOpLine);
-  }
-  return [...bodyLines, "", ...footnoteLines].join("\n");
-}
-function applyAcceptedChanges(text) {
-  if (isL3Format(text)) {
-    return { currentContent: text, appliedIds: [] };
-  }
-  const doc = parseForFormat(text, { skipCodeBlocks: false });
-  assertResolved(doc);
-  const accepted = doc.getChanges().filter((c) => c.status === ChangeStatus.Accepted);
-  const appliedIds = accepted.map((c) => c.id);
-  if (accepted.length === 0) {
-    return { currentContent: text, appliedIds: [] };
-  }
-  const parts = [...accepted].sort((a, b) => a.range.start - b.range.start).map(computeAcceptParts);
-  const zones = findCodeZones(text);
-  const rawCurrentContent = buildSegmentsWithZoneAwareness(text, parts, zones);
-  const currentContent = addL2SettlementEditOps(rawCurrentContent, accepted, text, "accepted");
-  return { currentContent, appliedIds };
-}
-function applyRejectedChanges(text) {
-  if (isL3Format(text)) {
-    const doc2 = parseForFormat(text);
-    assertResolved(doc2);
-    const rejected2 = doc2.getChanges().filter((c) => c.status === ChangeStatus.Rejected);
-    if (rejected2.length === 0)
-      return { currentContent: text, appliedIds: [] };
-    const { bodyLines, footnoteLines } = splitBodyAndFootnotes(text.split("\n"));
-    const body = revertChangesInBody(bodyLines.join("\n"), rejected2);
-    const appliedIds2 = rejected2.filter((c) => c.resolved !== false).map((c) => c.id);
-    const currentContent2 = footnoteLines.length > 0 ? body + "\n\n" + footnoteLines.join("\n") : body;
-    return { currentContent: currentContent2, appliedIds: appliedIds2 };
-  }
-  const doc = parseForFormat(text, { skipCodeBlocks: false });
-  assertResolved(doc);
-  const rejected = doc.getChanges().filter((c) => c.status === ChangeStatus.Rejected);
-  if (rejected.length === 0) {
-    return { currentContent: text, appliedIds: [] };
-  }
-  const parts = [...rejected].sort((a, b) => a.range.start - b.range.start).map(computeRejectParts);
-  const zones = findCodeZones(text);
-  const rawCurrentContent = buildSegmentsWithZoneAwareness(text, parts, zones);
-  const currentContent = addL2SettlementEditOps(rawCurrentContent, rejected, text, "rejected");
-  const appliedIds = [];
-  for (const part of parts) {
-    if (!part.refId)
-      continue;
-    if (part.length === 0 && part.text === "")
-      continue;
-    appliedIds.push(part.refId);
-  }
-  return { currentContent, appliedIds };
-}
-function computeCurrentViewL3(rawText) {
-  const { bodyLines } = splitBodyAndFootnotes(rawText.split("\n"));
-  const lines = [];
-  const currentToRaw = /* @__PURE__ */ new Map();
-  const rawToCurrent = /* @__PURE__ */ new Map();
-  for (let i = 0; i < bodyLines.length; i++) {
-    const currentNum = i + 1;
-    const rawNum = i + 1;
-    lines.push({
-      currentLineNum: currentNum,
-      rawLineNum: rawNum,
-      text: bodyLines[i],
-      hash: computeLineHash(i, bodyLines[i], bodyLines)
-    });
-    currentToRaw.set(currentNum, rawNum);
-    rawToCurrent.set(rawNum, currentNum);
-  }
-  return { lines, currentToRaw, rawToCurrent };
-}
-function computeCurrentView(rawText, preParsed) {
-  if (isL3Format(rawText)) {
-    return computeCurrentViewL3(rawText);
-  }
-  const changes = preParsed ?? parseForFormat(rawText, { skipCodeBlocks: false }).getChanges();
-  const edits = [...changes].sort((a, b) => a.range.start - b.range.start).map(computeCurrentReplace);
-  const deltaTable = [];
-  let cumulativeDelta = 0;
-  for (const edit of edits) {
-    deltaTable.push({ rawOffset: edit.offset, delta: cumulativeDelta });
-    const oldLen = edit.length;
-    const newLen = edit.newText.length;
-    cumulativeDelta += newLen - oldLen;
-  }
-  const editsByOffset = new Map(edits.map((e2) => [e2.offset, e2]));
-  function currentOffsetToRawOffset(currentOffset) {
-    let delta = 0;
-    let rawConsumed = 0;
-    let currentConsumed = 0;
-    for (const entry of deltaTable) {
-      const rawGap = entry.rawOffset - rawConsumed;
-      if (currentOffset <= currentConsumed + rawGap) {
-        return rawConsumed + (currentOffset - currentConsumed);
-      }
-      currentConsumed += rawGap;
-      rawConsumed = entry.rawOffset;
-      delta = entry.delta;
-      const edit = editsByOffset.get(entry.rawOffset);
-      if (edit) {
-        const oldLen = edit.length;
-        const newLen = edit.newText.length;
-        if (currentOffset < currentConsumed + newLen) {
-          return rawConsumed;
-        }
-        currentConsumed += newLen;
-        rawConsumed += oldLen;
-      }
-    }
-    return rawConsumed + (currentOffset - currentConsumed);
-  }
-  const currentText = computeCurrentText(rawText);
-  const rawLines = rawText.split("\n");
-  const rawLineStarts = [0];
-  for (let i = 0; i < rawLines.length - 1; i++) {
-    rawLineStarts.push(rawLineStarts[i] + rawLines[i].length + 1);
-  }
-  function rawOffsetToLineNum(offset) {
-    let lo = 0;
-    let hi = rawLineStarts.length - 1;
-    while (lo < hi) {
-      const mid = lo + hi + 1 >> 1;
-      if (rawLineStarts[mid] <= offset)
-        lo = mid;
-      else
-        hi = mid - 1;
-    }
-    return lo + 1;
-  }
-  const currentTextLines = currentText.split("\n");
-  const currentLines = [];
-  const currentToRaw = /* @__PURE__ */ new Map();
-  const rawToCurrent = /* @__PURE__ */ new Map();
-  let currentCharOffset = 0;
-  for (let i = 0; i < currentTextLines.length; i++) {
-    const currentLineText = currentTextLines[i];
-    const currentLineNum = i + 1;
-    const rawOffset = currentOffsetToRawOffset(currentCharOffset);
-    const rawLineNum = rawOffsetToLineNum(rawOffset);
-    const hash2 = computeLineHash(currentLineNum - 1, currentLineText, currentTextLines);
-    currentLines.push({
-      currentLineNum,
-      rawLineNum,
-      text: currentLineText,
-      hash: hash2
-    });
-    currentToRaw.set(currentLineNum, rawLineNum);
-    if (!rawToCurrent.has(rawLineNum)) {
-      rawToCurrent.set(rawLineNum, currentLineNum);
-    }
-    currentCharOffset += currentLineText.length + 1;
-  }
-  return { lines: currentLines, currentToRaw, rawToCurrent, changes };
-}
-var init_current_text = __esm({
-  "../../packages/core/dist-esm/operations/current-text.js"() {
-    "use strict";
-    init_types();
-    init_accept_reject();
-    init_hashline();
-    init_footnote_patterns();
-    init_code_zones();
-    init_format_aware_parse();
-    init_footnote_generator();
-    init_document();
-  }
-});
-
-// ../../packages/core/dist-esm/view-surface.js
-function buildViewSurfaceMap(raw) {
-  const toRaw = [];
-  let surface = "";
-  let i = 0;
-  while (i < raw.length) {
-    const slice = raw.slice(i);
-    const refMatch = slice.match(/^\[\^cn-\d+(?:\.\d+)?\]/);
-    if (refMatch) {
-      i += refMatch[0].length;
-      continue;
-    }
-    toRaw.push(i);
-    surface += raw[i];
-    i++;
-  }
-  toRaw.push(i);
-  return { surface, toRaw };
-}
-function viewAwareFind(raw, target) {
-  const { surface, toRaw } = buildViewSurfaceMap(raw);
-  const cleanTarget = target.replace(/\[\^?cn-\d+(?:\.\d+)?\]/g, "");
-  const searchTarget = cleanTarget || target;
-  const firstIdx = surface.indexOf(searchTarget);
-  if (firstIdx === -1)
-    return null;
-  const secondIdx = surface.indexOf(searchTarget, firstIdx + 1);
-  if (secondIdx !== -1)
-    return null;
-  const rawStart = toRaw[firstIdx];
-  const rawEnd = toRaw[firstIdx + searchTarget.length];
-  const rawLength = rawEnd - rawStart;
-  return {
-    index: rawStart,
-    length: rawLength,
-    rawText: raw.slice(rawStart, rawEnd)
-  };
-}
-var init_view_surface = __esm({
-  "../../packages/core/dist-esm/view-surface.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/file-ops.js
-function level1Comment(author, changeType) {
-  const ts = nowTimestamp();
-  const authorPrefixed = author.startsWith("@") ? author : `@${author}`;
-  return `{>>${authorPrefixed}|${ts.raw}|${changeType}|proposed<<}`;
-}
-function containsCriticMarkup(text) {
-  return /\{\+\+|\{--|\{~~|\{==|\{>>/.test(text);
-}
-function resolveProposedChanges(text) {
-  const doc = parseForFormat(text);
-  const changes = doc.getChanges();
-  return { changes };
-}
-function checkCriticMarkupOverlap(text, matchStart, matchLength) {
-  const { changes } = resolveProposedChanges(text);
-  const matchEnd = matchStart + matchLength;
-  for (const node of changes) {
-    if (node.decided || node.status !== ChangeStatus.Proposed)
-      continue;
-    const spanStart = node.range.start;
-    const spanEnd = node.range.end;
-    if (matchStart < spanEnd && matchEnd > spanStart) {
-      const changeId = node.level >= 2 ? node.id : void 0;
-      let changeType;
-      switch (node.type) {
-        case ChangeType.Insertion:
-          changeType = "ins";
-          break;
-        case ChangeType.Deletion:
-          changeType = "del";
-          break;
-        case ChangeType.Substitution:
-          changeType = "sub";
-          break;
-        case ChangeType.Highlight:
-          changeType = "highlight";
-          break;
-        case ChangeType.Comment:
-          changeType = "comment";
-          break;
-        default:
-          changeType = "unknown";
-          break;
-      }
-      return { changeId, changeType, spanStart, spanEnd };
-    }
-  }
-  return null;
-}
-function findAllProposedOverlaps(text, matchStart, matchLength) {
-  const { changes } = resolveProposedChanges(text);
-  const matchEnd = matchStart + matchLength;
-  const results = [];
-  for (const node of changes) {
-    if (node.decided || node.status !== ChangeStatus.Proposed)
-      continue;
-    const spanStart = node.range.start;
-    const spanEnd = node.range.end;
-    if (matchStart < spanEnd && matchEnd > spanStart) {
-      const changeId = node.level >= 2 ? node.id : void 0;
-      let changeType;
-      switch (node.type) {
-        case ChangeType.Insertion:
-          changeType = "ins";
-          break;
-        case ChangeType.Deletion:
-          changeType = "del";
-          break;
-        case ChangeType.Substitution:
-          changeType = "sub";
-          break;
-        case ChangeType.Highlight:
-          changeType = "highlight";
-          break;
-        case ChangeType.Comment:
-          changeType = "comment";
-          break;
-        default:
-          changeType = "unknown";
-          break;
-      }
-      const author = node.metadata?.author;
-      results.push({ changeId, changeType, author, spanStart, spanEnd });
-    }
-  }
-  return results;
-}
-function guardOverlap(text, matchStart, matchLength) {
-  const overlap = checkCriticMarkupOverlap(text, matchStart, matchLength);
-  if (overlap) {
-    const idRef = overlap.changeId ? ` (${overlap.changeId})` : "";
-    throw new Error(`Target text overlaps with proposed change${idRef}. The matched text falls inside a ${overlap.changeType} change at positions ${overlap.spanStart}-${overlap.spanEnd}. Use amend_change to modify your own proposed change, or review_changes to accept/reject it.`);
-  }
-}
-function resolveOverlapWithAuthor(text, matchStart, matchLength, author) {
-  const overlaps = findAllProposedOverlaps(text, matchStart, matchLength);
-  if (overlaps.length === 0)
-    return null;
-  if (!author) {
-    guardOverlap(text, matchStart, matchLength);
-    return null;
-  }
-  const normalizedAuthor = author.startsWith("@") ? author : `@${author}`;
-  const allSameAuthor = overlaps.every((o) => o.author === normalizedAuthor);
-  if (!allSameAuthor) {
-    guardOverlap(text, matchStart, matchLength);
-    return null;
-  }
-  const supersededIds = overlaps.map((o) => o.changeId).filter((id) => Boolean(id));
-  let content = text;
-  for (const id of supersededIds) {
-    const result = applyReview(content, id, "reject", "Auto-superseded by new proposal", author);
-    if ("updatedContent" in result) {
-      content = result.updatedContent;
-    } else {
-      throw new Error(`Auto-supersede failed: could not reject change ${id}. ${"error" in result ? result.error : "Unknown error"}`);
-    }
-  }
-  const rejected = applyRejectedChanges(content);
-  return { currentContent: rejected.currentContent, supersededIds };
-}
-function stripRefsFromContent(text) {
-  const refs = [];
-  const cleaned = text.replace(/\[\^cn-\d+(?:\.\d+)?\]/g, (match) => {
-    refs.push(match);
-    return "";
-  });
-  return { cleaned, refs };
-}
-function stripCriticMarkupWithMap(text) {
-  const current = [];
-  const toRaw = [];
-  const markupRanges = [];
-  let i = 0;
-  while (i < text.length) {
-    if (text[i] === "[" && text[i + 1] === "^" && text.startsWith("cn-", i + 2)) {
-      const closeIdx = text.indexOf("]", i + 2);
-      if (closeIdx !== -1 && /^\[\^cn-\d+(?:\.\d+)?\]$/.test(text.slice(i, closeIdx + 1)) && text[closeIdx + 1] !== ":") {
-        markupRanges.push({ rawStart: i, rawEnd: closeIdx + 1 });
-        i = closeIdx + 1;
-        continue;
-      }
-    }
-    if (text[i] === "{" && i + 2 < text.length) {
-      const twoChar = text[i + 1] + text[i + 2];
-      if (twoChar === "++") {
-        const end = text.indexOf("++}", i + 3);
-        if (end !== -1) {
-          const constructStart = i;
-          const contentStart = i + 3;
-          const contentEnd = end;
-          const constructEnd = end + 3;
-          markupRanges.push({ rawStart: constructStart, rawEnd: constructEnd });
-          for (let j = contentStart; j < contentEnd; j++) {
-            current.push(text[j]);
-            toRaw.push(j);
-          }
-          i = constructEnd;
-          continue;
-        }
-      }
-      if (twoChar === "--") {
-        const end = text.indexOf("--}", i + 3);
-        if (end !== -1) {
-          const constructEnd = end + 3;
-          markupRanges.push({ rawStart: i, rawEnd: constructEnd });
-          i = constructEnd;
-          continue;
-        }
-      }
-      if (twoChar === "~~") {
-        const end = text.indexOf("~~}", i + 3);
-        if (end !== -1) {
-          const arrow = text.indexOf("~>", i + 3);
-          if (arrow !== -1 && arrow < end) {
-            const constructStart = i;
-            const newStart = arrow + 2;
-            const newEnd = end;
-            const constructEnd = end + 3;
-            markupRanges.push({ rawStart: constructStart, rawEnd: constructEnd });
-            for (let j = newStart; j < newEnd; j++) {
-              current.push(text[j]);
-              toRaw.push(j);
-            }
-            i = constructEnd;
-            continue;
-          }
-        }
-      }
-      if (twoChar === "==") {
-        const end = text.indexOf("==}", i + 3);
-        if (end !== -1) {
-          const constructStart = i;
-          const contentStart = i + 3;
-          const contentEnd = end;
-          const constructEnd = end + 3;
-          markupRanges.push({ rawStart: constructStart, rawEnd: constructEnd });
-          for (let j = contentStart; j < contentEnd; j++) {
-            current.push(text[j]);
-            toRaw.push(j);
-          }
-          i = constructEnd;
-          continue;
-        }
-      }
-      if (twoChar === ">>") {
-        const end = text.indexOf("<<}", i + 3);
-        if (end !== -1) {
-          const constructEnd = end + 3;
-          markupRanges.push({ rawStart: i, rawEnd: constructEnd });
-          i = constructEnd;
-          continue;
-        }
-      }
-    }
-    current.push(text[i]);
-    toRaw.push(i);
-    i++;
-  }
-  return { current: current.join(""), toRaw, markupRanges };
-}
-function stripCriticMarkup(text) {
-  return stripCriticMarkupWithMap(text).current;
-}
-function stripCriticMarkupToCommittedWithMap(text) {
-  const footnotes = extractFootnoteStatuses(text);
-  const committed = [];
-  const toRaw = [];
-  const markupRanges = [];
-  let i = 0;
-  function consumeFootnoteRef(pos) {
-    if (text[pos] !== "[" || text[pos + 1] !== "^" || !text.startsWith("cn-", pos + 2)) {
-      return void 0;
-    }
-    const closeIdx = text.indexOf("]", pos + 2);
-    if (closeIdx === -1)
-      return void 0;
-    const candidate = text.slice(pos, closeIdx + 1);
-    if (!/^\[\^cn-\d+(?:\.\d+)?\]$/.test(candidate))
-      return void 0;
-    if (text[closeIdx + 1] === ":")
-      return void 0;
-    const id = text.slice(pos + 2, closeIdx);
-    return { id, end: closeIdx + 1 };
-  }
-  while (i < text.length) {
-    if (text[i] === "[" && text[i + 1] === "^" && text.startsWith("cn-", i + 2)) {
-      const closeIdx = text.indexOf("]", i + 2);
-      if (closeIdx !== -1 && /^\[\^cn-\d+(?:\.\d+)?\]$/.test(text.slice(i, closeIdx + 1)) && text[closeIdx + 1] !== ":") {
-        markupRanges.push({ rawStart: i, rawEnd: closeIdx + 1 });
-        i = closeIdx + 1;
-        continue;
-      }
-    }
-    if (text[i] === "{" && i + 2 < text.length) {
-      const twoChar = text[i + 1] + text[i + 2];
-      if (twoChar === "++") {
-        const end = text.indexOf("++}", i + 3);
-        if (end !== -1) {
-          const constructStart = i;
-          const contentStart = i + 3;
-          const contentEnd = end;
-          const constructEnd = end + 3;
-          const ref = consumeFootnoteRef(constructEnd);
-          const refEnd = ref ? ref.end : constructEnd;
-          const changeId = ref?.id;
-          const status = changeId ? footnotes.get(changeId) : void 0;
-          const isAccepted = status === "accepted";
-          markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
-          if (isAccepted) {
-            for (let j = contentStart; j < contentEnd; j++) {
-              committed.push(text[j]);
-              toRaw.push(j);
-            }
-          }
-          i = refEnd;
-          continue;
-        }
-      }
-      if (twoChar === "--") {
-        const end = text.indexOf("--}", i + 3);
-        if (end !== -1) {
-          const constructStart = i;
-          const contentStart = i + 3;
-          const contentEnd = end;
-          const constructEnd = end + 3;
-          const ref = consumeFootnoteRef(constructEnd);
-          const refEnd = ref ? ref.end : constructEnd;
-          const changeId = ref?.id;
-          const status = changeId ? footnotes.get(changeId) : void 0;
-          const isAccepted = status === "accepted";
-          markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
-          if (!isAccepted) {
-            for (let j = contentStart; j < contentEnd; j++) {
-              committed.push(text[j]);
-              toRaw.push(j);
-            }
-          }
-          i = refEnd;
-          continue;
-        }
-      }
-      if (twoChar === "~~") {
-        const end = text.indexOf("~~}", i + 3);
-        if (end !== -1) {
-          const arrow = text.indexOf("~>", i + 3);
-          if (arrow !== -1 && arrow < end) {
-            const constructStart = i;
-            const oldStart = i + 3;
-            const oldEnd = arrow;
-            const newStart = arrow + 2;
-            const newEnd = end;
-            const constructEnd = end + 3;
-            const ref = consumeFootnoteRef(constructEnd);
-            const refEnd = ref ? ref.end : constructEnd;
-            const changeId = ref?.id;
-            const status = changeId ? footnotes.get(changeId) : void 0;
-            const isAccepted = status === "accepted";
-            markupRanges.push({ rawStart: constructStart, rawEnd: refEnd });
-            if (isAccepted) {
-              for (let j = newStart; j < newEnd; j++) {
-                committed.push(text[j]);
-                toRaw.push(j);
-              }
-            } else {
-              for (let j = oldStart; j < oldEnd; j++) {
-                committed.push(text[j]);
-                toRaw.push(j);
-              }
-            }
-            i = refEnd;
-            continue;
-          }
-        }
-      }
-      if (twoChar === "==") {
-        const end = text.indexOf("==}", i + 3);
-        if (end !== -1) {
-          const constructStart = i;
-          const contentStart = i + 3;
-          const contentEnd = end;
-          const constructEnd = end + 3;
-          markupRanges.push({ rawStart: constructStart, rawEnd: constructEnd });
-          for (let j = contentStart; j < contentEnd; j++) {
-            committed.push(text[j]);
-            toRaw.push(j);
-          }
-          i = constructEnd;
-          continue;
-        }
-      }
-      if (twoChar === ">>") {
-        const end = text.indexOf("<<}", i + 3);
-        if (end !== -1) {
-          const constructEnd = end + 3;
-          markupRanges.push({ rawStart: i, rawEnd: constructEnd });
-          i = constructEnd;
-          continue;
-        }
-      }
-    }
-    committed.push(text[i]);
-    toRaw.push(i);
-    i++;
-  }
-  return { committed: committed.join(""), toRaw, markupRanges };
-}
-function findUniqueMatch(text, target, normalizer) {
-  const firstIdx = text.indexOf(target);
-  if (firstIdx !== -1) {
-    const secondIdx = text.indexOf(target, firstIdx + 1);
-    if (secondIdx !== -1) {
-      throw new Error(`Text "${target}" found multiple times (ambiguous). Provide more context to uniquely identify the location. Use LINE:HASH coordinates from read_tracked_file for precise targeting (e.g., at: '15:a3').`);
-    }
-    return {
-      index: firstIdx,
-      length: target.length,
-      originalText: target,
-      wasNormalized: false
-    };
-  }
-  if (text.includes("[^cn-") || target.includes("[^cn-") || target.includes("[cn-")) {
-    const cleanTarget = target.replace(/\[\^?cn-\d+(?:\.\d+)?\]/g, "");
-    const viewMatch = viewAwareFind(text, cleanTarget);
-    if (viewMatch) {
-      return {
-        index: viewMatch.index,
-        length: viewMatch.length,
-        originalText: viewMatch.rawText,
-        wasNormalized: true
-      };
-    }
-  }
-  if (normalizer) {
-    const normalizedText = normalizer(text);
-    const normalizedTarget = normalizer(target);
-    const normIdx = normalizedText.indexOf(normalizedTarget);
-    if (normIdx !== -1) {
-      const normSecondIdx = normalizedText.indexOf(normalizedTarget, normIdx + 1);
-      if (normSecondIdx !== -1) {
-        throw new Error(`Text "${target}" found multiple times after normalization (ambiguous). Provide more context to uniquely identify the location. Use LINE:HASH coordinates from read_tracked_file for precise targeting (e.g., at: '15:a3').`);
-      }
-      const originalText = text.slice(normIdx, normIdx + target.length);
-      return {
-        index: normIdx,
-        length: target.length,
-        originalText,
-        wasNormalized: true
-      };
-    }
-  }
-  {
-    const wsMatch = whitespaceCollapsedFind(text, target);
-    if (wsMatch !== null) {
-      if (whitespaceCollapsedIsAmbiguous(text, target)) {
-        throw new Error(`Text "${target}" found multiple times after whitespace collapsing (ambiguous). Provide more context to uniquely identify the location. Use LINE:HASH coordinates from read_tracked_file for precise targeting (e.g., at: '15:a3').`);
-      }
-      return {
-        index: wsMatch.index,
-        length: wsMatch.length,
-        originalText: wsMatch.originalText,
-        wasNormalized: true
-      };
-    }
-  }
-  if (containsCriticMarkup(text)) {
-    const { committed, toRaw, markupRanges } = stripCriticMarkupToCommittedWithMap(text);
-    if (committed !== text) {
-      const committedIdx = committed.indexOf(target);
-      if (committedIdx !== -1) {
-        const committedSecondIdx = committed.indexOf(target, committedIdx + 1);
-        if (committedSecondIdx !== -1) {
-          throw new Error(`Text "${target}" found multiple times in committed text (ambiguous). Provide more context to uniquely identify the location. Use LINE:HASH coordinates from read_tracked_file for precise targeting (e.g., at: '15:a3').`);
-        }
-        const committedEnd = committedIdx + target.length - 1;
-        let rawStart = toRaw[committedIdx];
-        let rawEnd = toRaw[committedEnd] + 1;
-        let expanded = true;
-        while (expanded) {
-          expanded = false;
-          for (const range of markupRanges) {
-            if (range.rawStart < rawEnd && range.rawEnd > rawStart) {
-              if (range.rawStart < rawStart) {
-                rawStart = range.rawStart;
-                expanded = true;
-              }
-              if (range.rawEnd > rawEnd) {
-                rawEnd = range.rawEnd;
-                expanded = true;
-              }
-            }
-          }
-        }
-        for (const range of markupRanges) {
-          if (range.rawStart === rawEnd && /^\[\^cn-/.test(text.slice(range.rawStart))) {
-            rawEnd = range.rawEnd;
-          }
-        }
-        return {
-          index: rawStart,
-          length: rawEnd - rawStart,
-          originalText: text.slice(rawStart, rawEnd),
-          // Return raw text covering constructs
-          wasNormalized: true,
-          wasCommittedMatch: true
-        };
-      }
-    }
-  }
-  if (containsCriticMarkup(text)) {
-    const { current, toRaw, markupRanges } = stripCriticMarkupWithMap(text);
-    const currentIdx = current.indexOf(target);
-    if (currentIdx !== -1) {
-      const currentSecondIdx = current.indexOf(target, currentIdx + 1);
-      if (currentSecondIdx !== -1) {
-        throw new Error(`Text "${target}" found multiple times in current text (ambiguous). Provide more context to uniquely identify the location. Use LINE:HASH coordinates from read_tracked_file for precise targeting (e.g., at: '15:a3').`);
-      }
-      const currentEnd = currentIdx + target.length - 1;
-      let rawStart = toRaw[currentIdx];
-      let rawEnd = toRaw[currentEnd] + 1;
-      let expanded = true;
-      while (expanded) {
-        expanded = false;
-        for (const range of markupRanges) {
-          if (range.rawStart < rawEnd && range.rawEnd > rawStart) {
-            if (range.rawStart < rawStart) {
-              rawStart = range.rawStart;
-              expanded = true;
-            }
-            if (range.rawEnd > rawEnd) {
-              rawEnd = range.rawEnd;
-              expanded = true;
-            }
-          }
-        }
-      }
-      for (const range of markupRanges) {
-        if (range.rawStart === rawEnd && /^\[\^cn-/.test(text.slice(range.rawStart))) {
-          rawEnd = range.rawEnd;
-        }
-      }
-      return {
-        index: rawStart,
-        length: rawEnd - rawStart,
-        originalText: target,
-        // Return the settled text as originalText for clean CriticMarkup
-        wasNormalized: true,
-        wasSettledMatch: true
-      };
-    }
-  }
-  const hint = normalizer ? "Tried: exact match, normalized match (NFKC), whitespace-collapsed match, view-surface match, decided-text match, current-text match." : "Tried: exact match only (no normalizer), whitespace-collapsed match, view-surface match, decided-text match, current-text match.";
-  const preview = target.length > 80 ? target.slice(0, 80) + "..." : target;
-  const haystackPreview = text.length > 200 ? text.slice(0, 200) + "..." : text;
-  const haystackLineCount = text.split("\n").length;
-  const searchedInLine = `Searched in (${haystackLineCount} line${haystackLineCount === 1 ? "" : "s"}, first 200 chars): "${haystackPreview}"`;
-  const diagnosticResult = tryDiagnosticConfusableMatch(text, target);
-  if (diagnosticResult) {
-    const diffLines = diagnosticResult.differences.map((d) => `  Position ${d.position}: you sent ${d.agentName} (U+${d.agentCodepoint.toString(16).toUpperCase().padStart(4, "0")}), file has ${d.fileName} (U+${d.fileCodepoint.toString(16).toUpperCase().padStart(4, "0")})`).join("\n");
-    const diagPreview = diagnosticResult.matchedText.length > 80 ? diagnosticResult.matchedText.slice(0, 80) + "..." : diagnosticResult.matchedText;
-    throw new Error(`Text not found in document.
-${hint}
-${searchedInLine}
-
-Unicode mismatch detected -- your text would match with character substitution:
-${diffLines}
-
-Copy the exact text from file for retry:
-  "${diagPreview}"`);
-  }
-  throw new Error(`Text not found in document.
-${hint}
-Input (first 80 chars): "${preview}"
-${searchedInLine}
-Hint: Re-read the file for current content, or use LINE:HASH addressing.`);
-}
-function tryFindUniqueMatch(text, target, normalizer) {
-  try {
-    return findUniqueMatch(text, target, normalizer);
-  } catch {
-    return null;
-  }
-}
-function replaceUnique(text, target, replacement, normalizer) {
-  const match = findUniqueMatch(text, target, normalizer);
-  return text.slice(0, match.index) + replacement + text.slice(match.index + match.length);
-}
-function contentZoneText(fullText) {
-  const lines = fullText.split("\n");
-  const blockStart = findFootnoteBlockStart(lines);
-  if (blockStart >= lines.length)
-    return fullText;
-  let offset = 0;
-  for (let i = 0; i < blockStart; i++) {
-    offset += lines[i].length + 1;
-  }
-  return fullText.slice(0, offset);
-}
-function hasL3ProposedChanges(text) {
-  const lines = text.split("\n");
-  let inProposedFootnote = false;
-  for (const line of lines) {
-    if (FOOTNOTE_DEF_STATUS_VALUE.test(line)) {
-      inProposedFootnote = /\|\s*proposed\s*$/.test(line);
-    } else if (inProposedFootnote && FOOTNOTE_L3_EDIT_OP.test(line)) {
-      return true;
-    } else if (line.trim() === "" || line.startsWith("[^") && !line.startsWith("    ")) {
-      inProposedFootnote = false;
-    }
-  }
-  return false;
-}
-async function applyProposeChange(params) {
-  const { text, oldText, newText, changeId, author, reasoning, insertAfter, level = 2 } = params;
-  let kind = params.kind;
-  if (kind === "comment" && oldText !== "") {
-    kind = "highlight";
-  }
-  const isL3 = level === 3;
-  if (isL3)
-    await initHashline();
-  if (!isL3 && text.includes("[^cn-") && isL3Format(text) && hasL3ProposedChanges(text)) {
-    throw new Error("L3 format detected but level is not 3. Pass level: 3 for L3 text to avoid garbled output.");
-  }
-  let bodyText;
-  if (isL3) {
-    const split = splitBodyAndFootnotes(text.split("\n"));
-    bodyText = split.bodyLines.join("\n");
-  } else {
-    bodyText = text;
-  }
-  if (kind === "highlight") {
-    if (oldText === "") {
-      throw new Error("Highlight requires oldText (the text to highlight) \u2014 oldText must not be empty.");
-    }
-    const hlSearchText = isL3 ? bodyText : contentZoneText(text);
-    const match = findUniqueMatch(hlSearchText, oldText, defaultNormalizer);
-    if (!isL3 && !match.wasSettledMatch && !match.wasCommittedMatch) {
-      guardOverlap(text, match.index, match.length);
-    }
-    const changeOffset2 = match.index;
-    if (isL3) {
-      const modifiedBody3 = text;
-      const split = splitBodyAndFootnotes(modifiedBody3.split("\n"));
-      const mutatedBodyText = split.bodyLines.join("\n");
-      const lineStarts = buildLineStarts(mutatedBodyText);
-      const lineNumber = offsetToLineNumber(lineStarts, changeOffset2);
-      const lineIdx = lineNumber - 1;
-      const lineContent = split.bodyLines[lineIdx] ?? "";
-      const hash2 = computeLineHash(lineIdx, lineContent, split.bodyLines);
-      const rawOp = reasoning ? `{==${match.originalText}==}{>>${reasoning}` : `{==${match.originalText}==}`;
-      const editOpLine = formatL3EditOpLine(lineNumber, hash2, rawOp);
-      const footnoteHeader3 = generateFootnoteDefinition(changeId, "hig", author);
-      const footnoteBlock3 = footnoteHeader3 + "\n" + editOpLine;
-      const modifiedText3 = appendFootnote(modifiedBody3, footnoteBlock3);
-      return { modifiedText: modifiedText3, changeType: "highlight" };
-    }
-    const actualOldText = match.originalText;
-    const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
-    const commentSuffix = reasoning ? `{>>${reasoning}<<}` : "";
-    const refSuffix2 = level === 2 ? `[^${changeId}]` : "";
-    const inlineMarkup2 = `{==${cleanedOld}==}${refSuffix2}${preservedRefs.join("")}${commentSuffix}${level === 1 ? level1Comment(author, "highlight") : ""}`;
-    const modifiedBody2 = text.slice(0, match.index) + inlineMarkup2 + text.slice(match.index + match.length);
-    if (level === 1) {
-      return { modifiedText: modifiedBody2, changeType: "highlight" };
-    }
-    const footnoteHeader2 = generateFootnoteDefinition(changeId, "hig", author);
-    const footnoteBlock2 = footnoteHeader2;
-    const modifiedText2 = appendFootnote(modifiedBody2, footnoteBlock2);
-    return { modifiedText: modifiedText2, changeType: "highlight" };
-  }
-  if (kind === "comment") {
-    if (!reasoning || reasoning.trim() === "") {
-      throw new Error("Comment requires reasoning (the comment body) \u2014 reasoning must not be empty.");
-    }
-    if (isL3) {
-      const modifiedBody3 = text;
-      const split = splitBodyAndFootnotes(modifiedBody3.split("\n"));
-      const mutatedBodyText = split.bodyLines.join("\n");
-      let targetOffset = mutatedBodyText.length > 0 ? mutatedBodyText.length - 1 : 0;
-      if (insertAfter) {
-        const anchorIdx = mutatedBodyText.lastIndexOf(insertAfter);
-        if (anchorIdx !== -1)
-          targetOffset = anchorIdx + insertAfter.length - 1;
-      }
-      const lineStarts = buildLineStarts(mutatedBodyText);
-      const lineNumber = offsetToLineNumber(lineStarts, Math.max(0, targetOffset));
-      const lineIdx = lineNumber - 1;
-      const lineContent = split.bodyLines[lineIdx] ?? "";
-      const hash2 = computeLineHash(lineIdx, lineContent, split.bodyLines);
-      const rawOp = `{>>${reasoning}`;
-      const editOpLine = formatL3EditOpLine(lineNumber, hash2, rawOp);
-      const footnoteHeader3 = generateFootnoteDefinition(changeId, "com", author);
-      const footnoteBlock3 = footnoteHeader3 + "\n" + editOpLine;
-      const modifiedText3 = appendFootnote(modifiedBody3, footnoteBlock3);
-      return { modifiedText: modifiedText3, changeType: "comment" };
-    }
-    const insertPos = (() => {
-      if (insertAfter) {
-        const anchorIdx = text.lastIndexOf(insertAfter);
-        if (anchorIdx !== -1) {
-          const afterAnchor = anchorIdx + insertAfter.length;
-          const nlIdx = text.indexOf("\n", afterAnchor);
-          return nlIdx !== -1 ? nlIdx : text.length;
-        }
-      }
-      const lines = text.split("\n");
-      const blockStart = findFootnoteBlockStart(lines);
-      if (blockStart >= lines.length)
-        return text.length;
-      let offset = 0;
-      for (let i = 0; i < blockStart; i++)
-        offset += lines[i].length + 1;
-      return Math.max(0, offset - 1);
-    })();
-    const refSuffix2 = level === 2 ? `[^${changeId}]` : "";
-    const inlineMarkup2 = `{>>${reasoning}<<}${refSuffix2}${level === 1 ? level1Comment(author, "comment") : ""}`;
-    const modifiedBody2 = text.slice(0, insertPos) + inlineMarkup2 + text.slice(insertPos);
-    if (level === 1) {
-      return { modifiedText: modifiedBody2, changeType: "comment" };
-    }
-    const footnoteHeader2 = generateFootnoteDefinition(changeId, "com", author);
-    const footnoteBlock2 = footnoteHeader2;
-    const modifiedText2 = appendFootnote(modifiedBody2, footnoteBlock2);
-    return { modifiedText: modifiedText2, changeType: "comment" };
-  }
-  if (oldText === "" && newText === "") {
-    throw new Error("Both oldText and newText are empty \u2014 nothing to change.");
-  }
-  let changeType;
-  let inlineMarkup = "";
-  let modifiedBody;
-  let changeOffset = 0;
-  const refSuffix = level === 2 ? `[^${changeId}]` : "";
-  if (oldText === "") {
-    changeType = "ins";
-    if (!insertAfter) {
-      throw new Error("Insertion requires an insertAfter anchor to locate where to insert.");
-    }
-    const searchTarget = isL3 ? bodyText : text;
-    let anchorIndex = searchTarget.indexOf(insertAfter);
-    let anchorLength = insertAfter.length;
-    if (anchorIndex === -1) {
-      anchorIndex = normalizedIndexOf(searchTarget, insertAfter, defaultNormalizer);
-    }
-    if (anchorIndex === -1) {
-      const wsMatch = whitespaceCollapsedFind(searchTarget, insertAfter);
-      if (wsMatch !== null) {
-        anchorIndex = wsMatch.index;
-        anchorLength = wsMatch.length;
-      }
-    }
-    if (anchorIndex === -1) {
-      throw new Error(`insertAfter anchor not found in text: "${insertAfter}"`);
-    }
-    if (!isL3) {
-      guardOverlap(text, anchorIndex, anchorLength);
-    }
-    const insertPos = anchorIndex + anchorLength;
-    changeOffset = insertPos;
-    if (isL3) {
-      modifiedBody = text.slice(0, insertPos) + newText + text.slice(insertPos);
-    } else {
-      const insPad = /^[+\-~]/.test(newText) ? " " : "";
-      inlineMarkup = `{++${insPad}${newText}++}${refSuffix}${level === 1 ? level1Comment(author, "ins") : ""}`;
-      const charBefore = insertPos > 0 ? text[insertPos - 1] : "\n";
-      const needsNewlineBefore = charBefore !== "\n";
-      const isBlockContent = /^[-#>*\d]/.test(newText) || newText.includes("\n");
-      const prefix = needsNewlineBefore && isBlockContent ? "\n" : "";
-      modifiedBody = text.slice(0, insertPos) + prefix + inlineMarkup + text.slice(insertPos);
-    }
-  } else if (newText === "") {
-    changeType = "del";
-    const delSearchText = isL3 ? bodyText : contentZoneText(text);
-    const match = findUniqueMatch(delSearchText, oldText, defaultNormalizer);
-    if (!isL3 && !match.wasSettledMatch && !match.wasCommittedMatch) {
-      guardOverlap(text, match.index, match.length);
-    }
-    changeOffset = match.index;
-    if (isL3) {
-      modifiedBody = text.slice(0, match.index) + text.slice(match.index + match.length);
-    } else {
-      const actualOldText = match.originalText;
-      const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
-      const delPad = /^[+\-~]/.test(cleanedOld) ? " " : "";
-      inlineMarkup = `{--${delPad}${cleanedOld}--}${refSuffix}${preservedRefs.join("")}${level === 1 ? level1Comment(author, "del") : ""}`;
-      modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
-    }
-  } else {
-    changeType = "sub";
-    const subSearchText = isL3 ? bodyText : contentZoneText(text);
-    const match = findUniqueMatch(subSearchText, oldText, defaultNormalizer);
-    if (!isL3 && !match.wasSettledMatch && !match.wasCommittedMatch) {
-      guardOverlap(text, match.index, match.length);
-    }
-    changeOffset = match.index;
-    if (isL3) {
-      modifiedBody = text.slice(0, match.index) + newText + text.slice(match.index + match.length);
-    } else {
-      const actualOldText = match.originalText;
-      const { cleaned: cleanedOld, refs: preservedRefs } = stripRefsFromContent(actualOldText);
-      const subPad = /^[+\-~]/.test(cleanedOld) ? " " : "";
-      inlineMarkup = `{~~${subPad}${cleanedOld}~>${newText}~~}${refSuffix}${preservedRefs.join("")}${level === 1 ? level1Comment(author, "sub") : ""}`;
-      modifiedBody = text.slice(0, match.index) + inlineMarkup + text.slice(match.index + match.length);
-    }
-  }
-  if (isL3) {
-    const mutatedSplit = splitBodyAndFootnotes(modifiedBody.split("\n"));
-    const mutatedBodyText = mutatedSplit.bodyLines.join("\n");
-    const lineStarts = buildLineStarts(mutatedBodyText);
-    const lineNumber = offsetToLineNumber(lineStarts, changeOffset);
-    const lineIdx = lineNumber - 1;
-    const lineContent = mutatedSplit.bodyLines[lineIdx] ?? "";
-    const hash2 = computeLineHash(lineIdx, lineContent, mutatedSplit.bodyLines);
-    const column = changeOffset - (lineStarts[lineIdx] ?? 0);
-    const anchorLen = changeType === "del" ? 0 : newText.length;
-    const changeTypeEnum = changeType === "ins" ? ChangeType.Insertion : changeType === "del" ? ChangeType.Deletion : ChangeType.Substitution;
-    const editOpLine = buildContextualL3EditOp({
-      changeType: changeTypeEnum,
-      originalText: oldText,
-      currentText: newText,
-      lineContent,
-      lineNumber,
-      hash: hash2,
-      column,
-      anchorLen
-    });
-    const footnoteHeader2 = generateFootnoteDefinition(changeId, changeType, author);
-    const reasonLine2 = reasoning ? `
-    @${author} ${nowTimestamp().raw}: ${reasoning}` : "";
-    const footnoteBlock2 = footnoteHeader2 + "\n" + editOpLine + reasonLine2;
-    const modifiedText2 = appendFootnote(modifiedBody, footnoteBlock2);
-    return { modifiedText: modifiedText2, changeType };
-  }
-  if (level === 1) {
-    return { modifiedText: modifiedBody, changeType };
-  }
-  const footnoteHeader = generateFootnoteDefinition(changeId, changeType, author);
-  const reasonLine = reasoning ? `
-    @${author} ${nowTimestamp().raw}: ${reasoning}` : "";
-  const footnoteBlock = footnoteHeader + reasonLine;
-  const modifiedText = appendFootnote(modifiedBody, footnoteBlock);
-  return { modifiedText, changeType };
-}
-function extractLineRange(fileLines, startLine, endLine) {
-  if (startLine < 1 || startLine > fileLines.length) {
-    throw new Error(`start_line ${startLine} is out of range (file has ${fileLines.length} lines)`);
-  }
-  if (endLine < startLine || endLine > fileLines.length) {
-    throw new Error(`end_line ${endLine} is out of range (file has ${fileLines.length} lines, start_line is ${startLine})`);
-  }
-  let startOffset = 0;
-  for (let i = 0; i < startLine - 1; i++) {
-    startOffset += fileLines[i].length + 1;
-  }
-  const extractedLines = fileLines.slice(startLine - 1, endLine);
-  const content = extractedLines.join("\n");
-  const endOffset = startOffset + content.length;
-  return { content, startOffset, endOffset };
-}
-function appendFootnote(text, footnoteBlock) {
-  const lines = text.split("\n");
-  const blockStart = findFootnoteBlockStart(lines);
-  if (blockStart >= lines.length) {
-    return text + footnoteBlock;
-  }
-  let lastFootnoteEnd = blockStart;
-  for (let i = blockStart; i < lines.length; i++) {
-    if (FOOTNOTE_DEF_START.test(lines[i])) {
-      lastFootnoteEnd = i;
-      let j = i + 1;
-      while (j < lines.length) {
-        if (FOOTNOTE_CONTINUATION.test(lines[j])) {
-          lastFootnoteEnd = j;
-          j++;
-        } else if (lines[j].trim() === "") {
-          let k = j + 1;
-          while (k < lines.length && lines[k].trim() === "")
-            k++;
-          if (k < lines.length && FOOTNOTE_CONTINUATION.test(lines[k])) {
-            lastFootnoteEnd = j;
-            j++;
-          } else {
-            break;
-          }
-        } else {
-          break;
-        }
-      }
-    }
-  }
-  const before = lines.slice(0, lastFootnoteEnd + 1).join("\n");
-  const after = lines.slice(lastFootnoteEnd + 1).join("\n");
-  const block = footnoteBlock.startsWith("\n") ? footnoteBlock : "\n\n" + footnoteBlock;
-  if (after.length > 0) {
-    return before + block + "\n" + after;
-  }
-  return before + block;
-}
-async function applySingleOperation(params) {
-  const { fileContent, oldText, newText, changeId, author, reasoning, insertAfter, afterLine, startLine, endLine } = params;
-  if (oldText === "" && newText === "") {
-    throw new Error("Both oldText and newText are empty \u2014 nothing to change.");
-  }
-  const fileLines = fileContent.split("\n");
-  if (afterLine !== void 0 && oldText === "") {
-    const changeType = "ins";
-    let cleanedNewText = newText;
-    const newTextLines = cleanedNewText.split("\n");
-    const strippedLines = stripHashlinePrefixes(newTextLines);
-    cleanedNewText = strippedLines.join("\n");
-    const insPad = /^[+\-~]/.test(cleanedNewText) ? " " : "";
-    const inlineMarkup = `{++${insPad}${cleanedNewText}++}[^${changeId}]`;
-    const footnoteHeader = generateFootnoteDefinition(changeId, changeType, author);
-    const reasonLine = reasoning ? `
-    @${author} ${nowTimestamp().raw}: ${reasoning}` : "";
-    const footnoteBlock = footnoteHeader + reasonLine;
-    const insertPos = fileLines.slice(0, afterLine).join("\n").length;
-    let modifiedText = fileContent.slice(0, insertPos) + "\n" + inlineMarkup + fileContent.slice(insertPos);
-    modifiedText = appendFootnote(modifiedText, footnoteBlock);
-    const affectedEnd = Math.min(modifiedText.split("\n").length, afterLine + 3);
-    return { modifiedText, changeType, affectedStartLine: afterLine, affectedEndLine: affectedEnd };
-  }
-  if (startLine !== void 0) {
-    const effectiveEndLine = endLine ?? startLine;
-    const extracted = extractLineRange(fileLines, startLine, effectiveEndLine);
-    let cleanedNewText = newText;
-    let newTextLines = cleanedNewText.split("\n");
-    newTextLines = stripHashlinePrefixes(newTextLines);
-    newTextLines = stripBoundaryEcho(fileLines, startLine, effectiveEndLine, newTextLines);
-    cleanedNewText = newTextLines.join("\n");
-    let modifiedBody;
-    let changeType;
-    if (oldText !== "") {
-      const match = findUniqueMatch(contentZoneText(extracted.content), oldText, defaultNormalizer);
-      const absPos = extracted.startOffset + match.index;
-      guardOverlap(fileContent, absPos, match.length);
-      const actualOldText = match.originalText;
-      const { cleaned: cleanedOldText, refs: preservedRefs } = stripRefsFromContent(actualOldText);
-      changeType = cleanedNewText === "" ? "del" : "sub";
-      const pad = /^[+\-~]/.test(cleanedOldText) ? " " : "";
-      const inlineMarkup = changeType === "del" ? `{--${pad}${cleanedOldText}--}[^${changeId}]${preservedRefs.join("")}` : `{~~${pad}${cleanedOldText}~>${cleanedNewText}~~}[^${changeId}]${preservedRefs.join("")}`;
-      const absEnd = absPos + match.length;
-      modifiedBody = fileContent.slice(0, absPos) + inlineMarkup + fileContent.slice(absEnd);
-    } else {
-      const { cleaned: cleanedExtracted, refs: preservedRefs } = stripRefsFromContent(extracted.content);
-      changeType = cleanedNewText === "" ? "del" : "sub";
-      const pad = /^[+\-~]/.test(cleanedExtracted) ? " " : "";
-      const inlineMarkup = changeType === "del" ? `{--${pad}${cleanedExtracted}--}[^${changeId}]${preservedRefs.join("")}` : `{~~${pad}${cleanedExtracted}~>${cleanedNewText}~~}[^${changeId}]${preservedRefs.join("")}`;
-      modifiedBody = fileContent.slice(0, extracted.startOffset) + inlineMarkup + fileContent.slice(extracted.endOffset);
-    }
-    const footnoteHeader = generateFootnoteDefinition(changeId, changeType, author);
-    const reasonLine = reasoning ? `
-    @${author} ${nowTimestamp().raw}: ${reasoning}` : "";
-    const modifiedText = appendFootnote(modifiedBody, footnoteHeader + reasonLine);
-    const affectedEnd = Math.min(modifiedText.split("\n").length, effectiveEndLine + 5);
-    return { modifiedText, changeType, affectedStartLine: startLine, affectedEndLine: affectedEnd };
-  }
-  const applied = await applyProposeChange({
-    text: fileContent,
-    oldText,
-    newText,
-    changeId,
-    author,
-    reasoning,
-    insertAfter
-  });
-  const lines = applied.modifiedText.split("\n");
-  let matchLine = 1;
-  for (let i = 0; i < lines.length; i++) {
-    if (/\{\+\+|\{--|\{~~|\{==/.test(lines[i])) {
-      matchLine = i + 1;
-      break;
-    }
-  }
-  return {
-    modifiedText: applied.modifiedText,
-    changeType: applied.changeType,
-    affectedStartLine: Math.max(1, matchLine - 2),
-    affectedEndLine: Math.min(lines.length, matchLine + 5)
-  };
-}
-var init_file_ops = __esm({
-  "../../packages/core/dist-esm/file-ops.js"() {
-    "use strict";
-    init_footnote_generator();
-    init_timestamp();
-    init_apply_review();
-    init_current_text();
-    init_text_normalizer();
-    init_hashline_cleanup();
-    init_format_aware_parse();
-    init_types();
-    init_footnote_utils();
-    init_footnote_patterns();
-    init_hashline();
-    init_l2_to_l3();
-    init_view_surface();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/ensure-l2.js
-function ensureL2(text, changeOffset, opts) {
-  if (opts.existingId) {
-    return { text, changeId: opts.existingId, promoted: false };
-  }
-  const parser = new CriticMarkupParser();
-  const doc = parser.parse(text);
-  const changes = doc.getChanges();
-  const change = changes.find((c) => c.range.start <= changeOffset && changeOffset < c.range.end);
-  if (!change) {
-    return { text, changeId: "", promoted: false };
-  }
-  if (change.level !== 0) {
-    return { text, changeId: change.id, promoted: false };
-  }
-  const maxId = scanMaxCnId(text);
-  const nextId = `cn-${maxId + 1}`;
-  const typeAbbrev = changeTypeToAbbrev(change.type) ?? opts.type;
-  const insertPos = change.range.end;
-  const withRef = text.slice(0, insertPos) + `[^${nextId}]` + text.slice(insertPos);
-  const footnoteDef = generateFootnoteDefinition(nextId, typeAbbrev, opts.author);
-  const result = appendFootnote(withRef, footnoteDef);
-  return { text: result, changeId: nextId, promoted: true };
-}
-var init_ensure_l2 = __esm({
-  "../../packages/core/dist-esm/operations/ensure-l2.js"() {
-    "use strict";
-    init_parser();
-    init_types();
-    init_footnote_generator();
-    init_file_ops();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/amend.js
-var init_amend = __esm({
-  "../../packages/core/dist-esm/operations/amend.js"() {
-    "use strict";
-    init_format_aware_parse();
-    init_document();
-    init_types();
-    init_footnote_utils();
-    init_timestamp();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/supersede.js
-async function computeSupersedeResult(text, changeId, opts) {
-  const { newText, oldText = "", reason, author, insertAfter } = opts;
-  const lines = text.split("\n");
-  const block = findFootnoteBlock(lines, changeId);
-  if (!block) {
-    return { isError: true, error: `Change "${changeId}" not found in file.` };
-  }
-  const header = parseFootnoteHeader(lines[block.headerLine]);
-  if (!header) {
-    return {
-      isError: true,
-      error: `Malformed metadata for change "${changeId}". Expected format: @author | date | type | status`
-    };
-  }
-  if (header.status === "accepted") {
-    return {
-      isError: true,
-      error: `Cannot supersede change "${changeId}": it is already accepted. Only proposed changes can be superseded.`
-    };
-  }
-  if (header.status === "rejected") {
-    return {
-      isError: true,
-      error: `Cannot supersede change "${changeId}": it is already rejected. Only proposed changes can be superseded.`
-    };
-  }
-  if (header.status !== "proposed") {
-    return {
-      isError: true,
-      error: `Cannot supersede change "${changeId}": unexpected status "${header.status}". Only proposed changes can be superseded.`
-    };
-  }
-  const inputDoc = parseForFormat(text);
-  assertResolved(inputDoc);
-  const rejectResult = applyReview(text, changeId, "reject", reason ?? "Superseded by new change", author);
-  if ("error" in rejectResult) {
-    return { isError: true, error: `Failed to reject old change: ${rejectResult.error}` };
-  }
-  let fileContent = rejectResult.updatedContent;
-  const level = isL3Format(text) ? 3 : 2;
-  const doc = parseForFormat(fileContent);
-  const rejectedChange = doc.getChanges().find((c) => c.id === changeId);
-  const isDirectReplace = rejectedChange && !oldText && !insertAfter && (rejectedChange.type === ChangeType.Insertion || rejectedChange.type === ChangeType.Comment);
-  if (isDirectReplace && rejectedChange) {
-    const maxId2 = scanMaxCnId(fileContent);
-    const newChangeId2 = `cn-${maxId2 + 1}`;
-    let newMarkup;
-    let changeType;
-    if (rejectedChange.type === ChangeType.Comment) {
-      newMarkup = `{>>${newText}<<}[^${newChangeId2}]`;
-      changeType = "com";
-    } else {
-      const insPad = /^[+\-~]/.test(newText) ? " " : "";
-      newMarkup = `{++${insPad}${newText}++}[^${newChangeId2}]`;
-      changeType = "ins";
-    }
-    const rangeStart = rejectedChange.range.start;
-    let rangeEnd = rejectedChange.range.end;
-    const refStr = `[^${changeId}]`;
-    if (fileContent.slice(rangeEnd, rangeEnd + refStr.length) === refStr) {
-      rangeEnd += refStr.length;
-    }
-    fileContent = fileContent.slice(0, rangeStart) + newMarkup + fileContent.slice(rangeEnd);
-    const footnoteHeader = generateFootnoteDefinition(newChangeId2, changeType, author);
-    const reasonLine = reason ? `
-    @${author} ${nowTimestamp().raw}: ${reason}` : "";
-    fileContent = appendFootnote(fileContent, footnoteHeader + reasonLine);
-    const modifiedLines2 = fileContent.split("\n");
-    const newBlock2 = findFootnoteBlock(modifiedLines2, newChangeId2);
-    if (newBlock2) {
-      const supersedesLine = `    supersedes: ${changeId}`;
-      modifiedLines2.splice(newBlock2.headerLine + 1, 0, supersedesLine);
-      fileContent = modifiedLines2.join("\n");
-    }
-    const updatedLines2 = fileContent.split("\n");
-    const origBlock2 = findFootnoteBlock(updatedLines2, changeId);
-    if (origBlock2) {
-      const supersededByLine = `    superseded-by: ${newChangeId2}`;
-      updatedLines2.splice(origBlock2.headerLine + 1, 0, supersededByLine);
-      fileContent = updatedLines2.join("\n");
-    }
-    return {
-      isError: false,
-      text: fileContent,
-      newChangeId: newChangeId2,
-      originalChangeId: changeId
-    };
-  }
-  let preRevertContent;
-  if (rejectedChange) {
-    preRevertContent = stripConsumedReferenceFromBody(fileContent, changeId);
-    const rejectEdit = computeReject(rejectedChange);
-    fileContent = fileContent.slice(0, rejectEdit.offset) + rejectEdit.newText + fileContent.slice(rejectEdit.offset + rejectEdit.length);
-    fileContent = stripConsumedReferenceFromBody(fileContent, changeId);
-  }
-  const maxId = scanMaxCnId(fileContent);
-  const newChangeId = `cn-${maxId + 1}`;
-  let proposeOldText = oldText;
-  if (rejectedChange) {
-    if (!proposeOldText) {
-      if (rejectedChange.type === ChangeType.Substitution || rejectedChange.type === ChangeType.Deletion) {
-        proposeOldText = rejectedChange.originalText ?? "";
-      }
-    }
-  }
-  let proposeResult;
-  try {
-    proposeResult = await applyProposeChange({
-      text: fileContent,
-      oldText: proposeOldText,
-      newText,
-      changeId: newChangeId,
-      author,
-      reasoning: reason,
-      insertAfter,
-      level
-    });
-  } catch (err) {
-    if (!preRevertContent)
-      throw err;
-    proposeResult = await applyProposeChange({
-      text: preRevertContent,
-      oldText: proposeOldText,
-      newText,
-      changeId: newChangeId,
-      author,
-      reasoning: reason,
-      insertAfter,
-      level
-    });
-  }
-  fileContent = proposeResult.modifiedText;
-  const modifiedLines = fileContent.split("\n");
-  const newBlock = findFootnoteBlock(modifiedLines, newChangeId);
-  if (newBlock) {
-    const supersedesLine = `    supersedes: ${changeId}`;
-    modifiedLines.splice(newBlock.headerLine + 1, 0, supersedesLine);
-    fileContent = modifiedLines.join("\n");
-  }
-  const updatedLines = fileContent.split("\n");
-  const origBlock = findFootnoteBlock(updatedLines, changeId);
-  if (origBlock) {
-    const supersededByLine = `    superseded-by: ${newChangeId}`;
-    updatedLines.splice(origBlock.headerLine + 1, 0, supersededByLine);
-    fileContent = updatedLines.join("\n");
-  }
-  return {
-    isError: false,
-    text: fileContent,
-    newChangeId,
-    originalChangeId: changeId
-  };
-}
-function stripConsumedReferenceFromBody(text, consumedId) {
-  const footnoteStart = text.search(/(?:^|\n)\[\^[^\]]+\]:/);
-  const bodyEnd = footnoteStart >= 0 ? footnoteStart : text.length;
-  const body = text.slice(0, bodyEnd);
-  const footer = text.slice(bodyEnd);
-  return stripConsumedReference(body, consumedId) + footer;
-}
-function stripConsumedReference(text, consumedId) {
-  const escaped = consumedId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return text.replace(new RegExp(`\\[\\^${escaped}\\]`, "g"), "");
-}
-var init_supersede = __esm({
-  "../../packages/core/dist-esm/operations/supersede.js"() {
-    "use strict";
-    init_footnote_utils();
-    init_apply_review();
-    init_file_ops();
-    init_footnote_generator();
-    init_footnote_patterns();
-    init_format_aware_parse();
-    init_document();
-    init_accept_reject();
-    init_types();
-    init_timestamp();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/level-promotion.js
-var init_level_promotion = __esm({
-  "../../packages/core/dist-esm/operations/level-promotion.js"() {
-    "use strict";
-    init_parser();
-    init_tokens();
-    init_timestamp();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/level-descent.js
-var init_level_descent = __esm({
-  "../../packages/core/dist-esm/operations/level-descent.js"() {
-    "use strict";
-    init_parser();
-    init_footnote_utils();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/l3-to-l2.js
-var init_l3_to_l2 = __esm({
-  "../../packages/core/dist-esm/operations/l3-to-l2.js"() {
-    "use strict";
-    init_types();
-    init_footnote_native_parser();
-    init_hashline();
-    init_footnote_patterns();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/compact.js
-var l3Parser2, RE_SUPERSEDES;
-var init_compact = __esm({
-  "../../packages/core/dist-esm/operations/compact.js"() {
-    "use strict";
-    init_footnote_patterns();
-    init_footnote_generator();
-    init_footnote_native_parser();
-    init_hashline();
-    init_accept_reject();
-    init_types();
-    init_l2_to_l3();
-    init_l3_to_l2();
-    init_scrub();
-    l3Parser2 = new FootnoteNativeParser();
-    RE_SUPERSEDES = new RegExp(`^\\s+supersedes:\\s+(${FOOTNOTE_ID_PATTERN})\\s*$`);
-  }
-});
-
-// ../../packages/core/dist-esm/constants.js
-var init_constants = __esm({
-  "../../packages/core/dist-esm/constants.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/parser/sidecar-parser.js
-var init_sidecar_parser = __esm({
-  "../../packages/core/dist-esm/parser/sidecar-parser.js"() {
-    "use strict";
-    init_types();
-    init_document();
-    init_comment_syntax();
-    init_constants();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/sidecar-accept-reject.js
-var init_sidecar_accept_reject = __esm({
-  "../../packages/core/dist-esm/operations/sidecar-accept-reject.js"() {
-    "use strict";
-    init_comment_syntax();
-    init_constants();
-  }
-});
-
-// ../../packages/core/dist-esm/workspace.js
-var init_workspace = __esm({
-  "../../packages/core/dist-esm/workspace.js"() {
-    "use strict";
-    init_document();
-    init_parser();
-    init_sidecar_parser();
-    init_footnote_native_parser();
-    init_accept_reject();
-    init_sidecar_accept_reject();
-    init_comment_syntax();
-    init_navigation();
-    init_tracking();
-    init_comment();
-    init_constants();
-    init_footnote_patterns();
-    init_format_aware_parse();
-    init_current_text();
-  }
-});
-
-// ../../packages/core/dist-esm/annotators/markdown-annotator.js
-var init_markdown_annotator = __esm({
-  "../../packages/core/dist-esm/annotators/markdown-annotator.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/annotators/sidecar-annotator.js
-var init_sidecar_annotator = __esm({
-  "../../packages/core/dist-esm/annotators/sidecar-annotator.js"() {
-    "use strict";
-    init_comment_syntax();
-    init_constants();
-  }
-});
-
-// ../../packages/core/dist-esm/tracking-header.js
-function parseTrackingHeader(text) {
-  const lines = text.split("\n");
-  const scanLimit = Math.min(lines.length, MAX_SCAN_LINES);
-  let offset = 0;
-  for (let i = 0; i < scanLimit; i++) {
-    const match = TRACKING_HEADER_RE.exec(lines[i]);
-    if (match) {
-      return {
-        version: parseInt(match[1], 10),
-        status: match[2],
-        line: i,
-        offset: offset + match.index,
-        length: match[0].length
-      };
-    }
-    offset += lines[i].length + 1;
-  }
-  return null;
-}
-function generateTrackingHeader(status) {
-  return `<!-- changedown.com/v1: ${status} -->`;
-}
-function insertTrackingHeader(text) {
-  if (parseTrackingHeader(text) !== null) {
-    return { newText: text, headerInserted: false };
-  }
-  const header = generateTrackingHeader("tracked");
-  if (text === "") {
-    return { newText: header + "\n", headerInserted: true };
-  }
-  if (text.startsWith("---")) {
-    const lines = text.split("\n");
-    for (let i = 1; i < lines.length; i++) {
-      if (lines[i].trimEnd() === "---") {
-        const before = lines.slice(0, i + 1).join("\n");
-        const after = lines.slice(i + 1).join("\n");
-        return {
-          newText: before + "\n" + header + "\n" + after,
-          headerInserted: true
-        };
-      }
-    }
-  }
-  return { newText: header + "\n" + text, headerInserted: true };
-}
-var TRACKING_HEADER_RE, MAX_SCAN_LINES;
-var init_tracking_header = __esm({
-  "../../packages/core/dist-esm/tracking-header.js"() {
-    "use strict";
-    TRACKING_HEADER_RE = /<!--\s*(?:changedown\.com|ctrcks\.com)\/v(\d+):\s*(tracked|untracked)\s*-->/;
-    MAX_SCAN_LINES = 5;
-  }
-});
-
-// ../../packages/core/dist-esm/critic-regex.js
-function multiLineSubstitution() {
-  return /\{~~([\s\S]*?)~>([\s\S]*?)~~\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
-}
-function multiLineInsertion() {
-  return /\{\+\+([\s\S]*?)\+\+\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
-}
-function multiLineDeletion() {
-  return /\{--([\s\S]*?)--\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
-}
-function multiLineHighlight() {
-  return /\{==([\s\S]*?)==\}(\[\^(cn-\d+(?:\.\d+)?)\])?/g;
-}
-function multiLineComment() {
-  return /\{>>([\s\S]*?)<<\}/g;
-}
-function hasCriticMarkup(line) {
-  return HAS_CRITIC_MARKUP.test(line);
-}
-var HAS_CRITIC_MARKUP;
-var init_critic_regex = __esm({
-  "../../packages/core/dist-esm/critic-regex.js"() {
-    "use strict";
-    HAS_CRITIC_MARKUP = /\{\+\+|\{--|\{~~|\{==|\{>>|\[\^cn-\d/;
-  }
-});
-
-// ../../packages/core/dist-esm/hashline-tracked.js
-var init_hashline_tracked = __esm({
-  "../../packages/core/dist-esm/hashline-tracked.js"() {
-    "use strict";
-    init_hashline();
-    init_critic_regex();
-    init_footnote_patterns();
-  }
-});
-
-// ../../packages/core/dist-esm/footnote-parser.js
-var init_footnote_parser = __esm({
-  "../../packages/core/dist-esm/footnote-parser.js"() {
-    "use strict";
-    init_footnote_patterns();
-    init_footnote_utils();
-    init_timestamp();
-  }
-});
-
-// ../../packages/core/dist-esm/decided-text.js
-function resolveStatus(changeId, footnotes) {
-  if (!changeId)
-    return "proposed";
-  const info = footnotes.get(changeId);
-  if (!info)
-    return "proposed";
-  return info.status;
-}
-function applyDecidedReplacementsOnce(text, footnotes, trackStatus) {
-  let result = text;
-  result = result.replace(multiLineSubstitution(), (_match, old, newText, _refFull, refId) => {
-    const status = resolveStatus(refId, footnotes);
-    trackStatus(status, refId);
-    return status === "accepted" ? newText : old;
-  });
-  result = result.replace(multiLineInsertion(), (_match, content, _refFull, refId) => {
-    const status = resolveStatus(refId, footnotes);
-    trackStatus(status, refId);
-    return status === "accepted" ? content : "";
-  });
-  result = result.replace(multiLineDeletion(), (_match, content, _refFull, refId) => {
-    const status = resolveStatus(refId, footnotes);
-    trackStatus(status, refId);
-    return status === "accepted" ? "" : content;
-  });
-  result = result.replace(multiLineHighlight(), (_match, content) => {
-    return content;
-  });
-  result = result.replace(multiLineComment(), "");
-  result = result.replace(footnoteRefGlobal(), "");
-  return result;
-}
-function computeDecidedLine(line, footnotes) {
-  let result = line;
-  const changeIds = [];
-  let hasProposed = false;
-  let hasAccepted = false;
-  function trackStatus(status, changeId) {
-    if (changeId)
-      changeIds.push(changeId);
-    if (status === "proposed")
-      hasProposed = true;
-    else if (status === "accepted")
-      hasAccepted = true;
-  }
-  let depth = 0;
-  while (depth < MAX_DECIDED_DEPTH && hasCriticMarkup(result)) {
-    result = applyDecidedReplacementsOnce(result, footnotes, trackStatus);
-    depth++;
-  }
-  let flag = "";
-  if (hasProposed)
-    flag = "P";
-  else if (hasAccepted)
-    flag = "A";
-  return { text: result, flag, changeIds };
-}
-function findFootnoteLineIndices(lines) {
-  const indices = /* @__PURE__ */ new Set();
-  const blockStart = findFootnoteBlockStart(lines);
-  for (let i = blockStart; i < lines.length; i++) {
-    if (!FOOTNOTE_DEF_START_QUICK.test(lines[i]))
-      continue;
-    indices.add(i);
-    let j = i + 1;
-    while (j < lines.length) {
-      const line = lines[j];
-      if (line.trim() === "") {
-        let k = j + 1;
-        while (k < lines.length && lines[k].trim() === "")
-          k++;
-        if (k < lines.length && /^\s+\S/.test(lines[k])) {
-          indices.add(j);
-          j++;
-          continue;
-        }
-        break;
-      }
-      if (/^\s+\S/.test(line)) {
-        indices.add(j);
-        j++;
-        continue;
-      }
-      break;
-    }
-  }
-  return indices;
-}
-function computeDecidedView(rawText, preParsed) {
-  const rawLines = rawText.split("\n");
-  const changes = preParsed ?? parseForFormat(rawText).getChanges();
-  const statusMap = /* @__PURE__ */ new Map();
-  for (const node of changes) {
-    const rawStatus = nodeStatus(node);
-    statusMap.set(node.id, {
-      status: rawStatus === "accepted" || rawStatus === "rejected" ? rawStatus : "proposed"
-    });
-  }
-  const footnoteLineIndices = findFootnoteLineIndices(rawLines);
-  const preLines = [];
-  let decidedLineNum = 0;
-  let cleanCount = 0;
-  for (let rawIdx = 0; rawIdx < rawLines.length; rawIdx++) {
-    if (footnoteLineIndices.has(rawIdx))
-      continue;
-    const rawLine = rawLines[rawIdx];
-    const lineResult = computeDecidedLine(rawLine, statusMap);
-    const rawIsBlank = rawLine.trim() === "";
-    const committedIsBlank = lineResult.text.trim() === "";
-    if (!rawIsBlank && committedIsBlank && hasCriticMarkup(rawLine)) {
-      continue;
-    }
-    decidedLineNum++;
-    const rawLineNum = rawIdx + 1;
-    if (lineResult.flag === "") {
-      cleanCount++;
-    }
-    preLines.push({
-      decidedLineNum,
-      rawLineNum,
-      text: lineResult.text,
-      flag: lineResult.flag,
-      changeIds: lineResult.changeIds
-    });
-  }
-  const allCommittedTexts = preLines.map((l) => l.text);
-  const decidedLines = [];
-  const decidedToRaw = /* @__PURE__ */ new Map();
-  const rawToDecided = /* @__PURE__ */ new Map();
-  for (const pre of preLines) {
-    const hash2 = computeLineHash(pre.decidedLineNum - 1, pre.text, allCommittedTexts);
-    decidedLines.push({
-      decidedLineNum: pre.decidedLineNum,
-      rawLineNum: pre.rawLineNum,
-      text: pre.text,
-      hash: hash2,
-      flag: pre.flag,
-      changeIds: pre.changeIds
-    });
-    decidedToRaw.set(pre.decidedLineNum, pre.rawLineNum);
-    rawToDecided.set(pre.rawLineNum, pre.decidedLineNum);
-  }
-  const summary = { proposed: 0, accepted: 0, rejected: 0, clean: cleanCount };
-  for (const node of changes) {
-    const s = nodeStatus(node);
-    if (s === "proposed")
-      summary.proposed++;
-    else if (s === "accepted")
-      summary.accepted++;
-    else if (s === "rejected")
-      summary.rejected++;
-  }
-  return { lines: decidedLines, summary, decidedToRaw, rawToDecided, changes };
-}
-var MAX_DECIDED_DEPTH;
-var init_decided_text = __esm({
-  "../../packages/core/dist-esm/decided-text.js"() {
-    "use strict";
-    init_footnote_utils();
-    init_format_aware_parse();
-    init_types();
-    init_hashline();
-    init_critic_regex();
-    init_footnote_patterns();
-    MAX_DECIDED_DEPTH = 3;
-  }
-});
-
-// ../../packages/core/dist-esm/at-resolver.js
-function parseAt(at) {
-  if (!at || at.trim() === "") {
-    throw new Error("at coordinate is empty.");
-  }
-  const dashIdx = at.indexOf("-");
-  if (dashIdx === -1) {
-    const m = at.match(LINE_HASH_RE);
-    if (!m) {
-      if (DUAL_HASH_RE.test(at)) {
-        const rawPart = at.split(".")[0];
-        throw new Error(`at must be LINE:HASH (e.g. ${rawPart}). Dual hashes (LINE:RAW.SETTLED) appear in read output \u2014 use only the first hash (before the dot).`);
-      }
-      throw new Error(`Invalid at coordinate: "${at}". Expected format: LINE:HASH (e.g., "12:a1").`);
-    }
-    const line = parseInt(m[1], 10);
-    return { startLine: line, startHash: m[2], endLine: line, endHash: m[2] };
-  }
-  const startPart = at.slice(0, dashIdx);
-  const endPart = at.slice(dashIdx + 1);
-  const startMatch = startPart.match(LINE_HASH_RE);
-  const endMatch = endPart.match(LINE_HASH_RE);
-  if (!startMatch || !endMatch) {
-    const hasDualHash = DUAL_HASH_RE.test(startPart) || DUAL_HASH_RE.test(endPart);
-    if (hasDualHash) {
-      throw new Error(`at range contains dual hash \u2014 use only the first hash (before the dot) in each LINE:HASH. Example: "${startPart.split(".")[0]}-${endPart.split(".")[0]}".`);
-    }
-    throw new Error(`Invalid at range: "${at}". Expected format: LINE:HASH-LINE:HASH (e.g., "12:a1-15:b3").`);
-  }
-  const startLine = parseInt(startMatch[1], 10);
-  const endLine = parseInt(endMatch[1], 10);
-  if (endLine < startLine) {
-    throw new Error(`Invalid at range: end line ${endLine} < start line ${startLine}.`);
-  }
-  return {
-    startLine,
-    startHash: startMatch[2],
-    endLine,
-    endHash: endMatch[2]
-  };
-}
-function resolveAt(at, fileLines) {
-  const parsed = parseAt(at);
-  if (parsed.startLine < 1 || parsed.startLine > fileLines.length) {
-    throw new Error(`Line ${parsed.startLine} out of range (file has ${fileLines.length} lines).`);
-  }
-  if (parsed.endLine < 1 || parsed.endLine > fileLines.length) {
-    throw new Error(`Line ${parsed.endLine} out of range (file has ${fileLines.length} lines).`);
-  }
-  const actualStartHash = computeLineHash(parsed.startLine - 1, fileLines[parsed.startLine - 1], fileLines);
-  if (actualStartHash !== parsed.startHash) {
-    throw new Error(`Hash mismatch at line ${parsed.startLine}: expected ${parsed.startHash}, current hash is ${actualStartHash}. Re-read the file with read_tracked_file to get updated coordinates. For batch edits, consider single edits with re-reads between them.`);
-  }
-  if (parsed.endLine !== parsed.startLine) {
-    const actualEndHash = computeLineHash(parsed.endLine - 1, fileLines[parsed.endLine - 1], fileLines);
-    if (actualEndHash !== parsed.endHash) {
-      throw new Error(`Hash mismatch at line ${parsed.endLine}: expected ${parsed.endHash}, current hash is ${actualEndHash}. Re-read the file with read_tracked_file to get updated coordinates. For batch edits, consider single edits with re-reads between them.`);
-    }
-  }
-  let startOffset = 0;
-  for (let i = 0; i < parsed.startLine - 1; i++) {
-    startOffset += fileLines[i].length + 1;
-  }
-  let endOffset = startOffset;
-  for (let i = parsed.startLine - 1; i <= parsed.endLine - 1; i++) {
-    endOffset += fileLines[i].length + (i < parsed.endLine - 1 ? 1 : 0);
-  }
-  const content = fileLines.slice(parsed.startLine - 1, parsed.endLine).join("\n");
-  return {
-    startLine: parsed.startLine,
-    endLine: parsed.endLine,
-    startOffset,
-    endOffset,
-    content
-  };
-}
-var LINE_HASH_RE, DUAL_HASH_RE;
-var init_at_resolver = __esm({
-  "../../packages/core/dist-esm/at-resolver.js"() {
-    "use strict";
-    init_hashline();
-    LINE_HASH_RE = /^(\d+):([0-9a-f]{2})$/;
-    DUAL_HASH_RE = /^\d+:[0-9a-f]{2}\.[0-9a-f]{2}$/;
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/formatters/plain-text.js
-function formatPlainText(doc) {
-  const parts = [];
-  const header = formatHeader(doc.header, doc.view);
-  if (header) {
-    parts.push(header);
-    parts.push("");
-  }
-  const padWidth = doc.lines.length > 0 ? Math.max(String(doc.lines[doc.lines.length - 1].margin.lineNumber).length, 2) : 2;
-  for (const line of doc.lines) {
-    parts.push(formatLine(line, padWidth, doc.view));
-  }
-  const footer = formatDecidedFooter(doc);
-  if (footer) {
-    parts.push(footer);
-  }
-  return parts.join("\n");
-}
-function formatHeader(header, view) {
-  if (view === "raw")
-    return "";
-  const lines = [];
-  if (view === "decided") {
-    lines.push("## view: decided");
-  }
-  const counts = `proposed: ${header.counts.proposed} | accepted: ${header.counts.accepted} | rejected: ${header.counts.rejected}`;
-  const threads = header.threadCount > 0 ? ` | threads: ${header.threadCount}` : "";
-  lines.push(`## ${counts}${threads}`);
-  if (header.authors.length > 0) {
-    lines.push(`## authors: ${header.authors.join(", ")}`);
-  }
-  lines.push("---");
-  return lines.join("\n");
-}
-function formatDecidedFooter(doc) {
-  if (doc.view !== "decided")
-    return "";
-  const { counts, threadCount } = doc.header;
-  const anyCount = counts.proposed > 0 || counts.accepted > 0 || counts.rejected > 0 || threadCount > 0;
-  if (!anyCount)
-    return "";
-  return `\u2500\u2500 accepted ${counts.accepted} \xB7 rejected ${counts.rejected} \xB7 proposed ${counts.proposed} \xB7 threads ${threadCount} \u2500\u2500`;
-}
-function formatLine(line, padWidth, view) {
-  const num = String(line.margin.lineNumber).padStart(padWidth, " ");
-  const flag = line.margin.flags.length > 0 ? line.margin.flags[0] : " ";
-  const margin = `${num}:${line.margin.hash} ${flag}|`;
-  const content = line.content.map((s) => s.text).join("");
-  const meta3 = formatMetadata(line.metadata);
-  return meta3 ? `${margin} ${content} ${meta3}` : `${margin} ${content}`;
-}
-function truncateByCodePoints(text, max) {
-  if (text.length <= max)
-    return text;
-  const cps = [...text];
-  if (cps.length <= max)
-    return text;
-  return cps.slice(0, max).join("") + "\u2026";
-}
-function withAtPrefix(handle) {
-  return handle.startsWith("@") ? handle : `@${handle}`;
-}
-function formatMetadata(metadata) {
-  if (metadata.length === 0)
-    return "";
-  return metadata.map((m) => {
-    const parts = [m.changeId];
-    if (m.author)
-      parts.push(withAtPrefix(m.author));
-    if (m.type)
-      parts.push(m.type);
-    if (m.status)
-      parts.push(m.status);
-    let head = parts.join(" ");
-    if (m.reason) {
-      head += `: "${m.reason}"`;
-    }
-    if (m.latestThreadTurn) {
-      const turnAuthor = m.latestThreadTurn.author ? `${withAtPrefix(m.latestThreadTurn.author)}: ` : "";
-      const turnText = truncateByCodePoints(m.latestThreadTurn.text, MAX_TURN_CODE_POINTS);
-      head += ` | ${turnAuthor}${turnText}`;
-    }
-    return `[${head}]`;
-  }).join(" ");
-}
-var MAX_TURN_CODE_POINTS;
-var init_plain_text = __esm({
-  "../../packages/core/dist-esm/renderers/formatters/plain-text.js"() {
-    "use strict";
-    MAX_TURN_CODE_POINTS = 60;
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/formatters/ansi.js
-var init_ansi = __esm({
-  "../../packages/core/dist-esm/renderers/formatters/ansi.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/formatters/html.js
-var init_html = __esm({
-  "../../packages/core/dist-esm/renderers/formatters/html.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/formatters/index.js
-var init_formatters = __esm({
-  "../../packages/core/dist-esm/renderers/formatters/index.js"() {
-    "use strict";
-    init_plain_text();
-    init_ansi();
-    init_plain_text();
-    init_ansi();
-    init_html();
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/view-builders/session-hashes.js
-function buildSessionHashes(rawContent, changes) {
-  const rawLines = rawContent.split("\n");
-  const decidedResult = computeDecidedView(rawContent, changes);
-  const currentResult = computeCurrentView(rawContent, changes);
-  const committedByRaw = /* @__PURE__ */ new Map();
-  for (const cl of decidedResult.lines) {
-    committedByRaw.set(cl.rawLineNum, cl.hash);
-  }
-  const currentViewByRaw = /* @__PURE__ */ new Map();
-  for (const sl of currentResult.lines) {
-    currentViewByRaw.set(sl.rawLineNum, sl.hash);
-  }
-  const byRawLine = /* @__PURE__ */ new Map();
-  for (let i = 0; i < rawLines.length; i++) {
-    const rawLineNum = i + 1;
-    const rawHash = computeLineHash(i, rawLines[i], rawLines);
-    byRawLine.set(rawLineNum, {
-      raw: rawHash,
-      committed: committedByRaw.get(rawLineNum),
-      currentView: currentViewByRaw.get(rawLineNum)
-    });
-  }
-  const decidedLineByRaw = /* @__PURE__ */ new Map();
-  const rawLineByDecided = /* @__PURE__ */ new Map();
-  for (const cl of decidedResult.lines) {
-    decidedLineByRaw.set(cl.rawLineNum, cl.decidedLineNum);
-    rawLineByDecided.set(cl.decidedLineNum, cl.rawLineNum);
-  }
-  const currentLineByRaw = /* @__PURE__ */ new Map();
-  const rawLineByCurrent = /* @__PURE__ */ new Map();
-  for (const sl of currentResult.lines) {
-    currentLineByRaw.set(sl.rawLineNum, sl.currentLineNum);
-    rawLineByCurrent.set(sl.currentLineNum, sl.rawLineNum);
-  }
-  return {
-    byRawLine,
-    decidedResult,
-    currentResult,
-    decidedLineByRaw,
-    currentLineByRaw,
-    rawLineByDecided,
-    rawLineByCurrent
-  };
-}
-var init_session_hashes = __esm({
-  "../../packages/core/dist-esm/renderers/view-builders/session-hashes.js"() {
-    "use strict";
-    init_decided_text();
-    init_current_text();
-    init_hashline();
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/view-builders/line-metadata.js
-function buildLineMetadataFromFootnotes(refIds, footnoteMap) {
-  if (!refIds)
-    return [];
-  const metadata = [];
-  for (const id of refIds) {
-    const node = footnoteMap.get(id);
-    if (!node)
-      continue;
-    const status = nodeStatus(node);
-    const discussion = node.metadata?.discussion ?? [];
-    const reason = node.metadata?.comment || discussion[0]?.text || void 0;
-    const latestThreadTurn = discussion.length >= 2 ? { author: discussion[discussion.length - 1].author, text: discussion[discussion.length - 1].text } : void 0;
-    metadata.push({
-      changeId: node.id,
-      type: changeTypeToShortCode(node.type),
-      status,
-      author: node.metadata?.author ?? node.inlineMetadata?.author,
-      reason,
-      replyCount: (node.replyCount ?? 0) > 0 ? node.replyCount : void 0,
-      latestThreadTurn
-    });
-  }
-  return metadata;
-}
-var init_line_metadata = __esm({
-  "../../packages/core/dist-esm/renderers/view-builders/line-metadata.js"() {
-    "use strict";
-    init_types();
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/view-builder-utils.js
-function buildDeliberationHeader(options) {
-  const { changes } = options;
-  let proposed = 0, accepted = 0, rejected = 0, threadCount = 0;
-  const authorSet = /* @__PURE__ */ new Set();
-  for (const node of changes) {
-    const status = nodeStatus(node);
-    if (status === "proposed")
-      proposed++;
-    else if (status === "accepted")
-      accepted++;
-    else if (status === "rejected")
-      rejected++;
-    if ((node.replyCount ?? 0) > 0)
-      threadCount++;
-    const author = node.metadata?.author ?? node.inlineMetadata?.author;
-    if (author)
-      authorSet.add(author);
-  }
-  return {
-    filePath: options.filePath,
-    trackingStatus: options.trackingStatus,
-    protocolMode: options.protocolMode,
-    defaultView: options.defaultView,
-    viewPolicy: options.viewPolicy,
-    counts: { proposed, accepted, rejected },
-    authors: [...authorSet].sort(),
-    threadCount,
-    lineRange: options.lineRange
-  };
-}
-function buildLineRefMap(lines) {
-  const map2 = /* @__PURE__ */ new Map();
-  for (let i = 0; i < lines.length; i++) {
-    const refs = /* @__PURE__ */ new Set();
-    for (const match of lines[i].matchAll(REF_EXTRACT_RE)) {
-      refs.add(match[1]);
-    }
-    if (refs.size > 0)
-      map2.set(i, refs);
-  }
-  return map2;
-}
-function findFootnoteSectionRange(changes) {
-  if (changes.length === 0)
-    return null;
-  let min = Infinity;
-  let max = -Infinity;
-  for (const node of changes) {
-    if (!node.footnoteLineRange)
-      continue;
-    if (node.footnoteLineRange.startLine < min)
-      min = node.footnoteLineRange.startLine;
-    if (node.footnoteLineRange.endLine > max)
-      max = node.footnoteLineRange.endLine;
-  }
-  if (min === Infinity)
-    return null;
-  return [min, max];
-}
-function computePAFlags(refIds, footnoteMap) {
-  if (!refIds)
-    return [];
-  let hasProposed = false;
-  let hasAccepted = false;
-  for (const id of refIds) {
-    const node = footnoteMap.get(id);
-    if (!node)
-      continue;
-    const status = nodeStatus(node);
-    if (status === "proposed")
-      hasProposed = true;
-    if (status === "accepted")
-      hasAccepted = true;
-  }
-  if (hasProposed)
-    return ["P"];
-  if (hasAccepted)
-    return ["A"];
-  return [];
-}
-function computeContinuationLines(content, preParsed) {
-  const changes = preParsed ?? parseForFormat(content).getChanges();
-  if (changes.length === 0)
-    return /* @__PURE__ */ new Set();
-  const lineStarts = [0];
-  for (let i = 0; i < content.length; i++) {
-    if (content[i] === "\n")
-      lineStarts.push(i + 1);
-  }
-  function byteToLine(offset) {
-    let lo = 0, hi = lineStarts.length - 1;
-    while (lo < hi) {
-      const mid = lo + hi + 1 >> 1;
-      if (lineStarts[mid] <= offset)
-        lo = mid;
-      else
-        hi = mid - 1;
-    }
-    return lo;
-  }
-  const continuations = /* @__PURE__ */ new Set();
-  for (const change of changes) {
-    const startLine = byteToLine(change.range.start);
-    const endLine = byteToLine(change.range.end - 1);
-    if (endLine > startLine) {
-      for (let line = startLine + 1; line <= endLine; line++) {
-        continuations.add(line);
-      }
-    }
-  }
-  return continuations;
-}
-var REF_EXTRACT_RE;
-var init_view_builder_utils = __esm({
-  "../../packages/core/dist-esm/renderers/view-builder-utils.js"() {
-    "use strict";
-    init_format_aware_parse();
-    init_types();
-    REF_EXTRACT_RE = /\[\^(cn-\d+(?:\.\d+)?)\]/g;
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/view-builders/working.js
-function buildReviewDocument(content, options) {
-  const changes = parseForFormat(content).getChanges();
-  const sessionHashesResult = buildSessionHashes(content, changes);
-  const rawLines = content.split("\n");
-  const footnoteMap = /* @__PURE__ */ new Map();
-  for (const node of changes) {
-    footnoteMap.set(node.id, node);
-  }
-  let fnRange = findFootnoteSectionRange(changes);
-  if (!fnRange) {
-    const blockStart = findFootnoteBlockStart(rawLines);
-    if (blockStart < rawLines.length) {
-      fnRange = [blockStart, rawLines.length - 1];
-    }
-  }
-  const lineRefMap = buildLineRefMap(rawLines);
-  const continuations = computeContinuationLines(content, changes);
-  const outputLines = [];
-  for (let i = 0; i < rawLines.length; i++) {
-    if (fnRange && i >= fnRange[0] && i <= fnRange[1])
-      continue;
-    if (fnRange && i === fnRange[0] - 1 && rawLines[i].trim() === "")
-      continue;
-    const rawLine = rawLines[i];
-    const lineNum = i + 1;
-    const contentSpans = buildContentSpans(rawLine, footnoteMap);
-    const refIds = lineRefMap.get(i);
-    const metadata = buildLineMetadataFromFootnotes(refIds, footnoteMap);
-    const flags = computePAFlags(refIds, footnoteMap);
-    const sh = sessionHashesResult.byRawLine.get(lineNum);
-    const marginHash = sh.raw;
-    outputLines.push({
-      margin: { lineNumber: lineNum, hash: marginHash, flags },
-      content: contentSpans,
-      metadata,
-      rawLineNumber: lineNum,
-      continuesChange: continuations.has(i) || void 0,
-      sessionHashes: {
-        raw: sh.raw,
-        committed: sh.committed,
-        currentView: sh.currentView
-      }
-    });
-  }
-  const header = buildDeliberationHeader({
-    filePath: options.filePath,
-    trackingStatus: options.trackingStatus,
-    protocolMode: options.protocolMode,
-    defaultView: options.defaultView,
-    viewPolicy: options.viewPolicy,
-    changes
-  });
-  return {
-    view: "working",
-    header,
-    lines: outputLines
-  };
-}
-function buildContentSpans(line, footnoteMap) {
-  const spans = [];
-  let lastIndex = 0;
-  const re = new RegExp(CRITIC_MARKUP_RE.source, "g");
-  for (const match of line.matchAll(re)) {
-    const matchStart = match.index;
-    if (matchStart > lastIndex) {
-      const between = line.slice(lastIndex, matchStart);
-      emitPlainAndAnchors(between, footnoteMap, spans);
-    }
-    if (match[1] !== void 0) {
-      spans.push({ type: "delimiter", text: "{++" });
-      spans.push({ type: "insertion", text: match[1] });
-      spans.push({ type: "delimiter", text: "++}" });
-    } else if (match[2] !== void 0) {
-      spans.push({ type: "delimiter", text: "{--" });
-      spans.push({ type: "deletion", text: match[2] });
-      spans.push({ type: "delimiter", text: "--}" });
-    } else if (match[3] !== void 0 || match[4] !== void 0) {
-      spans.push({ type: "delimiter", text: "{~~" });
-      spans.push({ type: "sub_old", text: match[3] ?? "" });
-      spans.push({ type: "sub_arrow", text: "~>" });
-      spans.push({ type: "sub_new", text: match[4] ?? "" });
-      spans.push({ type: "delimiter", text: "~~}" });
-    } else if (match[5] !== void 0) {
-      spans.push({ type: "delimiter", text: "{==" });
-      spans.push({ type: "highlight", text: match[5] });
-      spans.push({ type: "delimiter", text: "==}" });
-    } else if (match[6] !== void 0) {
-      spans.push({ type: "delimiter", text: "{>>" });
-      spans.push({ type: "comment", text: match[6] });
-      spans.push({ type: "delimiter", text: "<<}" });
-    }
-    lastIndex = matchStart + match[0].length;
-  }
-  if (lastIndex < line.length) {
-    const remaining = line.slice(lastIndex);
-    emitPlainAndAnchors(remaining, footnoteMap, spans);
-  }
-  if (spans.length === 0) {
-    spans.push({ type: "plain", text: "" });
-  }
-  return spans;
-}
-function emitPlainAndAnchors(text, footnoteMap, spans) {
-  let lastIdx = 0;
-  const re = new RegExp(FOOTNOTE_REF_RE.source, "g");
-  for (const match of text.matchAll(re)) {
-    const matchStart = match.index;
-    const id = match[1];
-    const node = footnoteMap.get(id);
-    if (matchStart > lastIdx) {
-      spans.push({ type: "plain", text: text.slice(lastIdx, matchStart) });
-    }
-    if (node) {
-      spans.push({ type: "anchor", text: `[^${node.id}]` });
-    } else {
-      spans.push({ type: "plain", text: match[0] });
-    }
-    lastIdx = matchStart + match[0].length;
-  }
-  if (lastIdx < text.length) {
-    spans.push({ type: "plain", text: text.slice(lastIdx) });
-  }
-}
-var CRITIC_MARKUP_RE, FOOTNOTE_REF_RE;
-var init_working = __esm({
-  "../../packages/core/dist-esm/renderers/view-builders/working.js"() {
-    "use strict";
-    init_session_hashes();
-    init_line_metadata();
-    init_format_aware_parse();
-    init_footnote_utils();
-    init_view_builder_utils();
-    CRITIC_MARKUP_RE = /\{\+\+((?:[^+]|\+(?!\+\}))*?)\+\+\}|\{--((?:[^-]|-(?!-\}))*?)--\}|\{~~((?:[^~]|~(?!>))*?)~>((?:[^~]|~(?!~\}))*?)~~\}|\{==((?:[^=]|=(?!=\}))*?)==\}|\{>>((?:[^<]|<(?!<\}))*?)<<\}/g;
-    FOOTNOTE_REF_RE = /\[\^(cn-\d+(?:\.\d+)?)\]/g;
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/view-builders/simple.js
-function buildSimpleDocument(rawContent, options) {
-  const changes = parseForFormat(rawContent, { skipCodeBlocks: false }).getChanges();
-  const sessionHashesResult = buildSessionHashes(rawContent, changes);
-  const currentResult = sessionHashesResult.currentResult;
-  const footnoteMap = /* @__PURE__ */ new Map();
-  for (const node of changes)
-    footnoteMap.set(node.id, node);
-  const currentLines = [...currentResult.lines];
-  while (currentLines.length > 0 && currentLines[currentLines.length - 1].text.trim() === "") {
-    currentLines.pop();
-  }
-  const rawLines = rawContent.split("\n");
-  const lineRefMap = buildLineRefMap(rawLines);
-  const continuations = computeContinuationLines(rawContent, changes);
-  const lines = currentLines.map((sl) => {
-    const refIds = lineRefMap.get(sl.rawLineNum - 1);
-    const metadata = buildLineMetadataFromFootnotes(refIds, footnoteMap);
-    const flags = computePAFlags(refIds, footnoteMap);
-    const sh = sessionHashesResult.byRawLine.get(sl.rawLineNum);
-    return {
-      margin: {
-        lineNumber: sl.currentLineNum,
-        hash: sh.currentView ?? sl.hash,
-        // currentView hash
-        flags
-      },
-      content: [{ type: "plain", text: sl.text }],
-      metadata,
-      rawLineNumber: sl.rawLineNum,
-      continuesChange: continuations.has(sl.rawLineNum - 1) || void 0,
-      sessionHashes: {
-        raw: sh.raw,
-        committed: sh.committed,
-        currentView: sh.currentView
-      }
-    };
-  });
-  const header = buildDeliberationHeader({
-    filePath: options.filePath,
-    trackingStatus: options.trackingStatus,
-    protocolMode: options.protocolMode,
-    defaultView: options.defaultView,
-    viewPolicy: options.viewPolicy,
-    changes,
-    lineRange: { start: 1, end: lines.length, total: lines.length }
-  });
-  return { view: "simple", header, lines };
-}
-var init_simple = __esm({
-  "../../packages/core/dist-esm/renderers/view-builders/simple.js"() {
-    "use strict";
-    init_format_aware_parse();
-    init_session_hashes();
-    init_line_metadata();
-    init_view_builder_utils();
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/view-builders/decided.js
-function buildDecidedDocument(rawContent, options) {
-  const changes = parseForFormat(rawContent, { skipCodeBlocks: false }).getChanges();
-  const sessionHashesResult = buildSessionHashes(rawContent, changes);
-  const decidedResult = sessionHashesResult.decidedResult;
-  const decidedLines = [...decidedResult.lines];
-  while (decidedLines.length > 0 && decidedLines[decidedLines.length - 1].text.trim() === "") {
-    decidedLines.pop();
-  }
-  const continuations = computeContinuationLines(rawContent, changes);
-  const lines = decidedLines.map((cl) => {
-    const sh = sessionHashesResult.byRawLine.get(cl.rawLineNum);
-    const flags = cl.flag ? [cl.flag] : [];
-    return {
-      margin: {
-        lineNumber: cl.decidedLineNum,
-        hash: cl.hash,
-        flags
-      },
-      content: [{ type: "plain", text: cl.text }],
-      metadata: [],
-      rawLineNumber: cl.rawLineNum,
-      continuesChange: continuations.has(cl.rawLineNum - 1) || void 0,
-      sessionHashes: {
-        raw: sh.raw,
-        committed: sh.committed,
-        currentView: sh.currentView
-      }
-    };
-  });
-  const header = buildDeliberationHeader({
-    filePath: options.filePath,
-    trackingStatus: options.trackingStatus,
-    protocolMode: options.protocolMode,
-    defaultView: options.defaultView,
-    viewPolicy: options.viewPolicy,
-    changes,
-    lineRange: { start: 1, end: lines.length, total: lines.length }
-  });
-  return { view: "decided", header, lines };
-}
-var init_decided = __esm({
-  "../../packages/core/dist-esm/renderers/view-builders/decided.js"() {
-    "use strict";
-    init_format_aware_parse();
-    init_session_hashes();
-    init_view_builder_utils();
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/view-builders/raw.js
-function buildRawDocument(rawContent, options) {
-  const changes = parseForFormat(rawContent).getChanges();
-  const sessionHashesResult = buildSessionHashes(rawContent, changes);
-  const rawLines = rawContent.split("\n");
-  const continuations = computeContinuationLines(rawContent, changes);
-  const lines = rawLines.map((text, i) => {
-    const lineNum = i + 1;
-    const sh = sessionHashesResult.byRawLine.get(lineNum);
-    return {
-      margin: {
-        lineNumber: lineNum,
-        hash: sh.raw,
-        flags: []
-      },
-      content: [{ type: "plain", text }],
-      metadata: [],
-      rawLineNumber: lineNum,
-      continuesChange: continuations.has(i) || void 0,
-      sessionHashes: {
-        raw: sh.raw,
-        committed: sh.committed,
-        currentView: sh.currentView
-      }
-    };
-  });
-  const header = buildDeliberationHeader({
-    ...options,
-    changes,
-    lineRange: { start: 1, end: lines.length, total: lines.length }
-  });
-  const fnRange = findFootnoteSectionRange(changes);
-  const footnoteSection = fnRange ? rawLines.slice(fnRange[0], fnRange[1] + 1).join("\n") : void 0;
-  return { view: "raw", header, lines, footnoteSection };
-}
-var init_raw = __esm({
-  "../../packages/core/dist-esm/renderers/view-builders/raw.js"() {
-    "use strict";
-    init_session_hashes();
-    init_format_aware_parse();
-    init_view_builder_utils();
-  }
-});
-
-// ../../packages/core/dist-esm/renderers/view-builders/index.js
-function buildViewDocument(rawContent, view, options) {
-  switch (view) {
-    case "working":
-      return buildReviewDocument(rawContent, options);
-    case "simple":
-      return buildSimpleDocument(rawContent, options);
-    case "decided":
-      return buildDecidedDocument(rawContent, options);
-    case "raw":
-      return buildRawDocument(rawContent, options);
-    case "original":
-      throw new Error("View 'original' is not supported by buildViewDocument. Host-side consumers should call computeOriginalText directly. MCP agents should not receive this view name (rejected by resolveView enum).");
-    default:
-      throw new Error(`Unknown view: ${String(view)}`);
-  }
-}
-var init_view_builders = __esm({
-  "../../packages/core/dist-esm/renderers/view-builders/index.js"() {
-    "use strict";
-    init_working();
-    init_simple();
-    init_decided();
-    init_raw();
-  }
-});
-
-// ../../packages/core/dist-esm/edit-boundary/types.js
-var init_types2 = __esm({
-  "../../packages/core/dist-esm/edit-boundary/types.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/edit-boundary/pending-buffer.js
-var init_pending_buffer = __esm({
-  "../../packages/core/dist-esm/edit-boundary/pending-buffer.js"() {
-    "use strict";
-  }
-});
-
-// ../../packages/core/dist-esm/edit-boundary/signal-classifier.js
-var init_signal_classifier = __esm({
-  "../../packages/core/dist-esm/edit-boundary/signal-classifier.js"() {
-    "use strict";
-    init_pending_buffer();
-  }
-});
-
-// ../../packages/core/dist-esm/edit-boundary/state-machine.js
-var cmParser;
-var init_state_machine = __esm({
-  "../../packages/core/dist-esm/edit-boundary/state-machine.js"() {
-    "use strict";
-    init_signal_classifier();
-    init_pending_buffer();
-    init_tracking();
-    init_footnote_generator();
-    init_hashline();
-    init_l2_to_l3();
-    init_types();
-    init_parser();
-    cmParser = new CriticMarkupParser();
-  }
-});
-
-// ../../packages/core/dist-esm/edit-boundary/index.js
-var init_edit_boundary = __esm({
-  "../../packages/core/dist-esm/edit-boundary/index.js"() {
-    "use strict";
-    init_types2();
-    init_pending_buffer();
-    init_signal_classifier();
-    init_state_machine();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/structural-integrity.js
-function validateStructuralIntegrity(text) {
-  const violations = [];
-  let doc;
-  try {
-    doc = parseForFormat(text);
-  } catch (err) {
-    violations.push({
-      kind: "structural_invalid",
-      message: `Parser threw: ${err.message}`
-    });
-    return violations;
-  }
-  for (const d of doc.getDiagnostics()) {
-    violations.push(d);
-  }
-  violations.push(...detectNestedMarkup(text));
-  violations.push(...detectOrphans(text, doc));
-  return violations;
-}
-function detectNestedMarkup(text) {
-  const inCodeZone = buildCodeZoneMask(text);
-  const violations = [];
-  let currentOpen = null;
-  let pos = 0;
-  while (pos < text.length) {
-    if (inCodeZone[pos]) {
-      pos++;
-      continue;
-    }
-    const ch = text[pos];
-    if (currentOpen !== null && CM_CLOSE_FIRST_CHARS.has(ch)) {
-      let closedSpan = false;
-      for (const [close, matchingOpen] of CM_CLOSE_TO_OPEN) {
-        if (currentOpen === matchingOpen && text.startsWith(close, pos)) {
-          currentOpen = null;
-          pos += close.length;
-          closedSpan = true;
-          break;
-        }
-      }
-      if (closedSpan)
-        continue;
-    }
-    if (ch === "{") {
-      for (const [open2] of CM_DELIMITERS) {
-        if (text.startsWith(open2, pos)) {
-          if (currentOpen !== null) {
-            violations.push({
-              kind: "structural_invalid",
-              message: `Nested CriticMarkup: found '${open2}' inside '${currentOpen}' (at offset ${pos}).`
-            });
-          } else {
-            currentOpen = open2;
-          }
-          pos += open2.length;
-          break;
-        }
-      }
-      if (text[pos] === "{")
-        pos++;
-      continue;
-    }
-    pos++;
-  }
-  return violations;
-}
-function detectOrphans(text, doc) {
-  const violations = [];
-  const { bodyLines, footnoteLines } = splitBodyAndFootnotes(text.split("\n"));
-  const bodyText = bodyLines.join("\n");
-  const footnoteText = footnoteLines.join("\n");
-  const bodyRefs = /* @__PURE__ */ new Set();
-  const bodyCodeZones = findCodeZones(bodyText);
-  INLINE_REF_GLOBAL.lastIndex = 0;
-  let m;
-  while ((m = INLINE_REF_GLOBAL.exec(bodyText)) !== null) {
-    const refStart = m.index;
-    const inZone = bodyCodeZones.some((z2) => refStart >= z2.start && refStart < z2.end);
-    if (!inZone) {
-      bodyRefs.add(m[1]);
-    }
-  }
-  const footnoteDefs = /* @__PURE__ */ new Map();
-  FOOTNOTE_DEF_STATUS_GM.lastIndex = 0;
-  while ((m = FOOTNOTE_DEF_STATUS_GM.exec(footnoteText)) !== null) {
-    footnoteDefs.set(m[1], m[2]);
-  }
-  for (const change of doc.getChanges()) {
-    if (!footnoteDefs.has(change.id)) {
-      const status = change.status === ChangeStatus.Accepted ? "accepted" : change.status === ChangeStatus.Rejected ? "rejected" : "proposed";
-      footnoteDefs.set(change.id, status);
-    }
-  }
-  for (const ref of bodyRefs) {
-    if (!footnoteDefs.has(ref)) {
-      violations.push({
-        kind: "record_orphaned",
-        changeId: ref,
-        message: `Inline ref [^${ref}] has no matching footnote definition.`
-      });
-    }
-  }
-  for (const [id, status] of footnoteDefs) {
-    if (DECIDED_STATUSES.has(status) && !bodyRefs.has(id)) {
-      violations.push({
-        kind: "surface_orphaned",
-        changeId: id,
-        message: `Footnote def [^${id}] is decided (${status}) but has no matching inline ref in the body.`
-      });
-    }
-  }
-  return violations;
-}
-var CM_DELIMITERS, CM_CLOSE_TO_OPEN, CM_CLOSE_FIRST_CHARS, INLINE_REF_GLOBAL, FOOTNOTE_DEF_STATUS_GM, DECIDED_STATUSES;
-var init_structural_integrity = __esm({
-  "../../packages/core/dist-esm/operations/structural-integrity.js"() {
-    "use strict";
-    init_format_aware_parse();
-    init_code_zones();
-    init_footnote_patterns();
-    init_types();
-    CM_DELIMITERS = [
-      ["{++", "++}"],
-      ["{--", "--}"],
-      ["{~~", "~~}"],
-      ["{==", "==}"],
-      ["{>>", "<<}"]
-    ];
-    CM_CLOSE_TO_OPEN = /* @__PURE__ */ new Map([
-      ["++}", "{++"],
-      ["--}", "{--"],
-      ["~~}", "{~~"],
-      ["==}", "{=="],
-      ["<<}", "{>>"]
-    ]);
-    CM_CLOSE_FIRST_CHARS = /* @__PURE__ */ new Set(["+", "-", "~", "=", "<"]);
-    INLINE_REF_GLOBAL = new RegExp(`\\[\\^(${FOOTNOTE_ID_PATTERN})\\]`, "g");
-    FOOTNOTE_DEF_STATUS_GM = new RegExp(FOOTNOTE_DEF_STATUS.source, "gm");
-    DECIDED_STATUSES = /* @__PURE__ */ new Set(["accepted", "rejected"]);
-  }
-});
-
-// ../../packages/core/dist-esm/operations/export-settlement.js
-var init_export_settlement = __esm({
-  "../../packages/core/dist-esm/operations/export-settlement.js"() {
-    "use strict";
-    init_current_text();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/markup-by-id.js
-var init_markup_by_id = __esm({
-  "../../packages/core/dist-esm/operations/markup-by-id.js"() {
-    "use strict";
-    init_code_zones();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/parse-document.js
-var init_parse_document = __esm({
-  "../../packages/core/dist-esm/operations/parse-document.js"() {
-    "use strict";
-    init_footnote_patterns();
-    init_footnote_block_parser();
-  }
-});
-
-// ../../packages/core/dist-esm/operations/changes-to-document.js
-var init_changes_to_document = __esm({
-  "../../packages/core/dist-esm/operations/changes-to-document.js"() {
-    "use strict";
-    init_types();
-    init_footnote_generator();
-  }
-});
-
-// ../../packages/core/dist-esm/backend/types.js
-function wordSessionResourceName(sessionUri) {
-  return `Active Word Document (${sessionUri.split("/").pop() ?? sessionUri})`;
-}
-function parseUri(uri) {
-  const colonIdx = uri.indexOf(":");
-  if (!uri || colonIdx <= 0) {
-    throw new Error(`Invalid URI: "${uri}"`);
-  }
-  return {
-    scheme: uri.slice(0, colonIdx).toLowerCase(),
-    rest: uri.slice(colonIdx + 1)
-  };
-}
-var AGENTS_UPDATED_METHOD;
-var init_types3 = __esm({
-  "../../packages/core/dist-esm/backend/types.js"() {
-    "use strict";
-    AGENTS_UPDATED_METHOD = "agents_updated";
-  }
-});
-
-// ../../packages/core/dist-esm/backend/registry.js
-var BackendRegistry;
-var init_registry = __esm({
-  "../../packages/core/dist-esm/backend/registry.js"() {
-    "use strict";
-    init_types3();
-    BackendRegistry = class {
-      constructor() {
-        this.backends = /* @__PURE__ */ new Map();
-        this.changeListeners = [];
-      }
-      /**
-       * Register a backend for all schemes it declares.
-       * If a scheme is already registered, the new backend replaces it and
-       * `onDidChange` fires.
-       */
-      register(backend) {
-        for (const scheme of backend.schemes) {
-          this.backends.set(scheme, backend);
-        }
-        this.fireChange();
-      }
-      /**
-       * Resolve a URI to its backend. Throws with
-       * "BackendNotFoundError: no backend for scheme '<scheme>'" when the scheme
-       * is not registered.
-       */
-      resolve(uri) {
-        const { scheme } = parseUri(uri);
-        const backend = this.backends.get(scheme);
-        if (!backend) {
-          throw new Error(`BackendNotFoundError: no backend for scheme '${scheme}'`);
-        }
-        return backend;
-      }
-      /**
-       * Snapshot of all registered backends as `{scheme, backend}` pairs.
-       * Used by diagnostics. See `listResources()` for the MCP-facing equivalent.
-       */
-      list() {
-        return Array.from(this.backends.entries()).map(([scheme, backend]) => ({
-          scheme,
-          backend
-        }));
-      }
-      /**
-       * Aggregate `DocumentResourceDescriptor[]` from every registered backend.
-       * Called by `ResourceLister` to build the `resources/list` response.
-       *
-       * Deduplicates by backend instance (not by scheme): when multiple scheme
-       * keys map to the same backend object, `list()` is called only once.
-       */
-      listResources() {
-        const seen = /* @__PURE__ */ new Set();
-        const result = [];
-        for (const backend of this.backends.values()) {
-          if (seen.has(backend))
-            continue;
-          seen.add(backend);
-          result.push(...backend.list());
-        }
-        return result;
-      }
-      /**
-       * Remove the backend registered for `scheme`. No-op if the scheme is not
-       * registered. Fires `onDidChange` when a backend is actually removed.
-       */
-      unregister(scheme) {
-        if (this.backends.delete(scheme)) {
-          this.fireChange();
-        }
-      }
-      /**
-       * Subscribe to change notifications. Fires whenever `register()` is called.
-       * Returns a disposal function.
-       */
-      onDidChange(listener) {
-        this.changeListeners.push(listener);
-        return () => {
-          const idx = this.changeListeners.indexOf(listener);
-          if (idx !== -1)
-            this.changeListeners.splice(idx, 1);
-        };
-      }
-      fireChange() {
-        for (const l of this.changeListeners) {
-          try {
-            l();
-          } catch (err) {
-            console.error("[BackendRegistry] change listener threw:", err instanceof Error ? err.message : err);
-          }
-        }
-      }
-    };
-  }
-});
-
-// ../../packages/core/dist-esm/index.js
-var init_dist_esm = __esm({
-  "../../packages/core/dist-esm/index.js"() {
-    "use strict";
-    init_config();
-    init_review_permissions();
-    init_timestamp();
-    init_types();
-    init_document();
-    init_tokens();
-    init_parser();
-    init_code_zones();
-    init_accept_reject();
-    init_resolution();
-    init_reply();
-    init_navigation();
-    init_tracking();
-    init_comment();
-    init_footnote_generator();
-    init_ensure_l2();
-    init_apply_review();
-    init_amend();
-    init_supersede();
-    init_level_promotion();
-    init_level_descent();
-    init_compact();
-    init_l2_to_l3();
-    init_l3_to_l2();
-    init_scrub();
-    init_workspace();
-    init_comment_syntax();
-    init_markdown_annotator();
-    init_sidecar_annotator();
-    init_sidecar_parser();
-    init_footnote_native_parser();
-    init_sidecar_accept_reject();
-    init_tracking_header();
-    init_text_normalizer();
-    init_current_text();
-    init_hashline();
-    init_hashline_tracked();
-    init_hashline_cleanup();
-    init_footnote_utils();
-    init_footnote_parser();
-    init_decided_text();
-    init_constants();
-    init_critic_regex();
-    init_footnote_patterns();
-    init_view_surface();
-    init_file_ops();
-    init_footnote_utils();
-    init_at_resolver();
-    init_op_parser();
-    init_formatters();
-    init_view_builders();
-    init_view_builder_utils();
-    init_edit_boundary();
-    init_edit_boundary();
-    init_edit_boundary();
-    init_structural_integrity();
-    init_export_settlement();
-    init_markup_by_id();
-    init_format_aware_parse();
-    init_session_hashes();
-    init_parse_document();
-    init_changes_to_document();
-    init_diagnostic();
-    init_types3();
-    init_registry();
-  }
-});
-
 // ../../node_modules/picomatch/lib/constants.js
 var require_constants = __commonJS({
   "../../node_modules/picomatch/lib/constants.js"(exports, module) {
@@ -15587,6 +15761,301 @@ var init_file_ops2 = __esm({
 });
 
 // src/index.ts
+init_dist_esm();
+
+// src/transport/fixed-port-leader.ts
+import * as http from "node:http";
+import * as https from "node:https";
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+function getDevCertDir() {
+  return process.env.CHANGEDOWN_DEV_CERT_DIR ?? path.join(os.homedir(), ".office-addin-dev-certs");
+}
+var DEV_CERT_REPAIR_COMMAND = "npx office-addin-dev-certs install";
+var SERVICE_NAME = "changedown-mcp";
+function loadDevCertOptions() {
+  const dir = getDevCertDir();
+  const certPath = path.join(dir, "localhost.crt");
+  const keyPath = path.join(dir, "localhost.key");
+  const caPath = path.join(dir, "ca.crt");
+  try {
+    const leaf = fs.readFileSync(certPath);
+    const ca = fs.readFileSync(caPath);
+    const bundle = Buffer.concat([leaf, Buffer.from("\n"), ca]);
+    return { cert: bundle, key: fs.readFileSync(keyPath) };
+  } catch {
+    return void 0;
+  }
+}
+var PortConflictError = class extends Error {
+  constructor(port, service, conflictPid, conflictScheme, expectedScheme) {
+    const pidPart = conflictPid != null ? ` (PID ${conflictPid})` : "";
+    const schemePart = conflictScheme && expectedScheme && conflictScheme !== expectedScheme ? ` running on ${conflictScheme} but this process expects ${expectedScheme}` : "";
+    const killHint = conflictPid != null ? ` Kill it: kill ${conflictPid}.` : " Free the port or configure a different one.";
+    super(
+      `PortConflictError: port ${port} is held by ${service}${pidPart}${schemePart}.${killHint}`
+    );
+    this.port = port;
+    this.service = service;
+    this.conflictPid = conflictPid;
+    this.conflictScheme = conflictScheme;
+    this.expectedScheme = expectedScheme;
+    this.name = "PortConflictError";
+  }
+};
+var HttpsRequiredError = class extends Error {
+  constructor() {
+    super(
+      `HTTPS is required for hosted Word pane mode, but this server is configured to use HTTP or Office add-in dev certificates were not found. Expected localhost.crt, localhost.key, and ca.crt under ${getDevCertDir()}. Run \`${DEV_CERT_REPAIR_COMMAND}\`, trust the generated certificates if prompted, then start changedown-mcp again.`
+    );
+    this.name = "HttpsRequiredError";
+  }
+};
+async function probeHealthBothSchemes(port, preferHttps) {
+  const order = preferHttps ? ["https", "http"] : ["http", "https"];
+  for (const scheme of order) {
+    try {
+      const health = await probeHealth(port, scheme === "https");
+      return { health, scheme };
+    } catch {
+    }
+  }
+  return void 0;
+}
+var devCertsCache = "unloaded";
+function getDevCerts() {
+  if (devCertsCache === "unloaded") devCertsCache = loadDevCertOptions();
+  return devCertsCache;
+}
+function isFakeHealthEnabled() {
+  return process.env.CHANGEDOWN_MCP_TEST_FAKE_HEALTH === "1";
+}
+function envRequiresHttps() {
+  const requireHttps = process.env.CHANGEDOWN_MCP_REQUIRE_HTTPS?.toLowerCase();
+  return requireHttps === "1" || requireHttps === "true";
+}
+function shouldRequireHttps(options) {
+  return options?.requireHttps ?? envRequiresHttps();
+}
+function resolveUseHttps(options) {
+  const forceHttp = process.env.CHANGEDOWN_MCP_USE_HTTP?.toLowerCase();
+  if (forceHttp === "1" || forceHttp === "true") return false;
+  const forceHttps = process.env.CHANGEDOWN_MCP_USE_HTTPS?.toLowerCase();
+  if (forceHttps === "1" || forceHttps === "true") return true;
+  return options?.useHttps ?? false;
+}
+function assertCanBindHttps(bindWithHttps) {
+  if (bindWithHttps && !getDevCerts()) {
+    throw new HttpsRequiredError();
+  }
+}
+async function probeHealth(port, probeWithHttps = false) {
+  return new Promise((resolve6, reject) => {
+    const getter = probeWithHttps ? https.get : http.get;
+    const req = getter(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path: "/health",
+        timeout: 2e3,
+        // Self-signed dev cert — we trust the loopback address, not the chain.
+        rejectUnauthorized: false,
+        // Don't reuse Node's default agent connection pool. Without this, when
+        // a same-port leader is killed and replaced (cross-version handover,
+        // test-suite rebinds), Node 24's pool can hand back a stale socket
+        // → ECONNRESET on the next probe. Each /health probe gets its own
+        // socket; probes are infrequent so the cost is negligible.
+        agent: false
+      },
+      (res) => {
+        let raw = "";
+        res.on("data", (c) => {
+          raw += c.toString();
+        });
+        res.on("end", () => {
+          try {
+            resolve6(JSON.parse(raw));
+          } catch {
+            reject(new Error("Invalid JSON from /health"));
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("health probe timeout"));
+    });
+  });
+}
+async function retryOnEAddrInUse(bind, opts = {}) {
+  const { initialDelayMs = 50, maxDelayMs = 800, totalBudgetMs = 2500 } = opts;
+  const start = Date.now();
+  let delay = initialDelayMs;
+  for (; ; ) {
+    try {
+      return await bind();
+    } catch (err) {
+      const code = err.code;
+      const elapsed = Date.now() - start;
+      if (code !== "EADDRINUSE" || elapsed + delay >= totalBudgetMs) {
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, delay));
+      delay = Math.min(delay * 2, maxDelayMs);
+    }
+  }
+}
+function tryBind(port, bindWithHttps = false) {
+  return new Promise((resolve6, reject) => {
+    const certs = getDevCerts();
+    const server = bindWithHttps ? https.createServer({ cert: certs.cert, key: certs.key }) : http.createServer();
+    server.on("connection", (sock) => {
+      console.error(`[pane-endpoint] TCP connect from ${sock.remoteAddress}:${sock.remotePort}`);
+    });
+    if (bindWithHttps) {
+      server.on("tlsClientError", (err, sock) => {
+        console.error(
+          `[pane-endpoint] TLS handshake failed from ${sock.remoteAddress}:${sock.remotePort}: ${err.message}`
+        );
+      });
+    }
+    server.listen(port, "127.0.0.1", () => resolve6(server));
+    server.once("error", reject);
+  });
+}
+var DEFAULT_HEARTBEAT = { intervalMs: 2e3, failThreshold: 2 };
+function makeHeartbeat(hostUrl, defaults, bindOptions) {
+  const url2 = new URL(hostUrl);
+  const hostPort = parseInt(url2.port, 10);
+  const useHttps = url2.protocol === "https:";
+  return (override) => new Promise((resolve6) => {
+    const opts = {
+      intervalMs: override?.intervalMs ?? defaults.intervalMs,
+      failThreshold: override?.failThreshold ?? defaults.failThreshold
+    };
+    let failures = 0;
+    let inFlight = false;
+    const timer = setInterval(async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        if (isFakeHealthEnabled()) throw new Error("test-fake-health-fail");
+        await probeHealth(hostPort, useHttps);
+        failures = 0;
+      } catch {
+        failures++;
+        if (failures >= opts.failThreshold) {
+          clearInterval(timer);
+          try {
+            const promoted = await bindOrForwardImpl(hostPort, bindOptions);
+            resolve6(promoted);
+          } catch (first) {
+            try {
+              const raced = await bindOrForwardImpl(hostPort, bindOptions);
+              resolve6(raced);
+            } catch (second) {
+              console.error("[changedown] promotion failed twice:", first, second);
+            }
+          }
+        }
+      } finally {
+        inFlight = false;
+      }
+    }, opts.intervalMs);
+  });
+}
+async function bindOrForwardCore(port, options = {}) {
+  const requireHttps = shouldRequireHttps(options);
+  if (requireHttps && options.useHttps === false) {
+    throw new HttpsRequiredError();
+  }
+  const bindWithHttps = requireHttps ? true : resolveUseHttps(options);
+  if (isFakeHealthEnabled()) {
+    const expectedScheme = requireHttps || bindWithHttps ? "https" : "http";
+    const hostUrl = `${expectedScheme}://127.0.0.1:${port}`;
+    const startHeartbeat = makeHeartbeat(hostUrl, DEFAULT_HEARTBEAT, options);
+    return { mode: "client", hostUrl, startHeartbeat };
+  }
+  if (requireHttps && !getDevCerts()) {
+    const probed = await probeHealthBothSchemes(
+      port,
+      /* preferHttps */
+      true
+    );
+    if (!probed) {
+      throw new HttpsRequiredError();
+    }
+    if (probed.health.service !== SERVICE_NAME) {
+      throw new PortConflictError(port, probed.health.service, probed.health.pid, probed.scheme, "https");
+    }
+    if (probed.scheme !== "https") {
+      throw new PortConflictError(port, SERVICE_NAME, probed.health.pid, probed.scheme, "https");
+    }
+    const hostUrl = `https://127.0.0.1:${port}`;
+    const startHeartbeat = makeHeartbeat(hostUrl, DEFAULT_HEARTBEAT, options);
+    return { mode: "client", hostUrl, startHeartbeat };
+  }
+  try {
+    assertCanBindHttps(bindWithHttps);
+    const server = await retryOnEAddrInUse(() => tryBind(port, bindWithHttps));
+    return { mode: "host", server };
+  } catch (err) {
+    const code = err.code;
+    if (code !== "EADDRINUSE") throw err;
+    const expectedScheme = requireHttps || bindWithHttps ? "https" : "http";
+    const probed = await probeHealthBothSchemes(port, expectedScheme === "https");
+    if (!probed) {
+      throw new PortConflictError(port, "<unreachable on either http or https>");
+    }
+    if (probed.health.service !== SERVICE_NAME) {
+      throw new PortConflictError(port, probed.health.service, probed.health.pid, probed.scheme, expectedScheme);
+    }
+    if (probed.scheme !== expectedScheme) {
+      throw new PortConflictError(port, SERVICE_NAME, probed.health.pid, probed.scheme, expectedScheme);
+    }
+    const hostUrl = `${expectedScheme}://127.0.0.1:${port}`;
+    const startHeartbeat = makeHeartbeat(hostUrl, DEFAULT_HEARTBEAT, options);
+    return { mode: "client", hostUrl, startHeartbeat };
+  }
+}
+var bindOverrideForTests = null;
+async function bindOrForwardImpl(port, options = {}) {
+  if (bindOverrideForTests) return bindOverrideForTests(port, options);
+  return bindOrForwardCore(port, options);
+}
+var bindOrForward = bindOrForwardCore;
+
+// src/transport/signals.ts
+function installSignalHandlers(stack) {
+  let disposing = false;
+  const trigger = (reason) => {
+    if (disposing) return;
+    disposing = true;
+    console.error(`[changedown] ${reason} received \u2014 disposing`);
+    const escalation = setTimeout(() => {
+      console.error("[changedown] dispose timeout \u2014 force exit");
+      process.exit(1);
+    }, 3e3);
+    escalation.unref();
+    stack.disposeAsync().then(() => {
+      clearTimeout(escalation);
+      process.exit(0);
+    }).catch((err) => {
+      clearTimeout(escalation);
+      console.error("[changedown] dispose rejected:", err);
+      process.exit(1);
+    });
+  };
+  process.once("SIGINT", () => trigger("SIGINT"));
+  process.once("SIGTERM", () => trigger("SIGTERM"));
+  process.stdin.on("end", () => trigger("stdin-end"));
+  process.stdin.on("error", () => trigger("stdin-error"));
+  process.stdin.resume();
+}
+
+// src/host-mode.ts
 import { fileURLToPath as fileURLToPath3 } from "node:url";
 
 // ../../node_modules/zod/v3/helpers/util.js
@@ -19564,8 +20033,8 @@ __export(util_exports, {
   createTransparentProxy: () => createTransparentProxy,
   defineLazy: () => defineLazy,
   esc: () => esc,
-  escapeRegex: () => escapeRegex,
-  extend: () => extend,
+  escapeRegex: () => escapeRegex2,
+  extend: () => extend2,
   finalizeIssue: () => finalizeIssue,
   floatSafeRemainder: () => floatSafeRemainder2,
   getElementAtPath: () => getElementAtPath,
@@ -19837,7 +20306,7 @@ var getParsedType2 = (data) => {
 };
 var propertyKeyTypes = /* @__PURE__ */ new Set(["string", "number", "symbol"]);
 var primitiveTypes = /* @__PURE__ */ new Set(["string", "number", "bigint", "boolean", "symbol", "undefined"]);
-function escapeRegex(str) {
+function escapeRegex2(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function clone(inst, def, params) {
@@ -19968,7 +20437,7 @@ function omit(schema, mask) {
   });
   return clone(schema, def);
 }
-function extend(schema, shape) {
+function extend2(schema, shape) {
   if (!isPlainObject(shape)) {
     throw new Error("Invalid input to extend: expected a plain object");
   }
@@ -20456,7 +20925,7 @@ function emoji() {
 var ipv4 = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/;
 var ipv6 = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$/;
 var mac = (delimiter) => {
-  const escapedDelim = escapeRegex(delimiter ?? ":");
+  const escapedDelim = escapeRegex2(delimiter ?? ":");
   return new RegExp(`^(?:[0-9A-F]{2}${escapedDelim}){5}[0-9A-F]{2}$|^(?:[0-9a-f]{2}${escapedDelim}){5}[0-9a-f]{2}$`);
 };
 var cidrv4 = /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/([0-9]|[1-2][0-9]|3[0-2])$/;
@@ -20957,7 +21426,7 @@ var $ZodCheckUpperCase = /* @__PURE__ */ $constructor("$ZodCheckUpperCase", (ins
 });
 var $ZodCheckIncludes = /* @__PURE__ */ $constructor("$ZodCheckIncludes", (inst, def) => {
   $ZodCheck.init(inst, def);
-  const escapedRegex = escapeRegex(def.includes);
+  const escapedRegex = escapeRegex2(def.includes);
   const pattern = new RegExp(typeof def.position === "number" ? `^.{${def.position}}${escapedRegex}` : escapedRegex);
   def.pattern = pattern;
   inst._zod.onattach.push((inst2) => {
@@ -20981,7 +21450,7 @@ var $ZodCheckIncludes = /* @__PURE__ */ $constructor("$ZodCheckIncludes", (inst,
 });
 var $ZodCheckStartsWith = /* @__PURE__ */ $constructor("$ZodCheckStartsWith", (inst, def) => {
   $ZodCheck.init(inst, def);
-  const pattern = new RegExp(`^${escapeRegex(def.prefix)}.*`);
+  const pattern = new RegExp(`^${escapeRegex2(def.prefix)}.*`);
   def.pattern ?? (def.pattern = pattern);
   inst._zod.onattach.push((inst2) => {
     const bag = inst2._zod.bag;
@@ -21004,7 +21473,7 @@ var $ZodCheckStartsWith = /* @__PURE__ */ $constructor("$ZodCheckStartsWith", (i
 });
 var $ZodCheckEndsWith = /* @__PURE__ */ $constructor("$ZodCheckEndsWith", (inst, def) => {
   $ZodCheck.init(inst, def);
-  const pattern = new RegExp(`.*${escapeRegex(def.suffix)}$`);
+  const pattern = new RegExp(`.*${escapeRegex2(def.suffix)}$`);
   def.pattern ?? (def.pattern = pattern);
   inst._zod.onattach.push((inst2) => {
     const bag = inst2._zod.bag;
@@ -22546,7 +23015,7 @@ var $ZodEnum = /* @__PURE__ */ $constructor("$ZodEnum", (inst, def) => {
   const values = getEnumValues(def.entries);
   const valuesSet = new Set(values);
   inst._zod.values = valuesSet;
-  inst._zod.pattern = new RegExp(`^(${values.filter((k) => propertyKeyTypes.has(typeof k)).map((o) => typeof o === "string" ? escapeRegex(o) : o.toString()).join("|")})$`);
+  inst._zod.pattern = new RegExp(`^(${values.filter((k) => propertyKeyTypes.has(typeof k)).map((o) => typeof o === "string" ? escapeRegex2(o) : o.toString()).join("|")})$`);
   inst._zod.parse = (payload, _ctx) => {
     const input = payload.value;
     if (valuesSet.has(input)) {
@@ -22568,7 +23037,7 @@ var $ZodLiteral = /* @__PURE__ */ $constructor("$ZodLiteral", (inst, def) => {
   }
   const values = new Set(def.values);
   inst._zod.values = values;
-  inst._zod.pattern = new RegExp(`^(${def.values.map((o) => typeof o === "string" ? escapeRegex(o) : o ? escapeRegex(o.toString()) : String(o)).join("|")})$`);
+  inst._zod.pattern = new RegExp(`^(${def.values.map((o) => typeof o === "string" ? escapeRegex2(o) : o ? escapeRegex2(o.toString()) : String(o)).join("|")})$`);
   inst._zod.parse = (payload, _ctx) => {
     const input = payload.value;
     if (values.has(input)) {
@@ -22924,7 +23393,7 @@ var $ZodTemplateLiteral = /* @__PURE__ */ $constructor("$ZodTemplateLiteral", (i
       const end = source.endsWith("$") ? source.length - 1 : source.length;
       regexParts.push(source.slice(start, end));
     } else if (part === null || primitiveTypes.has(typeof part)) {
-      regexParts.push(escapeRegex(`${part}`));
+      regexParts.push(escapeRegex2(`${part}`));
     } else {
       throw new Error(`Invalid template literal part: ${part}`);
     }
@@ -29619,7 +30088,7 @@ var StdioServerTransport = class {
   }
 };
 
-// src/index.ts
+// src/host-mode.ts
 init_dist_esm();
 
 // ../../packages/core/dist-esm/host/edit-convert.js
@@ -29777,12 +30246,12 @@ init_types3();
 init_registry();
 
 // ../../packages/cli/dist/engine/backends/file-backend.js
-import * as fs14 from "node:fs";
+import * as fs15 from "node:fs";
 import { fileURLToPath } from "node:url";
 
 // ../../packages/cli/dist/engine/config-resolver.js
-import * as path2 from "node:path";
-import * as fs2 from "node:fs/promises";
+import * as path3 from "node:path";
+import * as fs3 from "node:fs/promises";
 import { existsSync, realpathSync, watch } from "node:fs";
 
 // ../../packages/cli/dist/config/index.js
@@ -30480,9 +30949,9 @@ function parse3(toml, { maxDepth = 1e3, integersAsBigInt } = {}) {
 
 // ../../packages/cli/dist/config/loader.js
 var import_picomatch = __toESM(require_picomatch2(), 1);
-import * as fs from "node:fs/promises";
-import * as os from "node:os";
-import * as path from "node:path";
+import * as fs2 from "node:fs/promises";
+import * as os2 from "node:os";
+import * as path2 from "node:path";
 
 // ../../packages/cli/dist/view-alias.js
 var READ_VIEWS = ["working", "simple", "decided", "raw"];
@@ -30596,16 +31065,16 @@ function parseConfigToml(raw) {
   };
 }
 async function findConfigFile(startDir) {
-  let dir = path.resolve(startDir);
-  const root = path.parse(dir).root;
+  let dir = path2.resolve(startDir);
+  const root = path2.parse(dir).root;
   while (true) {
-    const candidate = path.join(dir, ".changedown", "config.toml");
+    const candidate = path2.join(dir, ".changedown", "config.toml");
     try {
-      await fs.access(candidate);
+      await fs2.access(candidate);
       return candidate;
     } catch {
     }
-    const parent = path.dirname(dir);
+    const parent = path2.dirname(dir);
     if (parent === dir || dir === root) {
       return void 0;
     }
@@ -30620,7 +31089,7 @@ async function loadConfig(projectDir) {
   }
   let raw;
   try {
-    raw = await fs.readFile(configPath, "utf-8");
+    raw = await fs2.readFile(configPath, "utf-8");
   } catch {
     console.error(`changedown: found ${configPath} but could not read it, using defaults`);
     return structuredClone(DEFAULT_CONFIG2);
@@ -30643,17 +31112,17 @@ function resolveProtocolMode(configMode) {
   return configMode;
 }
 function expandTrackingAbsolutePattern(pattern) {
-  const home = os.homedir();
+  const home = os2.homedir();
   let p = pattern.split("${HOME}").join(home).replace(/\$HOME\b/g, home);
   if (p === "~" || p.startsWith("~/")) {
-    p = p === "~" ? home : path.join(home, p.slice(2));
+    p = p === "~" ? home : path2.join(home, p.slice(2));
   }
-  return p.split(path.sep).join("/");
+  return p.split(path2.sep).join("/");
 }
 function isFileInScope(filePath, config2, projectDir) {
-  const absPath = path.isAbsolute(filePath) ? path.normalize(filePath) : path.resolve(projectDir, filePath);
-  const absSlash = absPath.split(path.sep).join("/");
-  const relative8 = path.relative(projectDir, absPath).split(path.sep).join("/");
+  const absPath = path2.isAbsolute(filePath) ? path2.normalize(filePath) : path2.resolve(projectDir, filePath);
+  const absSlash = absPath.split(path2.sep).join("/");
+  const relative8 = path2.relative(projectDir, absPath).split(path2.sep).join("/");
   const matchesInclude = (0, import_picomatch.default)(config2.tracking.include);
   const matchesExclude = (0, import_picomatch.default)(config2.tracking.exclude);
   if (matchesInclude(relative8) && !matchesExclude(relative8)) {
@@ -30751,7 +31220,7 @@ var ConfigResolver = class _ConfigResolver {
    * Falls back to defaults if no config is found.
    */
   async forFile(filePath) {
-    const dir = path2.dirname(filePath);
+    const dir = path3.dirname(filePath);
     const projectRoot = await this.findProjectRoot(dir);
     if (projectRoot) {
       const cached2 = this.cache.get(projectRoot);
@@ -30778,17 +31247,17 @@ var ConfigResolver = class _ConfigResolver {
   resolveFilePath(file2) {
     const projectRoot = this.inferProjectRoot(file2);
     let resolved;
-    if (path2.isAbsolute(file2)) {
-      resolved = path2.resolve(file2);
+    if (path3.isAbsolute(file2)) {
+      resolved = path3.resolve(file2);
     } else {
-      resolved = path2.resolve(projectRoot, file2);
+      resolved = path3.resolve(projectRoot, file2);
     }
     if (!this.lastProjectDir) {
       this.lastProjectDir = projectRoot;
     }
     const realResolved = this.resolveRealPath(resolved);
     const realProjectRoot = this.resolveRealPath(projectRoot);
-    const normalizedRoot = realProjectRoot.endsWith(path2.sep) ? realProjectRoot : realProjectRoot + path2.sep;
+    const normalizedRoot = realProjectRoot.endsWith(path3.sep) ? realProjectRoot : realProjectRoot + path3.sep;
     if (!realResolved.startsWith(normalizedRoot) && realResolved !== realProjectRoot) {
       throw new Error(`Path "${file2}" resolves to "${realResolved}" which is outside the project root "${realProjectRoot}". File operations are restricted to the project directory for security.`);
     }
@@ -30819,15 +31288,15 @@ var ConfigResolver = class _ConfigResolver {
       const segments = [];
       let current = filePath;
       while (true) {
-        const parent = path2.dirname(current);
+        const parent = path3.dirname(current);
         if (parent === current) {
-          return path2.resolve(filePath);
+          return path3.resolve(filePath);
         }
-        segments.unshift(path2.basename(current));
+        segments.unshift(path3.basename(current));
         current = parent;
         try {
           const realParent = realpathSync(current);
-          return path2.join(realParent, ...segments);
+          return path3.join(realParent, ...segments);
         } catch {
         }
       }
@@ -30870,15 +31339,15 @@ var ConfigResolver = class _ConfigResolver {
    * Returns the project root (parent of `.changedown/`) or undefined.
    */
   async findProjectRoot(startDir) {
-    let dir = path2.resolve(startDir);
-    const root = path2.parse(dir).root;
+    let dir = path3.resolve(startDir);
+    const root = path3.parse(dir).root;
     while (true) {
       try {
-        await fs2.access(path2.join(dir, ".changedown", "config.toml"));
+        await fs3.access(path3.join(dir, ".changedown", "config.toml"));
         return dir;
       } catch {
       }
-      const parent = path2.dirname(dir);
+      const parent = path3.dirname(dir);
       if (parent === dir || dir === root) {
         return void 0;
       }
@@ -30892,13 +31361,13 @@ var ConfigResolver = class _ConfigResolver {
   static findProjectRootSync(startDir) {
     if (!startDir)
       return void 0;
-    let dir = path2.resolve(startDir);
-    const root = path2.parse(dir).root;
+    let dir = path3.resolve(startDir);
+    const root = path3.parse(dir).root;
     while (true) {
-      if (existsSync(path2.join(dir, ".changedown", "config.toml"))) {
+      if (existsSync(path3.join(dir, ".changedown", "config.toml"))) {
         return dir;
       }
-      const parent = path2.dirname(dir);
+      const parent = path3.dirname(dir);
       if (parent === dir || dir === root) {
         return void 0;
       }
@@ -30914,7 +31383,7 @@ var ConfigResolver = class _ConfigResolver {
   watchConfig(projectDir) {
     if (this.watchers.has(projectDir))
       return;
-    const configPath = path2.join(projectDir, ".changedown", "config.toml");
+    const configPath = path3.join(projectDir, ".changedown", "config.toml");
     try {
       const watcher = watch(configPath, () => {
         const existing = this.debounceTimers.get(projectDir);
@@ -30962,7 +31431,7 @@ var ConfigResolver = class _ConfigResolver {
 
 // ../../packages/cli/dist/engine/state.js
 init_dist_esm();
-import * as path3 from "node:path";
+import * as path4 from "node:path";
 import { realpathSync as realpathSync2 } from "node:fs";
 var primaryHashForView = {
   working: "raw",
@@ -31315,22 +31784,22 @@ var SessionState = class {
     if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(filePath)) {
       return filePath;
     }
-    const resolved = path3.resolve(filePath);
+    const resolved = path4.resolve(filePath);
     try {
       return realpathSync2(resolved);
     } catch {
       const segments = [];
       let current = resolved;
       while (true) {
-        const parent = path3.dirname(current);
+        const parent = path4.dirname(current);
         if (parent === current) {
           return resolved;
         }
-        segments.unshift(path3.basename(current));
+        segments.unshift(path4.basename(current));
         current = parent;
         try {
           const realParent = realpathSync2(current);
-          return path3.join(realParent, ...segments);
+          return path4.join(realParent, ...segments);
         } catch {
         }
       }
@@ -31339,12 +31808,12 @@ var SessionState = class {
 };
 
 // ../../packages/cli/dist/engine/handlers/propose-change.js
-import * as fs6 from "node:fs/promises";
-import * as path5 from "node:path";
+import * as fs7 from "node:fs/promises";
+import * as path6 from "node:path";
 
 // ../../packages/cli/dist/engine/write-tracked-file.js
 init_dist_esm();
-import { promises as fs3, writeFileSync } from "fs";
+import { promises as fs4, writeFileSync } from "fs";
 var WRITE_BLOCKING_KINDS = /* @__PURE__ */ new Set([
   "coordinate_failed",
   "anchor_ambiguous",
@@ -31359,7 +31828,7 @@ async function writeTrackedFile(filePath, content) {
   const violations = getWriteBlockingViolations(content);
   if (violations.length > 0)
     throw new StructuralIntegrityError(violations);
-  await fs3.writeFile(filePath, content, "utf-8");
+  await fs4.writeFile(filePath, content, "utf-8");
 }
 
 // ../../packages/cli/dist/engine/handlers/propose-change.js
@@ -31440,7 +31909,7 @@ function validateOrAutoRemap(ref, fileLines, paramName, relocations, autoRemap) 
 init_dist_esm();
 
 // ../../packages/cli/dist/engine/handlers/propose-batch.js
-import * as fs5 from "node:fs/promises";
+import * as fs6 from "node:fs/promises";
 init_dist_esm();
 
 // ../../packages/cli/dist/engine/handlers/resolve-and-apply.js
@@ -31924,20 +32393,20 @@ function computeAffectedLines(modifiedText, affectedStartLine, affectedEndLine, 
 }
 
 // ../../packages/cli/dist/engine/path-utils.js
-import * as path4 from "node:path";
+import * as path5 from "node:path";
 function toRelativePath(projectDir, filePath) {
-  return path4.relative(projectDir, filePath);
+  return path5.relative(projectDir, filePath);
 }
 
 // ../../packages/cli/dist/engine/scope.js
 init_dist_esm();
-import * as fs4 from "node:fs/promises";
+import * as fs5 from "node:fs/promises";
 async function resolveTrackingStatus(filePath, config2, projectDir) {
   const projectDefault = config2.tracking.default;
   const autoHeader = config2.tracking.auto_header;
   let fileContent = null;
   try {
-    fileContent = await fs4.readFile(filePath, "utf-8");
+    fileContent = await fs5.readFile(filePath, "utf-8");
   } catch {
   }
   if (fileContent !== null) {
@@ -32089,7 +32558,7 @@ async function handleProposeBatch(args, resolver, state) {
     }
     let fileContent;
     try {
-      fileContent = await fs5.readFile(filePath, "utf-8");
+      fileContent = await fs6.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult(`File not found or unreadable: ${msg}`, { file: relativePath });
@@ -32803,7 +33272,7 @@ async function handleProposeChange(args, resolver, state) {
     let fileContent;
     let isNewFile = false;
     try {
-      fileContent = await fs6.readFile(filePath, "utf-8");
+      fileContent = await fs7.readFile(filePath, "utf-8");
     } catch (err) {
       if (oldText === "" && !insertAfter && !hasHashlineParams2(args)) {
         fileContent = "";
@@ -33074,7 +33543,7 @@ async function handleProposeChange(args, resolver, state) {
       const reasonLine = reasoning ? `
     @${author} ${ts.raw}: ${reasoning}` : "";
       const footnoteBlock = footnoteHeader + reasonLine;
-      await fs6.mkdir(path5.dirname(filePath), { recursive: true });
+      await fs7.mkdir(path6.dirname(filePath), { recursive: true });
       modifiedText = level === 2 ? fileContent + inlineMarkup + footnoteBlock : fileContent + inlineMarkup;
     } else {
       if (oldText && !insertAfter) {
@@ -33157,7 +33626,7 @@ async function handleRawChanges(changes, file2, resolver, state) {
   const relativePath = toRelativePath(projectDir, filePath);
   let fileContent;
   try {
-    fileContent = await fs6.readFile(filePath, "utf-8");
+    fileContent = await fs7.readFile(filePath, "utf-8");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return errorResult2(`File not found or unreadable: ${msg}`, "FILE_UNREADABLE", {
@@ -33322,8 +33791,8 @@ function errorResult2(message, code, details) {
 }
 
 // ../../packages/cli/dist/engine/handlers/review-changes.js
-import * as fs7 from "node:fs/promises";
-import * as path6 from "node:path";
+import * as fs8 from "node:fs/promises";
+import * as path7 from "node:path";
 
 // ../../packages/cli/dist/engine/shared/error-result.js
 function errorResult3(message) {
@@ -33475,7 +33944,7 @@ async function handleReviewChanges(args, resolver, state) {
     let fileContent;
     let originalContent;
     try {
-      fileContent = await fs7.readFile(filePath, "utf-8");
+      fileContent = await fs8.readFile(filePath, "utf-8");
       originalContent = fileContent;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -33701,7 +34170,7 @@ async function handleReviewChanges(args, resolver, state) {
       await writeTrackedFile(filePath, fileContent);
       await rerecordState(state, filePath, fileContent, config2);
     }
-    const response = { file: path6.relative(projectDir, filePath) };
+    const response = { file: path7.relative(projectDir, filePath) };
     if (results.length > 0) {
       response.results = results;
     }
@@ -33742,8 +34211,8 @@ async function handleReviewChanges(args, resolver, state) {
 
 // ../../packages/cli/dist/engine/handlers/read-tracked-file.js
 init_dist_esm();
-import * as fs8 from "node:fs/promises";
-import * as path7 from "node:path";
+import * as fs9 from "node:fs/promises";
+import * as path8 from "node:path";
 
 // ../../packages/cli/dist/engine/guide-composer.js
 function resolveProtocolMode2(mode) {
@@ -33975,7 +34444,7 @@ async function handleReadTrackedFile(args, resolver, state) {
     }
     let fileContent;
     try {
-      fileContent = await fs8.readFile(filePath, "utf-8");
+      fileContent = await fs9.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult3(`File not found or unreadable: ${msg}`);
@@ -33983,7 +34452,7 @@ async function handleReadTrackedFile(args, resolver, state) {
     const trackingStatus = await resolveTrackingStatus(filePath, config2, projectDir);
     const parsedDoc = parseForFormat(fileContent);
     const fileDiagnostics = parsedDoc.getDiagnostics();
-    const displayPath = path7.relative(projectDir, filePath);
+    const displayPath = path8.relative(projectDir, filePath);
     if (!config2.hashline.enabled) {
       if (canonicalView === "simple") {
         return errorResult3("Simple view requires hashline mode. Enable hashline in .changedown/config.toml: [hashline] enabled = true");
@@ -34044,7 +34513,7 @@ async function handleReadTrackedFile(args, resolver, state) {
 }
 
 // ../../packages/cli/dist/engine/handlers/amend-change.js
-import * as fs9 from "node:fs/promises";
+import * as fs10 from "node:fs/promises";
 init_dist_esm();
 var amendChangeTool = {
   name: "amend_change",
@@ -34100,7 +34569,7 @@ async function handleAmendChange(args, resolver, state) {
     }
     let fileContent;
     try {
-      fileContent = await fs9.readFile(filePath, "utf-8");
+      fileContent = await fs10.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult3(`File not found or unreadable: ${msg}`);
@@ -34155,7 +34624,7 @@ async function handleAmendChange(args, resolver, state) {
 
 // ../../packages/cli/dist/engine/handlers/list-changes.js
 init_dist_esm();
-import * as fs10 from "node:fs/promises";
+import * as fs11 from "node:fs/promises";
 init_dist_esm();
 var listChangesTool = {
   name: "list_changes",
@@ -34302,7 +34771,7 @@ async function handleListChanges(args, resolver, _state) {
     const filePath = resolver.resolveFilePath(fileArg);
     const { config: config2, projectDir } = await resolver.forFile(filePath);
     try {
-      const stat4 = await fs10.stat(filePath);
+      const stat4 = await fs11.stat(filePath);
       if (!stat4.isFile()) {
         return errorResult3(`Not a file: "${filePath}"`);
       }
@@ -34314,7 +34783,7 @@ async function handleListChanges(args, resolver, _state) {
     }
     let fileContent;
     try {
-      fileContent = await fs10.readFile(filePath, "utf-8");
+      fileContent = await fs11.readFile(filePath, "utf-8");
     } catch {
       return errorResult3(`Could not read file: "${filePath}"`);
     }
@@ -34415,7 +34884,7 @@ function buildDetailForLevel(detail, change, fileContent, lines, doc, summary, c
 }
 
 // ../../packages/cli/dist/engine/handlers/supersede-change.js
-import * as fs11 from "node:fs/promises";
+import * as fs12 from "node:fs/promises";
 init_dist_esm();
 var supersedeChangeTool = {
   name: "supersede_change",
@@ -34479,7 +34948,7 @@ async function handleSupersedeChange(args, resolver, state) {
     }
     let fileContent;
     try {
-      fileContent = await fs11.readFile(filePath, "utf-8");
+      fileContent = await fs12.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult3(`File not found or unreadable: ${msg}`);
@@ -34542,7 +35011,7 @@ async function handleSupersedeChange(args, resolver, state) {
 }
 
 // ../../packages/cli/dist/engine/handlers/resolve-thread.js
-import * as fs12 from "node:fs/promises";
+import * as fs13 from "node:fs/promises";
 init_dist_esm();
 var resolveThreadTool = {
   name: "resolve_thread",
@@ -34596,7 +35065,7 @@ async function handleResolveThread(args, resolver, state) {
     }
     let fileContent;
     try {
-      fileContent = await fs12.readFile(filePath, "utf-8");
+      fileContent = await fs13.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult3(`File not found or unreadable: ${msg}`);
@@ -34659,7 +35128,7 @@ async function handleResolveThread(args, resolver, state) {
 }
 
 // ../../packages/cli/dist/engine/handlers/respond-to-thread.js
-import * as fs13 from "node:fs/promises";
+import * as fs14 from "node:fs/promises";
 init_dist_esm();
 async function handleRespondToThread(args, resolver, _state) {
   try {
@@ -34687,7 +35156,7 @@ async function handleRespondToThread(args, resolver, _state) {
     }
     let fileContent;
     try {
-      fileContent = await fs13.readFile(filePath, "utf-8");
+      fileContent = await fs14.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult3(`File not found or unreadable: ${msg}`);
@@ -34790,7 +35259,7 @@ var FileBackend = class {
     const text = result.content.map((c) => c.text).join("");
     let version3 = "";
     try {
-      const stat4 = await fs14.promises.stat(filePath);
+      const stat4 = await fs15.promises.stat(filePath);
       version3 = stat4.mtimeMs.toString();
     } catch {
     }
@@ -34869,14 +35338,14 @@ var FileBackend = class {
     let debounceTimer = null;
     let watcher = null;
     try {
-      watcher = fs14.watch(filePath, () => {
+      watcher = fs15.watch(filePath, () => {
         if (debounceTimer !== null)
           clearTimeout(debounceTimer);
         debounceTimer = setTimeout(async () => {
           debounceTimer = null;
           let version3 = "";
           try {
-            const stat4 = await fs14.promises.stat(filePath);
+            const stat4 = await fs15.promises.stat(filePath);
             version3 = stat4.mtimeMs.toString();
           } catch {
             listener({ kind: "backend_disconnected" });
@@ -35179,7 +35648,77 @@ function replaceUnique2(haystack, needle, replacement) {
     return void 0;
   return haystack.slice(0, first) + replacement + haystack.slice(first + needle.length);
 }
+function isBlockInsertion(text) {
+  const firstLine = text.trimStart().split(/\r?\n/, 1)[0] ?? "";
+  return /^(?:\|.*\||#{1,6}\s|[-*+]\s|\d+\.\s|```|~~~|>)/.test(firstLine);
+}
+function separatorBeforeInsertedPayload(previous, inserted) {
+  if (previous === "" || previous.endsWith("\n"))
+    return "";
+  return isBlockInsertion(inserted) ? "\n\n" : "\n";
+}
+function revisedInsertionPayloadAfterLine(input) {
+  const payload = input.containing.modifiedText ?? "";
+  const contentStart = input.containing.contentRange.start;
+  const contentEnd = input.containing.contentRange.end;
+  const payloadOffset = Math.min(Math.max(input.resolvedEndOffset, contentStart), contentEnd) - contentStart;
+  if (payloadOffset < 0 || payloadOffset > payload.length)
+    return void 0;
+  const before = payload.slice(0, payloadOffset);
+  const after = payload.slice(payloadOffset);
+  const separator = separatorBeforeInsertedPayload(before, input.insertedText);
+  return `${before}${separator}${input.insertedText}${after}`;
+}
 async function trySupersedeContainingInsertion(input) {
+  if (input.op.type === "ins") {
+    if (!input.state || !input.filePath || !input.config)
+      return void 0;
+    const fileLines = input.fileContent.split("\n");
+    let resolved;
+    try {
+      resolved = resolveCoordinates(input.op, input.fileContent, fileLines, input.state, input.filePath, input.config);
+    } catch {
+      return void 0;
+    }
+    const doc2 = parseForFormat(input.fileContent, { skipCodeBlocks: false });
+    const containing2 = doc2.getChanges().find((change) => {
+      if (change.type !== ChangeType.Insertion)
+        return false;
+      if (effectiveStatus(change) !== ChangeStatus.Proposed && effectiveStatus(change) !== "proposed")
+        return false;
+      if (!authorMatches(change.metadata?.author ?? change.inlineMetadata?.author, input.author))
+        return false;
+      return change.range.start <= resolved.endOffset && change.range.end >= resolved.startOffset;
+    });
+    if (!containing2)
+      return void 0;
+    const revised2 = revisedInsertionPayloadAfterLine({
+      fileContent: input.fileContent,
+      containing: containing2,
+      resolvedEndOffset: resolved.endOffset,
+      insertedText: input.op.newText
+    });
+    if (revised2 === void 0)
+      return void 0;
+    const supersede2 = await computeSupersedeResult(input.fileContent, containing2.id, {
+      newText: revised2,
+      reason: input.op.reasoning ?? `Append to ${containing2.id} instead of nesting inside it`,
+      author: input.author
+    });
+    if (supersede2.isError)
+      return void 0;
+    return {
+      modifiedText: supersede2.text,
+      changeType: "ins",
+      supersededIds: [containing2.id],
+      affectedStartLine: resolved.rawStartLine,
+      affectedEndLine: resolved.rawEndLine,
+      relocations: resolved.relocations,
+      remaps: resolved.remaps,
+      viewResolved: resolved.viewResolved,
+      settled: false
+    };
+  }
   if (input.op.type !== "sub" && input.op.type !== "del")
     return void 0;
   const doc = parseForFormat(input.fileContent, { skipCodeBlocks: false });
@@ -35333,22 +35872,35 @@ async function prepareCompactProposeChange(input) {
   }
   const changeId = state.getNextId(filePath, fileContent);
   let applyResult;
-  try {
-    applyResult = resolveAndApply(compactOp, fileContent, fileContent.split("\n"), state, filePath, config2, changeId, author);
-  } catch (err) {
-    const supersedeResult = await trySupersedeContainingInsertion({
-      fileContent,
-      op: compactOp,
-      changeId,
-      author
-    });
-    if (supersedeResult) {
-      applyResult = supersedeResult;
-    } else {
-      return fail2(err instanceof Error ? err.message : String(err), "HASHLINE_REFERENCE_UNRESOLVED", {
-        file: relativePath,
-        quick_fix: { action: "re_read", file: filePath }
+  const proactiveSupersede = await trySupersedeContainingInsertion({
+    fileContent,
+    op: compactOp,
+    changeId,
+    author,
+    state,
+    filePath,
+    config: config2
+  });
+  if (proactiveSupersede) {
+    applyResult = proactiveSupersede;
+  } else {
+    try {
+      applyResult = resolveAndApply(compactOp, fileContent, fileContent.split("\n"), state, filePath, config2, changeId, author);
+    } catch (err) {
+      const supersedeResult = await trySupersedeContainingInsertion({
+        fileContent,
+        op: compactOp,
+        changeId,
+        author
       });
+      if (supersedeResult) {
+        applyResult = supersedeResult;
+      } else {
+        return fail2(err instanceof Error ? err.message : String(err), "HASHLINE_REFERENCE_UNRESOLVED", {
+          file: relativePath,
+          quick_fix: { action: "re_read", file: filePath }
+        });
+      }
     }
   }
   let affectedLines = [];
@@ -35389,19 +35941,19 @@ async function prepareCompactProposeChange(input) {
 
 // ../../packages/cli/dist/engine/handlers/begin-change-group.js
 init_dist_esm();
-import * as fs15 from "node:fs/promises";
-import * as path8 from "node:path";
+import * as fs16 from "node:fs/promises";
+import * as path9 from "node:path";
 async function scanProjectForMaxId(projectDir, config2) {
   let max = 0;
   try {
-    const entries = await fs15.readdir(projectDir, { recursive: true });
+    const entries = await fs16.readdir(projectDir, { recursive: true });
     for (const rawEntry of entries) {
       const entry = typeof rawEntry === "string" ? rawEntry : String(rawEntry);
-      const fullPath = path8.join(projectDir, entry);
+      const fullPath = path9.join(projectDir, entry);
       if (!isFileInScope(fullPath, config2, projectDir))
         continue;
       try {
-        const content = await fs15.readFile(fullPath, "utf-8");
+        const content = await fs16.readFile(fullPath, "utf-8");
         const fileMax = scanMaxCnId(content);
         if (fileMax > max)
           max = fileMax;
@@ -35438,8 +35990,8 @@ async function handleBeginChangeGroup(args, resolver, state) {
 }
 
 // ../../packages/cli/dist/engine/handlers/end-change-group.js
-import * as fs16 from "node:fs/promises";
-import * as path9 from "node:path";
+import * as fs17 from "node:fs/promises";
+import * as path10 from "node:path";
 init_dist_esm();
 init_file_ops2();
 async function handleEndChangeGroup(args, resolver, state) {
@@ -35461,7 +36013,7 @@ async function handleEndChangeGroup(args, resolver, state) {
       const summaryLine = summary ? `
     summary: ${summary}` : "";
       const footnoteBlock = footnoteHeader + reasonLine + summaryLine;
-      const fileContent = await fs16.readFile(targetFile, "utf-8");
+      const fileContent = await fs17.readFile(targetFile, "utf-8");
       try {
         assertResolved(parseForFormat(fileContent));
       } catch (err) {
@@ -35474,7 +36026,7 @@ async function handleEndChangeGroup(args, resolver, state) {
       await writeTrackedFile(targetFile, modifiedText);
     }
     const filesList = groupInfo.files.length > 0 ? `Modified files:
-${groupInfo.files.map((f) => path9.relative(projectDir, f)).join("\n")}
+${groupInfo.files.map((f) => path10.relative(projectDir, f)).join("\n")}
 
 Share this list with the user so they know which file(s) to open or read.` : "";
     return {
@@ -35497,7 +36049,7 @@ Share this list with the user so they know which file(s) to open or read.` : "";
 }
 
 // ../../packages/cli/dist/engine/handlers/review-change.js
-import * as fs17 from "node:fs/promises";
+import * as fs18 from "node:fs/promises";
 init_dist_esm();
 init_dist_esm();
 async function handleReviewChange(args, resolver, state) {
@@ -35529,7 +36081,7 @@ async function handleReviewChange(args, resolver, state) {
     }
     let fileContent;
     try {
-      fileContent = await fs17.readFile(filePath, "utf-8");
+      fileContent = await fs18.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult3(`File not found or unreadable: ${msg}`);
@@ -35606,13 +36158,13 @@ init_dist_esm();
 
 // ../../packages/cli/dist/engine/handlers/list-open-threads.js
 init_dist_esm();
-import * as fs18 from "node:fs/promises";
-import * as path10 from "node:path";
+import * as fs19 from "node:fs/promises";
+import * as path11 from "node:path";
 var TRACKING_HEADER_TRACKED = "<!-- changedown.com/v1: tracked -->";
 var VALID_STATUSES = ["proposed", "accepted", "rejected"];
 async function hasTrackingHeader(filePath) {
   try {
-    const fd = await fs18.open(filePath, "r");
+    const fd = await fs19.open(filePath, "r");
     const buf = Buffer.alloc(400);
     const { bytesRead } = await fd.read(buf, 0, 400, 0);
     await fd.close();
@@ -35625,14 +36177,14 @@ async function hasTrackingHeader(filePath) {
 async function collectTrackedMdFiles(dirPath, config2, projectDir) {
   const out = [];
   try {
-    const entries = await fs18.readdir(dirPath, { recursive: true });
+    const entries = await fs19.readdir(dirPath, { recursive: true });
     for (const raw of entries) {
       const entry = typeof raw === "string" ? raw : String(raw);
-      const full = path10.join(dirPath, entry);
+      const full = path11.join(dirPath, entry);
       if (!entry.endsWith(".md"))
         continue;
       try {
-        const stat4 = await fs18.stat(full);
+        const stat4 = await fs19.stat(full);
         if (!stat4.isFile())
           continue;
       } catch {
@@ -35660,7 +36212,7 @@ async function handleListOpenThreads(args, resolver, _state) {
     const { config: config2, projectDir } = await resolver.forFile(resolvedPath);
     let filesToScan = [];
     try {
-      const stat4 = await fs18.stat(resolvedPath);
+      const stat4 = await fs19.stat(resolvedPath);
       if (stat4.isFile()) {
         if (!isFileInScope(resolvedPath, config2, projectDir)) {
           return errorResult3(`File is not in scope for tracking: "${resolvedPath}". Check .changedown/config.toml include/exclude patterns.`);
@@ -35683,7 +36235,7 @@ async function handleListOpenThreads(args, resolver, _state) {
     for (const fp of filesToScan) {
       let content;
       try {
-        content = await fs18.readFile(fp, "utf-8");
+        content = await fs19.readFile(fp, "utf-8");
       } catch {
         continue;
       }
@@ -35759,8 +36311,8 @@ async function handleListOpenThreads(args, resolver, _state) {
 }
 
 // ../../packages/cli/dist/engine/handlers/raw-edit.js
-import * as fs19 from "node:fs/promises";
-import * as path11 from "node:path";
+import * as fs20 from "node:fs/promises";
+import * as path12 from "node:path";
 init_file_ops2();
 init_dist_esm();
 var MARKUP_OPENERS = [/\{\+\+/g, /\{\-\-/g, /\{\~\~/g];
@@ -35807,7 +36359,7 @@ async function handleRawEdit(args, resolver) {
     }
     let fileContent;
     try {
-      fileContent = await fs19.readFile(filePath, "utf-8");
+      fileContent = await fs20.readFile(filePath, "utf-8");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       return errorResult3(`File not found or unreadable: ${msg}`);
@@ -35826,7 +36378,7 @@ async function handleRawEdit(args, resolver) {
     const { annotations, footnotes } = countMarkupInText(oldText);
     const baseWarning = "This edit is untracked.";
     const removalWarning = annotations > 0 || footnotes > 0 ? ` WARNING: This edit removes ${annotations} CriticMarkup annotation(s) and ${footnotes} footnote(s). These represent the file's deliberation history.` : "";
-    const displayPath = path11.relative(projectDir, filePath);
+    const displayPath = path12.relative(projectDir, filePath);
     return {
       content: [
         {
@@ -35847,8 +36399,8 @@ async function handleRawEdit(args, resolver) {
 }
 
 // ../../packages/cli/dist/engine/handlers/get-tracking-status.js
-import * as fs20 from "node:fs/promises";
-import * as path12 from "node:path";
+import * as fs21 from "node:fs/promises";
+import * as path13 from "node:path";
 init_dist_esm();
 var import_picomatch2 = __toESM(require_picomatch2(), 1);
 async function handleGetTrackingStatus(args, resolver, state) {
@@ -35859,8 +36411,8 @@ async function handleGetTrackingStatus(args, resolver, state) {
       const filePath = resolver.resolveFilePath(file2);
       const { config: config3, projectDir } = await resolver.forFile(filePath);
       const status = await resolveTrackingStatus(filePath, config3, projectDir);
-      let relative8 = path12.relative(projectDir, filePath);
-      relative8 = relative8.split(path12.sep).join("/");
+      let relative8 = path13.relative(projectDir, filePath);
+      relative8 = relative8.split(path13.sep).join("/");
       const matchesHooksExclude = (0, import_picomatch2.default)(config3.hooks.exclude);
       const hookExcluded = matchesHooksExclude(relative8);
       const out = {
@@ -35872,7 +36424,7 @@ async function handleGetTrackingStatus(args, resolver, state) {
       if (isTracked) {
         let content;
         try {
-          content = await fs20.readFile(filePath, "utf-8");
+          content = await fs21.readFile(filePath, "utf-8");
         } catch {
           content = "";
         }
@@ -35938,7 +36490,7 @@ async function handleGetTrackingStatus(args, resolver, state) {
 
 // ../../packages/cli/dist/engine/handlers/get-change.js
 init_dist_esm();
-import * as fs21 from "node:fs/promises";
+import * as fs22 from "node:fs/promises";
 init_dist_esm();
 function buildGroupInfo(doc, lines, parentId) {
   const parentBlock = findFootnoteBlock(lines, parentId);
@@ -35976,7 +36528,7 @@ async function handleGetChange(args, resolver) {
     const filePath = resolver.resolveFilePath(fileArg);
     const { config: config2, projectDir } = await resolver.forFile(filePath);
     try {
-      const stat4 = await fs21.stat(filePath);
+      const stat4 = await fs22.stat(filePath);
       if (!stat4.isFile()) {
         return errorResult4(`Not a file: "${filePath}"`);
       }
@@ -35988,7 +36540,7 @@ async function handleGetChange(args, resolver) {
     }
     let fileContent;
     try {
-      fileContent = await fs21.readFile(filePath, "utf-8");
+      fileContent = await fs22.readFile(filePath, "utf-8");
     } catch {
       return errorResult4(`Could not read file: "${filePath}"`);
     }
@@ -36105,237 +36657,6 @@ function makeDefaultRegistry(projectDir) {
   const registry2 = new BackendRegistry();
   registry2.register(new FileBackend(projectDir));
   return registry2;
-}
-
-// src/transport/fixed-port-leader.ts
-import * as http from "node:http";
-import * as https from "node:https";
-import * as fs22 from "node:fs";
-import * as os2 from "node:os";
-import * as path13 from "node:path";
-var DEV_CERT_DIR = path13.join(os2.homedir(), ".office-addin-dev-certs");
-var DEV_CERT_REPAIR_COMMAND = "npx office-addin-dev-certs install";
-var SERVICE_NAME = "changedown-mcp";
-function loadDevCertOptions() {
-  const dir = DEV_CERT_DIR;
-  const certPath = path13.join(dir, "localhost.crt");
-  const keyPath = path13.join(dir, "localhost.key");
-  const caPath = path13.join(dir, "ca.crt");
-  try {
-    const leaf = fs22.readFileSync(certPath);
-    const ca = fs22.readFileSync(caPath);
-    const bundle = Buffer.concat([leaf, Buffer.from("\n"), ca]);
-    return { cert: bundle, key: fs22.readFileSync(keyPath) };
-  } catch {
-    return void 0;
-  }
-}
-var PortConflictError = class extends Error {
-  constructor(port, service, conflictPid, conflictScheme, expectedScheme) {
-    const pidPart = conflictPid != null ? ` (PID ${conflictPid})` : "";
-    const schemePart = conflictScheme && expectedScheme && conflictScheme !== expectedScheme ? ` running on ${conflictScheme} but this process expects ${expectedScheme}` : "";
-    const killHint = conflictPid != null ? ` Kill it: kill ${conflictPid}.` : " Free the port or configure a different one.";
-    super(
-      `PortConflictError: port ${port} is held by ${service}${pidPart}${schemePart}.${killHint}`
-    );
-    this.port = port;
-    this.service = service;
-    this.conflictPid = conflictPid;
-    this.conflictScheme = conflictScheme;
-    this.expectedScheme = expectedScheme;
-    this.name = "PortConflictError";
-  }
-};
-var HttpsRequiredError = class extends Error {
-  constructor() {
-    super(
-      `HTTPS is required for hosted Word pane mode, but this server is configured to use HTTP or Office add-in dev certificates were not found. Expected localhost.crt, localhost.key, and ca.crt under ${DEV_CERT_DIR}. Run \`${DEV_CERT_REPAIR_COMMAND}\`, trust the generated certificates if prompted, then start changedown-mcp again.`
-    );
-    this.name = "HttpsRequiredError";
-  }
-};
-async function probeHealthBothSchemes(port, preferHttps) {
-  const order = preferHttps ? ["https", "http"] : ["http", "https"];
-  for (const scheme of order) {
-    try {
-      const health = await probeHealth(port, scheme === "https");
-      return { health, scheme };
-    } catch {
-    }
-  }
-  return void 0;
-}
-var devCerts = loadDevCertOptions();
-function envRequiresHttps() {
-  const requireHttps = process.env.CHANGEDOWN_MCP_REQUIRE_HTTPS?.toLowerCase();
-  return requireHttps === "1" || requireHttps === "true";
-}
-function shouldRequireHttps(options) {
-  return options?.requireHttps ?? envRequiresHttps();
-}
-function resolveUseHttps(options) {
-  const forceHttp = process.env.CHANGEDOWN_MCP_USE_HTTP?.toLowerCase();
-  if (forceHttp === "1" || forceHttp === "true") return false;
-  const forceHttps = process.env.CHANGEDOWN_MCP_USE_HTTPS?.toLowerCase();
-  if (forceHttps === "1" || forceHttps === "true") return true;
-  return options?.useHttps ?? false;
-}
-function assertCanBindHttps(bindWithHttps) {
-  if (bindWithHttps && !devCerts) {
-    throw new HttpsRequiredError();
-  }
-}
-async function probeHealth(port, probeWithHttps = false) {
-  return new Promise((resolve6, reject) => {
-    const getter = probeWithHttps ? https.get : http.get;
-    const req = getter(
-      {
-        hostname: "127.0.0.1",
-        port,
-        path: "/health",
-        timeout: 2e3,
-        // Self-signed dev cert — we trust the loopback address, not the chain.
-        rejectUnauthorized: false,
-        // Don't reuse Node's default agent connection pool. Without this, when
-        // a same-port leader is killed and replaced (cross-version handover,
-        // test-suite rebinds), Node 24's pool can hand back a stale socket
-        // → ECONNRESET on the next probe. Each /health probe gets its own
-        // socket; probes are infrequent so the cost is negligible.
-        agent: false
-      },
-      (res) => {
-        let raw = "";
-        res.on("data", (c) => {
-          raw += c.toString();
-        });
-        res.on("end", () => {
-          try {
-            resolve6(JSON.parse(raw));
-          } catch {
-            reject(new Error("Invalid JSON from /health"));
-          }
-        });
-      }
-    );
-    req.on("error", reject);
-    req.on("timeout", () => {
-      req.destroy();
-      reject(new Error("health probe timeout"));
-    });
-  });
-}
-function tryBind(port, bindWithHttps = false) {
-  return new Promise((resolve6, reject) => {
-    const server = bindWithHttps ? https.createServer({ cert: devCerts.cert, key: devCerts.key }) : http.createServer();
-    server.on("connection", (sock) => {
-      console.error(`[pane-endpoint] TCP connect from ${sock.remoteAddress}:${sock.remotePort}`);
-    });
-    if (bindWithHttps) {
-      server.on("tlsClientError", (err, sock) => {
-        console.error(
-          `[pane-endpoint] TLS handshake failed from ${sock.remoteAddress}:${sock.remotePort}: ${err.message}`
-        );
-      });
-    }
-    server.listen(port, "127.0.0.1", () => resolve6(server));
-    server.once("error", reject);
-  });
-}
-function makeHeartbeat(hostUrl, defaults, bindOptions) {
-  return (override) => new Promise((resolve6) => {
-    const opts = {
-      intervalMs: override?.intervalMs ?? defaults.intervalMs,
-      failThreshold: override?.failThreshold ?? defaults.failThreshold
-    };
-    const hostPort = parseInt(new URL(hostUrl).port, 10);
-    let failures = 0;
-    let inFlight = false;
-    const timer = setInterval(async () => {
-      if (inFlight) return;
-      inFlight = true;
-      try {
-        await probeHealth(hostPort, new URL(hostUrl).protocol === "https:");
-        failures = 0;
-      } catch {
-        failures++;
-        if (failures >= opts.failThreshold) {
-          clearInterval(timer);
-          try {
-            const promoted = await bindOrForward(hostPort, bindOptions);
-            resolve6(promoted);
-          } catch {
-            const raced = await bindOrForward(hostPort, bindOptions);
-            resolve6(raced);
-          }
-        }
-      } finally {
-        inFlight = false;
-      }
-    }, opts.intervalMs);
-  });
-}
-async function bindOrForward(port, options = {}) {
-  const requireHttps = shouldRequireHttps(options);
-  if (requireHttps && options.useHttps === false) {
-    throw new HttpsRequiredError();
-  }
-  const bindWithHttps = requireHttps ? true : resolveUseHttps(options);
-  if (requireHttps && !devCerts) {
-    const probed = await probeHealthBothSchemes(
-      port,
-      /* preferHttps */
-      true
-    );
-    if (!probed) {
-      throw new HttpsRequiredError();
-    }
-    if (probed.health.service !== SERVICE_NAME) {
-      throw new PortConflictError(port, probed.health.service, probed.health.pid, probed.scheme, "https");
-    }
-    if (probed.scheme !== "https") {
-      throw new PortConflictError(port, SERVICE_NAME, probed.health.pid, probed.scheme, "https");
-    }
-    const hostUrl = `https://127.0.0.1:${port}`;
-    const startHeartbeat = makeHeartbeat(hostUrl, {
-      intervalMs: 2e3,
-      failThreshold: 2
-    }, options);
-    return { mode: "client", hostUrl, startHeartbeat };
-  }
-  try {
-    assertCanBindHttps(bindWithHttps);
-    const server = await tryBind(port, bindWithHttps);
-    process.stdin.on("end", () => {
-      server.close(() => process.exit(0));
-      setTimeout(() => process.exit(0), 1e3).unref();
-    });
-    process.stdin.on("error", () => process.exit(0));
-    process.stdin.resume();
-    return { mode: "host", server };
-  } catch (err) {
-    const code = err.code;
-    if (code !== "EADDRINUSE") throw err;
-    const expectedScheme = requireHttps || bindWithHttps ? "https" : "http";
-    const probed = await probeHealthBothSchemes(port, expectedScheme === "https");
-    if (!probed) {
-      throw new PortConflictError(port, "<unreachable on either http or https>");
-    }
-    if (probed.health.service !== SERVICE_NAME) {
-      throw new PortConflictError(port, probed.health.service, probed.health.pid, probed.scheme, expectedScheme);
-    }
-    if (probed.scheme !== expectedScheme) {
-      throw new PortConflictError(port, SERVICE_NAME, probed.health.pid, probed.scheme, expectedScheme);
-    }
-    const scheme = expectedScheme;
-    const hostUrl = `${scheme}://127.0.0.1:${port}`;
-    const HEARTBEAT_INTERVAL_MS = 2e3;
-    const HEARTBEAT_MISS_THRESHOLD = 2;
-    const startHeartbeat = makeHeartbeat(hostUrl, {
-      intervalMs: HEARTBEAT_INTERVAL_MS,
-      failThreshold: HEARTBEAT_MISS_THRESHOLD
-    }, options);
-    return { mode: "client", hostUrl, startHeartbeat };
-  }
 }
 
 // src/transport/streamable-http.ts
@@ -37969,119 +38290,6 @@ function synthesizeAuthorFromClientInfo(clientInfo) {
   return `ai:${id}`;
 }
 
-// src/transport/client-proxy.ts
-import * as http2 from "node:http";
-import * as https2 from "node:https";
-import { createInterface } from "node:readline";
-function parseEnvelope(line) {
-  try {
-    const parsed = JSON.parse(line);
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
-function hasRequestId(envelope) {
-  return Object.prototype.hasOwnProperty.call(envelope, "id");
-}
-function writeError(stdout, id, message) {
-  stdout.write(JSON.stringify({
-    jsonrpc: "2.0",
-    id: id ?? null,
-    error: { code: -32603, message }
-  }) + "\n");
-}
-async function postToHost(hostUrl, body, sessionId) {
-  const url2 = new URL("/mcp", hostUrl);
-  const headers = {
-    "Content-Type": "application/json",
-    "Content-Length": String(Buffer.byteLength(body)),
-    // MCP Streamable HTTP transport requires both content types in Accept
-    "Accept": "application/json, text/event-stream"
-  };
-  if (sessionId) headers["Mcp-Session-Id"] = sessionId;
-  const isHttps = url2.protocol === "https:";
-  return new Promise((resolve6, reject) => {
-    const requester = isHttps ? https2.request : http2.request;
-    const req = requester(
-      {
-        hostname: url2.hostname,
-        port: parseInt(url2.port, 10),
-        path: url2.pathname,
-        method: "POST",
-        headers,
-        // Self-signed loopback dev cert; trust the address, not the chain.
-        rejectUnauthorized: false
-      },
-      (res) => {
-        let raw = "";
-        res.on("data", (c) => {
-          raw += c;
-        });
-        res.on("end", () => {
-          const newSid = res.headers["mcp-session-id"] ?? null;
-          resolve6({ status: res.statusCode ?? 0, sessionId: newSid, body: raw });
-        });
-      }
-    );
-    req.on("error", reject);
-    req.end(body);
-  });
-}
-async function startClientProxy(opts) {
-  const stdin = opts.stdin ?? process.stdin;
-  const stdout = opts.stdout ?? process.stdout;
-  const hostUrl = opts.hostUrl;
-  let sessionId = null;
-  let stopped = false;
-  const closeCallbacks = [];
-  const rl = createInterface({ input: stdin, crlfDelay: Infinity });
-  rl.on("line", async (line) => {
-    if (stopped || !line.trim()) return;
-    const envelope = parseEnvelope(line);
-    const isRequest = hasRequestId(envelope);
-    try {
-      const result = await postToHost(hostUrl, line, sessionId);
-      if (result.sessionId) sessionId = result.sessionId;
-      const body = result.body.trim();
-      if (result.status < 200 || result.status >= 300) {
-        if (isRequest) {
-          writeError(stdout, envelope.id, `MCP host returned HTTP ${result.status}${body ? `: ${body}` : ""}`);
-        } else if (body) {
-          console.error(`[changedown] MCP notification proxy got HTTP ${result.status}: ${body}`);
-        }
-        return;
-      }
-      if (!body) {
-        if (isRequest) {
-          writeError(stdout, envelope.id, `MCP host returned HTTP ${result.status} with empty response body`);
-        }
-        return;
-      }
-      stdout.write(body + "\n");
-    } catch (err) {
-      if (isRequest) {
-        writeError(stdout, envelope.id, String(err));
-      } else {
-        console.error(`[changedown] MCP notification proxy failed: ${String(err)}`);
-      }
-    }
-  });
-  rl.on("close", () => {
-    stopped = true;
-    for (const cb of closeCallbacks) cb();
-  });
-  return {
-    stop() {
-      stopped = true;
-      rl.close();
-    },
-    onClose(cb) {
-      closeCallbacks.push(cb);
-    }
-  };
-}
-
 // src/transport/pane-endpoint.ts
 import { EventEmitter as EventEmitter2 } from "node:events";
 import { randomUUID as randomUUID2 } from "node:crypto";
@@ -38102,10 +38310,16 @@ var HEALTH_RESPONSE = {
   capabilities: [CAPABILITY_BACKEND_REGISTER, CAPABILITY_MCP_STREAMABLE]
 };
 var SSE_GRACE_MS = 5e3;
-var KEEPALIVE_MS = 15e3;
+var KEEPALIVE_MS = (() => {
+  const env = process.env.CHANGEDOWN_PANE_KEEPALIVE_MS;
+  if (!env) return 15e3;
+  const parsed = Number.parseInt(env, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 15e3;
+})();
 var TEST_CONTROL_ENABLED = process.env.CHANGEDOWN_MCP_TEST_CONTROL === "1";
 var REGISTRATION_STREAM_TTL_MS = 3e4;
 var DEFAULT_REQUEST_TIMEOUT_MS = 3e4;
+var MAX_DEBUG_RECORDS = 500;
 var DEFAULT_ALLOWED_PANE_ORIGINS = [
   "https://127.0.0.1:3000",
   "https://localhost:3000",
@@ -38143,16 +38357,153 @@ function endJson(res, status, body) {
   });
   res.end(payload);
 }
+var LAB_INCLUDE_LATEST_KEYS = {
+  browser: [
+    "counters",
+    "errors",
+    "unhandledRejections",
+    "eventSource",
+    "performanceResources",
+    "mutations"
+  ],
+  console: ["counters", "console", "errors", "unhandledRejections"],
+  network: ["counters", "network", "eventSource"],
+  ui: ["ui"],
+  domSummary: ["domSummary"]
+};
+var LAB_INCLUDE_TOP_LEVEL_KEYS = {
+  trace: ["traceRecords"],
+  traces: ["traceRecords"],
+  queue: ["pane", "tickQueue"],
+  apply: ["applyDiagnostics"],
+  applyDiagnostics: ["applyDiagnostics"],
+  debug: ["debugRecords"],
+  debugRecords: ["debugRecords"],
+  serverDebugRecords: ["debugRecords"]
+};
+var LAB_LATEST_METADATA_KEYS = [
+  "protocolVersion",
+  "kind",
+  "runId",
+  "sessionUri",
+  "capturedAt",
+  "sequence",
+  "pushReason"
+];
+function parseLabInclude(value) {
+  if (!value) return void 0;
+  const parts = value.split(",").map((part) => part.trim()).filter(Boolean);
+  return parts.length > 0 ? new Set(parts) : void 0;
+}
+function filterObjectKeys(source, keys) {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return {};
+  const input = source;
+  const output = {};
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(input, key)) output[key] = input[key];
+  }
+  return output;
+}
+function filterLatestLabDiagnostics(latest, include) {
+  if (!latest || typeof latest !== "object" || Array.isArray(latest)) return latest;
+  const keys = new Set(LAB_LATEST_METADATA_KEYS);
+  for (const item of include) {
+    for (const key of LAB_INCLUDE_LATEST_KEYS[item] ?? []) keys.add(key);
+  }
+  return filterObjectKeys(latest, keys);
+}
+function filterLabDiagnosticsBody(body, include) {
+  if (!include) return body;
+  const topLevelKeys = /* @__PURE__ */ new Set(["runId", "stale", "lastUpdatedAt", "lastSequence", "latest"]);
+  for (const item of include) {
+    for (const key of LAB_INCLUDE_TOP_LEVEL_KEYS[item] ?? []) topLevelKeys.add(key);
+  }
+  const filtered = filterObjectKeys(body, topLevelKeys);
+  if (Object.prototype.hasOwnProperty.call(filtered, "latest")) {
+    filtered.latest = filterLatestLabDiagnostics(filtered.latest, include);
+  }
+  return filtered;
+}
+function sanitizePaneLabMetadata(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const input = value;
+  const lab = {};
+  const runId = pickString(input.runId);
+  const bundleMarker = pickString(input.bundleMarker, 100);
+  const paneMode = pickString(input.paneMode, 100);
+  const taskpaneUrl = pickString(input.taskpaneUrl, 1e3);
+  const runtime = sanitizePaneRuntimeIdentity(input.runtime);
+  if (runId) lab.runId = runId;
+  if (bundleMarker) lab.bundleMarker = bundleMarker;
+  if (paneMode) lab.paneMode = paneMode;
+  if (taskpaneUrl) lab.taskpaneUrl = taskpaneUrl;
+  if (runtime) lab.runtime = runtime;
+  return Object.keys(lab).length > 0 ? lab : void 0;
+}
+function pickString(value, max = 500) {
+  return typeof value === "string" ? value.slice(0, max) : void 0;
+}
+function sanitizePaneRuntimeIdentity(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const input = value;
+  if (input.protocolVersion !== 1) return void 0;
+  const sessionUri = pickString(input.sessionUri, 300);
+  const loadedAt = pickString(input.loadedAt, 100);
+  if (!sessionUri || !loadedAt) return void 0;
+  return {
+    protocolVersion: 1,
+    runId: pickString(input.runId),
+    paneMode: pickString(input.paneMode, 100),
+    bundleMarker: pickString(input.bundleMarker, 100),
+    taskpaneUrl: pickString(input.taskpaneUrl, 1e3),
+    taskpaneBuildId: pickString(input.taskpaneBuildId, 200),
+    gitSha: pickString(input.gitSha, 80),
+    buildTimestamp: pickString(input.buildTimestamp, 100),
+    webpackMode: pickString(input.webpackMode, 50),
+    loadedAt,
+    sessionUri,
+    userAgent: pickString(input.userAgent, 500),
+    officeHost: pickString(input.officeHost, 100),
+    officePlatform: pickString(input.officePlatform, 100)
+  };
+}
+function deliveryPathForRegistration(reg) {
+  const hasSse = Boolean(reg.sseRes && !reg.sseRes.writableEnded);
+  const hasPoll = reg.capabilities.includes("poll-rpc");
+  if (hasSse && hasPoll) return "sse+poll";
+  if (hasSse) return "sse";
+  if (hasPoll) return "poll";
+  return "unknown";
+}
 function attachPaneEndpoints(httpServer, options = {}) {
   const registrations = /* @__PURE__ */ new Map();
   const emitter = new EventEmitter2();
   const allowedOrigins = buildAllowedPaneOrigins(options);
+  const debugRecords = [];
   let keepalivePaused = false;
   const editCounts = /* @__PURE__ */ new Map();
+  function recordDebug(record2) {
+    debugRecords.push({
+      ...record2,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    if (debugRecords.length > MAX_DEBUG_RECORDS) {
+      debugRecords.splice(0, debugRecords.length - MAX_DEBUG_RECORDS);
+    }
+  }
   function removeRegistration(registrationId) {
     const reg = registrations.get(registrationId);
     if (!reg) return;
-    for (const [, pending] of reg.pendingRequests) {
+    for (const [requestId, pending] of reg.pendingRequests) {
+      recordDebug({
+        event: "disconnect",
+        registrationId,
+        requestId,
+        method: pending.method,
+        deliveryPath: deliveryPathForRegistration(reg),
+        runId: reg.lab?.runId,
+        message: "Pane disconnected"
+      });
       pending.reject(new Error("Pane disconnected"));
     }
     for (const pollRes of reg.pendingPolls) {
@@ -38191,7 +38542,8 @@ function attachPaneEndpoints(httpServer, options = {}) {
       payload = {
         scheme: parsed.scheme,
         sessionId: parsed.sessionId,
-        capabilities: parsed.capabilities
+        capabilities: parsed.capabilities,
+        lab: sanitizePaneLabMetadata(parsed.lab)
       };
     } catch {
       res.writeHead(400, { "Content-Type": "application/json" });
@@ -38204,7 +38556,9 @@ function attachPaneEndpoints(httpServer, options = {}) {
       scheme: payload.scheme,
       sessionId: payload.sessionId,
       capabilities: payload.capabilities,
+      lab: payload.lab,
       sseRes: null,
+      keepalive: null,
       pendingRequests: /* @__PURE__ */ new Map(),
       pendingPolls: /* @__PURE__ */ new Set(),
       nextRequestId: 1,
@@ -38232,14 +38586,21 @@ function attachPaneEndpoints(httpServer, options = {}) {
       Connection: "keep-alive"
     });
     res.flushHeaders();
+    if (reg.keepalive) {
+      clearInterval(reg.keepalive);
+      reg.keepalive = null;
+    }
     reg.sseRes = res;
     res.write('data: {"type":"ping"}\n\n');
-    const keepalive = setInterval(() => {
+    reg.keepalive = setInterval(() => {
       if (!keepalivePaused && !res.writableEnded)
         res.write('data: {"type":"ping"}\n\n');
     }, KEEPALIVE_MS);
     req.on("close", () => {
-      clearInterval(keepalive);
+      if (reg.keepalive) {
+        clearInterval(reg.keepalive);
+        reg.keepalive = null;
+      }
       reg.sseRes = null;
       setTimeout(() => {
         if (!reg.sseRes) {
@@ -38261,6 +38622,15 @@ function attachPaneEndpoints(httpServer, options = {}) {
     const pending = reg.pendingRequests.get(payload.id);
     if (pending) {
       reg.pendingRequests.delete(payload.id);
+      recordDebug({
+        event: "response",
+        registrationId,
+        requestId: payload.id,
+        method: pending.method,
+        deliveryPath: deliveryPathForRegistration(reg),
+        runId: reg.lab?.runId,
+        message: payload.error || payload.ok === false ? String(payload.error ?? "Pane indicated failure without error detail") : void 0
+      });
       if (payload.error) {
         pending.reject(new Error(String(payload.error)));
       } else if (payload.ok === false) {
@@ -38272,6 +38642,33 @@ function attachPaneEndpoints(httpServer, options = {}) {
       }
     }
     res.writeHead(200);
+    res.end();
+  }
+  async function handleDiagnosticsIngest(req, res, registrationId) {
+    const reg = registrations.get(registrationId);
+    if (!reg) {
+      endJson(res, 404, { error: "unknown registrationId" });
+      return;
+    }
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    let snapshot;
+    try {
+      snapshot = JSON.parse(body);
+    } catch {
+      endJson(res, 400, { error: "invalid JSON" });
+      return;
+    }
+    const result = options.labDiagnostics?.ingestPaneSnapshot(registrationId, snapshot) ?? {
+      ok: false,
+      status: 404,
+      error: "lab diagnostics disabled"
+    };
+    if (!result.ok) {
+      endJson(res, result.status, { error: result.error });
+      return;
+    }
+    res.writeHead(204, { Connection: "close" });
     res.end();
   }
   async function handleNotify(req, res, registrationId) {
@@ -38303,6 +38700,155 @@ function attachPaneEndpoints(httpServer, options = {}) {
     emitter.emit("paneNotification", registrationId, payload.event);
     res.writeHead(204);
     res.end();
+  }
+  async function readJsonBody(req, maxBytes = 1e6) {
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
+      if (Buffer.byteLength(body) > maxBytes) {
+        throw new Error("request body too large");
+      }
+    }
+    return JSON.parse(body);
+  }
+  async function handleLabTrace(req, res, registrationId) {
+    const labDiagnostics = options.labDiagnostics;
+    if (!labDiagnostics) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    const reg = registrations.get(registrationId);
+    if (!reg) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "unknown registrationId" }));
+      return;
+    }
+    if (reg.lab?.runId !== labDiagnostics.runId) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close"
+      });
+      res.end(JSON.stringify({ error: "registration is not part of active lab run" }));
+      return;
+    }
+    let payload;
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "invalid JSON" }));
+      return;
+    }
+    const input = payload && typeof payload === "object" ? payload : {};
+    const rawRecords = Array.isArray(input.records) ? input.records : input.record !== void 0 ? [input.record] : [];
+    for (const rawRecord of rawRecords) {
+      if (!rawRecord || typeof rawRecord !== "object") continue;
+      const candidate = rawRecord;
+      labDiagnostics.recordTrace({
+        id: String(candidate.id ?? `${registrationId}:${Date.now()}`),
+        kind: String(candidate.kind ?? "pane"),
+        phase: String(candidate.phase ?? "unknown"),
+        at: String(candidate.at ?? (/* @__PURE__ */ new Date()).toISOString()),
+        runId: labDiagnostics.runId,
+        sessionUri: typeof candidate.sessionUri === "string" ? candidate.sessionUri : `word://${reg.sessionId}`,
+        rpcRequestId: typeof candidate.rpcRequestId === "string" ? candidate.rpcRequestId : void 0,
+        applyAttemptId: typeof candidate.applyAttemptId === "string" ? candidate.applyAttemptId : void 0,
+        code: typeof candidate.code === "string" ? candidate.code : void 0,
+        detail: candidate.detail && typeof candidate.detail === "object" && !Array.isArray(candidate.detail) ? candidate.detail : void 0
+      });
+    }
+    res.writeHead(204, { "Cache-Control": "no-cache", Connection: "close" });
+    res.end();
+  }
+  function handleLabDiagnostics(req, res) {
+    const labDiagnostics = options.labDiagnostics;
+    if (!labDiagnostics) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    const parsed = new URL(req.url ?? "/", "http://127.0.0.1");
+    const runId = parsed.searchParams.get("runId") ?? void 0;
+    const token = req.headers["x-changedown-lab-diagnostics-token"];
+    const candidateToken = Array.isArray(token) ? token[0] : token;
+    if (!labDiagnostics.accepts(runId ?? "", candidateToken)) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close"
+      });
+      res.end(JSON.stringify({ error: "forbidden" }));
+      return;
+    }
+    const include = parseLabInclude(parsed.searchParams.get("include"));
+    const body = {
+      ...labDiagnostics.combinedSnapshot(runId ?? "", { includeFullDom: false }),
+      debugRecords: debugRecords.map((record2) => ({ ...record2 }))
+    };
+    endJson(res, 200, filterLabDiagnosticsBody(body, include));
+  }
+  async function handleLabDom(req, res) {
+    const labDiagnostics = options.labDiagnostics;
+    if (!labDiagnostics) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    if (req.method === "GET") {
+      const parsed = new URL(req.url ?? "/", "http://127.0.0.1");
+      const runId2 = parsed.searchParams.get("runId") ?? void 0;
+      const token2 = req.headers["x-changedown-lab-diagnostics-token"];
+      const candidateToken2 = Array.isArray(token2) ? token2[0] : token2;
+      if (!labDiagnostics.accepts(runId2 ?? "", candidateToken2)) {
+        res.writeHead(403, {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+          Connection: "close"
+        });
+        res.end(JSON.stringify({ error: "forbidden" }));
+        return;
+      }
+      endJson(res, 200, labDiagnostics.latestPaneSnapshot(runId2 ?? "", { includeFullDom: false }));
+      return;
+    }
+    if (req.method !== "POST") {
+      res.writeHead(405, { "Allow": "GET, POST", Connection: "close" });
+      res.end();
+      return;
+    }
+    let payload;
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "invalid JSON" }));
+      return;
+    }
+    const input = payload && typeof payload === "object" ? payload : {};
+    const runId = typeof input.runId === "string" ? input.runId : void 0;
+    const token = req.headers["x-changedown-lab-diagnostics-token"];
+    const candidateToken = Array.isArray(token) ? token[0] : token;
+    if (!labDiagnostics.accepts(runId ?? "", candidateToken)) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close"
+      });
+      res.end(JSON.stringify({ error: "forbidden" }));
+      return;
+    }
+    if (input.mode === "full" && !labDiagnostics.allowFullDom()) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close"
+      });
+      res.end(JSON.stringify({ error: "full DOM diagnostics disabled" }));
+      return;
+    }
+    endJson(res, 200, labDiagnostics.latestPaneSnapshot(runId ?? "", { includeFullDom: input.mode === "full" }));
   }
   function writePendingPollResponse(reg, res) {
     for (const [id, pending] of reg.pendingRequests) {
@@ -38379,9 +38925,26 @@ function attachPaneEndpoints(httpServer, options = {}) {
 `
       );
     }
-    applyCors(req, res);
     const url2 = req.url ?? "";
     const method = req.method ?? "";
+    if (url2 === "/backend/lab/diagnostics" || url2.startsWith("/backend/lab/diagnostics?")) {
+      if (method === "GET") {
+        handleLabDiagnostics(req, res);
+      } else {
+        res.writeHead(405, { "Allow": "GET", Connection: "close" });
+        res.end();
+      }
+      return;
+    }
+    if (url2 === "/backend/lab/dom" || url2.startsWith("/backend/lab/dom?")) {
+      void handleLabDom(req, res);
+      return;
+    }
+    if (url2.startsWith("/backend/lab/")) {
+      endJson(res, 404, { error: "unknown lab diagnostics route" });
+      return;
+    }
+    applyCors(req, res);
     if (method === "OPTIONS") {
       res.writeHead(204);
       res.end();
@@ -38422,9 +38985,19 @@ function attachPaneEndpoints(httpServer, options = {}) {
       void handleResponse(req, res, responseMatch[1]);
       return;
     }
+    const traceMatch = url2.match(/^\/backend\/trace\/([^/]+)$/);
+    if (traceMatch && method === "POST") {
+      void handleLabTrace(req, res, traceMatch[1]);
+      return;
+    }
     const notifyMatch = url2.match(/^\/backend\/notify\/([^/]+)$/);
     if (notifyMatch && method === "POST") {
       void handleNotify(req, res, notifyMatch[1]);
+      return;
+    }
+    const diagnosticsMatch = url2.match(/^\/backend\/diagnostics\/([^/]+)$/);
+    if (diagnosticsMatch && method === "POST") {
+      void handleDiagnosticsIngest(req, res, diagnosticsMatch[1]);
       return;
     }
     const pollMatch = url2.match(/^\/backend\/poll\/([^/]+)$/);
@@ -38457,6 +39030,7 @@ function attachPaneEndpoints(httpServer, options = {}) {
       const event = `data: ${JSON.stringify({ id, method, params })}
 
 `;
+      const deliveryPath = deliveryPathForRegistration(reg);
       const timeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
       let timer;
       const responsePromise = new Promise((resolve6, reject) => {
@@ -38467,6 +39041,14 @@ function attachPaneEndpoints(httpServer, options = {}) {
           params,
           delivered: false
         });
+      });
+      recordDebug({
+        event: "sent",
+        registrationId,
+        requestId: id,
+        method,
+        deliveryPath,
+        runId: reg.lab?.runId
       });
       if (reg.sseRes && !reg.sseRes.writableEnded) {
         const wrote = reg.sseRes.write(event);
@@ -38497,6 +39079,15 @@ function attachPaneEndpoints(httpServer, options = {}) {
       const timeoutPromise = new Promise((_, reject) => {
         timer = setTimeout(() => {
           reg.pendingRequests.delete(id);
+          recordDebug({
+            event: "timeout",
+            registrationId,
+            requestId: id,
+            method,
+            deliveryPath,
+            runId: reg.lab?.runId,
+            message: `Word bridge request timed out after ${timeoutMs} ms (method: ${method})`
+          });
           reject(
             new Error(
               `Word bridge request timed out after ${timeoutMs} ms (method: ${method})`
@@ -38543,6 +39134,9 @@ function attachPaneEndpoints(httpServer, options = {}) {
     handleHttpRequest(req, res) {
       requestListener(req, res);
     },
+    getDebugRecords() {
+      return debugRecords.map((record2) => ({ ...record2 }));
+    },
     /**
      * Register a callback invoked whenever the pane POSTs a notification for
      * the given registrationId.
@@ -38574,6 +39168,246 @@ function attachPaneEndpoints(httpServer, options = {}) {
       };
     }
   };
+}
+
+// src/lab-diagnostics.ts
+import { createHash, randomBytes, randomUUID as randomUUID3, timingSafeEqual } from "node:crypto";
+var MAX_DETAIL_JSON_BYTES = 4e3;
+var MAX_DETAIL_DEPTH = 6;
+var MAX_DETAIL_KEYS = 50;
+var MAX_DETAIL_ARRAY_ITEMS = 50;
+var MAX_DETAIL_STRING = 1e3;
+var REDACTED = "[redacted]";
+var TOKENISH = /\b(token|secret|password|authorization|cookie|api[-_]?key)\s*[:=]\s*([^\s&"'<>]+)/gi;
+var JSON_SECRET = /(["']?(?:token|secret|password|authorization|cookie|api[-_]?key)["']?\s*:\s*)["'][^"']+["']/gi;
+var BEARER_SECRET = /\bBearer\s+[A-Za-z0-9._~+\/-]+=*/gi;
+var COOKIE_SECRET = /\b((?:set-)?cookie)\s*:\s*[^\n;]+/gi;
+var QUERY_SECRET = /([?&](?:token|secret|password|authorization|cookie|api[-_]?key)=)[^&#\s"'<>]+/gi;
+var USER_PATH = /\/Users\/[^/\s"'<>]+/g;
+var SENSITIVE_VALUE_KEYS = /* @__PURE__ */ new Set([
+  "bodyTextPreview",
+  "textPreview",
+  "snippet",
+  "html",
+  "value"
+]);
+var SENSITIVE_KEY_FRAGMENT = /(token|secret|password|authorization|cookie|api[-_]?key)/i;
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex");
+}
+function tokenEquals(a, b) {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+function pickString2(value, max) {
+  return typeof value === "string" && value.length > 0 ? value.slice(0, max) : void 0;
+}
+function makeJsonSafe(value, depth = 0, seen = /* @__PURE__ */ new WeakSet()) {
+  if (value === null) return null;
+  if (typeof value === "string") return value.slice(0, MAX_DETAIL_STRING);
+  if (typeof value === "number" || typeof value === "boolean") {
+    return Number.isFinite(value) || typeof value === "boolean" ? value : String(value);
+  }
+  if (typeof value === "bigint") return value.toString();
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value !== "object") return void 0;
+  if (depth >= MAX_DETAIL_DEPTH) return "[truncated]";
+  if (seen.has(value)) return "[circular]";
+  seen.add(value);
+  if (Array.isArray(value)) {
+    return value.slice(0, MAX_DETAIL_ARRAY_ITEMS).map((item) => makeJsonSafe(item, depth + 1, seen));
+  }
+  const out = {};
+  for (const [key, child] of Object.entries(value).slice(0, MAX_DETAIL_KEYS)) {
+    const safe = makeJsonSafe(child, depth + 1, seen);
+    if (safe !== void 0) out[key.slice(0, 120)] = safe;
+  }
+  return out;
+}
+function sanitizeDetail(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const safe = makeJsonSafe(value);
+  if (!safe || typeof safe !== "object" || Array.isArray(safe)) return void 0;
+  try {
+    const json2 = JSON.stringify(safe);
+    const clipped = json2.length > MAX_DETAIL_JSON_BYTES ? json2.slice(0, MAX_DETAIL_JSON_BYTES) : json2;
+    return JSON.parse(clipped);
+  } catch {
+    try {
+      return JSON.parse(JSON.stringify({ truncated: true }));
+    } catch {
+      return void 0;
+    }
+  }
+}
+function sanitizeRecord(record2) {
+  return {
+    id: String(record2.id).slice(0, 120),
+    kind: String(record2.kind).slice(0, 60),
+    phase: String(record2.phase).slice(0, 120),
+    at: String(record2.at).slice(0, 100),
+    runId: pickString2(record2.runId, 200),
+    sessionUri: pickString2(record2.sessionUri, 300),
+    rpcRequestId: pickString2(record2.rpcRequestId, 120),
+    applyAttemptId: pickString2(record2.applyAttemptId, 120),
+    code: pickString2(record2.code, 120),
+    detail: sanitizeDetail(record2.detail)
+  };
+}
+function sanitizeEnvelope(envelope) {
+  return {
+    applyDiagnosticId: String(envelope.applyDiagnosticId).slice(0, 120),
+    runId: String(envelope.runId).slice(0, 200),
+    sessionUri: pickString2(envelope.sessionUri, 300),
+    startedAt: String(envelope.startedAt).slice(0, 100),
+    endedAt: pickString2(envelope.endedAt, 100),
+    status: String(envelope.status).slice(0, 120),
+    mcpPrep: sanitizeDetail(envelope.mcpPrep),
+    paneDispatch: sanitizeDetail(envelope.paneDispatch),
+    paneAttempt: sanitizeDetail(envelope.paneAttempt),
+    harnessConvergence: sanitizeDetail(envelope.harnessConvergence)
+  };
+}
+function redactString(value) {
+  return value.replace(JSON_SECRET, `$1"${REDACTED}"`).replace(BEARER_SECRET, `Bearer ${REDACTED}`).replace(COOKIE_SECRET, `$1: ${REDACTED}`).replace(QUERY_SECRET, `$1${REDACTED}`).replace(TOKENISH, `$1=${REDACTED}`).replace(USER_PATH, "/Users/[redacted]");
+}
+function sanitizeDiagnosticsValue(key, value, allowFullDom) {
+  if (key === "fullDom" && !allowFullDom) return void 0;
+  if (SENSITIVE_KEY_FRAGMENT.test(key)) return REDACTED;
+  if (typeof value === "string") {
+    if (SENSITIVE_VALUE_KEYS.has(key)) return REDACTED;
+    return redactString(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeDiagnosticsValue("", item, allowFullDom)).filter((item) => item !== void 0);
+  }
+  if (value && typeof value === "object") {
+    const sanitized = {};
+    for (const [childKey, childValue] of Object.entries(value)) {
+      const next = sanitizeDiagnosticsValue(childKey, childValue, allowFullDom);
+      if (next !== void 0) sanitized[childKey] = next;
+    }
+    return sanitized;
+  }
+  return value;
+}
+function sanitizeDiagnosticsSnapshot(snapshot, allowFullDom) {
+  return sanitizeDiagnosticsValue("", snapshot, allowFullDom);
+}
+function createLabDiagnosticsStore({
+  runId,
+  token,
+  allowFullDom = false,
+  maxSnapshots = 50,
+  maxRecords = 1e3,
+  now = Date.now
+}) {
+  const activeRunId = runId ?? "";
+  const explicitToken = token?.trim();
+  const secret = explicitToken && explicitToken.length > 0 ? explicitToken : randomBytes(24).toString("hex");
+  const snapshotLimit = Math.max(1, Math.floor(maxSnapshots));
+  const recordLimit = Math.max(1, Math.floor(maxRecords));
+  const paneSnapshots = [];
+  const records = [];
+  const applyDiagnostics = [];
+  function enabled() {
+    return Boolean(activeRunId && secret);
+  }
+  function accepts(candidateRunId, candidateToken) {
+    return activeRunId === candidateRunId && typeof candidateToken === "string" && tokenEquals(candidateToken, secret);
+  }
+  function latestPaneSnapshot(requestedRunId, options = {}) {
+    const newest = [...paneSnapshots].reverse().find((entry) => entry.snapshot.runId === requestedRunId);
+    const latestSnapshot = newest?.snapshot ? sanitizeDiagnosticsSnapshot(newest.snapshot, Boolean(options.includeFullDom)) : null;
+    if (!options.includeFullDom && latestSnapshot) delete latestSnapshot.fullDom;
+    return {
+      runId: requestedRunId,
+      stale: newest ? now() - Date.parse(newest.receivedAt) > 5e3 : true,
+      lastUpdatedAt: newest?.receivedAt,
+      lastSequence: newest?.snapshot.sequence,
+      latest: latestSnapshot
+    };
+  }
+  function snapshot() {
+    return {
+      runId: activeRunId,
+      traceRecords: records.map((record2) => ({
+        ...record2,
+        detail: record2.detail ? { ...record2.detail } : void 0
+      })),
+      applyDiagnostics: applyDiagnostics.map((envelope) => ({
+        ...envelope,
+        mcpPrep: envelope.mcpPrep ? { ...envelope.mcpPrep } : void 0,
+        paneDispatch: envelope.paneDispatch ? { ...envelope.paneDispatch } : void 0,
+        paneAttempt: envelope.paneAttempt ? { ...envelope.paneAttempt } : void 0,
+        harnessConvergence: envelope.harnessConvergence ? { ...envelope.harnessConvergence } : void 0
+      }))
+    };
+  }
+  function combinedSnapshot(requestedRunId, options = {}) {
+    return {
+      ...latestPaneSnapshot(requestedRunId, options),
+      ...snapshot()
+    };
+  }
+  const store = {
+    runId: activeRunId,
+    token: secret,
+    enabled,
+    allowFullDom: () => Boolean(allowFullDom),
+    tokenPrefixHash: () => secret ? sha256(secret.slice(0, 8)) : void 0,
+    ingestPaneSnapshot(registrationId, snapshot2) {
+      if (!enabled()) {
+        return { ok: false, status: 404, error: "lab diagnostics disabled" };
+      }
+      if (snapshot2.runId !== activeRunId) {
+        return { ok: false, status: 403, error: "runId mismatch" };
+      }
+      paneSnapshots.push({
+        registrationId,
+        receivedAt: new Date(now()).toISOString(),
+        snapshot: sanitizeDiagnosticsSnapshot(snapshot2, Boolean(allowFullDom))
+      });
+      if (paneSnapshots.length > snapshotLimit) {
+        paneSnapshots.splice(0, paneSnapshots.length - snapshotLimit);
+      }
+      return { ok: true };
+    },
+    latestPaneSnapshot,
+    combinedSnapshot,
+    snapshot,
+    recordTrace(record2) {
+      records.push(sanitizeRecord(record2));
+      while (records.length > recordLimit) records.shift();
+    },
+    createApplyEnvelope(input) {
+      const envelope = sanitizeEnvelope({
+        applyDiagnosticId: randomUUID3(),
+        runId: activeRunId,
+        sessionUri: input.sessionUri,
+        startedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        status: "mcp-prep-pending"
+      });
+      applyDiagnostics.push(envelope);
+      while (applyDiagnostics.length > recordLimit) applyDiagnostics.shift();
+      return { ...envelope };
+    },
+    updateApplyEnvelope(id, patch) {
+      const index = applyDiagnostics.findIndex((envelope) => envelope.applyDiagnosticId === id);
+      if (index < 0) return;
+      const current = applyDiagnostics[index];
+      applyDiagnostics[index] = sanitizeEnvelope({
+        ...current,
+        ...patch,
+        applyDiagnosticId: current.applyDiagnosticId,
+        runId: current.runId,
+        startedAt: current.startedAt
+      });
+    },
+    accepts
+  };
+  return store;
 }
 
 // src/pane-registration.ts
@@ -38788,7 +39622,9 @@ async function applyWordReviewChanges(args, backend, uri) {
   if (!prepared.ok) throw new Error(prepared.message);
   const author = typeof args.author === "string" ? args.author : void 0;
   const results = [];
+  const snapshot = await backend.read({ uri });
   for (const op of prepared.operations) {
+    assertWordReviewCapability(snapshot, op.changeId);
     const result = await backend.applyChange({ uri }, {
       kind: "review",
       args: {
@@ -38819,6 +39655,25 @@ async function applyWordReviewChanges(args, backend, uri) {
     },
     ...remaining === 0 ? { note: "All changes in this Word session are now resolved. No proposed changes remain." } : {}
   };
+}
+function capabilityUnavailableMessage(prefix, changeId, capability, fallbackReason) {
+  return `${prefix}: ${changeId} is ${capability.state}; ${capability.reason ?? fallbackReason}`;
+}
+function assertWordReviewCapability(snapshot, changeId) {
+  if (!snapshot) return;
+  const capability = snapshot.capabilitiesByChangeId?.[changeId];
+  if (!capability) return;
+  const canReview = capability.state === "interactive" && capability.nativeReviewable === true && capability.approveRejectCapability === "available";
+  if (!canReview) {
+    throw new Error(
+      capabilityUnavailableMessage(
+        "WordReviewCapabilityUnavailable",
+        changeId,
+        capability,
+        "no native review capability is available"
+      )
+    );
+  }
 }
 
 // src/document-target.ts
@@ -38873,6 +39728,16 @@ function resolveProtocolMode3(mode) {
 }
 
 // src/word-propose.ts
+init_dist_esm();
+function labPrepCategoryForPrepared(prepared) {
+  if (prepared.ok) return prepared.family === "classic" ? "MCP_PREP_CLASSIC_OK" : "MCP_PREP_COMPACT_OK";
+  const text = prepared.toolResult.content.map((part) => part.text).join("\n");
+  if (text.includes("WORD_MULTI_CHANGE_UNSUPPORTED")) return "MCP_PREP_MULTI_CHANGE_UNSUPPORTED";
+  if (text.includes("MIXED_PROPOSAL_FAMILY")) return "MCP_PREP_MIXED_FAMILY";
+  if (text.includes("MISSING_ARGUMENT")) return "MCP_PREP_MISSING_ARGUMENT";
+  if (text.includes("SETTLE_ON_DEMAND_UNSUPPORTED") || text.includes("CLASSIC_PROPOSE_FAILED") || text.includes("word:// classic preparation")) return "MCP_PREP_FALLBACK_FAILED";
+  return "MCP_PREP_FAILED";
+}
 function fail3(message, code = "VALIDATION_ERROR") {
   return {
     ok: false,
@@ -38918,12 +39783,13 @@ async function prepareWordProposeChange(input) {
   if (!compact2 && !classic) {
     return fail3("propose_change for word:// requires compact at/op or classic old_text/new_text arguments.", "MISSING_ARGUMENT");
   }
+  const sourceText = input.snapshotFormat === "L3" || isL3Format(input.snapshotText) ? await convertL3ToL2(input.snapshotText) : input.snapshotText;
   if (compact2) {
     const prepared2 = await prepareCompactProposeChange({
       args: input.args,
       filePath: input.uri,
       relativePath: input.uri,
-      fileContent: input.snapshotText,
+      fileContent: sourceText,
       config: input.config,
       state: input.state
     });
@@ -38933,34 +39799,47 @@ async function prepareWordProposeChange(input) {
     args: input.args,
     filePath: input.uri,
     relativePath: input.uri,
-    fileContent: input.snapshotText,
+    fileContent: sourceText,
     config: input.config,
     state: input.state,
     allowSettleOnDemand: false
   });
   return prepared.ok ? { ...prepared, family: "classic" } : { ...prepared, family: "classic" };
 }
-async function applyPreparedWordProposeChange(backend, uri, prepared) {
+async function applyPreparedWordProposeChange(backend, uri, prepared, options = {}) {
   const threadReply = prepared.threadReply;
+  const attachLabApplyDiagnosticId = (args) => {
+    if (!options.applyDiagnosticId) return args;
+    return {
+      ...args,
+      __labApplyDiagnosticId: options.applyDiagnosticId
+    };
+  };
   const op = threadReply ? {
     kind: "respond",
-    args: {
+    args: attachLabApplyDiagnosticId({
       cnId: threadReply.changeId,
       text: threadReply.text,
       author: threadReply.author
-    }
+    })
   } : {
     kind: "propose",
-    args: {
+    args: attachLabApplyDiagnosticId({
       oldL2: prepared.oldL2,
       newL2: prepared.newL2
-    }
+    })
   };
   return backend.applyChange({ uri }, op);
 }
 
 // src/word-document-workflow.ts
 var MAX_WORD_LIST_PREVIEW_LENGTH = 80;
+function diagnosticErrorCode(value) {
+  const text = value instanceof Error ? value.message : typeof value === "string" ? value : void 0;
+  if (!text) return void 0;
+  const colonCode = text.match(/^([A-Za-z][A-Za-z0-9_]*):/)?.[1];
+  return (colonCode ?? text).slice(0, 120);
+}
 function buildWordListPreview(change) {
   let preview = "";
   switch (change.type) {
@@ -39064,6 +39943,26 @@ function buildWordDetailForLevel(detail, change, text, lines, doc, summary, cont
       return summary;
   }
 }
+function attachCapability(entry, snapshot) {
+  const id = typeof entry.change_id === "string" ? entry.change_id : void 0;
+  const capability = id ? snapshot.capabilitiesByChangeId?.[id] : void 0;
+  const diagnostics = id ? snapshotDiagnostics(snapshot).filter((diagnostic) => {
+    return typeof diagnostic === "object" && diagnostic !== null && diagnostic.changeId === id;
+  }) : [];
+  if (!capability && diagnostics.length === 0) return entry;
+  return {
+    ...entry,
+    ...capability ? {
+      capability,
+      native_reviewable: capability.nativeReviewable,
+      approve_reject_capability: capability.approveRejectCapability
+    } : {},
+    ...diagnostics.length > 0 ? { diagnostics } : {}
+  };
+}
+function snapshotDiagnostics(snapshot) {
+  return snapshot.diagnostics ?? [];
+}
 async function buildWordListChangesResponse(backend, uri, args) {
   const snapshot = await backend.read({ uri });
   const text = snapshot.text;
@@ -39103,9 +40002,10 @@ async function buildWordListChangesResponse(backend, uri, args) {
       file: uri,
       total_count: allChanges.length,
       filtered_count: results.length,
-      changes: results,
+      changes: results.map((entry) => attachCapability(entry, snapshot)),
       ...nativeChanges ? { native_changes: nativeChanges } : {},
-      diagnostics: doc.getDiagnostics()
+      ...snapshot.readiness ? { readiness: snapshot.readiness } : {},
+      diagnostics: [...doc.getDiagnostics(), ...snapshotDiagnostics(snapshot)]
     };
   }
   const entries = allChanges.map((change) => {
@@ -39117,9 +40017,10 @@ async function buildWordListChangesResponse(backend, uri, args) {
     file: uri,
     total_count: entries.length,
     filtered_count: filtered.length,
-    changes: filtered,
+    changes: filtered.map((entry) => attachCapability(entry, snapshot)),
     ...nativeChanges ? { native_changes: nativeChanges } : {},
-    diagnostics: doc.getDiagnostics()
+    ...snapshot.readiness ? { readiness: snapshot.readiness } : {},
+    diagnostics: [...doc.getDiagnostics(), ...snapshotDiagnostics(snapshot)]
   };
 }
 async function handleWordReadTrackedFile(input) {
@@ -39212,7 +40113,16 @@ ${syntheticBlankAnchor}`;
 ${composeGuide(config2, { targetKind: "word" })}` : "";
     const content = [{ type: "text", text: output }];
     if (guide) content.unshift({ type: "text", text: guide });
-    return { content };
+    const structuredContent = {};
+    if (snapshot.readiness) structuredContent.readiness = snapshot.readiness;
+    if (snapshot.diagnostics) structuredContent.diagnostics = snapshot.diagnostics;
+    if (snapshot.capabilitiesByChangeId) {
+      structuredContent.capabilitiesByChangeId = snapshot.capabilitiesByChangeId;
+    }
+    return {
+      content,
+      ...Object.keys(structuredContent).length > 0 ? { structuredContent } : {}
+    };
   } catch (err) {
     return errorResult3(err instanceof Error ? err.message : String(err));
   }
@@ -39237,15 +40147,57 @@ async function handleWordProposeChange(input) {
       return errorResult3("word_spike_direct/word_author_spike/spike are diagnostic-only and are not supported by public word:// propose_change");
     }
     const snapshot = await backend.read({ uri });
+    const envelope = input.labDiagnostics?.createApplyEnvelope({ sessionUri: uri });
     const prepared = await prepareWordProposeChange({
       args,
       uri,
       snapshotText: snapshot.text,
+      snapshotFormat: snapshot.format,
       config: config2,
       state
     });
+    const mcpPrep = {
+      categoryCode: labPrepCategoryForPrepared(prepared),
+      ok: prepared.ok
+    };
+    if ("family" in prepared && prepared.family) {
+      mcpPrep.family = prepared.family;
+    }
+    if (envelope) {
+      input.labDiagnostics?.updateApplyEnvelope(envelope.applyDiagnosticId, {
+        status: prepared.ok ? "pane-dispatch-pending" : "mcp-prep-failed",
+        mcpPrep
+      });
+    }
     if (!prepared.ok) return prepared.toolResult;
-    const result = await applyPreparedWordProposeChange(backend, uri, prepared);
+    let result;
+    try {
+      result = await applyPreparedWordProposeChange(backend, uri, prepared, {
+        applyDiagnosticId: envelope?.applyDiagnosticId
+      });
+      if (envelope) {
+        input.labDiagnostics?.updateApplyEnvelope(envelope.applyDiagnosticId, {
+          status: result.applied === false ? "pane-dispatch-not-applied" : "pane-dispatch-applied",
+          endedAt: (/* @__PURE__ */ new Date()).toISOString(),
+          paneDispatch: {
+            applied: result.applied !== false,
+            ...result.applied === false ? { errorCode: diagnosticErrorCode(result.text) } : {}
+          }
+        });
+      }
+    } catch (err) {
+      if (envelope) {
+        input.labDiagnostics?.updateApplyEnvelope(envelope.applyDiagnosticId, {
+          status: "pane-dispatch-thrown",
+          endedAt: (/* @__PURE__ */ new Date()).toISOString(),
+          paneDispatch: {
+            applied: false,
+            errorCode: diagnosticErrorCode(err) ?? "UNKNOWN_ERROR"
+          }
+        });
+      }
+      throw err;
+    }
     if (result.applied === false) {
       return errorResult3(result.text ?? "Word adapter did not apply prepared proposal");
     }
@@ -39261,7 +40213,7 @@ async function handleWordProposeChange(input) {
   }
 }
 
-// src/index.ts
+// src/host-mode.ts
 function paneRequestTimeoutMs() {
   const raw = process.env.CHANGEDOWN_PANE_REQUEST_TIMEOUT_MS;
   if (!raw) return 6e5;
@@ -39279,27 +40231,19 @@ function rootUrisToPaths(roots) {
   }
   return paths;
 }
-async function startHostMode(port, httpServer) {
+async function runHost(port, httpServer, stack) {
+  stack.defer(async () => {
+    httpServer.closeAllConnections();
+    await new Promise((resolve6) => httpServer.close(() => resolve6()));
+  });
   let httpHandle;
   let paneHandle;
   let resolver;
-  let shutdownCalled = false;
-  function shutdown(signal) {
-    if (shutdownCalled) return;
-    shutdownCalled = true;
-    console.error(`[changedown] ${signal} received \u2014 draining 250 ms then exiting`);
-    httpHandle?.detach();
-    paneHandle?.detach();
-    resolver?.dispose();
-    setTimeout(() => {
-      httpServer.close(() => process.exit(0));
-      setTimeout(() => process.exit(0), 1e3).unref();
-    }, 250);
-  }
-  process.once("SIGINT", () => shutdown("SIGINT"));
-  process.once("SIGTERM", () => shutdown("SIGTERM"));
   const fallbackDir = process.env["CHANGEDOWN_PROJECT_DIR"] || process.env["PWD"] || process.cwd();
   resolver = new ConfigResolver(fallbackDir);
+  stack.defer(() => {
+    resolver?.dispose();
+  });
   const state = new SessionState();
   state.enableGuide();
   const server = new Server(
@@ -39427,7 +40371,7 @@ async function startHostMode(port, httpServer) {
           }
           if (name === "propose_change") {
             const config2 = await resolver.lastConfig();
-            const result = await handleWordProposeChange({ backend, uri, args: mutableArgs, config: config2, state });
+            const result = await handleWordProposeChange({ backend, uri, args: mutableArgs, config: config2, state, labDiagnostics });
             if (!result.isError) maybeIncrementEditCount(extra?.sessionId);
             return result;
           }
@@ -39544,14 +40488,26 @@ async function startHostMode(port, httpServer) {
     }
     return {};
   });
+  const labDiagnostics = process.env.CHANGEDOWN_LIVE_LAB_RUN_ID ? createLabDiagnosticsStore({
+    runId: process.env.CHANGEDOWN_LIVE_LAB_RUN_ID,
+    token: process.env.CHANGEDOWN_LIVE_LAB_DIAGNOSTICS_TOKEN,
+    allowFullDom: process.env.CHANGEDOWN_LIVE_LAB_ALLOW_FULL_DOM === "1"
+  }) : void 0;
   paneHandle = attachPaneEndpoints(
     httpServer,
     {
       ...createPaneRegistrationCallbacks(() => paneHandle, registry2),
-      requestTimeoutMs: paneRequestTimeoutMs()
+      requestTimeoutMs: paneRequestTimeoutMs(),
+      labDiagnostics
     }
   );
+  stack.defer(() => {
+    paneHandle?.detach();
+  });
   httpHandle = await attachStreamableHttp(server, httpServer);
+  stack.defer(() => {
+    httpHandle?.detach();
+  });
   httpServer.on("request", (req, res) => {
     const url2 = req.url ?? "";
     if (url2.startsWith("/mcp")) {
@@ -39579,32 +40535,167 @@ async function startHostMode(port, httpServer) {
   });
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  server.onclose = () => {
-    shutdown("stdio-close");
-  };
+  stack.defer(async () => {
+    await server.close();
+  });
   console.error(`changedown MCP server running \u2014 host on 127.0.0.1:${port}, stdio active`);
 }
+
+// src/transport/client-proxy.ts
+import * as http2 from "node:http";
+import * as https2 from "node:https";
+import { createInterface } from "node:readline";
+function parseEnvelope(line) {
+  try {
+    const parsed = JSON.parse(line);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+function hasRequestId(envelope) {
+  return Object.prototype.hasOwnProperty.call(envelope, "id");
+}
+function writeError(stdout, id, message) {
+  stdout.write(JSON.stringify({
+    jsonrpc: "2.0",
+    id: id ?? null,
+    error: { code: -32603, message }
+  }) + "\n");
+}
+async function postToHost(hostUrl, body, sessionId) {
+  const url2 = new URL("/mcp", hostUrl);
+  const headers = {
+    "Content-Type": "application/json",
+    "Content-Length": String(Buffer.byteLength(body)),
+    // MCP Streamable HTTP transport requires both content types in Accept
+    "Accept": "application/json, text/event-stream"
+  };
+  if (sessionId) headers["Mcp-Session-Id"] = sessionId;
+  const isHttps = url2.protocol === "https:";
+  return new Promise((resolve6, reject) => {
+    const requester = isHttps ? https2.request : http2.request;
+    const req = requester(
+      {
+        hostname: url2.hostname,
+        port: parseInt(url2.port, 10),
+        path: url2.pathname,
+        method: "POST",
+        headers,
+        // Self-signed loopback dev cert; trust the address, not the chain.
+        rejectUnauthorized: false
+      },
+      (res) => {
+        let raw = "";
+        res.on("data", (c) => {
+          raw += c;
+        });
+        res.on("end", () => {
+          const newSid = res.headers["mcp-session-id"] ?? null;
+          resolve6({ status: res.statusCode ?? 0, sessionId: newSid, body: raw });
+        });
+      }
+    );
+    req.on("error", reject);
+    req.end(body);
+  });
+}
+async function startClientProxy(opts) {
+  const stdin = opts.stdin ?? process.stdin;
+  const stdout = opts.stdout ?? process.stdout;
+  const hostUrl = opts.hostUrl;
+  let sessionId = null;
+  let stopped = false;
+  const closeCallbacks = [];
+  const rl = createInterface({ input: stdin, crlfDelay: Infinity });
+  rl.on("line", async (line) => {
+    if (stopped || !line.trim()) return;
+    const envelope = parseEnvelope(line);
+    const isRequest = hasRequestId(envelope);
+    try {
+      const result = await postToHost(hostUrl, line, sessionId);
+      if (result.sessionId) sessionId = result.sessionId;
+      const body = result.body.trim();
+      if (result.status < 200 || result.status >= 300) {
+        if (isRequest) {
+          writeError(stdout, envelope.id, `MCP host returned HTTP ${result.status}${body ? `: ${body}` : ""}`);
+        } else if (body) {
+          console.error(`[changedown] MCP notification proxy got HTTP ${result.status}: ${body}`);
+        }
+        return;
+      }
+      if (!body) {
+        if (isRequest) {
+          writeError(stdout, envelope.id, `MCP host returned HTTP ${result.status} with empty response body`);
+        }
+        return;
+      }
+      stdout.write(body + "\n");
+    } catch (err) {
+      if (isRequest) {
+        writeError(stdout, envelope.id, String(err));
+      } else {
+        console.error(`[changedown] MCP notification proxy failed: ${String(err)}`);
+      }
+    }
+  });
+  rl.on("close", () => {
+    stopped = true;
+    for (const cb of closeCallbacks) cb();
+  });
+  return {
+    stop() {
+      stopped = true;
+      rl.close();
+    },
+    onClose(cb) {
+      closeCallbacks.push(cb);
+    }
+  };
+}
+
+// src/client-mode.ts
+async function runClient(port, leader, stack) {
+  console.error(`[changedown] client mode \u2014 forwarding to ${leader.hostUrl}`);
+  const proxy = await startClientProxy({ hostUrl: leader.hostUrl });
+  stack.defer(async () => {
+    proxy.stop();
+  });
+  void leader.startHeartbeat({ intervalMs: 1500, failThreshold: 3 }).then(async (promoted) => {
+    console.error("[changedown] host died \u2014 promoted to host mode");
+    proxy.stop();
+    if (promoted.mode === "host") {
+      await runHost(port, promoted.server, stack);
+    }
+  });
+  proxy.onClose(() => {
+    void stack.disposeAsync().then(() => process.exit(0));
+  });
+  await new Promise(() => {
+  });
+}
+
+// src/index.ts
 async function main() {
   await initHashline();
   const PORT = Number.parseInt(process.env.CHANGEDOWN_MCP_PORT ?? "39990", 10);
   if (!Number.isInteger(PORT) || PORT <= 0 || PORT > 65535) {
     throw new Error(`Invalid CHANGEDOWN_MCP_PORT: ${process.env.CHANGEDOWN_MCP_PORT}`);
   }
-  const leaderResult = await bindOrForward(PORT);
-  if (leaderResult.mode === "client") {
-    console.error(`[changedown] client mode \u2014 forwarding to ${leaderResult.hostUrl}`);
-    const proxy = await startClientProxy({ hostUrl: leaderResult.hostUrl });
-    void leaderResult.startHeartbeat({ intervalMs: 1500, failThreshold: 3 }).then(async (promoted) => {
-      console.error("[changedown] host died \u2014 promoted to host mode");
-      proxy.stop();
-      if (promoted.mode === "host") {
-        await startHostMode(PORT, promoted.server);
-      }
+  const stack = new AsyncDisposableStack();
+  try {
+    installSignalHandlers(stack);
+    const leaderResult = await bindOrForward(PORT);
+    if (leaderResult.mode === "client") {
+      await runClient(PORT, leaderResult, stack);
+      return;
+    }
+    await runHost(PORT, leaderResult.server, stack);
+    await new Promise(() => {
     });
-    proxy.onClose(() => process.exit(0));
-    return;
+  } finally {
+    await stack.disposeAsync();
   }
-  await startHostMode(PORT, leaderResult.server);
 }
 main().catch((err) => {
   console.error("Fatal error:", err);

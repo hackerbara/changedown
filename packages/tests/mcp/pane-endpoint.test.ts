@@ -2,8 +2,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as http from 'node:http';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { attachPaneEndpoints, type PaneEndpointHandle } from '@changedown/mcp/transport/pane-endpoint';
+import { attachPaneEndpoints, type PaneEndpointHandle, type PaneRegistrationInfo, type PaneEndpointOptions } from '@changedown/mcp/transport/pane-endpoint';
+import { createLabDiagnosticsStoreForTests } from '@changedown/mcp/lab-diagnostics';
 import { attachStreamableHttp } from '@changedown/mcp/transport/streamable-http';
+import { createLabDiagnosticsStoreForTest } from '../../../changedown-plugin/mcp-server/src/lab-diagnostics';
 
 function closeServer(s: http.Server): Promise<void> {
   return new Promise((resolve) => {
@@ -43,6 +45,48 @@ async function httpPost(port: number, path: string, body: unknown, headers: Reco
     req.on('error', reject);
     req.end(payload);
   });
+}
+
+
+interface JsonResponse {
+  status: number;
+  headers: Headers;
+  body: any;
+}
+
+async function requestJson(url: string, init: RequestInit = {}): Promise<JsonResponse> {
+  const response = await fetch(url, init);
+  const text = await response.text();
+  return {
+    status: response.status,
+    headers: response.headers,
+    body: text ? JSON.parse(text) : undefined,
+  };
+}
+
+async function createPaneEndpointTestServer(options: PaneEndpointOptions = {}): Promise<{ url: string; close(): Promise<void> }> {
+  const server = http.createServer();
+  const paneHandle = attachPaneEndpoints(server, options);
+  server.on('request', paneHandle.handleHttpRequest);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const port = (server.address() as { port: number }).port;
+  return {
+    url: `http://127.0.0.1:${port}`,
+    async close() {
+      paneHandle.detach();
+      await closeServer(server);
+    },
+  };
+}
+
+async function registerPane(serverUrl: string, payload: unknown): Promise<{ registrationId: string; keepaliveMs: number }> {
+  const response = await requestJson(`${serverUrl}/backend/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  expect(response.status).toBe(200);
+  return response.body as { registrationId: string; keepaliveMs: number };
 }
 
 async function httpOptions(port: number, path: string, headers: Record<string, string> = {}): Promise<{ status: number; headers: http.IncomingMessage['headers']; body: string }> {
@@ -88,10 +132,17 @@ describe('pane-endpoint', () => {
     let timeoutServer: http.Server;
     let timeoutHandle: PaneEndpointHandle;
     let timeoutTestPort: number;
+    let registeredPanes: PaneRegistrationInfo[];
 
     beforeEach(async () => {
       timeoutServer = http.createServer();
-      timeoutHandle = attachPaneEndpoints(timeoutServer, { requestTimeoutMs: 200 });
+      registeredPanes = [];
+      timeoutHandle = attachPaneEndpoints(timeoutServer, {
+        requestTimeoutMs: 200,
+        onRegister: (info) => {
+          registeredPanes.push(info);
+        },
+      });
       timeoutServer.on('request', timeoutHandle.handleHttpRequest);
       await new Promise<void>((res) => timeoutServer.listen(0, '127.0.0.1', res));
       timeoutTestPort = (timeoutServer.address() as { port: number }).port;
@@ -129,6 +180,97 @@ describe('pane-endpoint', () => {
 
       sseReq.destroy();
     }, 2000 /* vitest per-test timeout — must be > requestTimeoutMs but much less than default */);
+
+    it('records lab metadata and timeout diagnostics for an unanswered RPC', async () => {
+      const lab = {
+        runId: 'CD_LIVE_LAB_RUN_test',
+        bundleMarker: 'bundle-test',
+        paneMode: 'local-lab',
+        taskpaneUrl: 'https://127.0.0.1:3000/taskpane.html?cdLiveLabRunId=CD_LIVE_LAB_RUN_test',
+        runtime: {
+          protocolVersion: 1,
+          runId: 'CD_LIVE_LAB_RUN_test',
+          paneMode: 'local-lab',
+          bundleMarker: 'bundle-test',
+          taskpaneUrl: 'https://127.0.0.1:3000/taskpane.html?cdLiveLabRunId=CD_LIVE_LAB_RUN_test',
+          taskpaneBuildId: 'build-test',
+          gitSha: 'abc1234',
+          buildTimestamp: '2026-05-08T12:00:00.000Z',
+          webpackMode: 'development',
+          loadedAt: '2026-05-08T12:00:01.000Z',
+          sessionUri: 'word://sess-live-lab-debug',
+          userAgent: 'WordWebView test',
+          officeHost: 'Word',
+          officePlatform: 'Mac',
+          ignored: 'drop-me',
+        },
+        ignored: 123,
+      };
+      const regResp = await httpPost(timeoutTestPort, '/backend/register', {
+        scheme: 'word',
+        sessionId: 'sess-live-lab-debug',
+        capabilities: ['read', 'poll-rpc'],
+        lab,
+      });
+      const { registrationId } = JSON.parse(regResp.body) as { registrationId: string };
+
+      expect(registeredPanes).toHaveLength(1);
+      expect(registeredPanes[0]).toMatchObject({
+        registrationId,
+        lab: {
+          runId: 'CD_LIVE_LAB_RUN_test',
+          bundleMarker: 'bundle-test',
+          paneMode: 'local-lab',
+          taskpaneUrl: 'https://127.0.0.1:3000/taskpane.html?cdLiveLabRunId=CD_LIVE_LAB_RUN_test',
+        },
+      });
+      expect(registeredPanes[0]?.lab).not.toHaveProperty('ignored');
+      const { ignored: _ignoredRuntime, ...expectedRuntime } = lab.runtime;
+      expect(registeredPanes[0]?.lab?.runtime).toEqual(expectedRuntime);
+      expect(registeredPanes[0]?.lab?.runtime).not.toHaveProperty('ignored');
+
+      await expect(
+        timeoutHandle.sendRequest(registrationId, 'read', { uri: 'word://sess-live-lab-debug' }),
+      ).rejects.toThrow(/timed out after 200 ms.*method: read/);
+
+      expect(timeoutHandle.getDebugRecords()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            event: 'timeout',
+            registrationId,
+            method: 'read',
+            deliveryPath: 'poll',
+            runId: 'CD_LIVE_LAB_RUN_test',
+          }),
+        ]),
+      );
+    }, 2000);
+
+    it('records deliveryPath on disconnect diagnostics for pending RPCs', async () => {
+      const regResp = await httpPost(timeoutTestPort, '/backend/register', {
+        scheme: 'word',
+        sessionId: 'sess-live-lab-disconnect',
+        capabilities: ['read', 'poll-rpc'],
+        lab: { runId: 'CD_LIVE_LAB_RUN_disconnect' },
+      });
+      const { registrationId } = JSON.parse(regResp.body) as { registrationId: string };
+
+      const requestPromise = timeoutHandle.sendRequest(registrationId, 'read', { uri: 'word://sess-live-lab-disconnect' });
+      timeoutHandle.detach();
+
+      await expect(requestPromise).rejects.toThrow(/Pane disconnected/);
+      expect(timeoutHandle.getDebugRecords()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            event: 'disconnect',
+            registrationId,
+            method: 'read',
+            deliveryPath: 'poll',
+            runId: 'CD_LIVE_LAB_RUN_disconnect',
+          }),
+        ]),
+      );
+    }, 2000);
   });
 
   describe('poll-rpc fallback transport', () => {
@@ -173,6 +315,17 @@ describe('pane-endpoint', () => {
       });
 
       await expect(requestPromise).resolves.toEqual({ text: 'hello', format: 'L2', version: '1' });
+      expect(pollHandle.getDebugRecords()).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            event: 'response',
+            registrationId,
+            requestId: polled.id,
+            method: 'read',
+            deliveryPath: 'poll',
+          }),
+        ]),
+      );
     });
 
     it('accepts POST /backend/poll because the Word pane polls with POST', async () => {
@@ -300,6 +453,147 @@ describe('pane-endpoint', () => {
     }, 1000);
   });
 
+
+  describe('lab diagnostics endpoints', () => {
+    it('rejects lab diagnostics when the lab store is disabled', async () => {
+      const response = await requestJson(`http://127.0.0.1:${paneTestPort}/backend/lab/diagnostics?runId=RUN_1`, {
+        method: 'GET',
+        headers: { 'X-Changedown-Lab-Diagnostics-Token': 'anything' },
+      });
+      expect(response.status).toBe(404);
+    });
+
+    it('accepts a pushed pane diagnostics snapshot and returns it through token-gated lab diagnostics without pane CORS', async () => {
+      const lab = createLabDiagnosticsStoreForTests({ runId: 'RUN_1', token: 'secret-token', allowFullDom: false });
+      const labServer = await createPaneEndpointTestServer({ labDiagnostics: lab });
+      try {
+        const registration = await registerPane(labServer.url, {
+          scheme: 'word',
+          sessionId: 'word://sess-devtools',
+          capabilities: ['poll-rpc'],
+          lab: { runId: 'RUN_1', paneMode: 'live-lab', bundleMarker: 'test' },
+        });
+
+        const ingest = await requestJson(`${labServer.url}/backend/diagnostics/${registration.registrationId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Origin: 'https://127.0.0.1:3000' },
+          body: JSON.stringify({
+            protocolVersion: 1,
+            kind: 'pane-devtools-lite',
+            runId: 'RUN_1',
+            sessionUri: 'word://sess-devtools',
+            capturedAt: new Date().toISOString(),
+            sequence: 1,
+            counters: { console: 0, errors: 0, unhandledRejections: 0, network: 0, eventSource: 0, mutations: 0 },
+            console: [],
+            errors: [],
+            unhandledRejections: [],
+            network: [],
+            eventSource: [],
+            performanceResources: [],
+            mutations: [],
+            ui: { rootPresent: true, bodyTextHash: 'sha256:test', bodyTextPreview: 'PRIVATE DOCUMENT TEXT token=secret', cards: [{ snippet: 'PRIVATE CARD TEXT' }], viewTabs: [], buttons: [], banners: [] },
+            domSummary: { rootPresent: true, elementCount: 1, selectorCounts: {}, bodyTextHash: 'sha256:test', bodyTextPreview: 'PRIVATE DOM TEXT' },
+            fullDom: { html: '<main token=secret>PRIVATE DOM TEXT</main>' },
+          }),
+        });
+        expect(ingest.status).toBe(204);
+
+        const labResponse = await requestJson(`${labServer.url}/backend/lab/diagnostics?runId=RUN_1&include=browser,ui,domSummary`, {
+          method: 'GET',
+          headers: {
+            Origin: 'https://127.0.0.1:3000',
+            'X-Changedown-Lab-Diagnostics-Token': 'secret-token',
+          },
+        });
+        expect(labResponse.status).toBe(200);
+        expect(labResponse.headers.get('access-control-allow-origin')).toBeNull();
+        expect(labResponse.body.latest.sequence).toBe(1);
+        expect(labResponse.body.stale).toBe(false);
+        expect(labResponse.body.traceRecords).toBeUndefined();
+        expect(labResponse.body.applyDiagnostics).toBeUndefined();
+        expect(labResponse.body.debugRecords).toBeUndefined();
+        expect(labResponse.body.latest.console).toBeUndefined();
+        expect(labResponse.body.latest.network).toBeUndefined();
+        expect(labResponse.body.latest.ui).toBeDefined();
+        expect(labResponse.body.latest.domSummary).toBeDefined();
+        expect(labResponse.body.latest.counters).toBeDefined();
+        expect(JSON.stringify(labResponse.body)).not.toContain('PRIVATE DOCUMENT TEXT');
+        expect(JSON.stringify(labResponse.body)).not.toContain('PRIVATE DOM TEXT');
+        expect(JSON.stringify(labResponse.body)).not.toContain('secret');
+        expect(labResponse.body.latest.fullDom).toBeUndefined();
+      } finally {
+        await labServer.close();
+      }
+    });
+
+    it('only returns full DOM through explicit POST full mode', async () => {
+      const lab = createLabDiagnosticsStoreForTests({ runId: 'RUN_1', token: 'secret-token', allowFullDom: true });
+      const labServer = await createPaneEndpointTestServer({ labDiagnostics: lab });
+      try {
+        const registration = await registerPane(labServer.url, {
+          scheme: 'word',
+          sessionId: 'word://sess-devtools',
+          capabilities: ['poll-rpc'],
+          lab: { runId: 'RUN_1', paneMode: 'live-lab' },
+        });
+        await requestJson(`${labServer.url}/backend/diagnostics/${registration.registrationId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ protocolVersion: 1, kind: 'pane-devtools-lite', runId: 'RUN_1', sequence: 7, fullDom: { html: '<main>safe</main>', truncated: false } }),
+        });
+
+        const normal = await requestJson(`${labServer.url}/backend/lab/diagnostics?runId=RUN_1`, {
+          method: 'GET',
+          headers: { Origin: 'https://127.0.0.1:3000', 'X-Changedown-Lab-Diagnostics-Token': 'secret-token' },
+        });
+        expect(normal.status).toBe(200);
+        expect(normal.headers.get('access-control-allow-origin')).toBeNull();
+        expect(normal.body.latest.fullDom).toBeUndefined();
+
+        const full = await requestJson(`${labServer.url}/backend/lab/dom`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Origin: 'https://127.0.0.1:3000', 'X-Changedown-Lab-Diagnostics-Token': 'secret-token' },
+          body: JSON.stringify({ runId: 'RUN_1', mode: 'full' }),
+        });
+        expect(full.status).toBe(200);
+        expect(full.headers.get('access-control-allow-origin')).toBeNull();
+        expect(full.body.latest.fullDom).toEqual({ html: '[redacted]', truncated: false });
+      } finally {
+        await labServer.close();
+      }
+    });
+
+    it('requires explicit allowFullDom for POST /backend/lab/dom full capture', async () => {
+      const lab = createLabDiagnosticsStoreForTests({ runId: 'RUN_1', token: 'secret-token', allowFullDom: false });
+      const labServer = await createPaneEndpointTestServer({ labDiagnostics: lab });
+      try {
+        const response = await requestJson(`${labServer.url}/backend/lab/dom`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Changedown-Lab-Diagnostics-Token': 'secret-token' },
+          body: JSON.stringify({ runId: 'RUN_1', mode: 'full' }),
+        });
+        expect(response.status).toBe(403);
+      } finally {
+        await labServer.close();
+      }
+    });
+
+    it('rejects lab diagnostics for a mismatched run id even with the correct token', async () => {
+      const lab = createLabDiagnosticsStoreForTests({ runId: 'RUN_1', token: 'secret-token', allowFullDom: false });
+      const labServer = await createPaneEndpointTestServer({ labDiagnostics: lab });
+      try {
+        const response = await requestJson(`${labServer.url}/backend/lab/diagnostics?runId=RUN_2`, {
+          method: 'GET',
+          headers: { 'X-Changedown-Lab-Diagnostics-Token': 'secret-token' },
+        });
+        expect(response.status).toBe(403);
+      } finally {
+        await labServer.close();
+      }
+    });
+  });
+
   it('GET /health returns service identity', async () => {
     const { status, body } = await httpGet(paneTestPort, '/health');
     expect(status).toBe(200);
@@ -307,6 +601,228 @@ describe('pane-endpoint', () => {
     expect(parsed.service).toBe('changedown-mcp');
     expect(parsed.capabilities).toContain('backend-register');
     expect(parsed.capabilities).toContain('mcp-streamable');
+  });
+
+  describe('lab diagnostics endpoint gate', () => {
+    let labServer: http.Server;
+    let labHandle: PaneEndpointHandle;
+    let labPort: number;
+
+    afterEach(async () => {
+      labHandle?.detach();
+      if (labServer?.listening) await closeServer(labServer);
+    });
+
+    async function listenWithLabDiagnostics(
+      token = 'secret-1',
+      endpointOptions: NonNullable<Parameters<typeof attachPaneEndpoints>[1]> = {},
+    ): Promise<ReturnType<typeof createLabDiagnosticsStoreForTest>> {
+      labServer = http.createServer();
+      const labDiagnostics = createLabDiagnosticsStoreForTest({ runId: 'RUN_1', token });
+      labHandle = attachPaneEndpoints(labServer, {
+        ...endpointOptions,
+        labDiagnostics,
+      });
+      labServer.on('request', labHandle.handleHttpRequest);
+      await new Promise<void>((res) => labServer.listen(0, '127.0.0.1', res));
+      labPort = (labServer.address() as { port: number }).port;
+      return labDiagnostics;
+    }
+
+    it('refuses lab diagnostics when live lab diagnostics are disabled', async () => {
+      const resp = await httpGet(paneTestPort, '/backend/lab/diagnostics?runId=RUN_1');
+      expect(resp.status).toBe(404);
+    });
+
+    it('requires the live lab diagnostics token', async () => {
+      await listenWithLabDiagnostics();
+
+      const missing = await httpGet(labPort, '/backend/lab/diagnostics?runId=RUN_1');
+      expect(missing.status).toBe(403);
+
+      const wrong = await httpGet(labPort, '/backend/lab/diagnostics?runId=RUN_1', {
+        'x-changedown-lab-diagnostics-token': 'bad',
+      });
+      expect(wrong.status).toBe(403);
+    });
+
+    it('treats blank diagnostics tokens as missing', () => {
+      const store = createLabDiagnosticsStoreForTest({ runId: 'RUN_BLANK', token: '   ' });
+      expect(store.token.trim()).not.toBe('');
+      expect(store.accepts('RUN_BLANK', '   ')).toBe(false);
+    });
+
+    it('returns sanitized diagnostics for matching run and token without permissive CORS', async () => {
+      await listenWithLabDiagnostics();
+
+      const resp = await httpGet(labPort, '/backend/lab/diagnostics?runId=RUN_1', {
+        Origin: 'https://changedown.com',
+        'x-changedown-lab-diagnostics-token': 'secret-1',
+      });
+      expect(resp.status).toBe(200);
+      expect(resp.headers['access-control-allow-origin']).toBeUndefined();
+      expect(JSON.parse(resp.body)).toMatchObject({ runId: 'RUN_1' });
+    });
+
+    it('returns run-level apply diagnostics only through the lab side-channel', async () => {
+      const labDiagnostics = await listenWithLabDiagnostics();
+      const envelope = labDiagnostics.createApplyEnvelope({ sessionUri: 'word://sess-run-1' });
+      labDiagnostics.updateApplyEnvelope(envelope.applyDiagnosticId, {
+        status: 'mcp-prep-failed',
+        mcpPrep: { categoryCode: 'MCP_PREP_MIXED_FAMILY', ok: false },
+      });
+
+      const resp = await httpGet(labPort, '/backend/lab/diagnostics?runId=RUN_1', {
+        'x-changedown-lab-diagnostics-token': 'secret-1',
+      });
+      expect(resp.status).toBe(200);
+      const parsed = JSON.parse(resp.body) as {
+        traceRecords: unknown[];
+        applyDiagnostics: Array<{ applyDiagnosticId: string; runId: string; sessionUri?: string; status: string; mcpPrep?: Record<string, unknown> }>;
+      };
+      expect(parsed.traceRecords).toEqual([]);
+      expect(parsed.applyDiagnostics).toEqual([
+        expect.objectContaining({
+          applyDiagnosticId: envelope.applyDiagnosticId,
+          runId: 'RUN_1',
+          sessionUri: 'word://sess-run-1',
+          status: 'mcp-prep-failed',
+          mcpPrep: { categoryCode: 'MCP_PREP_MIXED_FAMILY', ok: false },
+        }),
+      ]);
+    });
+
+    it('returns server debug records through the lab side-channel without pane RPC readback', async () => {
+      await listenWithLabDiagnostics('secret-1', { requestTimeoutMs: 20 });
+      const regResp = await httpPost(labPort, '/backend/register', {
+        scheme: 'word',
+        sessionId: 'sess-debug-records',
+        capabilities: ['poll-rpc'],
+        lab: { runId: 'RUN_1' },
+      });
+      const { registrationId } = JSON.parse(regResp.body) as { registrationId: string };
+
+      await expect(
+        labHandle.sendRequest(registrationId, 'read', { uri: 'word://sess-debug-records' }),
+      ).rejects.toThrow(/timed out after 20 ms.*method: read/);
+
+      const resp = await httpGet(labPort, '/backend/lab/diagnostics?runId=RUN_1', {
+        'x-changedown-lab-diagnostics-token': 'secret-1',
+      });
+      expect(resp.status).toBe(200);
+      const parsed = JSON.parse(resp.body) as {
+        debugRecords: Array<{ event: string; registrationId: string; method?: string; runId?: string }>;
+      };
+      expect(parsed.debugRecords).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          event: 'timeout',
+          registrationId,
+          method: 'read',
+          runId: 'RUN_1',
+        }),
+      ]));
+    });
+
+    it('rejects trace posts from registrations outside the active lab run', async () => {
+      await listenWithLabDiagnostics();
+      const regResp = await httpPost(labPort, '/backend/register', {
+        scheme: 'word',
+        sessionId: 'sess-wrong-run',
+        capabilities: ['read'],
+        lab: { runId: 'OTHER' },
+      });
+      const { registrationId } = JSON.parse(regResp.body) as { registrationId: string };
+
+      const traceResp = await httpPost(labPort, `/backend/trace/${registrationId}`, {
+        records: [{ id: 'wrong-run-trace', kind: 'rpc', phase: 'STARTED', at: new Date().toISOString(), runId: 'OTHER' }],
+      });
+      expect(traceResp.status).toBe(403);
+
+      const diag = await httpGet(labPort, '/backend/lab/diagnostics?runId=RUN_1', {
+        'x-changedown-lab-diagnostics-token': 'secret-1',
+      });
+      expect(JSON.parse(diag.body).traceRecords).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: 'wrong-run-trace' }),
+      ]));
+    });
+
+    it('stamps trace records from valid registrations with the active lab run', async () => {
+      await listenWithLabDiagnostics();
+      const regResp = await httpPost(labPort, '/backend/register', {
+        scheme: 'word',
+        sessionId: 'sess-run-1',
+        capabilities: ['read'],
+        lab: { runId: 'RUN_1' },
+      });
+      const { registrationId } = JSON.parse(regResp.body) as { registrationId: string };
+
+      const traceResp = await httpPost(labPort, `/backend/trace/${registrationId}`, {
+        records: [{ id: 'candidate-wrong-run', kind: 'rpc', phase: 'STARTED', at: new Date().toISOString(), runId: 'OTHER' }],
+      });
+      expect(traceResp.status).toBe(204);
+
+      const diag = await httpGet(labPort, '/backend/lab/diagnostics?runId=RUN_1', {
+        'x-changedown-lab-diagnostics-token': 'secret-1',
+      });
+      const parsed = JSON.parse(diag.body) as { traceRecords: Array<{ id: string; runId?: string }> };
+      expect(parsed.traceRecords).toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: 'candidate-wrong-run', runId: 'RUN_1' }),
+      ]));
+      expect(parsed.traceRecords).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ id: 'candidate-wrong-run', runId: 'OTHER' }),
+      ]));
+    });
+
+    it('exposes last posted pane phase while original RPC is wedged', async () => {
+      labServer = http.createServer();
+      const labDiagnostics = createLabDiagnosticsStoreForTest({ runId: 'RUN_WEDGE', token: 'secret-wedge' });
+      labHandle = attachPaneEndpoints(labServer, { requestTimeoutMs: 200, labDiagnostics });
+      labServer.on('request', labHandle.handleHttpRequest);
+      await new Promise<void>((res) => labServer.listen(0, '127.0.0.1', res));
+      labPort = (labServer.address() as { port: number }).port;
+
+      const regResp = await httpPost(labPort, '/backend/register', {
+        scheme: 'word',
+        sessionId: 'sess-wedge',
+        capabilities: ['read', 'poll-rpc'],
+        lab: { runId: 'RUN_WEDGE' },
+      });
+      const { registrationId } = JSON.parse(regResp.body) as { registrationId: string };
+
+      const requestPromise = labHandle.sendRequest(registrationId, 'read', {});
+      let requestSettled = false;
+      void requestPromise.then(
+        () => { requestSettled = true; },
+        () => { requestSettled = true; },
+      );
+      const pollResp = await httpPost(labPort, `/backend/poll/${registrationId}`, {});
+      expect(pollResp.status).toBe(200);
+      const polled = JSON.parse(pollResp.body) as { id: string; method?: string };
+      expect(polled.method).toBe('read');
+      const traceResp = await httpPost(labPort, `/backend/trace/${registrationId}`, {
+        records: [{
+          id: 'phase-1',
+          kind: 'rpc',
+          phase: 'RPC_HANDLER_STARTED',
+          at: new Date().toISOString(),
+          runId: 'RUN_WEDGE',
+          rpcRequestId: polled.id,
+        }],
+      });
+      expect(traceResp.status).toBe(204);
+      expect(requestSettled).toBe(false);
+
+      const diag = await httpGet(labPort, '/backend/lab/diagnostics?runId=RUN_WEDGE', {
+        'x-changedown-lab-diagnostics-token': 'secret-wedge',
+      });
+      expect(requestSettled).toBe(false);
+      expect(diag.status).toBe(200);
+      expect(JSON.parse(diag.body).traceRecords).toEqual(expect.arrayContaining([
+        expect.objectContaining({ phase: 'RPC_HANDLER_STARTED', rpcRequestId: polled.id }),
+      ]));
+      expect(requestSettled).toBe(false);
+      await expect(requestPromise).rejects.toThrow(/timed out/);
+    }, 2000);
   });
 
   describe('CORS for hosted Word pane', () => {

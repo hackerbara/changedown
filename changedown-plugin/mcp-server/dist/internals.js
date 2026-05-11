@@ -2108,9 +2108,69 @@ var init_xxhash_wasm = __esm({
 function getXXHash() {
   return globalThis[HASHLINE_KEY] ?? null;
 }
+function rotl32(value, bits) {
+  return (value << bits | value >>> 32 - bits) >>> 0;
+}
+function readUInt32LE(input, offset) {
+  return (input[offset] | input[offset + 1] << 8 | input[offset + 2] << 16 | input[offset + 3] << 24) >>> 0;
+}
+function xxh32Round(acc, value) {
+  acc = acc + Math.imul(value, XXH_PRIME32_2) >>> 0;
+  acc = rotl32(acc, 13);
+  return Math.imul(acc, XXH_PRIME32_1) >>> 0;
+}
+function xxh32Raw(input, seed = 0) {
+  let offset = 0;
+  const length = input.length;
+  const limit = length - 16;
+  let h32;
+  if (length >= 16) {
+    let v1 = seed + XXH_PRIME32_1 + XXH_PRIME32_2 >>> 0;
+    let v2 = seed + XXH_PRIME32_2 >>> 0;
+    let v3 = seed >>> 0;
+    let v4 = seed - XXH_PRIME32_1 >>> 0;
+    while (offset <= limit) {
+      v1 = xxh32Round(v1, readUInt32LE(input, offset));
+      offset += 4;
+      v2 = xxh32Round(v2, readUInt32LE(input, offset));
+      offset += 4;
+      v3 = xxh32Round(v3, readUInt32LE(input, offset));
+      offset += 4;
+      v4 = xxh32Round(v4, readUInt32LE(input, offset));
+      offset += 4;
+    }
+    h32 = rotl32(v1, 1) + rotl32(v2, 7) + rotl32(v3, 12) + rotl32(v4, 18) >>> 0;
+  } else {
+    h32 = seed + XXH_PRIME32_5 >>> 0;
+  }
+  h32 = h32 + length >>> 0;
+  while (offset <= length - 4) {
+    h32 = h32 + Math.imul(readUInt32LE(input, offset), XXH_PRIME32_3) >>> 0;
+    h32 = Math.imul(rotl32(h32, 17), XXH_PRIME32_4) >>> 0;
+    offset += 4;
+  }
+  while (offset < length) {
+    h32 = h32 + Math.imul(input[offset], XXH_PRIME32_5) >>> 0;
+    h32 = Math.imul(rotl32(h32, 11), XXH_PRIME32_1) >>> 0;
+    offset++;
+  }
+  h32 ^= h32 >>> 15;
+  h32 = Math.imul(h32, XXH_PRIME32_2) >>> 0;
+  h32 ^= h32 >>> 13;
+  h32 = Math.imul(h32, XXH_PRIME32_3) >>> 0;
+  h32 ^= h32 >>> 16;
+  return h32 >>> 0;
+}
+function createPureJsXXHash() {
+  return { h32Raw: (input) => xxh32Raw(input) };
+}
 async function initHashline() {
   if (!getXXHash()) {
-    globalThis[HASHLINE_KEY] = await e();
+    try {
+      globalThis[HASHLINE_KEY] = await e();
+    } catch (err) {
+      globalThis[HASHLINE_KEY] = createPureJsXXHash();
+    }
   }
 }
 function stripForHash(line) {
@@ -2157,7 +2217,7 @@ function validateLineRef(ref, fileLines) {
     throw new HashlineMismatchError([{ line: ref.line, expected: ref.hash, actual: actualHash }], fileLines);
   }
 }
-var HASH_LEN, RADIX, HASH_MOD, DICT, encoder, HASHLINE_KEY, ensureHashlineReady, HashlineMismatchError;
+var HASH_LEN, RADIX, HASH_MOD, DICT, encoder, HASHLINE_KEY, XXH_PRIME32_1, XXH_PRIME32_2, XXH_PRIME32_3, XXH_PRIME32_4, XXH_PRIME32_5, ensureHashlineReady, HashlineMismatchError;
 var init_hashline = __esm({
   "../../packages/core/dist-esm/hashline.js"() {
     "use strict";
@@ -2168,6 +2228,11 @@ var init_hashline = __esm({
     DICT = Array.from({ length: HASH_MOD }, (_, i) => i.toString(RADIX).padStart(HASH_LEN, "0"));
     encoder = new TextEncoder();
     HASHLINE_KEY = "__changedown_xxhash__";
+    XXH_PRIME32_1 = 2654435761;
+    XXH_PRIME32_2 = 2246822519;
+    XXH_PRIME32_3 = 3266489917;
+    XXH_PRIME32_4 = 668265263;
+    XXH_PRIME32_5 = 374761393;
     ensureHashlineReady = initHashline;
     HashlineMismatchError = class extends Error {
       constructor(mismatches, fileLines) {
@@ -5543,6 +5608,115 @@ var init_level_descent = __esm({
 });
 
 // ../../packages/core/dist-esm/operations/l3-to-l2.js
+function buildInlineMarkup(change, bodyText) {
+  const { type, status, range, originalText, modifiedText, metadata } = change;
+  const ref = `[^${change.id}]`;
+  switch (type) {
+    case ChangeType.Insertion: {
+      if (status === ChangeStatus.Rejected) {
+        return { replacement: `{++${modifiedText ?? ""}++}${ref}` };
+      }
+      const bodySlice = bodyText.slice(range.start, range.end);
+      return { replacement: `{++${bodySlice}++}${ref}` };
+    }
+    case ChangeType.Deletion: {
+      return { replacement: `{--${originalText ?? ""}--}${ref}` };
+    }
+    case ChangeType.Substitution: {
+      if (status === ChangeStatus.Rejected) {
+        const bodySlice2 = bodyText.slice(range.start, range.end);
+        return { replacement: `{~~${bodySlice2}~>${modifiedText ?? ""}~~}${ref}` };
+      }
+      const bodySlice = bodyText.slice(range.start, range.end);
+      return { replacement: `{~~${originalText ?? ""}~>${bodySlice}~~}${ref}` };
+    }
+    case ChangeType.Highlight: {
+      const bodySlice = bodyText.slice(range.start, range.end);
+      const comment = metadata?.comment;
+      const commentPart = comment ? `{>>${comment}<<}` : "";
+      return { replacement: `{==${bodySlice}==}${commentPart}${ref}` };
+    }
+    case ChangeType.Comment: {
+      const comment = metadata?.comment ?? "";
+      return { replacement: `{>>${comment}<<}${ref}` };
+    }
+    case ChangeType.Move: {
+      const bodySlice = bodyText.slice(range.start, range.end);
+      return { replacement: `{++${bodySlice}++}${ref}` };
+    }
+  }
+}
+async function convertL3ToL2(text) {
+  await initHashline();
+  const parser = new FootnoteNativeParser();
+  const doc = parser.parse(text);
+  const changes = doc.getChanges();
+  if (changes.length === 0)
+    return text;
+  const hasProposed = changes.some((c) => c.status === ChangeStatus.Proposed);
+  if (!hasProposed)
+    return text;
+  const unresolvedIds = new Set(changes.filter((c) => c.resolved === false).map((c) => c.id));
+  const { bodyLines, footnoteLines } = splitBodyAndFootnotes(text.split("\n"));
+  const sortedDesc = [...changes].sort((a, b) => b.range.start - a.range.start);
+  let body = bodyLines.join("\n");
+  const statusMap = /* @__PURE__ */ new Map();
+  for (const change of changes) {
+    statusMap.set(change.id, change.status);
+  }
+  for (const change of sortedDesc) {
+    if (change.status !== ChangeStatus.Proposed)
+      continue;
+    if (unresolvedIds.has(change.id))
+      continue;
+    const { replacement } = buildInlineMarkup(change, body);
+    if (change.type === ChangeType.Deletion || change.type === ChangeType.Comment) {
+      body = body.slice(0, change.range.start) + replacement + body.slice(change.range.start);
+    } else {
+      body = body.slice(0, change.range.start) + replacement + body.slice(change.range.end);
+    }
+  }
+  const rebuiltFootnotes = [];
+  let i = 0;
+  while (i < footnoteLines.length) {
+    const line = footnoteLines[i];
+    if (FOOTNOTE_DEF_START.test(line)) {
+      const idMatch = line.match(/^\[\^(cn-[\w.]+)\]:/);
+      const changeId = idMatch ? idMatch[1] : "";
+      const changeStatus = statusMap.get(changeId);
+      rebuiltFootnotes.push(line);
+      i++;
+      while (i < footnoteLines.length) {
+        const bodyLine = footnoteLines[i];
+        if (FOOTNOTE_DEF_START.test(bodyLine))
+          break;
+        if (FOOTNOTE_L3_EDIT_OP.test(bodyLine)) {
+          if (changeStatus === ChangeStatus.Proposed && !unresolvedIds.has(changeId)) {
+            i++;
+            continue;
+          }
+          rebuiltFootnotes.push(bodyLine);
+          i++;
+          continue;
+        }
+        if (FOOTNOTE_CONTINUATION.test(bodyLine) || bodyLine.trim() === "") {
+          rebuiltFootnotes.push(bodyLine);
+          i++;
+        } else {
+          break;
+        }
+      }
+    } else {
+      rebuiltFootnotes.push(line);
+      i++;
+    }
+  }
+  const footnoteSection = rebuiltFootnotes.join("\n");
+  if (rebuiltFootnotes.length === 0) {
+    return body + "\n";
+  }
+  return body + "\n\n" + footnoteSection + "\n";
+}
 var init_l3_to_l2 = __esm({
   "../../packages/core/dist-esm/operations/l3-to-l2.js"() {
     "use strict";
@@ -20927,7 +21101,77 @@ function replaceUnique2(haystack, needle, replacement) {
     return void 0;
   return haystack.slice(0, first) + replacement + haystack.slice(first + needle.length);
 }
+function isBlockInsertion(text) {
+  const firstLine = text.trimStart().split(/\r?\n/, 1)[0] ?? "";
+  return /^(?:\|.*\||#{1,6}\s|[-*+]\s|\d+\.\s|```|~~~|>)/.test(firstLine);
+}
+function separatorBeforeInsertedPayload(previous, inserted) {
+  if (previous === "" || previous.endsWith("\n"))
+    return "";
+  return isBlockInsertion(inserted) ? "\n\n" : "\n";
+}
+function revisedInsertionPayloadAfterLine(input) {
+  const payload = input.containing.modifiedText ?? "";
+  const contentStart = input.containing.contentRange.start;
+  const contentEnd = input.containing.contentRange.end;
+  const payloadOffset = Math.min(Math.max(input.resolvedEndOffset, contentStart), contentEnd) - contentStart;
+  if (payloadOffset < 0 || payloadOffset > payload.length)
+    return void 0;
+  const before = payload.slice(0, payloadOffset);
+  const after = payload.slice(payloadOffset);
+  const separator = separatorBeforeInsertedPayload(before, input.insertedText);
+  return `${before}${separator}${input.insertedText}${after}`;
+}
 async function trySupersedeContainingInsertion(input) {
+  if (input.op.type === "ins") {
+    if (!input.state || !input.filePath || !input.config)
+      return void 0;
+    const fileLines = input.fileContent.split("\n");
+    let resolved;
+    try {
+      resolved = resolveCoordinates(input.op, input.fileContent, fileLines, input.state, input.filePath, input.config);
+    } catch {
+      return void 0;
+    }
+    const doc2 = parseForFormat(input.fileContent, { skipCodeBlocks: false });
+    const containing2 = doc2.getChanges().find((change) => {
+      if (change.type !== ChangeType.Insertion)
+        return false;
+      if (effectiveStatus(change) !== ChangeStatus.Proposed && effectiveStatus(change) !== "proposed")
+        return false;
+      if (!authorMatches(change.metadata?.author ?? change.inlineMetadata?.author, input.author))
+        return false;
+      return change.range.start <= resolved.endOffset && change.range.end >= resolved.startOffset;
+    });
+    if (!containing2)
+      return void 0;
+    const revised2 = revisedInsertionPayloadAfterLine({
+      fileContent: input.fileContent,
+      containing: containing2,
+      resolvedEndOffset: resolved.endOffset,
+      insertedText: input.op.newText
+    });
+    if (revised2 === void 0)
+      return void 0;
+    const supersede2 = await computeSupersedeResult(input.fileContent, containing2.id, {
+      newText: revised2,
+      reason: input.op.reasoning ?? `Append to ${containing2.id} instead of nesting inside it`,
+      author: input.author
+    });
+    if (supersede2.isError)
+      return void 0;
+    return {
+      modifiedText: supersede2.text,
+      changeType: "ins",
+      supersededIds: [containing2.id],
+      affectedStartLine: resolved.rawStartLine,
+      affectedEndLine: resolved.rawEndLine,
+      relocations: resolved.relocations,
+      remaps: resolved.remaps,
+      viewResolved: resolved.viewResolved,
+      settled: false
+    };
+  }
   if (input.op.type !== "sub" && input.op.type !== "del")
     return void 0;
   const doc = parseForFormat(input.fileContent, { skipCodeBlocks: false });
@@ -21081,22 +21325,35 @@ async function prepareCompactProposeChange(input) {
   }
   const changeId = state.getNextId(filePath, fileContent);
   let applyResult;
-  try {
-    applyResult = resolveAndApply(compactOp, fileContent, fileContent.split("\n"), state, filePath, config2, changeId, author);
-  } catch (err) {
-    const supersedeResult = await trySupersedeContainingInsertion({
-      fileContent,
-      op: compactOp,
-      changeId,
-      author
-    });
-    if (supersedeResult) {
-      applyResult = supersedeResult;
-    } else {
-      return fail2(err instanceof Error ? err.message : String(err), "HASHLINE_REFERENCE_UNRESOLVED", {
-        file: relativePath,
-        quick_fix: { action: "re_read", file: filePath }
+  const proactiveSupersede = await trySupersedeContainingInsertion({
+    fileContent,
+    op: compactOp,
+    changeId,
+    author,
+    state,
+    filePath,
+    config: config2
+  });
+  if (proactiveSupersede) {
+    applyResult = proactiveSupersede;
+  } else {
+    try {
+      applyResult = resolveAndApply(compactOp, fileContent, fileContent.split("\n"), state, filePath, config2, changeId, author);
+    } catch (err) {
+      const supersedeResult = await trySupersedeContainingInsertion({
+        fileContent,
+        op: compactOp,
+        changeId,
+        author
       });
+      if (supersedeResult) {
+        applyResult = supersedeResult;
+      } else {
+        return fail2(err instanceof Error ? err.message : String(err), "HASHLINE_REFERENCE_UNRESOLVED", {
+          file: relativePath,
+          quick_fix: { action: "re_read", file: filePath }
+        });
+      }
     }
   }
   let affectedLines = [];
@@ -22018,6 +22275,9 @@ function normalizeDocumentTarget(input, baseDir) {
   };
 }
 
+// src/word-propose.ts
+init_dist_esm();
+
 // ../../packages/cli/dist/engine/browser.js
 init_dist_esm();
 
@@ -22397,6 +22657,15 @@ function resolveProtocolMode3(mode) {
 }
 
 // src/word-propose.ts
+function labPrepCategoryForPrepared(prepared) {
+  if (prepared.ok) return prepared.family === "classic" ? "MCP_PREP_CLASSIC_OK" : "MCP_PREP_COMPACT_OK";
+  const text = prepared.toolResult.content.map((part) => part.text).join("\n");
+  if (text.includes("WORD_MULTI_CHANGE_UNSUPPORTED")) return "MCP_PREP_MULTI_CHANGE_UNSUPPORTED";
+  if (text.includes("MIXED_PROPOSAL_FAMILY")) return "MCP_PREP_MIXED_FAMILY";
+  if (text.includes("MISSING_ARGUMENT")) return "MCP_PREP_MISSING_ARGUMENT";
+  if (text.includes("SETTLE_ON_DEMAND_UNSUPPORTED") || text.includes("CLASSIC_PROPOSE_FAILED") || text.includes("word:// classic preparation")) return "MCP_PREP_FALLBACK_FAILED";
+  return "MCP_PREP_FAILED";
+}
 function fail3(message, code = "VALIDATION_ERROR") {
   return {
     ok: false,
@@ -22442,12 +22711,13 @@ async function prepareWordProposeChange(input) {
   if (!compact2 && !classic) {
     return fail3("propose_change for word:// requires compact at/op or classic old_text/new_text arguments.", "MISSING_ARGUMENT");
   }
+  const sourceText = input.snapshotFormat === "L3" || isL3Format(input.snapshotText) ? await convertL3ToL2(input.snapshotText) : input.snapshotText;
   if (compact2) {
     const prepared2 = await prepareCompactProposeChange({
       args: input.args,
       filePath: input.uri,
       relativePath: input.uri,
-      fileContent: input.snapshotText,
+      fileContent: sourceText,
       config: input.config,
       state: input.state
     });
@@ -22457,28 +22727,35 @@ async function prepareWordProposeChange(input) {
     args: input.args,
     filePath: input.uri,
     relativePath: input.uri,
-    fileContent: input.snapshotText,
+    fileContent: sourceText,
     config: input.config,
     state: input.state,
     allowSettleOnDemand: false
   });
   return prepared.ok ? { ...prepared, family: "classic" } : { ...prepared, family: "classic" };
 }
-async function applyPreparedWordProposeChange(backend, uri, prepared) {
+async function applyPreparedWordProposeChange(backend, uri, prepared, options = {}) {
   const threadReply = prepared.threadReply;
+  const attachLabApplyDiagnosticId = (args) => {
+    if (!options.applyDiagnosticId) return args;
+    return {
+      ...args,
+      __labApplyDiagnosticId: options.applyDiagnosticId
+    };
+  };
   const op = threadReply ? {
     kind: "respond",
-    args: {
+    args: attachLabApplyDiagnosticId({
       cnId: threadReply.changeId,
       text: threadReply.text,
       author: threadReply.author
-    }
+    })
   } : {
     kind: "propose",
-    args: {
+    args: attachLabApplyDiagnosticId({
       oldL2: prepared.oldL2,
       newL2: prepared.newL2
-    }
+    })
   };
   return backend.applyChange({ uri }, op);
 }
@@ -22551,7 +22828,9 @@ async function applyWordReviewChanges(args, backend, uri) {
   if (!prepared.ok) throw new Error(prepared.message);
   const author = typeof args.author === "string" ? args.author : void 0;
   const results = [];
+  const snapshot = await backend.read({ uri });
   for (const op of prepared.operations) {
+    assertWordReviewCapability(snapshot, op.changeId);
     const result = await backend.applyChange({ uri }, {
       kind: "review",
       args: {
@@ -22582,6 +22861,40 @@ async function applyWordReviewChanges(args, backend, uri) {
     },
     ...remaining === 0 ? { note: "All changes in this Word session are now resolved. No proposed changes remain." } : {}
   };
+}
+function capabilityUnavailableMessage(prefix, changeId, capability, fallbackReason) {
+  return `${prefix}: ${changeId} is ${capability.state}; ${capability.reason ?? fallbackReason}`;
+}
+function assertWordReviewCapability(snapshot, changeId) {
+  if (!snapshot) return;
+  const capability = snapshot.capabilitiesByChangeId?.[changeId];
+  if (!capability) return;
+  const canReview = capability.state === "interactive" && capability.nativeReviewable === true && capability.approveRejectCapability === "available";
+  if (!canReview) {
+    throw new Error(
+      capabilityUnavailableMessage(
+        "WordReviewCapabilityUnavailable",
+        changeId,
+        capability,
+        "no native review capability is available"
+      )
+    );
+  }
+}
+function assertWordSourceMutationCapability(snapshot, changeId, operationName) {
+  if (!snapshot) return;
+  const capability = snapshot.capabilitiesByChangeId?.[changeId];
+  if (!capability) return;
+  if (capability.state === "witness-only" || capability.state === "diagnostic-only" || capability.state === "conflict") {
+    throw new Error(
+      capabilityUnavailableMessage(
+        "WordWriteCapabilityUnavailable",
+        changeId,
+        capability,
+        `${operationName} cannot mutate ${capability.state} source records`
+      )
+    );
+  }
 }
 
 // ../../node_modules/zod/v3/helpers/util.js
@@ -36526,6 +36839,15 @@ var version2 = "0.4.6";
 // src/word-document-workflow.ts
 init_dist_esm();
 var MAX_WORD_LIST_PREVIEW_LENGTH = 80;
+function diagnosticErrorCode(value) {
+  const text = value instanceof Error ? value.message : typeof value === "string" ? value : void 0;
+  if (!text) return void 0;
+  const colonCode = text.match(/^([A-Za-z][A-Za-z0-9_]*):/)?.[1];
+  return (colonCode ?? text).slice(0, 120);
+}
+async function mutationSourceL2(snapshot) {
+  return snapshot.format === "L3" || isL3Format(snapshot.text) ? await convertL3ToL2(snapshot.text) : snapshot.text;
+}
 function buildWordListPreview(change) {
   let preview = "";
   switch (change.type) {
@@ -36629,6 +36951,26 @@ function buildWordDetailForLevel(detail, change, text, lines, doc, summary, cont
       return summary;
   }
 }
+function attachCapability(entry, snapshot) {
+  const id = typeof entry.change_id === "string" ? entry.change_id : void 0;
+  const capability = id ? snapshot.capabilitiesByChangeId?.[id] : void 0;
+  const diagnostics = id ? snapshotDiagnostics(snapshot).filter((diagnostic) => {
+    return typeof diagnostic === "object" && diagnostic !== null && diagnostic.changeId === id;
+  }) : [];
+  if (!capability && diagnostics.length === 0) return entry;
+  return {
+    ...entry,
+    ...capability ? {
+      capability,
+      native_reviewable: capability.nativeReviewable,
+      approve_reject_capability: capability.approveRejectCapability
+    } : {},
+    ...diagnostics.length > 0 ? { diagnostics } : {}
+  };
+}
+function snapshotDiagnostics(snapshot) {
+  return snapshot.diagnostics ?? [];
+}
 async function buildWordListChangesResponse(backend, uri, args) {
   const snapshot = await backend.read({ uri });
   const text = snapshot.text;
@@ -36668,9 +37010,10 @@ async function buildWordListChangesResponse(backend, uri, args) {
       file: uri,
       total_count: allChanges.length,
       filtered_count: results.length,
-      changes: results,
+      changes: results.map((entry) => attachCapability(entry, snapshot)),
       ...nativeChanges ? { native_changes: nativeChanges } : {},
-      diagnostics: doc.getDiagnostics()
+      ...snapshot.readiness ? { readiness: snapshot.readiness } : {},
+      diagnostics: [...doc.getDiagnostics(), ...snapshotDiagnostics(snapshot)]
     };
   }
   const entries = allChanges.map((change) => {
@@ -36682,9 +37025,10 @@ async function buildWordListChangesResponse(backend, uri, args) {
     file: uri,
     total_count: entries.length,
     filtered_count: filtered.length,
-    changes: filtered,
+    changes: filtered.map((entry) => attachCapability(entry, snapshot)),
     ...nativeChanges ? { native_changes: nativeChanges } : {},
-    diagnostics: doc.getDiagnostics()
+    ...snapshot.readiness ? { readiness: snapshot.readiness } : {},
+    diagnostics: [...doc.getDiagnostics(), ...snapshotDiagnostics(snapshot)]
   };
 }
 async function handleWordReadTrackedFile(input) {
@@ -36777,7 +37121,16 @@ ${syntheticBlankAnchor}`;
 ${composeGuide(config2, { targetKind: "word" })}` : "";
     const content = [{ type: "text", text: output }];
     if (guide) content.unshift({ type: "text", text: guide });
-    return { content };
+    const structuredContent = {};
+    if (snapshot.readiness) structuredContent.readiness = snapshot.readiness;
+    if (snapshot.diagnostics) structuredContent.diagnostics = snapshot.diagnostics;
+    if (snapshot.capabilitiesByChangeId) {
+      structuredContent.capabilitiesByChangeId = snapshot.capabilitiesByChangeId;
+    }
+    return {
+      content,
+      ...Object.keys(structuredContent).length > 0 ? { structuredContent } : {}
+    };
   } catch (err) {
     return errorResult3(err instanceof Error ? err.message : String(err));
   }
@@ -36810,7 +37163,8 @@ async function handleWordSupersedeChange(input) {
     const { author, error: authorError } = resolveAuthor(args.author, config2, "supersede_change");
     if (authorError) return errorResult3(authorError.message);
     const snapshot = await backend.read({ uri });
-    const result = await computeSupersedeResult(snapshot.text, changeId, {
+    const oldL2 = await mutationSourceL2(snapshot);
+    const result = await computeSupersedeResult(oldL2, changeId, {
       oldText,
       newText,
       insertAfter,
@@ -36825,7 +37179,7 @@ async function handleWordSupersedeChange(input) {
     }
     const applied = await backend.applyChange({ uri }, {
       kind: "propose",
-      args: { oldL2: snapshot.text, newL2 }
+      args: { oldL2, newL2 }
     });
     if (applied.applied === false) {
       return errorResult3(applied.text ?? "Word adapter did not apply prepared supersede");
@@ -36858,15 +37212,57 @@ async function handleWordProposeChange(input) {
       return errorResult3("word_spike_direct/word_author_spike/spike are diagnostic-only and are not supported by public word:// propose_change");
     }
     const snapshot = await backend.read({ uri });
+    const envelope = input.labDiagnostics?.createApplyEnvelope({ sessionUri: uri });
     const prepared = await prepareWordProposeChange({
       args,
       uri,
       snapshotText: snapshot.text,
+      snapshotFormat: snapshot.format,
       config: config2,
       state
     });
+    const mcpPrep = {
+      categoryCode: labPrepCategoryForPrepared(prepared),
+      ok: prepared.ok
+    };
+    if ("family" in prepared && prepared.family) {
+      mcpPrep.family = prepared.family;
+    }
+    if (envelope) {
+      input.labDiagnostics?.updateApplyEnvelope(envelope.applyDiagnosticId, {
+        status: prepared.ok ? "pane-dispatch-pending" : "mcp-prep-failed",
+        mcpPrep
+      });
+    }
     if (!prepared.ok) return prepared.toolResult;
-    const result = await applyPreparedWordProposeChange(backend, uri, prepared);
+    let result;
+    try {
+      result = await applyPreparedWordProposeChange(backend, uri, prepared, {
+        applyDiagnosticId: envelope?.applyDiagnosticId
+      });
+      if (envelope) {
+        input.labDiagnostics?.updateApplyEnvelope(envelope.applyDiagnosticId, {
+          status: result.applied === false ? "pane-dispatch-not-applied" : "pane-dispatch-applied",
+          endedAt: (/* @__PURE__ */ new Date()).toISOString(),
+          paneDispatch: {
+            applied: result.applied !== false,
+            ...result.applied === false ? { errorCode: diagnosticErrorCode(result.text) } : {}
+          }
+        });
+      }
+    } catch (err) {
+      if (envelope) {
+        input.labDiagnostics?.updateApplyEnvelope(envelope.applyDiagnosticId, {
+          status: "pane-dispatch-thrown",
+          endedAt: (/* @__PURE__ */ new Date()).toISOString(),
+          paneDispatch: {
+            applied: false,
+            errorCode: diagnosticErrorCode(err) ?? "UNKNOWN_ERROR"
+          }
+        });
+      }
+      throw err;
+    }
     if (result.applied === false) {
       return errorResult3(result.text ?? "Word adapter did not apply prepared proposal");
     }
@@ -37234,7 +37630,10 @@ var RoomDocumentBackend = class {
     return {
       text: result.text,
       format: result.format === "L3" ? "L3" : "L2",
-      version: typeof result.version === "string" ? result.version : ""
+      version: typeof result.version === "string" ? result.version : "",
+      ...isObject2(result.readiness) ? { readiness: result.readiness } : {},
+      ...Array.isArray(result.diagnostics) ? { diagnostics: result.diagnostics } : {},
+      ...isObject2(result.capabilitiesByChangeId) ? { capabilitiesByChangeId: result.capabilitiesByChangeId } : {}
     };
   }
   async applyChange(ref, op) {
@@ -37274,7 +37673,7 @@ var RoomDocumentBackend = class {
 
 // src/remote/remote-server-factory.ts
 var MUTATING_REMOTE_TOOLS = new Set(MUTATING_REMOTE_TOOL_NAMES);
-var WORKFLOW_REMOTE_TOOLS = /* @__PURE__ */ new Set(["read_tracked_file", "list_changes", "propose_change", "supersede_change"]);
+var WORKFLOW_REMOTE_TOOLS = /* @__PURE__ */ new Set(["read_tracked_file", "list_changes", "propose_change", "review_changes", "supersede_change"]);
 var fallbackRemoteStates = /* @__PURE__ */ new Map();
 function isRemoteWordToolName(name) {
   return REMOTE_WORD_TOOL_NAMES.includes(name);
@@ -37302,6 +37701,11 @@ function snapshotTextResult(result) {
     const structuredContent = {};
     if (typeof snapshot.format === "string") structuredContent.format = snapshot.format;
     if (typeof snapshot.version === "string") structuredContent.version = snapshot.version;
+    if (snapshot.readiness && typeof snapshot.readiness === "object") structuredContent.readiness = snapshot.readiness;
+    if (Array.isArray(snapshot.diagnostics)) structuredContent.diagnostics = snapshot.diagnostics;
+    if (snapshot.capabilitiesByChangeId && typeof snapshot.capabilitiesByChangeId === "object") {
+      structuredContent.capabilitiesByChangeId = snapshot.capabilitiesByChangeId;
+    }
     return {
       ...result,
       content: [{ type: "text", text: snapshot.text }],
@@ -37335,6 +37739,10 @@ function idempotencyKey2(args) {
 function stripTransportArgs(args) {
   const { idempotency_key: _idempotency, ...rest } = args;
   return rest;
+}
+function changeIdFromArgs(args) {
+  const raw = args.cnId ?? args.change_id ?? args.changeId;
+  return typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : void 0;
 }
 function getFallbackState(key) {
   let state = fallbackRemoteStates.get(key);
@@ -37387,10 +37795,30 @@ function createRemoteRelayServer(ctx) {
       if (name === "supersede_change") {
         return handleWordSupersedeChange({ backend, uri, args: workflowArgs, config: config2, state });
       }
+      if (name === "review_changes") {
+        try {
+          const response = await applyWordReviewChanges(workflowArgs, backend, uri);
+          return textResult(response);
+        } catch (err) {
+          return errorResult5(err instanceof Error ? err.message : String(err));
+        }
+      }
       return handleWordProposeChange({ backend, uri, args: workflowArgs, config: config2, state });
     }
     const lowered = lowerRemoteToolToBackendWire(name, args);
     if ("error" in lowered) return errorResult5(lowered.error);
+    if (name === "amend_change" || name === "resolve_thread") {
+      const changeId = changeIdFromArgs(args);
+      if (changeId) {
+        const backend = new RoomDocumentBackend(ctx.room, { idempotencyKey: idempotencyKey2(args) });
+        try {
+          const snapshot = await backend.read({ uri: String(args.file) });
+          assertWordSourceMutationCapability(snapshot, changeId, name);
+        } catch (err) {
+          return errorResult5(err instanceof Error ? err.message : String(err));
+        }
+      }
+    }
     const result = await ctx.room.callBackendOperation(lowered.request, { idempotencyKey: lowered.idempotencyKey });
     const toolResult = isCallToolResult(result) ? result : textResult(result);
     return name === "read_tracked_file" ? snapshotTextResult(toolResult) : toolResult;
@@ -38201,6 +38629,23 @@ function idempotencyFromHeaders(request) {
 function toolNameFromPath(pathname) {
   return decodeURIComponent(pathname.slice("/tools/".length));
 }
+function readTrackedFileArgsFromQuery(url2) {
+  const args = {};
+  for (const [key, value] of url2.searchParams.entries()) {
+    if (key === "token") continue;
+    if ((key === "offset" || key === "limit") && value.trim().length > 0) {
+      const numeric = Number(value);
+      args[key] = Number.isFinite(numeric) ? numeric : value;
+      continue;
+    }
+    if (key === "include_guide" || key === "include_meta") {
+      args[key] = value === "true" ? true : value === "false" ? false : value;
+      continue;
+    }
+    args[key] = value;
+  }
+  return args;
+}
 async function handleRemoteHttpFacade(request, ctx, mcp = DEFAULT_REMOTE_MCP_OPERATIONS) {
   const url2 = new URL(request.url);
   if (request.method === "GET" && url2.pathname === "/tools") {
@@ -38209,6 +38654,10 @@ async function handleRemoteHttpFacade(request, ctx, mcp = DEFAULT_REMOTE_MCP_OPE
   if (request.method === "GET" && url2.pathname === "/openapi.json") {
     const listed = await mcp.listTools(ctx);
     return json2(openApiFromMcpTools(listed.tools, { title: "ChangeDown Remote Word Tools", version: version2 }));
+  }
+  if (request.method === "GET" && url2.pathname === "/tools/read_tracked_file") {
+    const result = await mcp.callTool(ctx, "read_tracked_file", readTrackedFileArgsFromQuery(url2));
+    return json2(normalizeToolResult("read_tracked_file", result));
   }
   if (request.method === "POST" && url2.pathname.startsWith("/tools/")) {
     const name = toolNameFromPath(url2.pathname);

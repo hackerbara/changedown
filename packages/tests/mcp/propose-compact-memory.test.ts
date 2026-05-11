@@ -127,6 +127,49 @@ describe('prepareCompactProposeChange', () => {
     });
   });
 
+  it('auto-supersedes a same-author insertion when inserting after a line inside its proposed payload', async () => {
+    const state = new SessionState();
+    const fileContent = [
+      'Hi codex\\!',
+      '{++Smoke paragraph first',
+      '',
+      'Smoke paragraph second++}[^cn-2]',
+      '',
+      '[^cn-2]: @ai:codex-clean-smoke | 2026-05-08 | ins | proposed',
+    ].join('\n');
+    const hash = hashForLine(fileContent, 4);
+
+    const result = await prepareCompactProposeChange({
+      args: {
+        at: `4:${hash}`,
+        op: '{++| Thing | Status |\n| --- | --- |\n| table smoke | alive |++}{>>Append a table to the existing smoke insertion.<<}',
+        author: 'ai:codex-clean-smoke',
+      },
+      filePath: 'word://sess-test',
+      relativePath: 'word://sess-test',
+      fileContent,
+      config,
+      state,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.newL2).toContain('Hi codex\\!');
+    expect(result.newL2).toContain('Smoke paragraph first');
+    expect(result.newL2).toContain('Smoke paragraph second');
+    expect(result.newL2).toContain('| Thing | Status |');
+    expect(result.newL2).toContain('[^cn-3]: @ai:codex-clean-smoke |');
+    expect(result.newL2).toContain('supersedes: cn-2');
+    expect(result.newL2).toContain('superseded-by: cn-3');
+    expect(result.newL2).not.toContain('{++| Thing | Status |');
+    const payload = JSON.parse(result.toolResult.content[0]!.text);
+    expect(payload).toMatchObject({
+      change_id: 'cn-3',
+      type: 'ins',
+      superseded: ['cn-2'],
+    });
+  });
+
   it('auto-supersedes the latest superseding insertion instead of falling back to a table-row substitution', async () => {
     const state = new SessionState();
     const fileContent = [

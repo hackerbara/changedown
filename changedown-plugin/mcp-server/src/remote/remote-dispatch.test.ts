@@ -1,12 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { computeLineHash } from '@changedown/core';
+import { DEFAULT_CONFIG, SessionState } from '@changedown/cli/engine/browser';
+import { handleWordProposeChange } from '../word-document-workflow.js';
+import { createLabDiagnosticsStoreForTest } from '../lab-diagnostics.js';
 import { createRemoteRelayServer } from './remote-server-factory.js';
 import type { RelayAuthContext } from './relay-context.js';
-import type { PaneBackendWireRequest } from '@changedown/core/backend';
+import type { DocumentBackend, PaneBackendWireRequest } from '@changedown/core/backend';
 
 function l2ReadResult(text = 'Hello world'): unknown {
   return { text, format: 'L2', version: 'v-test' };
+}
+
+function l3ReadResult(): unknown {
+  const body = 'Hello world';
+  const hash = computeLineHash(0, body, [body]);
+  return {
+    text:
+      `${body}\n\n` +
+      `[^cn-1]: @Reviewer | 2026-05-07 | ins | proposed\n` +
+      `    1:${hash} Hello {++world++}\n`,
+    format: 'L3',
+    version: 'v-l3-test',
+  };
 }
 
 async function withClient(
@@ -33,6 +50,154 @@ async function withClient(
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
   try { await fn(client, calls); } finally { await Promise.allSettled([clientTransport.close(), serverTransport.close()]); }
 }
+
+describe('Word workflow lab apply diagnostics', () => {
+  it('records lab prep category while preserving product error code', async () => {
+    let applyCalls = 0;
+    const backend: Pick<DocumentBackend, 'read' | 'applyChange'> = {
+      async read() {
+        return { text: 'hello', format: 'L2' as const, version: 'v-test' };
+      },
+      async applyChange() {
+        applyCalls++;
+        return { applied: true };
+      },
+    };
+    const labDiagnostics = createLabDiagnosticsStoreForTest({ runId: 'RUN_1', token: 'secret-1' });
+    const result = await handleWordProposeChange({
+      backend: backend as DocumentBackend,
+      uri: 'word://sess-test',
+      args: { at: '1:abc', op: '{++x++}', old_text: 'x' },
+      config: DEFAULT_CONFIG,
+      state: new SessionState(),
+      labDiagnostics,
+    });
+
+    const text = result.content.map((part) => part.type === 'text' ? part.text : '').join('\n');
+    expect(text).toContain('MIXED_PROPOSAL_FAMILY');
+    expect(applyCalls).toBe(0);
+    expect(labDiagnostics.snapshot().applyDiagnostics[0]?.mcpPrep?.categoryCode).toBe('MCP_PREP_MIXED_FAMILY');
+  });
+
+  it('records fallback prep failure category while preserving product error text', async () => {
+    let applyCalls = 0;
+    const source = '{++Alpha++}[^cn-1]\n\n[^cn-1]: @ai:prior | 2026-05-06 | ins | accepted\n';
+    const backend: Pick<DocumentBackend, 'read' | 'applyChange'> = {
+      async read() {
+        return { text: source, format: 'L2' as const, version: 'v-test' };
+      },
+      async applyChange() {
+        applyCalls++;
+        return { applied: true };
+      },
+    };
+    const labDiagnostics = createLabDiagnosticsStoreForTest({ runId: 'RUN_FALLBACK', token: 'secret-fallback' });
+    const result = await handleWordProposeChange({
+      backend: backend as DocumentBackend,
+      uri: 'word://sess-test',
+      args: { old_text: 'Alpha', new_text: 'Beta', author: 'ai:test' },
+      config: DEFAULT_CONFIG,
+      state: new SessionState(),
+      labDiagnostics,
+    });
+
+    const text = result.content.map((part) => part.type === 'text' ? part.text : '').join('\n');
+    expect(text).toContain('settling accepted/rejected changes');
+    expect(text).toContain('SETTLE_ON_DEMAND_UNSUPPORTED');
+    expect(applyCalls).toBe(0);
+    expect(labDiagnostics.snapshot().applyDiagnostics[0]?.mcpPrep?.categoryCode).toBe('MCP_PREP_FALLBACK_FAILED');
+  });
+
+  it('passes the apply diagnostic id only through pane apply args', async () => {
+    let appliedOp: unknown;
+    const backend: Pick<DocumentBackend, 'read' | 'applyChange'> = {
+      async read() {
+        return { text: 'hello', format: 'L2' as const, version: 'v-test' };
+      },
+      async applyChange(_ref, op) {
+        appliedOp = op;
+        return { applied: true };
+      },
+    };
+    const labDiagnostics = createLabDiagnosticsStoreForTest({ runId: 'RUN_2', token: 'secret-2' });
+    const result = await handleWordProposeChange({
+      backend: backend as DocumentBackend,
+      uri: 'word://sess-test',
+      args: { old_text: 'hello', new_text: 'hi', author: 'ai:test' },
+      config: DEFAULT_CONFIG,
+      state: new SessionState(),
+      labDiagnostics,
+    });
+
+    const envelope = labDiagnostics.snapshot().applyDiagnostics[0];
+    expect(envelope?.status).toBe('pane-dispatch-applied');
+    expect(envelope?.endedAt).toEqual(expect.any(String));
+    expect(envelope?.mcpPrep).toMatchObject({ categoryCode: 'MCP_PREP_CLASSIC_OK', family: 'classic', ok: true });
+    expect(envelope?.paneDispatch).toMatchObject({ applied: true });
+    expect(appliedOp).toMatchObject({
+      kind: 'propose',
+      args: { __labApplyDiagnosticId: envelope?.applyDiagnosticId },
+    });
+    expect(JSON.stringify(result)).not.toContain('__labApplyDiagnosticId');
+    expect(JSON.stringify(result)).not.toContain(String(envelope?.applyDiagnosticId));
+  });
+
+  it('records not-applied dispatch status without changing product error text', async () => {
+    const backend: Pick<DocumentBackend, 'read' | 'applyChange'> = {
+      async read() {
+        return { text: 'hello', format: 'L2' as const, version: 'v-test' };
+      },
+      async applyChange() {
+        return { applied: false, text: 'Pane refused apply: stale document' };
+      },
+    };
+    const labDiagnostics = createLabDiagnosticsStoreForTest({ runId: 'RUN_NOT_APPLIED', token: 'secret-not-applied' });
+    const result = await handleWordProposeChange({
+      backend: backend as DocumentBackend,
+      uri: 'word://sess-test',
+      args: { old_text: 'hello', new_text: 'hi', author: 'ai:test' },
+      config: DEFAULT_CONFIG,
+      state: new SessionState(),
+      labDiagnostics,
+    });
+
+    const text = result.content.map((part) => part.type === 'text' ? part.text : '').join('\n');
+    expect(result.isError).toBe(true);
+    expect(text).toContain('Pane refused apply: stale document');
+    const envelope = labDiagnostics.snapshot().applyDiagnostics[0];
+    expect(envelope?.status).toBe('pane-dispatch-not-applied');
+    expect(envelope?.endedAt).toEqual(expect.any(String));
+    expect(envelope?.paneDispatch).toMatchObject({ applied: false, errorCode: 'Pane refused apply: stale document' });
+  });
+
+  it('records thrown dispatch status without changing product error text', async () => {
+    const backend: Pick<DocumentBackend, 'read' | 'applyChange'> = {
+      async read() {
+        return { text: 'hello', format: 'L2' as const, version: 'v-test' };
+      },
+      async applyChange() {
+        throw new Error('Pane transport exploded');
+      },
+    };
+    const labDiagnostics = createLabDiagnosticsStoreForTest({ runId: 'RUN_THROWN', token: 'secret-thrown' });
+    const result = await handleWordProposeChange({
+      backend: backend as DocumentBackend,
+      uri: 'word://sess-test',
+      args: { old_text: 'hello', new_text: 'hi', author: 'ai:test' },
+      config: DEFAULT_CONFIG,
+      state: new SessionState(),
+      labDiagnostics,
+    });
+
+    const text = result.content.map((part) => part.type === 'text' ? part.text : '').join('\n');
+    expect(result.isError).toBe(true);
+    expect(text).toContain('Pane transport exploded');
+    const envelope = labDiagnostics.snapshot().applyDiagnostics[0];
+    expect(envelope?.status).toBe('pane-dispatch-thrown');
+    expect(envelope?.endedAt).toEqual(expect.any(String));
+    expect(envelope?.paneDispatch).toMatchObject({ applied: false, errorCode: 'Pane transport exploded' });
+  });
+});
 
 describe('remote relay MCP server', () => {
   it('lists only remote Word-safe tools with idempotency in mutating schemas', async () => {
@@ -100,6 +265,24 @@ describe('remote relay MCP server', () => {
       callBackendOperation: async (operation) => {
         if (operation.operation.kind === 'read') return l2ReadResult('Hello world');
         return { applied: true, changeId: 'cn-1' };
+      },
+    });
+  });
+
+  it('normalizes L3 snapshots before preparing a Word source-transition proposal', async () => {
+    await withClient(async (client, calls) => {
+      const result = await client.callTool({ name: 'propose_change', arguments: { file: 'word://sess-t', old_text: 'Hello', new_text: 'Hi', idempotency_key: 'idem-l3-source' } });
+      expect(result.isError).not.toBe(true);
+      const apply = calls.find((call) => call.operation.kind === 'applyChange');
+      expect(apply?.operation.kind).toBe('applyChange');
+      if (!apply || apply.operation.kind !== 'applyChange') throw new Error('expected applyChange');
+      expect(String(apply.operation.op.args.oldL2)).toContain('{++world++}');
+      expect(String(apply.operation.op.args.oldL2)).not.toContain('1:');
+      expect(String(apply.operation.op.args.newL2)).toContain('{~~Hello~>Hi~~}');
+    }, {
+      callBackendOperation: async (operation) => {
+        if (operation.operation.kind === 'read') return l3ReadResult();
+        return { applied: true, changeId: 'cn-2' };
       },
     });
   });
@@ -184,6 +367,88 @@ describe('remote relay MCP server', () => {
     }, { callBackendOperation: async () => ({ isError: true, content: [{ type: 'text', text: 'pane-side failure' }] }) });
   });
 
+
+
+
+
+  it('list_changes enriches entries with snapshot capabilities and readiness', async () => {
+    await withClient(async (client) => {
+      const result = await client.callTool({ name: 'list_changes', arguments: { file: 'word://sess-t', detail: 'full' } });
+      const text = (result.content as Array<{ type: string; text?: string }>)[0]?.text ?? '';
+      const response = JSON.parse(text);
+      const change = response.changes[0];
+      expect(change.capability.state).toBe('source-visible');
+      expect(change.native_reviewable).toBe(false);
+      expect(change.approve_reject_capability).toBe('unknown');
+      expect(change.diagnostics).toMatchObject([{ changeId: 'cn-2', code: 'ooxml-witness-only' }]);
+      expect(response.readiness.state).toBe('wire_ready');
+    }, {
+      callBackendOperation: async () => ({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            text: 'Body {++change++}[^cn-2]\n\n[^cn-2]: @Reviewer | 2026-05-08 | ins | proposed\n',
+            format: 'L2',
+            version: 'v1',
+            readiness: {
+              state: 'wire_ready',
+              sourceTruth: 'body_ooxml',
+              sourceReady: true,
+              capabilityReady: true,
+              proposedCount: 1,
+              interactiveCount: 0,
+              witnessOnlyCount: 0,
+              diagnosticCount: 0,
+              conflictCount: 0,
+            },
+            capabilitiesByChangeId: {
+              'cn-2': {
+                state: 'source-visible',
+                nativeReviewable: false,
+                approveRejectCapability: 'unknown',
+                reason: 'No matching Office.js tracked change yet',
+              },
+            },
+            diagnostics: [{
+              severity: 'warning',
+              code: 'ooxml-witness-only',
+              message: 'OOXML witness is visible but not native reviewable',
+              changeId: 'cn-2',
+            }],
+          }),
+        }],
+      }),
+    });
+  });
+
+  it('preserves snapshot readiness and capabilities in remote read structured content', async () => {
+    await withClient(async (client) => {
+      const result = await client.callTool({ name: 'read_tracked_file', arguments: { file: 'word://sess-t' } });
+      expect(result.isError).not.toBe(true);
+      expect(result.structuredContent).toMatchObject({
+        readiness: { state: 'wire_ready', sourceTruth: 'body_ooxml' },
+        capabilitiesByChangeId: {
+          'cn-2': { state: 'source-visible', nativeReviewable: false },
+        },
+      });
+    }, {
+      callBackendOperation: async () => ({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            text: 'Body {++change++}[^cn-2]\n\n[^cn-2]: @Reviewer | 2026-05-08 | ins | proposed',
+            format: 'L2',
+            version: '7',
+            readiness: { state: 'wire_ready', sourceTruth: 'body_ooxml' },
+            capabilitiesByChangeId: {
+              'cn-2': { state: 'source-visible', nativeReviewable: false, approveRejectCapability: 'unknown' },
+            },
+          }),
+        }],
+      }),
+    });
+  });
+
   it('returns read snapshots as model-visible tracked text with small metadata', async () => {
     await withClient(async (client) => {
       const result = await client.callTool({ name: 'read_tracked_file', arguments: { file: 'word://sess-t' } });
@@ -202,6 +467,117 @@ describe('remote relay MCP server', () => {
 
 
 describe('remote relay backend-wire boundary', () => {
+
+
+  it('review_changes refuses source-visible records without native review capability', async () => {
+    await withClient(async (client, calls) => {
+      const result = await client.callTool({
+        name: 'review_changes',
+        arguments: {
+          file: 'word://sess-t',
+          idempotency_key: 'review-gate-1',
+          author: 'ai:codex',
+          reviews: [{ change_id: 'cn-2', decision: 'approve', reason: 'test gate' }],
+        },
+      });
+      expect(result.isError).toBe(true);
+      expect((result.content as Array<{ text?: string }>)[0]?.text).toContain('WordReviewCapabilityUnavailable');
+      expect(calls.map((call) => call.operation.kind)).toEqual(['read']);
+    }, {
+      callBackendOperation: async () => ({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            text: 'Body {++change++}[^cn-2]\n\n[^cn-2]: @Reviewer | 2026-05-08 | ins | proposed\n',
+            format: 'L2',
+            version: 'v1',
+            capabilitiesByChangeId: {
+              'cn-2': {
+                state: 'source-visible',
+                nativeReviewable: false,
+                approveRejectCapability: 'unknown',
+                reason: 'No matching Office.js tracked change yet',
+              },
+            },
+          }),
+        }],
+      }),
+    });
+  });
+
+  it('review_changes refuses non-interactive conflict capability even if nativeReviewable is accidentally true', async () => {
+    await withClient(async (client, calls) => {
+      const result = await client.callTool({
+        name: 'review_changes',
+        arguments: {
+          file: 'word://sess-t',
+          idempotency_key: 'review-gate-conflict',
+          author: 'ai:codex',
+          reviews: [{ change_id: 'cn-9', decision: 'approve', reason: 'test gate' }],
+        },
+      });
+      expect(result.isError).toBe(true);
+      expect((result.content as Array<{ text?: string }>)[0]?.text).toContain('WordReviewCapabilityUnavailable');
+      expect(calls.map((call) => call.operation.kind)).toEqual(['read']);
+    }, {
+      callBackendOperation: async () => ({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            text: 'Body {++change++}[^cn-9]\n\n[^cn-9]: @Reviewer | 2026-05-08 | ins | proposed\n',
+            format: 'L2',
+            version: 'v1',
+            capabilitiesByChangeId: {
+              'cn-9': {
+                state: 'conflict',
+                nativeReviewable: true,
+                approveRejectCapability: 'available',
+                reason: 'OOXML and native witnesses disagree',
+              },
+            },
+          }),
+        }],
+      }),
+    });
+  });
+
+  it('remote amend_change refuses witness-only source records before backend mutation', async () => {
+    await withClient(async (client, calls) => {
+      const result = await client.callTool({
+        name: 'amend_change',
+        arguments: {
+          file: 'word://sess-t',
+          change_id: 'cn-witness',
+          new_text: 'updated',
+          author: 'ai:codex',
+          idempotency_key: 'amend-witness-gate',
+        },
+      });
+      expect(result.isError).toBe(true);
+      expect((result.content as Array<{ text?: string }>)[0]?.text).toContain('WordWriteCapabilityUnavailable');
+      expect(calls.map((call) => call.operation.kind)).toEqual(['read']);
+    }, {
+      callBackendOperation: async () => ({
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            text: 'Body\n',
+            format: 'L2',
+            version: 'v1',
+            capabilitiesByChangeId: {
+              'cn-witness': {
+                state: 'witness-only',
+                nativeReviewable: false,
+                approveRejectCapability: 'unavailable',
+                reason: 'unsupported OOXML revision shape',
+              },
+            },
+          }),
+        }],
+      }),
+    });
+  });
+
   it('remote classic propose runs shared Word workflow and sends source transition to pane', async () => {
     await withClient(async (client, calls) => {
       const result = await client.callTool({

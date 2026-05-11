@@ -74,6 +74,13 @@ function withQueryTokenHeaders(request: Request, response: Response): Response {
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
+function withNoStoreHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set('Cache-Control', 'no-store');
+  headers.set('Referrer-Policy', 'no-referrer');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 export async function handleStatelessRoutes(
   request: Request,
   env: Env,
@@ -81,16 +88,18 @@ export async function handleStatelessRoutes(
 ): Promise<Response> {
   const url = new URL(request.url);
   const isStateless = (request.method === 'GET' && url.pathname === '/tools') || (request.method === 'GET' && url.pathname === '/openapi.json');
+  const isReadOnlyFetchToolCall = request.method === 'GET' && url.pathname === '/tools/read_tracked_file';
   const isPaneToolCall = request.method === 'POST' && url.pathname.startsWith('/tools/');
-  if (!isStateless && !isPaneToolCall) {
+  if (!isStateless && !isReadOnlyFetchToolCall && !isPaneToolCall) {
     return new Response('not found', { status: 404, headers: queryTokenHeaders(request) });
   }
 
-  const ctx = await relayContext(request, env, isPaneToolCall);
+  const ctx = await relayContext(request, env, isReadOnlyFetchToolCall || isPaneToolCall);
   if (ctx instanceof Response) return ctx;
 
   const facade = await handleRemoteHttpFacade(request, ctx, mcp);
   if (!facade) return new Response('not found', { status: 404, headers: queryTokenHeaders(request) });
+  if (isReadOnlyFetchToolCall) return withNoStoreHeaders(facade);
   return withQueryTokenHeaders(request, facade);
 }
 

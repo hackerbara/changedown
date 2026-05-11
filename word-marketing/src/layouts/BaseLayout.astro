@@ -1,0 +1,64 @@
+---
+import '@/styles/fonts.css';
+import '@/styles/tokens.css';
+import '@/styles/base.css';
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: string;
+}
+const {
+  title,
+  description = 'ChangeDown for Word — bring any AI into your live Word document.',
+  ogImage = '/og/index.png',
+} = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site).toString();
+---
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href={canonical} />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={new URL(ogImage, Astro.site).toString()} />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <title>{title}</title>
+    <slot name="head" />
+    {import.meta.env.PUBLIC_ANALYTICS_DOMAIN && (
+      <script
+        is:inline
+        defer
+        data-domain={import.meta.env.PUBLIC_ANALYTICS_DOMAIN}
+        src="https://plausible.io/js/script.js"
+      ></script>
+    )}
+  </head>
+  <body>
+    <a href="#main" class="skip-to-content">Skip to content</a>
+    <slot name="header" />
+    <main id="main">
+      <slot />
+    </main>
+    <slot name="footer" />
+  </body>
+</html>
+<style>
+  .skip-to-content {
+    position: absolute;
+    left: -9999px;
+    top: 8px;
+    padding: 8px 14px;
+    background: var(--copper);
+    color: white;
+    border-radius: 4px;
+    z-index: 100;
+  }
+  .skip-to-content:focus {
+    left: 8px;
+  }
+</style>

@@ -7,16 +7,54 @@ import { SERVICE_NAME } from "./fixed-port-leader.js";
 import { AGENTS_UPDATED_METHOD } from "@changedown/core/backend";
 import type { BackendEvent } from "@changedown/core/backend";
 import type { ClientInfo } from "../author.js";
+import type { LabDiagnosticsStore, LabTraceRecord, PaneDevToolsDiagnosticsSnapshot } from "../lab-diagnostics.js";
 
 export const CAPABILITY_BACKEND_REGISTER = "backend-register";
 export const CAPABILITY_MCP_STREAMABLE = "mcp-streamable";
 
 /** Public fields visible to external callers. */
+export interface PaneRuntimeIdentity {
+  protocolVersion: 1;
+  runId?: string;
+  paneMode?: string;
+  bundleMarker?: string;
+  taskpaneUrl?: string;
+  taskpaneBuildId?: string;
+  gitSha?: string;
+  buildTimestamp?: string;
+  webpackMode?: string;
+  loadedAt: string;
+  sessionUri: string;
+  userAgent?: string;
+  officeHost?: string;
+  officePlatform?: string;
+}
+
+export interface PaneLabMetadata {
+  runId?: string;
+  bundleMarker?: string;
+  paneMode?: string;
+  taskpaneUrl?: string;
+  runtime?: PaneRuntimeIdentity;
+}
+
 export interface PaneRegistrationInfo {
   registrationId: string;
   scheme: string;
   sessionId: string;
   capabilities: string[];
+  lab?: PaneLabMetadata;
+}
+
+export interface PaneRpcDebugRecord {
+  event: "sent" | "response" | "timeout" | "disconnect";
+  registrationId: string;
+  requestId?: string;
+  method?: string;
+  deliveryPath?: "sse" | "poll" | "sse+poll" | "unknown";
+  runId?: string;
+  timestamp: string;
+  message?: string;
 }
 
 /** A minimal disposable so callers can release resources tied to a registration. */
@@ -52,11 +90,15 @@ export interface PaneEndpointOptions {
    * open. Default: 30 000 ms. Override in tests for fast assertions.
    */
   requestTimeoutMs?: number;
+  /** Live-lab-only diagnostics store. Disabled unless explicitly provided. */
+  labDiagnostics?: LabDiagnosticsStore;
 }
 
 /** Full internal state, not exported. */
 interface PaneRegistration extends PaneRegistrationInfo {
   sseRes: http.ServerResponse | null;
+  /** Active keepalive interval handle; null when no SSE stream is open. */
+  keepalive: NodeJS.Timeout | null;
   /** Pending requests awaiting a response from the pane. */
   pendingRequests: Map<
     string,
@@ -138,6 +180,8 @@ export interface PaneEndpointHandle {
    * standalone callers; both code paths are safe to leave attached.
    */
   handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse): void;
+  /** Return recent live-lab RPC lifecycle diagnostics. */
+  getDebugRecords?(): PaneRpcDebugRecord[];
 }
 
 const HEALTH_RESPONSE = {
@@ -151,7 +195,12 @@ const HEALTH_RESPONSE = {
 };
 
 const SSE_GRACE_MS = 5_000;
-const KEEPALIVE_MS = 15_000;
+const KEEPALIVE_MS = (() => {
+  const env = process.env.CHANGEDOWN_PANE_KEEPALIVE_MS;
+  if (!env) return 15_000;
+  const parsed = Number.parseInt(env, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 15_000;
+})();
 const TEST_CONTROL_ENABLED = process.env.CHANGEDOWN_MCP_TEST_CONTROL === "1";
 /**
  * A registration with no SSE stream opened within this window is pruned.
@@ -159,6 +208,7 @@ const TEST_CONTROL_ENABLED = process.env.CHANGEDOWN_MCP_TEST_CONTROL === "1";
  */
 const REGISTRATION_STREAM_TTL_MS = 30_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+const MAX_DEBUG_RECORDS = 500;
 const DEFAULT_ALLOWED_PANE_ORIGINS = [
   "https://127.0.0.1:3000",
   "https://localhost:3000",
@@ -210,6 +260,144 @@ function endJson(
   res.end(payload);
 }
 
+const LAB_INCLUDE_LATEST_KEYS: Record<string, string[]> = {
+  browser: [
+    "counters",
+    "errors",
+    "unhandledRejections",
+    "eventSource",
+    "performanceResources",
+    "mutations",
+  ],
+  console: ["counters", "console", "errors", "unhandledRejections"],
+  network: ["counters", "network", "eventSource"],
+  ui: ["ui"],
+  domSummary: ["domSummary"],
+};
+
+const LAB_INCLUDE_TOP_LEVEL_KEYS: Record<string, string[]> = {
+  trace: ["traceRecords"],
+  traces: ["traceRecords"],
+  queue: ["pane", "tickQueue"],
+  apply: ["applyDiagnostics"],
+  applyDiagnostics: ["applyDiagnostics"],
+  debug: ["debugRecords"],
+  debugRecords: ["debugRecords"],
+  serverDebugRecords: ["debugRecords"],
+};
+
+const LAB_LATEST_METADATA_KEYS = [
+  "protocolVersion",
+  "kind",
+  "runId",
+  "sessionUri",
+  "capturedAt",
+  "sequence",
+  "pushReason",
+];
+
+function parseLabInclude(value: string | null): Set<string> | undefined {
+  if (!value) return undefined;
+  const parts = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return parts.length > 0 ? new Set(parts) : undefined;
+}
+
+function filterObjectKeys(source: unknown, keys: Iterable<string>): Record<string, unknown> {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return {};
+  const input = source as Record<string, unknown>;
+  const output: Record<string, unknown> = {};
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(input, key)) output[key] = input[key];
+  }
+  return output;
+}
+
+function filterLatestLabDiagnostics(latest: unknown, include: Set<string>): unknown {
+  if (!latest || typeof latest !== "object" || Array.isArray(latest)) return latest;
+  const keys = new Set<string>(LAB_LATEST_METADATA_KEYS);
+  for (const item of include) {
+    for (const key of LAB_INCLUDE_LATEST_KEYS[item] ?? []) keys.add(key);
+  }
+  return filterObjectKeys(latest, keys);
+}
+
+function filterLabDiagnosticsBody(body: Record<string, unknown>, include: Set<string> | undefined): Record<string, unknown> {
+  if (!include) return body;
+
+  const topLevelKeys = new Set<string>(["runId", "stale", "lastUpdatedAt", "lastSequence", "latest"]);
+  for (const item of include) {
+    for (const key of LAB_INCLUDE_TOP_LEVEL_KEYS[item] ?? []) topLevelKeys.add(key);
+  }
+
+  const filtered = filterObjectKeys(body, topLevelKeys);
+  if (Object.prototype.hasOwnProperty.call(filtered, "latest")) {
+    filtered.latest = filterLatestLabDiagnostics(filtered.latest, include);
+  }
+  return filtered;
+}
+
+function sanitizePaneLabMetadata(value: unknown): PaneLabMetadata | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const input = value as Record<string, unknown>;
+  const lab: PaneLabMetadata = {};
+  const runId = pickString(input.runId);
+  const bundleMarker = pickString(input.bundleMarker, 100);
+  const paneMode = pickString(input.paneMode, 100);
+  const taskpaneUrl = pickString(input.taskpaneUrl, 1000);
+  const runtime = sanitizePaneRuntimeIdentity(input.runtime);
+  if (runId) lab.runId = runId;
+  if (bundleMarker) lab.bundleMarker = bundleMarker;
+  if (paneMode) lab.paneMode = paneMode;
+  if (taskpaneUrl) lab.taskpaneUrl = taskpaneUrl;
+  if (runtime) lab.runtime = runtime;
+  return Object.keys(lab).length > 0 ? lab : undefined;
+}
+
+function pickString(value: unknown, max = 500): string | undefined {
+  return typeof value === "string" ? value.slice(0, max) : undefined;
+}
+
+function sanitizePaneRuntimeIdentity(
+  value: unknown
+): PaneRuntimeIdentity | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const input = value as Record<string, unknown>;
+  if (input.protocolVersion !== 1) return undefined;
+  const sessionUri = pickString(input.sessionUri, 300);
+  const loadedAt = pickString(input.loadedAt, 100);
+  if (!sessionUri || !loadedAt) return undefined;
+  return {
+    protocolVersion: 1,
+    runId: pickString(input.runId),
+    paneMode: pickString(input.paneMode, 100),
+    bundleMarker: pickString(input.bundleMarker, 100),
+    taskpaneUrl: pickString(input.taskpaneUrl, 1000),
+    taskpaneBuildId: pickString(input.taskpaneBuildId, 200),
+    gitSha: pickString(input.gitSha, 80),
+    buildTimestamp: pickString(input.buildTimestamp, 100),
+    webpackMode: pickString(input.webpackMode, 50),
+    loadedAt,
+    sessionUri,
+    userAgent: pickString(input.userAgent, 500),
+    officeHost: pickString(input.officeHost, 100),
+    officePlatform: pickString(input.officePlatform, 100),
+  };
+}
+
+function deliveryPathForRegistration(
+  reg: PaneRegistration
+): PaneRpcDebugRecord["deliveryPath"] {
+  const hasSse = Boolean(reg.sseRes && !reg.sseRes.writableEnded);
+  const hasPoll = reg.capabilities.includes("poll-rpc");
+  if (hasSse && hasPoll) return "sse+poll";
+  if (hasSse) return "sse";
+  if (hasPoll) return "poll";
+  return "unknown";
+}
+
 /**
  * Attaches pane-backend HTTP routes to an existing http.Server.
  *
@@ -226,6 +414,7 @@ export function attachPaneEndpoints(
   const registrations = new Map<string, PaneRegistration>();
   const emitter = new EventEmitter();
   const allowedOrigins = buildAllowedPaneOrigins(options);
+  const debugRecords: PaneRpcDebugRecord[] = [];
   let keepalivePaused = false;
   /**
    * Edit counters keyed by MCP session ID (not pane registrationId).
@@ -235,10 +424,29 @@ export function attachPaneEndpoints(
    */
   const editCounts = new Map<string, number>();
 
+  function recordDebug(record: Omit<PaneRpcDebugRecord, "timestamp">): void {
+    debugRecords.push({
+      ...record,
+      timestamp: new Date().toISOString(),
+    });
+    if (debugRecords.length > MAX_DEBUG_RECORDS) {
+      debugRecords.splice(0, debugRecords.length - MAX_DEBUG_RECORDS);
+    }
+  }
+
   function removeRegistration(registrationId: string): void {
     const reg = registrations.get(registrationId);
     if (!reg) return;
-    for (const [, pending] of reg.pendingRequests) {
+    for (const [requestId, pending] of reg.pendingRequests) {
+      recordDebug({
+        event: "disconnect",
+        registrationId,
+        requestId,
+        method: pending.method,
+        deliveryPath: deliveryPathForRegistration(reg),
+        runId: reg.lab?.runId,
+        message: "Pane disconnected",
+      });
       pending.reject(new Error("Pane disconnected"));
     }
     for (const pollRes of reg.pendingPolls) {
@@ -273,7 +481,12 @@ export function attachPaneEndpoints(
     let body = "";
     for await (const chunk of req) body += chunk;
 
-    let payload: { scheme: string; sessionId: string; capabilities: string[] };
+    let payload: {
+      scheme: string;
+      sessionId: string;
+      capabilities: string[];
+      lab?: PaneLabMetadata;
+    };
     try {
       const parsed = JSON.parse(body) as Partial<typeof payload> | null;
       if (
@@ -293,6 +506,7 @@ export function attachPaneEndpoints(
         scheme: parsed.scheme,
         sessionId: parsed.sessionId,
         capabilities: parsed.capabilities,
+        lab: sanitizePaneLabMetadata(parsed.lab),
       };
     } catch {
       res.writeHead(400, { "Content-Type": "application/json" });
@@ -306,7 +520,9 @@ export function attachPaneEndpoints(
       scheme: payload.scheme,
       sessionId: payload.sessionId,
       capabilities: payload.capabilities,
+      lab: payload.lab,
       sseRes: null,
+      keepalive: null,
       pendingRequests: new Map(),
       pendingPolls: new Set(),
       nextRequestId: 1,
@@ -348,6 +564,13 @@ export function attachPaneEndpoints(
     // waiting for the first data write.
     res.flushHeaders();
 
+    // If the previous SSE stream for this registration is still mid-close
+    // (grace window), its keepalive interval is still firing. Clear it
+    // BEFORE we install the new one so we never have two intervals per reg.
+    if (reg.keepalive) {
+      clearInterval(reg.keepalive);
+      reg.keepalive = null;
+    }
     reg.sseRes = res;
 
     // Send a REAL SSE event (not an `: comment`) so `EventSource.onmessage`
@@ -355,13 +578,16 @@ export function attachPaneEndpoints(
     // Comments don't reach JS — the pane would otherwise time out at
     // KEEPALIVE_TIMEOUT_MS even while the server was sending keepalives.
     res.write('data: {"type":"ping"}\n\n');
-    const keepalive = setInterval(() => {
+    reg.keepalive = setInterval(() => {
       if (!keepalivePaused && !res.writableEnded)
         res.write('data: {"type":"ping"}\n\n');
     }, KEEPALIVE_MS);
 
     req.on("close", () => {
-      clearInterval(keepalive);
+      if (reg.keepalive) {
+        clearInterval(reg.keepalive);
+        reg.keepalive = null;
+      }
       reg.sseRes = null;
       // Grace period: remove registration after 5 s if no reconnect
       setTimeout(() => {
@@ -396,6 +622,18 @@ export function attachPaneEndpoints(
     const pending = reg.pendingRequests.get(payload.id);
     if (pending) {
       reg.pendingRequests.delete(payload.id);
+      recordDebug({
+        event: "response",
+        registrationId,
+        requestId: payload.id,
+        method: pending.method,
+        deliveryPath: deliveryPathForRegistration(reg),
+        runId: reg.lab?.runId,
+        message:
+          payload.error || payload.ok === false
+            ? String(payload.error ?? "Pane indicated failure without error detail")
+            : undefined,
+      });
       if (payload.error) {
         pending.reject(new Error(String(payload.error)));
       } else if (payload.ok === false) {
@@ -408,6 +646,42 @@ export function attachPaneEndpoints(
     }
 
     res.writeHead(200);
+    res.end();
+  }
+
+  async function handleDiagnosticsIngest(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    registrationId: string
+  ): Promise<void> {
+    const reg = registrations.get(registrationId);
+    if (!reg) {
+      endJson(res, 404, { error: "unknown registrationId" });
+      return;
+    }
+
+    let body = "";
+    for await (const chunk of req) body += chunk;
+
+    let snapshot: PaneDevToolsDiagnosticsSnapshot;
+    try {
+      snapshot = JSON.parse(body) as PaneDevToolsDiagnosticsSnapshot;
+    } catch {
+      endJson(res, 400, { error: "invalid JSON" });
+      return;
+    }
+
+    const result = options.labDiagnostics?.ingestPaneSnapshot(registrationId, snapshot) ?? {
+      ok: false as const,
+      status: 404,
+      error: "lab diagnostics disabled",
+    };
+    if (!result.ok) {
+      endJson(res, result.status, { error: result.error });
+      return;
+    }
+
+    res.writeHead(204, { Connection: "close" });
     res.end();
   }
 
@@ -448,6 +722,188 @@ export function attachPaneEndpoints(
     emitter.emit("paneNotification", registrationId, payload.event);
     res.writeHead(204);
     res.end();
+  }
+
+  async function readJsonBody(req: http.IncomingMessage, maxBytes = 1_000_000): Promise<unknown> {
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
+      if (Buffer.byteLength(body) > maxBytes) {
+        throw new Error("request body too large");
+      }
+    }
+    return JSON.parse(body) as unknown;
+  }
+
+  async function handleLabTrace(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    registrationId: string
+  ): Promise<void> {
+    const labDiagnostics = options.labDiagnostics;
+    if (!labDiagnostics) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+
+    const reg = registrations.get(registrationId);
+    if (!reg) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "unknown registrationId" }));
+      return;
+    }
+    if (reg.lab?.runId !== labDiagnostics.runId) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close",
+      });
+      res.end(JSON.stringify({ error: "registration is not part of active lab run" }));
+      return;
+    }
+
+    let payload: unknown;
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "invalid JSON" }));
+      return;
+    }
+
+    const input = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+    const rawRecords = Array.isArray(input.records)
+      ? input.records
+      : input.record !== undefined
+        ? [input.record]
+        : [];
+
+    for (const rawRecord of rawRecords) {
+      if (!rawRecord || typeof rawRecord !== "object") continue;
+      const candidate = rawRecord as Partial<LabTraceRecord> & Record<string, unknown>;
+      labDiagnostics.recordTrace({
+        id: String(candidate.id ?? `${registrationId}:${Date.now()}`),
+        kind: String(candidate.kind ?? "pane"),
+        phase: String(candidate.phase ?? "unknown"),
+        at: String(candidate.at ?? new Date().toISOString()),
+        runId: labDiagnostics.runId,
+        sessionUri: typeof candidate.sessionUri === "string" ? candidate.sessionUri : `word://${reg.sessionId}`,
+        rpcRequestId: typeof candidate.rpcRequestId === "string" ? candidate.rpcRequestId : undefined,
+        applyAttemptId: typeof candidate.applyAttemptId === "string" ? candidate.applyAttemptId : undefined,
+        code: typeof candidate.code === "string" ? candidate.code : undefined,
+        detail: candidate.detail && typeof candidate.detail === "object" && !Array.isArray(candidate.detail)
+          ? (candidate.detail as Record<string, unknown>)
+          : undefined,
+      });
+    }
+
+    res.writeHead(204, { "Cache-Control": "no-cache", Connection: "close" });
+    res.end();
+  }
+
+  function handleLabDiagnostics(
+    req: http.IncomingMessage,
+    res: http.ServerResponse
+  ): void {
+    const labDiagnostics = options.labDiagnostics;
+    if (!labDiagnostics) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+
+    const parsed = new URL(req.url ?? "/", "http://127.0.0.1");
+    const runId = parsed.searchParams.get("runId") ?? undefined;
+    const token = req.headers["x-changedown-lab-diagnostics-token"];
+    const candidateToken = Array.isArray(token) ? token[0] : token;
+
+    if (!labDiagnostics.accepts(runId ?? "", candidateToken)) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close",
+      });
+      res.end(JSON.stringify({ error: "forbidden" }));
+      return;
+    }
+
+    const include = parseLabInclude(parsed.searchParams.get("include"));
+    const body = {
+      ...labDiagnostics.combinedSnapshot(runId ?? "", { includeFullDom: false }),
+      debugRecords: debugRecords.map((record) => ({ ...record })),
+    };
+    endJson(res, 200, filterLabDiagnosticsBody(body, include));
+  }
+
+
+  async function handleLabDom(
+    req: http.IncomingMessage,
+    res: http.ServerResponse
+  ): Promise<void> {
+    const labDiagnostics = options.labDiagnostics;
+    if (!labDiagnostics) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+
+    if (req.method === "GET") {
+      const parsed = new URL(req.url ?? "/", "http://127.0.0.1");
+      const runId = parsed.searchParams.get("runId") ?? undefined;
+      const token = req.headers["x-changedown-lab-diagnostics-token"];
+      const candidateToken = Array.isArray(token) ? token[0] : token;
+      if (!labDiagnostics.accepts(runId ?? "", candidateToken)) {
+        res.writeHead(403, {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+          Connection: "close",
+        });
+        res.end(JSON.stringify({ error: "forbidden" }));
+        return;
+      }
+      endJson(res, 200, labDiagnostics.latestPaneSnapshot(runId ?? "", { includeFullDom: false }));
+      return;
+    }
+
+    if (req.method !== "POST") {
+      res.writeHead(405, { "Allow": "GET, POST", Connection: "close" });
+      res.end();
+      return;
+    }
+
+    let payload: unknown;
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "invalid JSON" }));
+      return;
+    }
+
+    const input = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
+    const runId = typeof input.runId === "string" ? input.runId : undefined;
+    const token = req.headers["x-changedown-lab-diagnostics-token"];
+    const candidateToken = Array.isArray(token) ? token[0] : token;
+    if (!labDiagnostics.accepts(runId ?? "", candidateToken)) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close",
+      });
+      res.end(JSON.stringify({ error: "forbidden" }));
+      return;
+    }
+    if (input.mode === "full" && !labDiagnostics.allowFullDom()) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close",
+      });
+      res.end(JSON.stringify({ error: "full DOM diagnostics disabled" }));
+      return;
+    }
+    endJson(res, 200, labDiagnostics.latestPaneSnapshot(runId ?? "", { includeFullDom: input.mode === "full" }));
   }
 
   function writePendingPollResponse(
@@ -555,10 +1011,32 @@ export function attachPaneEndpoints(
         `[pane-endpoint] request: ${req.method} ${req.url}\n`
       );
     }
-    applyCors(req, res);
-
     const url = req.url ?? "";
     const method = req.method ?? "";
+
+    // Keep lab diagnostics retrieval same-origin/manual-token only: do not
+    // attach pane CORS headers to this endpoint or its preflight.
+    if (url === "/backend/lab/diagnostics" || url.startsWith("/backend/lab/diagnostics?")) {
+      if (method === "GET") {
+        handleLabDiagnostics(req, res);
+      } else {
+        res.writeHead(405, { "Allow": "GET", Connection: "close" });
+        res.end();
+      }
+      return;
+    }
+
+    if (url === "/backend/lab/dom" || url.startsWith("/backend/lab/dom?")) {
+      void handleLabDom(req, res);
+      return;
+    }
+
+    if (url.startsWith("/backend/lab/")) {
+      endJson(res, 404, { error: "unknown lab diagnostics route" });
+      return;
+    }
+
+    applyCors(req, res);
 
     // Preflight
     if (method === "OPTIONS") {
@@ -616,9 +1094,21 @@ export function attachPaneEndpoints(
       return;
     }
 
+    const traceMatch = url.match(/^\/backend\/trace\/([^/]+)$/);
+    if (traceMatch && method === "POST") {
+      void handleLabTrace(req, res, traceMatch[1]!);
+      return;
+    }
+
     const notifyMatch = url.match(/^\/backend\/notify\/([^/]+)$/);
     if (notifyMatch && method === "POST") {
       void handleNotify(req, res, notifyMatch[1]!);
+      return;
+    }
+
+    const diagnosticsMatch = url.match(/^\/backend\/diagnostics\/([^/]+)$/);
+    if (diagnosticsMatch && method === "POST") {
+      void handleDiagnosticsIngest(req, res, diagnosticsMatch[1]!);
       return;
     }
 
@@ -664,6 +1154,7 @@ export function attachPaneEndpoints(
 
       const id = String(reg.nextRequestId++);
       const event = `data: ${JSON.stringify({ id, method, params })}\n\n`;
+      const deliveryPath = deliveryPathForRegistration(reg);
 
       const timeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
       let timer: NodeJS.Timeout | undefined;
@@ -676,6 +1167,14 @@ export function attachPaneEndpoints(
           params,
           delivered: false,
         });
+      });
+      recordDebug({
+        event: "sent",
+        registrationId,
+        requestId: id,
+        method,
+        deliveryPath,
+        runId: reg.lab?.runId,
       });
 
       if (reg.sseRes && !reg.sseRes.writableEnded) {
@@ -708,6 +1207,15 @@ export function attachPaneEndpoints(
       const timeoutPromise = new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
           reg.pendingRequests.delete(id);
+          recordDebug({
+            event: "timeout",
+            registrationId,
+            requestId: id,
+            method,
+            deliveryPath,
+            runId: reg.lab?.runId,
+            message: `Word bridge request timed out after ${timeoutMs} ms (method: ${method})`,
+          });
           reject(
             new Error(
               `Word bridge request timed out after ${timeoutMs} ms (method: ${method})`
@@ -768,6 +1276,10 @@ export function attachPaneEndpoints(
       res: http.ServerResponse
     ): void {
       requestListener(req, res);
+    },
+
+    getDebugRecords(): PaneRpcDebugRecord[] {
+      return debugRecords.map((record) => ({ ...record }));
     },
 
     /**

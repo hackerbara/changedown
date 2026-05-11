@@ -29,8 +29,90 @@ const encoder = new TextEncoder();
 // All read sites use getXXHash() so they always get the live global value.
 const HASHLINE_KEY = '__changedown_xxhash__';
 
-function getXXHash(): XXHashAPI | null {
+type HashlineHashAPI = Pick<XXHashAPI, 'h32Raw'>;
+
+function getXXHash(): HashlineHashAPI | null {
   return (globalThis as any)[HASHLINE_KEY] ?? null;
+}
+
+const XXH_PRIME32_1 = 0x9E3779B1;
+const XXH_PRIME32_2 = 0x85EBCA77;
+const XXH_PRIME32_3 = 0xC2B2AE3D;
+const XXH_PRIME32_4 = 0x27D4EB2F;
+const XXH_PRIME32_5 = 0x165667B1;
+
+function rotl32(value: number, bits: number): number {
+  return ((value << bits) | (value >>> (32 - bits))) >>> 0;
+}
+
+function readUInt32LE(input: Uint8Array, offset: number): number {
+  return (
+    input[offset] |
+    (input[offset + 1] << 8) |
+    (input[offset + 2] << 16) |
+    (input[offset + 3] << 24)
+  ) >>> 0;
+}
+
+function xxh32Round(acc: number, value: number): number {
+  acc = (acc + Math.imul(value, XXH_PRIME32_2)) >>> 0;
+  acc = rotl32(acc, 13);
+  return Math.imul(acc, XXH_PRIME32_1) >>> 0;
+}
+
+function xxh32Raw(input: Uint8Array, seed = 0): number {
+  let offset = 0;
+  const length = input.length;
+  const limit = length - 16;
+  let h32: number;
+
+  if (length >= 16) {
+    let v1 = (seed + XXH_PRIME32_1 + XXH_PRIME32_2) >>> 0;
+    let v2 = (seed + XXH_PRIME32_2) >>> 0;
+    let v3 = seed >>> 0;
+    let v4 = (seed - XXH_PRIME32_1) >>> 0;
+
+    while (offset <= limit) {
+      v1 = xxh32Round(v1, readUInt32LE(input, offset)); offset += 4;
+      v2 = xxh32Round(v2, readUInt32LE(input, offset)); offset += 4;
+      v3 = xxh32Round(v3, readUInt32LE(input, offset)); offset += 4;
+      v4 = xxh32Round(v4, readUInt32LE(input, offset)); offset += 4;
+    }
+
+    h32 = (
+      rotl32(v1, 1) +
+      rotl32(v2, 7) +
+      rotl32(v3, 12) +
+      rotl32(v4, 18)
+    ) >>> 0;
+  } else {
+    h32 = (seed + XXH_PRIME32_5) >>> 0;
+  }
+
+  h32 = (h32 + length) >>> 0;
+
+  while (offset <= length - 4) {
+    h32 = (h32 + Math.imul(readUInt32LE(input, offset), XXH_PRIME32_3)) >>> 0;
+    h32 = Math.imul(rotl32(h32, 17), XXH_PRIME32_4) >>> 0;
+    offset += 4;
+  }
+
+  while (offset < length) {
+    h32 = (h32 + Math.imul(input[offset], XXH_PRIME32_5)) >>> 0;
+    h32 = Math.imul(rotl32(h32, 11), XXH_PRIME32_1) >>> 0;
+    offset++;
+  }
+
+  h32 ^= h32 >>> 15;
+  h32 = Math.imul(h32, XXH_PRIME32_2) >>> 0;
+  h32 ^= h32 >>> 13;
+  h32 = Math.imul(h32, XXH_PRIME32_3) >>> 0;
+  h32 ^= h32 >>> 16;
+  return h32 >>> 0;
+}
+
+function createPureJsXXHash(): HashlineHashAPI {
+  return { h32Raw: (input: Uint8Array) => xxh32Raw(input) };
 }
 
 /**
@@ -39,7 +121,15 @@ function getXXHash(): XXHashAPI | null {
  */
 export async function initHashline(): Promise<void> {
   if (!getXXHash()) {
-    (globalThis as any)[HASHLINE_KEY] = await xxhashWasm();
+    try {
+      (globalThis as any)[HASHLINE_KEY] = await xxhashWasm();
+    } catch (err) {
+      // Some embedders, including Cloudflare Worker isolates used by the remote
+      // relay, disallow dynamic WebAssembly code generation. Hashline
+      // coordinates are still required there, so fall back to a small pure JS
+      // xxHash32 implementation with the same seed and byte semantics.
+      (globalThis as any)[HASHLINE_KEY] = createPureJsXXHash();
+    }
   }
 }
 

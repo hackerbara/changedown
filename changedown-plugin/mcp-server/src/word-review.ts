@@ -1,4 +1,4 @@
-import type { DocumentBackend } from '@changedown/core/backend';
+import type { DocumentBackend, DocumentSnapshot, DocumentSnapshotCapability } from '@changedown/core/backend';
 
 export interface WordReviewOperation {
   changeId: string;
@@ -93,7 +93,11 @@ export async function applyWordReviewChanges(args: Record<string, unknown>, back
   const author = typeof args.author === 'string' ? args.author : undefined;
   const results: Array<{ change_id: string; decision: string; status_updated: boolean; reason?: string }> = [];
 
+  const snapshot = await backend.read({ uri });
+
   for (const op of prepared.operations) {
+    assertWordReviewCapability(snapshot, op.changeId);
+
     const result = await backend.applyChange({ uri }, {
       kind: 'review',
       args: {
@@ -125,4 +129,53 @@ export async function applyWordReviewChanges(args: Record<string, unknown>, back
     },
     ...(remaining === 0 ? { note: 'All changes in this Word session are now resolved. No proposed changes remain.' } : {}),
   };
+}
+
+function capabilityUnavailableMessage(prefix: string, changeId: string, capability: DocumentSnapshotCapability, fallbackReason: string): string {
+  return `${prefix}: ${changeId} is ${capability.state}; ${capability.reason ?? fallbackReason}`;
+}
+
+export function assertWordReviewCapability(snapshot: DocumentSnapshot | undefined, changeId: string): void {
+  // Older/fake backends may not expose snapshot capability metadata yet. Absence
+  // means "no capability opinion"; explicit noninteractive capability blocks
+  // review below.
+  if (!snapshot) return;
+  const capability = snapshot.capabilitiesByChangeId?.[changeId];
+  if (!capability) return;
+
+  const canReview =
+    capability.state === 'interactive' &&
+    capability.nativeReviewable === true &&
+    capability.approveRejectCapability === 'available';
+  if (!canReview) {
+    throw new Error(
+      capabilityUnavailableMessage(
+        'WordReviewCapabilityUnavailable',
+        changeId,
+        capability,
+        'no native review capability is available',
+      ),
+    );
+  }
+}
+
+export function assertWordSourceMutationCapability(
+  snapshot: DocumentSnapshot | undefined,
+  changeId: string,
+  operationName: string,
+): void {
+  if (!snapshot) return;
+  const capability = snapshot.capabilitiesByChangeId?.[changeId];
+  if (!capability) return;
+
+  if (capability.state === 'witness-only' || capability.state === 'diagnostic-only' || capability.state === 'conflict') {
+    throw new Error(
+      capabilityUnavailableMessage(
+        'WordWriteCapabilityUnavailable',
+        changeId,
+        capability,
+        `${operationName} cannot mutate ${capability.state} source records`,
+      ),
+    );
+  }
 }

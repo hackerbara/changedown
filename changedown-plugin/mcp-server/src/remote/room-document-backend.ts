@@ -74,6 +74,11 @@ export class RoomDocumentBackend implements DocumentBackend {
       text: result.text,
       format: result.format === 'L3' ? 'L3' : 'L2',
       version: typeof result.version === 'string' ? result.version : '',
+      ...(isObject(result.readiness) ? { readiness: result.readiness as unknown as DocumentSnapshot['readiness'] } : {}),
+      ...(Array.isArray(result.diagnostics) ? { diagnostics: result.diagnostics as unknown as DocumentSnapshot['diagnostics'] } : {}),
+      ...(isObject(result.capabilitiesByChangeId)
+        ? { capabilitiesByChangeId: result.capabilitiesByChangeId as unknown as DocumentSnapshot['capabilitiesByChangeId'] }
+        : {}),
     };
   }
 

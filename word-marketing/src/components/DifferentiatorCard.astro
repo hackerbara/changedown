@@ -1,0 +1,20 @@
+---
+import Mascot from '@/components/Mascot.astro';
+import Icon from '@/components/Icon.astro';
+interface Props { title: string; link: string; }
+const { title, link } = Astro.props;
+---
+<article class="diff-card">
+  <div class="card-icon"><Mascot pose="idle" size={40} decorative /></div>
+  <h3>{title}</h3>
+  <div class="body"><slot name="body" /></div>
+  <a href={link} class="card-link">Read more <Icon name="arrow-right" size={14} /></a>
+</article>
+<style>
+  .diff-card { background: var(--paper-white); border: 1px solid var(--border-soft); border-radius: 8px; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+  .card-icon { margin-bottom: var(--space-1); }
+  .diff-card h3 { font-size: 20px; line-height: 1.3; margin: 0; }
+  .body { font-size: 14px; line-height: 1.5; color: var(--ink-secondary); flex: 1; min-height: 1.5em; }
+  .card-link { color: var(--copper-deep); font-weight: 600; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; transition: gap var(--transition-fast); }
+  .card-link:hover { gap: 6px; color: var(--copper-deep); }
+</style>

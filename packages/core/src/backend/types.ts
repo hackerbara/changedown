@@ -58,10 +58,39 @@ export interface DocumentRef {
  * `format` is "L2" (plain CriticMarkup) or "L3" (annotated with footnote metadata).
  * `version` is an opaque string — mtime for files, observer seq for Word.
  */
+export interface DocumentSnapshotCapability {
+  state: 'interactive' | 'source-visible' | 'witness-only' | 'diagnostic-only' | 'conflict';
+  nativeReviewable: boolean;
+  approveRejectCapability: 'available' | 'unavailable' | 'partial' | 'unknown';
+  reason?: string;
+}
+
+export interface DocumentSnapshotReadiness {
+  state: 'warming' | 'body_ready' | 'wire_ready' | 'wire_degraded' | 'failed';
+  sourceTruth: 'package_ooxml' | 'body_ooxml' | 'file' | 'agent_proposal' | 'unknown';
+  sourceReady: boolean;
+  capabilityReady: boolean;
+  proposedCount: number;
+  interactiveCount: number;
+  witnessOnlyCount: number;
+  diagnosticCount: number;
+  conflictCount: number;
+}
+
+export interface DocumentSnapshotDiagnostic {
+  severity: 'info' | 'warning' | 'error';
+  code: string;
+  message: string;
+  changeId?: string;
+}
+
 export interface DocumentSnapshot {
   text: string;
   format: 'L2' | 'L3';
   version: string;
+  readiness?: DocumentSnapshotReadiness;
+  diagnostics?: DocumentSnapshotDiagnostic[];
+  capabilitiesByChangeId?: Record<string, DocumentSnapshotCapability>;
 }
 
 /** Discriminated union of the six write operations the port surfaces. */

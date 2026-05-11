@@ -1,0 +1,26 @@
+---
+/**
+ * Schema.org SoftwareApplication structured data for the homepage.
+ *
+ * Mounted via `<SoftwareApplicationLd slot="head" />` inside BaseLayout.
+ * Only used on `/` — content pages don't need the SoftwareApplication
+ * schema (they're WebPage type, which Astro infers by default).
+ */
+const ld = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'ChangeDown for Word',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Microsoft Word (Windows, macOS, Web)',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'USD',
+    description: 'Free with public rooms',
+  },
+  url: 'https://changedown.com',
+  description:
+    'Bring any AI agent into your Word document. AI edits arrive as native Word tracked changes you review and accept inline.',
+};
+---
+<script is:inline type="application/ld+json" set:html={JSON.stringify(ld)} />

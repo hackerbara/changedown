@@ -5,7 +5,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-const DEV_CERT_DIR = path.join(os.homedir(), '.office-addin-dev-certs');
+function getDevCertDir(): string {
+  return process.env.CHANGEDOWN_DEV_CERT_DIR ?? path.join(os.homedir(), '.office-addin-dev-certs');
+}
+
 const DEV_CERT_REPAIR_COMMAND = 'npx office-addin-dev-certs install';
 
 export const SERVICE_NAME = 'changedown-mcp';
@@ -17,7 +20,7 @@ export const SERVICE_NAME = 'changedown-mcp';
  * HTTP remains available only for explicit diagnostic runs.
  */
 function loadDevCertOptions(): { cert: Buffer; key: Buffer } | undefined {
-  const dir = DEV_CERT_DIR;
+  const dir = getDevCertDir();
   const certPath = path.join(dir, 'localhost.crt');
   const keyPath = path.join(dir, 'localhost.key');
   const caPath = path.join(dir, 'ca.crt');
@@ -60,7 +63,7 @@ export class HttpsRequiredError extends Error {
   constructor() {
     super(
       'HTTPS is required for hosted Word pane mode, but this server is configured to use HTTP or Office add-in dev certificates were not found. ' +
-      `Expected localhost.crt, localhost.key, and ca.crt under ${DEV_CERT_DIR}. ` +
+      `Expected localhost.crt, localhost.key, and ca.crt under ${getDevCertDir()}. ` +
       `Run \`${DEV_CERT_REPAIR_COMMAND}\`, trust the generated certificates if prompted, then start changedown-mcp again.`
     );
     this.name = 'HttpsRequiredError';
@@ -126,8 +129,16 @@ export type ClientResult = {
 
 export type LeaderResult = HostResult | ClientResult;
 
-/** Default transport for bare MCP runs. Plugin configs set HTTPS explicitly. */
-const devCerts = loadDevCertOptions();
+// Lazy + memoized. Replaces the module-level `const devCerts = ...`.
+let devCertsCache: { cert: Buffer; key: Buffer } | undefined | 'unloaded' = 'unloaded';
+function getDevCerts(): { cert: Buffer; key: Buffer } | undefined {
+  if (devCertsCache === 'unloaded') devCertsCache = loadDevCertOptions();
+  return devCertsCache;
+}
+
+function isFakeHealthEnabled(): boolean {
+  return process.env.CHANGEDOWN_MCP_TEST_FAKE_HEALTH === '1';
+}
 
 function envRequiresHttps(): boolean {
   const requireHttps = process.env.CHANGEDOWN_MCP_REQUIRE_HTTPS?.toLowerCase();
@@ -149,7 +160,7 @@ function resolveUseHttps(options: BindOrForwardOptions | undefined): boolean {
 }
 
 function assertCanBindHttps(bindWithHttps: boolean): void {
-  if (bindWithHttps && !devCerts) {
+  if (bindWithHttps && !getDevCerts()) {
     throw new HttpsRequiredError();
   }
 }
@@ -189,10 +200,46 @@ async function probeHealth(port: number, probeWithHttps = false): Promise<Health
   });
 }
 
+/**
+ * Wrap a bind operation with bounded retry/backoff on EADDRINUSE. Handles the
+ * common loopback TIME_WAIT case where a freshly-killed leader's socket is
+ * still in TIME_WAIT when the next process tries to bind. After `totalBudgetMs`
+ * the underlying error is rethrown so genuinely-conflicting services still
+ * surface PortConflictError.
+ */
+export interface BindRetryOptions {
+  initialDelayMs?: number;
+  maxDelayMs?: number;
+  totalBudgetMs?: number;
+}
+
+export async function retryOnEAddrInUse<T>(
+  bind: () => Promise<T>,
+  opts: BindRetryOptions = {},
+): Promise<T> {
+  const { initialDelayMs = 50, maxDelayMs = 800, totalBudgetMs = 2500 } = opts;
+  const start = Date.now();
+  let delay = initialDelayMs;
+  for (;;) {
+    try {
+      return await bind();
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      const elapsed = Date.now() - start;
+      if (code !== 'EADDRINUSE' || elapsed + delay >= totalBudgetMs) {
+        throw err;
+      }
+      await new Promise<void>((r) => setTimeout(r, delay));
+      delay = Math.min(delay * 2, maxDelayMs);
+    }
+  }
+}
+
 function tryBind(port: number, bindWithHttps = false): Promise<http.Server> {
   return new Promise((resolve, reject) => {
+    const certs = getDevCerts()!;
     const server = bindWithHttps
-      ? https.createServer({ cert: devCerts!.cert, key: devCerts!.key })
+      ? https.createServer({ cert: certs.cert, key: certs.key })
       : http.createServer();
 
     // Log every connection attempt (even ones that fail TLS handshake) so we
@@ -213,37 +260,57 @@ function tryBind(port: number, bindWithHttps = false): Promise<http.Server> {
   });
 }
 
+// Aggressive takeover: new MCP launches snap to leader role within ~5s of
+// previous leader exiting (2s poll × 2 misses = ~4s worst case).
+const DEFAULT_HEARTBEAT = { intervalMs: 2_000, failThreshold: 2 };
+
 function makeHeartbeat(
   hostUrl: string,
   defaults: { intervalMs: number; failThreshold: number },
   bindOptions: BindOrForwardOptions,
 ): (override?: { intervalMs?: number; failThreshold?: number }) => Promise<LeaderResult> {
+  // Parse the host URL once; it's immutable for the heartbeat's lifetime.
+  const url = new URL(hostUrl);
+  const hostPort = parseInt(url.port, 10);
+  const useHttps = url.protocol === 'https:';
   return (override) =>
     new Promise((resolve) => {
       const opts = {
         intervalMs: override?.intervalMs ?? defaults.intervalMs,
         failThreshold: override?.failThreshold ?? defaults.failThreshold,
       };
-      const hostPort = parseInt(new URL(hostUrl).port, 10);
       let failures = 0;
       let inFlight = false;
       const timer = setInterval(async () => {
         if (inFlight) return;
         inFlight = true;
         try {
-          await probeHealth(hostPort, new URL(hostUrl).protocol === 'https:');
+          if (isFakeHealthEnabled()) throw new Error('test-fake-health-fail');
+          await probeHealth(hostPort, useHttps);
           failures = 0;
         } catch {
           failures++;
           if (failures >= opts.failThreshold) {
             clearInterval(timer);
             try {
-              const promoted = await bindOrForward(hostPort, bindOptions);
+              const promoted = await bindOrForwardImpl(hostPort, bindOptions);
               resolve(promoted);
-            } catch {
-              // Port grabbed by another client racing us — become client again
-              const raced = await bindOrForward(hostPort, bindOptions);
-              resolve(raced);
+            } catch (first) {
+              // Port grabbed by another client racing us — try once more to
+              // resolve to client-of-new-host. If THAT also fails (the port is
+              // held by something we can't reach), log and leave the promise
+              // pending. Signal handlers + the disposable stack still drive
+              // teardown. Never throw out of the interval callback — that's
+              // an unhandled rejection by definition (Bug D).
+              try {
+                const raced = await bindOrForwardImpl(hostPort, bindOptions);
+                resolve(raced);
+              } catch (second) {
+                console.error('[changedown] promotion failed twice:', first, second);
+                // No resolution — caller awaits forever, but signal handlers
+                // can still drive teardown. Returning to client-of-dead-host
+                // is not a valid state, so we leave the promise pending.
+              }
             }
           }
         } finally {
@@ -253,14 +320,24 @@ function makeHeartbeat(
     });
 }
 
-export async function bindOrForward(port: number, options: BindOrForwardOptions = {}): Promise<LeaderResult> {
+async function bindOrForwardCore(port: number, options: BindOrForwardOptions = {}): Promise<LeaderResult> {
   const requireHttps = shouldRequireHttps(options);
   if (requireHttps && options.useHttps === false) {
     throw new HttpsRequiredError();
   }
   const bindWithHttps = requireHttps ? true : resolveUseHttps(options);
 
-  if (requireHttps && !devCerts) {
+  // In test mode, skip the real bind attempt and pretend the port is held by
+  // a changedown-mcp leader on the expected scheme. probeHealthBothSchemes also
+  // returns a fake response so the full EADDRINUSE path runs without a server.
+  if (isFakeHealthEnabled()) {
+    const expectedScheme: 'http' | 'https' = requireHttps || bindWithHttps ? 'https' : 'http';
+    const hostUrl = `${expectedScheme}://127.0.0.1:${port}`;
+    const startHeartbeat = makeHeartbeat(hostUrl, DEFAULT_HEARTBEAT, options);
+    return { mode: 'client', hostUrl, startHeartbeat };
+  }
+
+  if (requireHttps && !getDevCerts()) {
     // We can't bind HTTPS ourselves, so we can only proceed by joining an
     // existing HTTPS leader. Probe BOTH schemes so we can produce an
     // actionable error when the port is held by an HTTP-only changedown-mcp
@@ -281,31 +358,16 @@ export async function bindOrForward(port: number, options: BindOrForwardOptions 
       throw new PortConflictError(port, SERVICE_NAME, probed.health.pid, probed.scheme, 'https');
     }
     const hostUrl = `https://127.0.0.1:${port}`;
-    const startHeartbeat = makeHeartbeat(hostUrl, {
-      intervalMs: 2_000,
-      failThreshold: 2,
-    }, options);
+    const startHeartbeat = makeHeartbeat(hostUrl, DEFAULT_HEARTBEAT, options);
     return { mode: 'client', hostUrl, startHeartbeat };
   }
 
   try {
     assertCanBindHttps(bindWithHttps);
-    const server = await tryBind(port, bindWithHttps);
+    const server = await retryOnEAddrInUse(() => tryBind(port, bindWithHttps));
 
-    // Stdio MCP convention: parent (Claude Code) closes stdin to signal
-    // shutdown. The HTTP server keeps the event loop alive so a plain stdin
-    // EOF won't exit the process — explicitly tear down the server when stdin
-    // ends. Clients don't need this: they have no http.Server holding the loop.
-    process.stdin.on('end', () => {
-      server.close(() => process.exit(0));
-      // Hard-exit fallback so we don't linger on stuck connections. SSE streams
-      // hold sockets open indefinitely; server.close() waits for them all.
-      setTimeout(() => process.exit(0), 1000).unref();
-    });
-    process.stdin.on('error', () => process.exit(0));
-    // Ensure stdin is in flowing mode so the 'end' event fires. The MCP SDK
-    // reads stdin for the protocol channel, so this is belt-and-suspenders.
-    process.stdin.resume();
+    // Note: stdin / signal handling is owned by signals.ts (installSignalHandlers).
+    // bindOrForward returns a bound server; the caller's stack drives teardown.
 
     return { mode: 'host', server };
   } catch (err: unknown) {
@@ -329,16 +391,29 @@ export async function bindOrForward(port: number, options: BindOrForwardOptions 
       throw new PortConflictError(port, SERVICE_NAME, probed.health.pid, probed.scheme, expectedScheme);
     }
 
-    const scheme = expectedScheme;
-    const hostUrl = `${scheme}://127.0.0.1:${port}`;
-    // Aggressive takeover: new MCP launches snap to leader role within ~5s of
-    // previous leader exiting (2s poll × 2 misses = ~4s worst case).
-    const HEARTBEAT_INTERVAL_MS = 2_000;
-    const HEARTBEAT_MISS_THRESHOLD = 2;
-    const startHeartbeat = makeHeartbeat(hostUrl, {
-      intervalMs: HEARTBEAT_INTERVAL_MS,
-      failThreshold: HEARTBEAT_MISS_THRESHOLD,
-    }, options);
+    const hostUrl = `${expectedScheme}://127.0.0.1:${port}`;
+    const startHeartbeat = makeHeartbeat(hostUrl, DEFAULT_HEARTBEAT, options);
     return { mode: 'client', hostUrl, startHeartbeat };
   }
 }
+
+/**
+ * Test hooks. Production code goes through `bindOrForward` and `probeHealth`
+ * directly; tests can override the bind function to simulate failures and
+ * the health probe to simulate a held port. Reset between tests.
+ */
+let bindOverrideForTests: typeof bindOrForwardCore | null = null;
+export const __testHooks__ = {
+  overrideBindForTests(fn: typeof bindOrForwardCore) { bindOverrideForTests = fn; },
+  resetBindOverride() { bindOverrideForTests = null; },
+};
+
+async function bindOrForwardImpl(port: number, options: BindOrForwardOptions = {}): Promise<LeaderResult> {
+  if (bindOverrideForTests) return bindOverrideForTests(port, options);
+  return bindOrForwardCore(port, options);
+}
+
+// New exported wrapper — honors the test override for makeHeartbeat's internal
+// promotion calls. The initial bindOrForward call from callers goes through
+// bindOrForwardCore directly to avoid interfering with test setup.
+export const bindOrForward = bindOrForwardCore;

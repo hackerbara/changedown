@@ -1,8 +1,10 @@
 {
   "name": "changedown",
-  "version": "0.1.0",
+  "version": "0.4.7",
   "description": "Durable change tracking with reasoning for AI agents",
-  "author": { "name": "hackerbara" },
+  "author": {
+    "name": "hackerbara"
+  },
   "skills": "./skills/",
   "mcpServers": "./.mcp.json"
 }

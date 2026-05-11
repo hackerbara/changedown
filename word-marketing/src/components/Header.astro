@@ -1,0 +1,25 @@
+---
+import Mascot from '@/components/Mascot.astro';
+---
+<header class="site-header">
+  <a href="/" class="brand">
+    <Mascot pose="idle" size={32} decorative />
+    <span class="wordmark">ChangeDown for Word</span>
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="/install">Install</a>
+    <a href="/faq">FAQ</a>
+  </nav>
+  <a href="/#demo" class="cta">Open a free room →</a>
+</header>
+<style>
+  .site-header { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-5); border-bottom: 1px solid var(--border-soft); position: sticky; top: 0; background: var(--cream-paper); z-index: 10; }
+  .brand { display: flex; align-items: center; gap: var(--space-2); text-decoration: none; font-family: var(--font-display); font-weight: 700; color: var(--ink-primary); }
+  .nav-links { display: flex; gap: var(--space-3); margin-left: auto; }
+  .nav-links a { color: var(--ink-secondary); text-decoration: none; font-size: 14px; }
+  .nav-links a:hover { color: var(--ink-primary); }
+  .cta { background: var(--copper-deep); color: white; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 13px; transition: transform var(--transition-fast); }
+  .cta:hover { transform: translateY(-1px); }
+  .cta:focus-visible { outline-offset: 4px; }
+  @media (max-width: 640px) { .nav-links { display: none; } }
+</style>

@@ -7,7 +7,9 @@ import {
   applyRejectedChanges,
   computeSupersedeResult,
   countFootnoteHeadersWithStatus,
+  convertL3ToL2,
   formatPlainText,
+  isL3Format,
   parseForFormat,
   findFootnoteBlock,
   parseFootnoteHeader,
@@ -25,9 +27,10 @@ import {
   offsetToLineNumber,
   type ChangeDownConfig,
 } from '@changedown/cli/engine/browser';
-import type { DocumentBackend } from '@changedown/core/backend';
+import type { DocumentBackend, DocumentSnapshot } from '@changedown/core/backend';
 
-import { applyPreparedWordProposeChange, prepareWordProposeChange } from './word-propose.js';
+import { applyPreparedWordProposeChange, labPrepCategoryForPrepared, prepareWordProposeChange } from './word-propose.js';
+import type { LabDiagnosticsStore } from './lab-diagnostics.js';
 
 export interface WordDocumentWorkflowInput {
   backend: DocumentBackend;
@@ -37,6 +40,7 @@ export interface WordDocumentWorkflowInput {
   state: {
     recordAfterRead(filePath: string, view: string, hashes: Array<{ line: number; raw: string; committed?: string; currentView?: string; rawLineNum?: number }>, rawContent: string): void;
   };
+  labDiagnostics?: LabDiagnosticsStore;
 }
 
 type WordListChangeSummary = {
@@ -79,6 +83,19 @@ type WordListChangeFullDetail = WordListChangeContext & {
 };
 
 const MAX_WORD_LIST_PREVIEW_LENGTH = 80;
+
+function diagnosticErrorCode(value: unknown): string | undefined {
+  const text = value instanceof Error ? value.message : typeof value === 'string' ? value : undefined;
+  if (!text) return undefined;
+  const colonCode = text.match(/^([A-Za-z][A-Za-z0-9_]*):/)?.[1];
+  return (colonCode ?? text).slice(0, 120);
+}
+
+async function mutationSourceL2(snapshot: { text: string; format?: 'L2' | 'L3' }): Promise<string> {
+  return snapshot.format === 'L3' || isL3Format(snapshot.text)
+    ? await convertL3ToL2(snapshot.text)
+    : snapshot.text;
+}
 
 function buildWordListPreview(change: ChangeNode): string {
   let preview = '';
@@ -215,6 +232,33 @@ function buildWordDetailForLevel(
   }
 }
 
+
+function attachCapability<T extends Record<string, unknown>>(entry: T, snapshot: DocumentSnapshot): T & Record<string, unknown> {
+  const id = typeof entry.change_id === 'string' ? entry.change_id : undefined;
+  const capability = id ? snapshot.capabilitiesByChangeId?.[id] : undefined;
+  const diagnostics = id ? snapshotDiagnostics(snapshot).filter((diagnostic) => {
+    return typeof diagnostic === 'object' &&
+      diagnostic !== null &&
+      (diagnostic as { changeId?: unknown }).changeId === id;
+  }) : [];
+  if (!capability && diagnostics.length === 0) return entry;
+  return {
+    ...entry,
+    ...(capability
+      ? {
+          capability,
+          native_reviewable: capability.nativeReviewable,
+          approve_reject_capability: capability.approveRejectCapability,
+        }
+      : {}),
+    ...(diagnostics.length > 0 ? { diagnostics } : {}),
+  };
+}
+
+function snapshotDiagnostics(snapshot: DocumentSnapshot): unknown[] {
+  return snapshot.diagnostics ?? [];
+}
+
 async function buildWordListChangesResponse(
   backend: DocumentBackend,
   uri: string,
@@ -263,9 +307,10 @@ async function buildWordListChangesResponse(
       file: uri,
       total_count: allChanges.length,
       filtered_count: results.length,
-      changes: results,
+      changes: results.map((entry) => attachCapability(entry as Record<string, unknown>, snapshot)),
       ...(nativeChanges ? { native_changes: nativeChanges } : {}),
-      diagnostics: doc.getDiagnostics(),
+      ...(snapshot.readiness ? { readiness: snapshot.readiness } : {}),
+      diagnostics: [...doc.getDiagnostics(), ...snapshotDiagnostics(snapshot)],
     };
   }
 
@@ -281,9 +326,10 @@ async function buildWordListChangesResponse(
     file: uri,
     total_count: entries.length,
     filtered_count: filtered.length,
-    changes: filtered,
+    changes: filtered.map((entry) => attachCapability(entry as Record<string, unknown>, snapshot)),
     ...(nativeChanges ? { native_changes: nativeChanges } : {}),
-    diagnostics: doc.getDiagnostics(),
+    ...(snapshot.readiness ? { readiness: snapshot.readiness } : {}),
+    diagnostics: [...doc.getDiagnostics(), ...snapshotDiagnostics(snapshot)],
   };
 }
 
@@ -389,7 +435,16 @@ export async function handleWordReadTrackedFile(input: WordDocumentWorkflowInput
     const guide = args.include_guide === true ? `\n\n${composeGuide(config, { targetKind: 'word' })}` : '';
     const content: Array<{ type: 'text'; text: string }> = [{ type: 'text', text: output }];
     if (guide) content.unshift({ type: 'text', text: guide });
-    return { content } as CallToolResult;
+    const structuredContent: Record<string, unknown> = {};
+    if (snapshot.readiness) structuredContent.readiness = snapshot.readiness;
+    if (snapshot.diagnostics) structuredContent.diagnostics = snapshot.diagnostics;
+    if (snapshot.capabilitiesByChangeId) {
+      structuredContent.capabilitiesByChangeId = snapshot.capabilitiesByChangeId;
+    }
+    return {
+      content,
+      ...(Object.keys(structuredContent).length > 0 ? { structuredContent } : {}),
+    } as CallToolResult;
   } catch (err) {
     return errorResult(err instanceof Error ? err.message : String(err)) as CallToolResult;
   }
@@ -427,7 +482,8 @@ export async function handleWordSupersedeChange(input: WordDocumentWorkflowInput
     if (authorError) return errorResult(authorError.message) as CallToolResult;
 
     const snapshot = await backend.read({ uri });
-    const result = await computeSupersedeResult(snapshot.text, changeId, {
+    const oldL2 = await mutationSourceL2(snapshot);
+    const result = await computeSupersedeResult(oldL2, changeId, {
       oldText,
       newText,
       insertAfter,
@@ -444,7 +500,7 @@ export async function handleWordSupersedeChange(input: WordDocumentWorkflowInput
 
     const applied = await backend.applyChange({ uri }, {
       kind: 'propose',
-      args: { oldL2: snapshot.text, newL2 },
+      args: { oldL2, newL2 },
     });
     if (applied.applied === false) {
       return errorResult(applied.text ?? 'Word adapter did not apply prepared supersede') as CallToolResult;
@@ -482,16 +538,58 @@ export async function handleWordProposeChange(input: WordDocumentWorkflowInput):
     }
 
     const snapshot = await backend.read({ uri });
+    const envelope = input.labDiagnostics?.createApplyEnvelope({ sessionUri: uri });
     const prepared = await prepareWordProposeChange({
       args,
       uri,
       snapshotText: snapshot.text,
+      snapshotFormat: snapshot.format,
       config,
       state,
     });
+    const mcpPrep: Record<string, unknown> = {
+      categoryCode: labPrepCategoryForPrepared(prepared),
+      ok: prepared.ok,
+    };
+    if ('family' in prepared && prepared.family) {
+      mcpPrep.family = prepared.family;
+    }
+    if (envelope) {
+      input.labDiagnostics?.updateApplyEnvelope(envelope.applyDiagnosticId, {
+        status: prepared.ok ? 'pane-dispatch-pending' : 'mcp-prep-failed',
+        mcpPrep,
+      });
+    }
     if (!prepared.ok) return prepared.toolResult as CallToolResult;
 
-    const result = await applyPreparedWordProposeChange(backend, uri, prepared);
+    let result;
+    try {
+      result = await applyPreparedWordProposeChange(backend, uri, prepared, {
+        applyDiagnosticId: envelope?.applyDiagnosticId,
+      });
+      if (envelope) {
+        input.labDiagnostics?.updateApplyEnvelope(envelope.applyDiagnosticId, {
+          status: result.applied === false ? 'pane-dispatch-not-applied' : 'pane-dispatch-applied',
+          endedAt: new Date().toISOString(),
+          paneDispatch: {
+            applied: result.applied !== false,
+            ...(result.applied === false ? { errorCode: diagnosticErrorCode(result.text) } : {}),
+          },
+        });
+      }
+    } catch (err) {
+      if (envelope) {
+        input.labDiagnostics?.updateApplyEnvelope(envelope.applyDiagnosticId, {
+          status: 'pane-dispatch-thrown',
+          endedAt: new Date().toISOString(),
+          paneDispatch: {
+            applied: false,
+            errorCode: diagnosticErrorCode(err) ?? 'UNKNOWN_ERROR',
+          },
+        });
+      }
+      throw err;
+    }
     if (result.applied === false) {
       return errorResult(result.text ?? 'Word adapter did not apply prepared proposal') as CallToolResult;
     }

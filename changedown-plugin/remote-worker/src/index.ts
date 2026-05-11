@@ -86,8 +86,11 @@ async function compressedSkillPrompt(base: string, roomId: string): Promise<stri
     'Authorization: Bearer <room token>',
     'Active target: word://sess-... (read first to confirm the current session).',
     `Tools: ${names}`,
-    'Workflow: call read_tracked_file before edits; use list_changes when deciding what to review.',
-    'Writes: include Idempotency-Key; retrying the same key should return content-free replay metadata.',
+    'Workflow: use POST /tools/read_tracked_file with a JSON body before edits; use list_changes when deciding what to review.',
+    'Auth: prefer Authorization: Bearer <room token>; if your HTTP client cannot set headers, use ?token=<room token>.',
+    'Fetch-only fallback: GET /tools/read_tracked_file?token=<room token>&file=word://sess-...&view=working reads the document only.',
+    'Writes: require HTTP POST plus Idempotency-Key header or idempotency_key body field; retrying the same key should return content-free replay metadata.',
+    'GET only lets an agent read and explain the document. It cannot propose edits or review changes; ask the user for outbound HTTP POST access to interact.',
     'Results: handle MCP-shaped isError/content/structuredContent/json fields; do not assume HTTP 200 means success.',
     'Privacy: do not store document text, local paths, raw tokens, token fingerprints, or query-token URLs in durable notes.',
   ].join('\n');
@@ -115,10 +118,14 @@ changedownRelayToken=&lt;paste room token&gt;</pre>
 <pre>GET ${escapeHtml(statusUrl)}
 Authorization: Bearer &lt;room token&gt;</pre>
 <h2>HTTP tools</h2>
-<pre>GET ${escapeHtml(base)}/tools
-GET ${escapeHtml(base)}/openapi.json
-POST ${escapeHtml(base)}/tools/read_tracked_file
-Authorization: Bearer &lt;room token&gt;</pre>
+<pre>GET ${escapeHtml(base)}/tools?token=&lt;room token&gt;
+GET ${escapeHtml(base)}/openapi.json?token=&lt;room token&gt;
+POST ${escapeHtml(base)}/tools/read_tracked_file?token=&lt;room token&gt;
+Content-Type: application/json
+{"file":"word://sess-...","view":"working"}</pre>
+<h2>Read-only fetch fallback</h2>
+<pre>GET ${escapeHtml(base)}/tools/read_tracked_file?token=&lt;room token&gt;&amp;file=word://sess-...&amp;view=working</pre>
+<p>GET only lets an agent read and explain the document. It cannot propose edits or review changes; ask the user for outbound HTTP POST access to interact.</p>
 <h2>Skill prompt</h2>
 <pre>${escapeHtml(prompt)}</pre>
 </body></html>`;

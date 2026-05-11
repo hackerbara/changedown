@@ -70,6 +70,10 @@ validate_word_pane_dist() {
     "taskpane.html"
     "commands.html"
     "manifest.hosted.xml"
+    "manifest.remote.xml"
+    "install-mac.sh"
+    "install-windows.ps1"
+    "ChangeDown-Launch.docx"
     "assets/icon-16.png"
     "assets/icon-32.png"
     "assets/icon-64.png"
@@ -102,6 +106,21 @@ validate_word_pane_dist() {
 
   if ! grep -q "<AppDomain>https://127.0.0.1:39990</AppDomain>" "$word_dir/manifest.hosted.xml"; then
     fail "Hosted Word manifest is missing loopback MCP AppDomain"
+    exit 1
+  fi
+
+  if ! grep -q "https://changedown.com/word/taskpane.html?changedownMode=remote" "$word_dir/manifest.remote.xml"; then
+    fail "Remote-only Word manifest does not open the pane in remote mode"
+    exit 1
+  fi
+
+  if grep -q "127.0.0.1" "$word_dir/manifest.remote.xml"; then
+    fail "Remote-only Word manifest must not reference loopback"
+    exit 1
+  fi
+
+  if grep -Eiq '\b(npx|npm|node)\b' "$word_dir/install-mac.sh" "$word_dir/install-windows.ps1"; then
+    fail "Remote-only Word install scripts must remain shell-only"
     exit 1
   fi
 }
@@ -282,7 +301,7 @@ info "Cleaned old website artifacts from docs/ (preserved public/, images/, v1/)
 rsync -a "$DIST_DIR/" "$DOCS_DIR/"
 ok "Copied $DIST_FILES files to docs/"
 
-if [[ ! -f "$DOCS_DIR/word/manifest.hosted.xml" || ! -f "$DOCS_DIR/word/taskpane.html" ]]; then
+if [[ ! -f "$DOCS_DIR/word/manifest.hosted.xml" || ! -f "$DOCS_DIR/word/manifest.remote.xml" || ! -f "$DOCS_DIR/word/install-mac.sh" || ! -f "$DOCS_DIR/word/install-windows.ps1" || ! -f "$DOCS_DIR/word/taskpane.html" ]]; then
   fail "Hosted Word pane was not copied to docs/word"
   exit 1
 fi
@@ -368,6 +387,7 @@ if [[ -z "$STAT" ]]; then
   ok "No changes — website is already up to date"
   echo ""
   echo -e "  ${DIM}Hosted Word manifest: https://changedown.com/word/manifest.hosted.xml${RESET}"
+  echo -e "  ${DIM}Remote-only install: curl -fsSL https://changedown.com/word/install-mac.sh | bash${RESET}"
   echo ""
   echo -e "${GREEN}${BOLD}Nothing to do!${RESET}"
   exit 0
@@ -427,5 +447,6 @@ echo -e "${GREEN}${BOLD}═══ Website deployed! ═══${RESET}"
 echo ""
 echo -e "  ${DIM}Live at: https://changedown.com${RESET}"
 echo -e "  ${DIM}Word manifest: https://changedown.com/word/manifest.hosted.xml${RESET}"
+echo -e "  ${DIM}Remote-only install: https://changedown.com/word/install-mac.sh and https://changedown.com/word/install-windows.ps1${RESET}"
 echo -e "  ${DIM}GitHub Pages may take 1-2 minutes to update${RESET}"
 echo ""

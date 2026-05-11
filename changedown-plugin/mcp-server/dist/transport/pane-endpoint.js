@@ -6,26 +6,7 @@ import { randomUUID } from "node:crypto";
 var version = "0.4.6";
 
 // src/transport/fixed-port-leader.ts
-import * as fs from "node:fs";
-import * as os from "node:os";
-import * as path from "node:path";
-var DEV_CERT_DIR = path.join(os.homedir(), ".office-addin-dev-certs");
 var SERVICE_NAME = "changedown-mcp";
-function loadDevCertOptions() {
-  const dir = DEV_CERT_DIR;
-  const certPath = path.join(dir, "localhost.crt");
-  const keyPath = path.join(dir, "localhost.key");
-  const caPath = path.join(dir, "ca.crt");
-  try {
-    const leaf = fs.readFileSync(certPath);
-    const ca = fs.readFileSync(caPath);
-    const bundle = Buffer.concat([leaf, Buffer.from("\n"), ca]);
-    return { cert: bundle, key: fs.readFileSync(keyPath) };
-  } catch {
-    return void 0;
-  }
-}
-var devCerts = loadDevCertOptions();
 
 // ../../packages/core/dist-esm/backend/types.js
 var AGENTS_UPDATED_METHOD = "agents_updated";
@@ -43,10 +24,16 @@ var HEALTH_RESPONSE = {
   capabilities: [CAPABILITY_BACKEND_REGISTER, CAPABILITY_MCP_STREAMABLE]
 };
 var SSE_GRACE_MS = 5e3;
-var KEEPALIVE_MS = 15e3;
+var KEEPALIVE_MS = (() => {
+  const env = process.env.CHANGEDOWN_PANE_KEEPALIVE_MS;
+  if (!env) return 15e3;
+  const parsed = Number.parseInt(env, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 15e3;
+})();
 var TEST_CONTROL_ENABLED = process.env.CHANGEDOWN_MCP_TEST_CONTROL === "1";
 var REGISTRATION_STREAM_TTL_MS = 3e4;
 var DEFAULT_REQUEST_TIMEOUT_MS = 3e4;
+var MAX_DEBUG_RECORDS = 500;
 var DEFAULT_ALLOWED_PANE_ORIGINS = [
   "https://127.0.0.1:3000",
   "https://localhost:3000",
@@ -84,16 +71,153 @@ function endJson(res, status, body) {
   });
   res.end(payload);
 }
+var LAB_INCLUDE_LATEST_KEYS = {
+  browser: [
+    "counters",
+    "errors",
+    "unhandledRejections",
+    "eventSource",
+    "performanceResources",
+    "mutations"
+  ],
+  console: ["counters", "console", "errors", "unhandledRejections"],
+  network: ["counters", "network", "eventSource"],
+  ui: ["ui"],
+  domSummary: ["domSummary"]
+};
+var LAB_INCLUDE_TOP_LEVEL_KEYS = {
+  trace: ["traceRecords"],
+  traces: ["traceRecords"],
+  queue: ["pane", "tickQueue"],
+  apply: ["applyDiagnostics"],
+  applyDiagnostics: ["applyDiagnostics"],
+  debug: ["debugRecords"],
+  debugRecords: ["debugRecords"],
+  serverDebugRecords: ["debugRecords"]
+};
+var LAB_LATEST_METADATA_KEYS = [
+  "protocolVersion",
+  "kind",
+  "runId",
+  "sessionUri",
+  "capturedAt",
+  "sequence",
+  "pushReason"
+];
+function parseLabInclude(value) {
+  if (!value) return void 0;
+  const parts = value.split(",").map((part) => part.trim()).filter(Boolean);
+  return parts.length > 0 ? new Set(parts) : void 0;
+}
+function filterObjectKeys(source, keys) {
+  if (!source || typeof source !== "object" || Array.isArray(source)) return {};
+  const input = source;
+  const output = {};
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(input, key)) output[key] = input[key];
+  }
+  return output;
+}
+function filterLatestLabDiagnostics(latest, include) {
+  if (!latest || typeof latest !== "object" || Array.isArray(latest)) return latest;
+  const keys = new Set(LAB_LATEST_METADATA_KEYS);
+  for (const item of include) {
+    for (const key of LAB_INCLUDE_LATEST_KEYS[item] ?? []) keys.add(key);
+  }
+  return filterObjectKeys(latest, keys);
+}
+function filterLabDiagnosticsBody(body, include) {
+  if (!include) return body;
+  const topLevelKeys = /* @__PURE__ */ new Set(["runId", "stale", "lastUpdatedAt", "lastSequence", "latest"]);
+  for (const item of include) {
+    for (const key of LAB_INCLUDE_TOP_LEVEL_KEYS[item] ?? []) topLevelKeys.add(key);
+  }
+  const filtered = filterObjectKeys(body, topLevelKeys);
+  if (Object.prototype.hasOwnProperty.call(filtered, "latest")) {
+    filtered.latest = filterLatestLabDiagnostics(filtered.latest, include);
+  }
+  return filtered;
+}
+function sanitizePaneLabMetadata(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const input = value;
+  const lab = {};
+  const runId = pickString(input.runId);
+  const bundleMarker = pickString(input.bundleMarker, 100);
+  const paneMode = pickString(input.paneMode, 100);
+  const taskpaneUrl = pickString(input.taskpaneUrl, 1e3);
+  const runtime = sanitizePaneRuntimeIdentity(input.runtime);
+  if (runId) lab.runId = runId;
+  if (bundleMarker) lab.bundleMarker = bundleMarker;
+  if (paneMode) lab.paneMode = paneMode;
+  if (taskpaneUrl) lab.taskpaneUrl = taskpaneUrl;
+  if (runtime) lab.runtime = runtime;
+  return Object.keys(lab).length > 0 ? lab : void 0;
+}
+function pickString(value, max = 500) {
+  return typeof value === "string" ? value.slice(0, max) : void 0;
+}
+function sanitizePaneRuntimeIdentity(value) {
+  if (!value || typeof value !== "object") return void 0;
+  const input = value;
+  if (input.protocolVersion !== 1) return void 0;
+  const sessionUri = pickString(input.sessionUri, 300);
+  const loadedAt = pickString(input.loadedAt, 100);
+  if (!sessionUri || !loadedAt) return void 0;
+  return {
+    protocolVersion: 1,
+    runId: pickString(input.runId),
+    paneMode: pickString(input.paneMode, 100),
+    bundleMarker: pickString(input.bundleMarker, 100),
+    taskpaneUrl: pickString(input.taskpaneUrl, 1e3),
+    taskpaneBuildId: pickString(input.taskpaneBuildId, 200),
+    gitSha: pickString(input.gitSha, 80),
+    buildTimestamp: pickString(input.buildTimestamp, 100),
+    webpackMode: pickString(input.webpackMode, 50),
+    loadedAt,
+    sessionUri,
+    userAgent: pickString(input.userAgent, 500),
+    officeHost: pickString(input.officeHost, 100),
+    officePlatform: pickString(input.officePlatform, 100)
+  };
+}
+function deliveryPathForRegistration(reg) {
+  const hasSse = Boolean(reg.sseRes && !reg.sseRes.writableEnded);
+  const hasPoll = reg.capabilities.includes("poll-rpc");
+  if (hasSse && hasPoll) return "sse+poll";
+  if (hasSse) return "sse";
+  if (hasPoll) return "poll";
+  return "unknown";
+}
 function attachPaneEndpoints(httpServer, options = {}) {
   const registrations = /* @__PURE__ */ new Map();
   const emitter = new EventEmitter();
   const allowedOrigins = buildAllowedPaneOrigins(options);
+  const debugRecords = [];
   let keepalivePaused = false;
   const editCounts = /* @__PURE__ */ new Map();
+  function recordDebug(record) {
+    debugRecords.push({
+      ...record,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
+    if (debugRecords.length > MAX_DEBUG_RECORDS) {
+      debugRecords.splice(0, debugRecords.length - MAX_DEBUG_RECORDS);
+    }
+  }
   function removeRegistration(registrationId) {
     const reg = registrations.get(registrationId);
     if (!reg) return;
-    for (const [, pending] of reg.pendingRequests) {
+    for (const [requestId, pending] of reg.pendingRequests) {
+      recordDebug({
+        event: "disconnect",
+        registrationId,
+        requestId,
+        method: pending.method,
+        deliveryPath: deliveryPathForRegistration(reg),
+        runId: reg.lab?.runId,
+        message: "Pane disconnected"
+      });
       pending.reject(new Error("Pane disconnected"));
     }
     for (const pollRes of reg.pendingPolls) {
@@ -132,7 +256,8 @@ function attachPaneEndpoints(httpServer, options = {}) {
       payload = {
         scheme: parsed.scheme,
         sessionId: parsed.sessionId,
-        capabilities: parsed.capabilities
+        capabilities: parsed.capabilities,
+        lab: sanitizePaneLabMetadata(parsed.lab)
       };
     } catch {
       res.writeHead(400, { "Content-Type": "application/json" });
@@ -145,7 +270,9 @@ function attachPaneEndpoints(httpServer, options = {}) {
       scheme: payload.scheme,
       sessionId: payload.sessionId,
       capabilities: payload.capabilities,
+      lab: payload.lab,
       sseRes: null,
+      keepalive: null,
       pendingRequests: /* @__PURE__ */ new Map(),
       pendingPolls: /* @__PURE__ */ new Set(),
       nextRequestId: 1,
@@ -173,14 +300,21 @@ function attachPaneEndpoints(httpServer, options = {}) {
       Connection: "keep-alive"
     });
     res.flushHeaders();
+    if (reg.keepalive) {
+      clearInterval(reg.keepalive);
+      reg.keepalive = null;
+    }
     reg.sseRes = res;
     res.write('data: {"type":"ping"}\n\n');
-    const keepalive = setInterval(() => {
+    reg.keepalive = setInterval(() => {
       if (!keepalivePaused && !res.writableEnded)
         res.write('data: {"type":"ping"}\n\n');
     }, KEEPALIVE_MS);
     req.on("close", () => {
-      clearInterval(keepalive);
+      if (reg.keepalive) {
+        clearInterval(reg.keepalive);
+        reg.keepalive = null;
+      }
       reg.sseRes = null;
       setTimeout(() => {
         if (!reg.sseRes) {
@@ -202,6 +336,15 @@ function attachPaneEndpoints(httpServer, options = {}) {
     const pending = reg.pendingRequests.get(payload.id);
     if (pending) {
       reg.pendingRequests.delete(payload.id);
+      recordDebug({
+        event: "response",
+        registrationId,
+        requestId: payload.id,
+        method: pending.method,
+        deliveryPath: deliveryPathForRegistration(reg),
+        runId: reg.lab?.runId,
+        message: payload.error || payload.ok === false ? String(payload.error ?? "Pane indicated failure without error detail") : void 0
+      });
       if (payload.error) {
         pending.reject(new Error(String(payload.error)));
       } else if (payload.ok === false) {
@@ -213,6 +356,33 @@ function attachPaneEndpoints(httpServer, options = {}) {
       }
     }
     res.writeHead(200);
+    res.end();
+  }
+  async function handleDiagnosticsIngest(req, res, registrationId) {
+    const reg = registrations.get(registrationId);
+    if (!reg) {
+      endJson(res, 404, { error: "unknown registrationId" });
+      return;
+    }
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    let snapshot;
+    try {
+      snapshot = JSON.parse(body);
+    } catch {
+      endJson(res, 400, { error: "invalid JSON" });
+      return;
+    }
+    const result = options.labDiagnostics?.ingestPaneSnapshot(registrationId, snapshot) ?? {
+      ok: false,
+      status: 404,
+      error: "lab diagnostics disabled"
+    };
+    if (!result.ok) {
+      endJson(res, result.status, { error: result.error });
+      return;
+    }
+    res.writeHead(204, { Connection: "close" });
     res.end();
   }
   async function handleNotify(req, res, registrationId) {
@@ -244,6 +414,155 @@ function attachPaneEndpoints(httpServer, options = {}) {
     emitter.emit("paneNotification", registrationId, payload.event);
     res.writeHead(204);
     res.end();
+  }
+  async function readJsonBody(req, maxBytes = 1e6) {
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
+      if (Buffer.byteLength(body) > maxBytes) {
+        throw new Error("request body too large");
+      }
+    }
+    return JSON.parse(body);
+  }
+  async function handleLabTrace(req, res, registrationId) {
+    const labDiagnostics = options.labDiagnostics;
+    if (!labDiagnostics) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    const reg = registrations.get(registrationId);
+    if (!reg) {
+      res.writeHead(404, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "unknown registrationId" }));
+      return;
+    }
+    if (reg.lab?.runId !== labDiagnostics.runId) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close"
+      });
+      res.end(JSON.stringify({ error: "registration is not part of active lab run" }));
+      return;
+    }
+    let payload;
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "invalid JSON" }));
+      return;
+    }
+    const input = payload && typeof payload === "object" ? payload : {};
+    const rawRecords = Array.isArray(input.records) ? input.records : input.record !== void 0 ? [input.record] : [];
+    for (const rawRecord of rawRecords) {
+      if (!rawRecord || typeof rawRecord !== "object") continue;
+      const candidate = rawRecord;
+      labDiagnostics.recordTrace({
+        id: String(candidate.id ?? `${registrationId}:${Date.now()}`),
+        kind: String(candidate.kind ?? "pane"),
+        phase: String(candidate.phase ?? "unknown"),
+        at: String(candidate.at ?? (/* @__PURE__ */ new Date()).toISOString()),
+        runId: labDiagnostics.runId,
+        sessionUri: typeof candidate.sessionUri === "string" ? candidate.sessionUri : `word://${reg.sessionId}`,
+        rpcRequestId: typeof candidate.rpcRequestId === "string" ? candidate.rpcRequestId : void 0,
+        applyAttemptId: typeof candidate.applyAttemptId === "string" ? candidate.applyAttemptId : void 0,
+        code: typeof candidate.code === "string" ? candidate.code : void 0,
+        detail: candidate.detail && typeof candidate.detail === "object" && !Array.isArray(candidate.detail) ? candidate.detail : void 0
+      });
+    }
+    res.writeHead(204, { "Cache-Control": "no-cache", Connection: "close" });
+    res.end();
+  }
+  function handleLabDiagnostics(req, res) {
+    const labDiagnostics = options.labDiagnostics;
+    if (!labDiagnostics) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    const parsed = new URL(req.url ?? "/", "http://127.0.0.1");
+    const runId = parsed.searchParams.get("runId") ?? void 0;
+    const token = req.headers["x-changedown-lab-diagnostics-token"];
+    const candidateToken = Array.isArray(token) ? token[0] : token;
+    if (!labDiagnostics.accepts(runId ?? "", candidateToken)) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close"
+      });
+      res.end(JSON.stringify({ error: "forbidden" }));
+      return;
+    }
+    const include = parseLabInclude(parsed.searchParams.get("include"));
+    const body = {
+      ...labDiagnostics.combinedSnapshot(runId ?? "", { includeFullDom: false }),
+      debugRecords: debugRecords.map((record) => ({ ...record }))
+    };
+    endJson(res, 200, filterLabDiagnosticsBody(body, include));
+  }
+  async function handleLabDom(req, res) {
+    const labDiagnostics = options.labDiagnostics;
+    if (!labDiagnostics) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    if (req.method === "GET") {
+      const parsed = new URL(req.url ?? "/", "http://127.0.0.1");
+      const runId2 = parsed.searchParams.get("runId") ?? void 0;
+      const token2 = req.headers["x-changedown-lab-diagnostics-token"];
+      const candidateToken2 = Array.isArray(token2) ? token2[0] : token2;
+      if (!labDiagnostics.accepts(runId2 ?? "", candidateToken2)) {
+        res.writeHead(403, {
+          "Content-Type": "application/json",
+          "Cache-Control": "no-cache",
+          Connection: "close"
+        });
+        res.end(JSON.stringify({ error: "forbidden" }));
+        return;
+      }
+      endJson(res, 200, labDiagnostics.latestPaneSnapshot(runId2 ?? "", { includeFullDom: false }));
+      return;
+    }
+    if (req.method !== "POST") {
+      res.writeHead(405, { "Allow": "GET, POST", Connection: "close" });
+      res.end();
+      return;
+    }
+    let payload;
+    try {
+      payload = await readJsonBody(req);
+    } catch {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "invalid JSON" }));
+      return;
+    }
+    const input = payload && typeof payload === "object" ? payload : {};
+    const runId = typeof input.runId === "string" ? input.runId : void 0;
+    const token = req.headers["x-changedown-lab-diagnostics-token"];
+    const candidateToken = Array.isArray(token) ? token[0] : token;
+    if (!labDiagnostics.accepts(runId ?? "", candidateToken)) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close"
+      });
+      res.end(JSON.stringify({ error: "forbidden" }));
+      return;
+    }
+    if (input.mode === "full" && !labDiagnostics.allowFullDom()) {
+      res.writeHead(403, {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        Connection: "close"
+      });
+      res.end(JSON.stringify({ error: "full DOM diagnostics disabled" }));
+      return;
+    }
+    endJson(res, 200, labDiagnostics.latestPaneSnapshot(runId ?? "", { includeFullDom: input.mode === "full" }));
   }
   function writePendingPollResponse(reg, res) {
     for (const [id, pending] of reg.pendingRequests) {
@@ -320,9 +639,26 @@ function attachPaneEndpoints(httpServer, options = {}) {
 `
       );
     }
-    applyCors(req, res);
     const url = req.url ?? "";
     const method = req.method ?? "";
+    if (url === "/backend/lab/diagnostics" || url.startsWith("/backend/lab/diagnostics?")) {
+      if (method === "GET") {
+        handleLabDiagnostics(req, res);
+      } else {
+        res.writeHead(405, { "Allow": "GET", Connection: "close" });
+        res.end();
+      }
+      return;
+    }
+    if (url === "/backend/lab/dom" || url.startsWith("/backend/lab/dom?")) {
+      void handleLabDom(req, res);
+      return;
+    }
+    if (url.startsWith("/backend/lab/")) {
+      endJson(res, 404, { error: "unknown lab diagnostics route" });
+      return;
+    }
+    applyCors(req, res);
     if (method === "OPTIONS") {
       res.writeHead(204);
       res.end();
@@ -363,9 +699,19 @@ function attachPaneEndpoints(httpServer, options = {}) {
       void handleResponse(req, res, responseMatch[1]);
       return;
     }
+    const traceMatch = url.match(/^\/backend\/trace\/([^/]+)$/);
+    if (traceMatch && method === "POST") {
+      void handleLabTrace(req, res, traceMatch[1]);
+      return;
+    }
     const notifyMatch = url.match(/^\/backend\/notify\/([^/]+)$/);
     if (notifyMatch && method === "POST") {
       void handleNotify(req, res, notifyMatch[1]);
+      return;
+    }
+    const diagnosticsMatch = url.match(/^\/backend\/diagnostics\/([^/]+)$/);
+    if (diagnosticsMatch && method === "POST") {
+      void handleDiagnosticsIngest(req, res, diagnosticsMatch[1]);
       return;
     }
     const pollMatch = url.match(/^\/backend\/poll\/([^/]+)$/);
@@ -398,6 +744,7 @@ function attachPaneEndpoints(httpServer, options = {}) {
       const event = `data: ${JSON.stringify({ id, method, params })}
 
 `;
+      const deliveryPath = deliveryPathForRegistration(reg);
       const timeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
       let timer;
       const responsePromise = new Promise((resolve, reject) => {
@@ -408,6 +755,14 @@ function attachPaneEndpoints(httpServer, options = {}) {
           params,
           delivered: false
         });
+      });
+      recordDebug({
+        event: "sent",
+        registrationId,
+        requestId: id,
+        method,
+        deliveryPath,
+        runId: reg.lab?.runId
       });
       if (reg.sseRes && !reg.sseRes.writableEnded) {
         const wrote = reg.sseRes.write(event);
@@ -438,6 +793,15 @@ function attachPaneEndpoints(httpServer, options = {}) {
       const timeoutPromise = new Promise((_, reject) => {
         timer = setTimeout(() => {
           reg.pendingRequests.delete(id);
+          recordDebug({
+            event: "timeout",
+            registrationId,
+            requestId: id,
+            method,
+            deliveryPath,
+            runId: reg.lab?.runId,
+            message: `Word bridge request timed out after ${timeoutMs} ms (method: ${method})`
+          });
           reject(
             new Error(
               `Word bridge request timed out after ${timeoutMs} ms (method: ${method})`
@@ -483,6 +847,9 @@ function attachPaneEndpoints(httpServer, options = {}) {
     },
     handleHttpRequest(req, res) {
       requestListener(req, res);
+    },
+    getDebugRecords() {
+      return debugRecords.map((record) => ({ ...record }));
     },
     /**
      * Register a callback invoked whenever the pane POSTs a notification for

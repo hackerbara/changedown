@@ -37,6 +37,24 @@ function toolNameFromPath(pathname: string): string {
   return decodeURIComponent(pathname.slice('/tools/'.length));
 }
 
+function readTrackedFileArgsFromQuery(url: URL): Record<string, unknown> {
+  const args: Record<string, unknown> = {};
+  for (const [key, value] of url.searchParams.entries()) {
+    if (key === 'token') continue;
+    if ((key === 'offset' || key === 'limit') && value.trim().length > 0) {
+      const numeric = Number(value);
+      args[key] = Number.isFinite(numeric) ? numeric : value;
+      continue;
+    }
+    if (key === 'include_guide' || key === 'include_meta') {
+      args[key] = value === 'true' ? true : value === 'false' ? false : value;
+      continue;
+    }
+    args[key] = value;
+  }
+  return args;
+}
+
 export async function handleRemoteHttpFacade(
   request: Request,
   ctx: RelayRequestContext,
@@ -51,6 +69,11 @@ export async function handleRemoteHttpFacade(
   if (request.method === 'GET' && url.pathname === '/openapi.json') {
     const listed = await mcp.listTools(ctx);
     return json(openApiFromMcpTools(listed.tools, { title: 'ChangeDown Remote Word Tools', version }));
+  }
+
+  if (request.method === 'GET' && url.pathname === '/tools/read_tracked_file') {
+    const result = await mcp.callTool(ctx, 'read_tracked_file', readTrackedFileArgsFromQuery(url));
+    return json(normalizeToolResult('read_tracked_file', result));
   }
 
   if (request.method === 'POST' && url.pathname.startsWith('/tools/')) {

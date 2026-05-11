@@ -1,0 +1,71 @@
+---
+import BaseLayout from '@/layouts/BaseLayout.astro';
+import Header from '@/components/Header.astro';
+import Footer from '@/components/Footer.astro';
+import SoftwareApplicationLd from '@/components/SoftwareApplicationLd.astro';
+import HeroStatic from '@/components/HeroStatic.astro';
+import DifferentiatorCard from '@/components/DifferentiatorCard.astro';
+import TrustLine from '@/components/TrustLine.astro';
+import InstallCTA from '@/components/InstallCTA.astro';
+import SandboxRoot from '@/sandbox/SandboxRoot';
+---
+<BaseLayout title="ChangeDown for Word — Pull up a seat. Any AI.">
+  <SoftwareApplicationLd slot="head" />
+  <Header slot="header" />
+
+  <section id="hero">
+    <HeroStatic />
+  </section>
+
+  <section id="demo" class="sandbox-section" aria-labelledby="demo-heading">
+    <header class="sandbox-section-header">
+      <h2 id="demo-heading">Try it right now</h2>
+    </header>
+    <SandboxRoot client:visible />
+  </section>
+
+  <section id="what-makes-this-different" aria-labelledby="diff-heading">
+    <header class="diff-header">
+      <h2 id="diff-heading">What makes this different.</h2>
+      <p class="lede">Three things every competitor's missing.</p>
+    </header>
+    <div class="diff-grid">
+      <DifferentiatorCard title="Any AI joins. As many as you want." link="/security#rooms">
+        <Fragment slot="body"><!-- PLACEHOLDER: voice-guide pass --></Fragment>
+      </DifferentiatorCard>
+      <DifferentiatorCard title="No signup. No API key." link="/install">
+        <Fragment slot="body"><!-- PLACEHOLDER: voice-guide pass --></Fragment>
+      </DifferentiatorCard>
+      <DifferentiatorCard title="Real Word tracked changes — yours forever." link="/security">
+        <Fragment slot="body"><!-- PLACEHOLDER: voice-guide pass --></Fragment>
+      </DifferentiatorCard>
+    </div>
+  </section>
+
+  <section id="trust" aria-labelledby="trust-heading">
+    <h2 id="trust-heading" class="sr-only">Trust</h2>
+    <TrustLine />
+  </section>
+
+  <section id="install" aria-labelledby="install-heading">
+    <h2 id="install-heading" class="sr-only">Install</h2>
+    <InstallCTA />
+  </section>
+
+  <Footer slot="footer" />
+</BaseLayout>
+<style>
+  section { padding: var(--space-7) var(--space-5); }
+  .sandbox-section { background: var(--cream-elev); }
+  .sandbox-section-header { max-width: var(--wide-width); margin: 0 auto var(--space-5); }
+.diff-header { max-width: var(--wide-width); margin: 0 auto; text-align: center; }
+  .diff-header .lede { color: var(--ink-secondary); font-size: 18px; }
+  .diff-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3); max-width: var(--wide-width);
+    margin: var(--space-5) auto 0;
+  }
+  @media (max-width: 768px) {
+    .diff-grid { grid-template-columns: 1fr; }
+  }
+</style>

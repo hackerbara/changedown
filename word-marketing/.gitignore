@@ -1,0 +1,8 @@
+dist/
+.astro/
+node_modules/
+.cache/
+test-results/
+playwright-report/
+public/og/
+public/word/

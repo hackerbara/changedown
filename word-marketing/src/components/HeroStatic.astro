@@ -1,0 +1,56 @@
+---
+import Icon from '@/components/Icon.astro';
+---
+<div class="hero">
+  <div class="hero-text">
+    <h1>Pull up a seat.<br />Any AI.<br />Tracked changes<br />in your document.</h1>
+    <p class="hero-sub"><!-- PLACEHOLDER: voice-guide sub-headline pass --></p>
+    <div class="hero-ctas">
+      <a href="/#demo" class="cta-primary">Open a free room <Icon name="arrow-right" size={16} /></a>
+      <a href="/#demo" class="cta-ghost">Try the demo <Icon name="arrow-down" size={16} /></a>
+    </div>
+  </div>
+  <div class="hero-mock" aria-hidden="true">
+    <div class="mock-doc">
+      <div class="doc-line"></div>
+      <div class="doc-line short"></div>
+      <div class="doc-line"></div>
+      <div class="doc-line ins"></div>
+      <div class="doc-line short"></div>
+      <div class="doc-line del"></div>
+      <div class="doc-line"></div>
+    </div>
+    <div class="mock-pane">
+      <div class="pane-head">🦫 Pull up a seat</div>
+      <div class="pane-cta">Try a free slot</div>
+      <div class="pane-step">Step 1 · Open a room</div>
+      <div class="pane-step">Step 2 · Paste link</div>
+      <div class="pane-step">Step 3 · Review</div>
+    </div>
+  </div>
+</div>
+<style>
+  .hero { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); max-width: var(--wide-width); margin: 0 auto; align-items: center; }
+  @media (max-width: 768px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero-mock { order: 2; }
+  }
+  .hero-text h1 { margin-bottom: var(--space-4); }
+  .hero-sub { font-size: 18px; color: var(--ink-secondary); margin-top: var(--space-3); min-height: 1.6em; /* preserve layout while empty */ }
+  .hero-ctas { display: flex; gap: var(--space-2); margin-top: var(--space-4); flex-wrap: wrap; }
+  .cta-primary { background: var(--copper-deep); color: white; padding: 12px 18px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: transform var(--transition-fast); }
+  .cta-primary:hover { transform: translateY(-1px); color: white; }
+  .cta-ghost { border: 1px solid var(--copper-deep); color: var(--copper-deep); padding: 11px 17px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .cta-ghost:hover { background: var(--copper-light); color: var(--copper-deep); }
+
+  .hero-mock { display: flex; gap: var(--space-2); height: 260px; }
+  .mock-doc { flex: 1.4; background: var(--paper-white); border-radius: 4px; padding: 14px; box-shadow: 0 8px 24px rgba(40, 30, 10, 0.18); display: flex; flex-direction: column; gap: 6px; }
+  .doc-line { height: 4px; background: var(--ink-muted); border-radius: 1px; opacity: 0.55; }
+  .doc-line.short { width: 60%; }
+  .doc-line.ins { background: var(--insert-underline); opacity: 1; }
+  .doc-line.del { background: var(--delete-strike); opacity: 1; }
+  .mock-pane { flex: 1; background: linear-gradient(180deg, #f8f3e5, #ede2c8); border: 1px solid var(--border-soft); border-radius: 4px; padding: 12px; font-size: 11px; color: var(--ink-secondary); display: flex; flex-direction: column; gap: 6px; }
+  .pane-head { font-weight: 700; color: var(--ink-primary); }
+  .pane-cta { background: var(--copper-deep); color: white; padding: 6px 10px; border-radius: 3px; text-align: center; font-weight: 600; font-size: 11px; }
+  .pane-step { background: var(--paper-white); border: 1px solid var(--border-soft); padding: 4px 6px; border-radius: 3px; font-size: 10px; }
+</style>

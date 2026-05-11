@@ -4,6 +4,8 @@ import { streamOoxmlPartEvents } from "./events.js";
 import { projectOoxmlRegions } from "./region.js";
 import { projectOoxmlRevisionsToCurrentBody } from "./revisions.js";
 import type { ChangeDownRecord } from "./revisions.js";
+import { collectOoxmlRevisionWitnesses } from "./revision-witness.js";
+import type { OoxmlRevisionWitness } from "./revision-witness.js";
 import {
   applyOoxmlTableInsertion,
   applyOoxmlTableRowInsertion,
@@ -48,6 +50,7 @@ export interface CodecProjection {
   readonly records: readonly ChangeDownRecord[];
   readonly regions: readonly OoxmlRegionProjection[];
   readonly tokens: readonly OoxmlToken[];
+  readonly revisionWitnesses: readonly OoxmlRevisionWitness[];
   readonly packageLedger: PackageLedger;
   readonly diagnostics: readonly CodecDiagnostic[];
 }
@@ -93,6 +96,7 @@ export function createOoxmlPackageCodec(): OoxmlPackageCodec {
       const regions = projectOoxmlRegions(input.snapshot);
       const tables = projectOoxmlTables(input.snapshot);
       const revisionProjection = projectRevisionProjection(input.snapshot);
+      const revisionWitnesses = collectOoxmlRevisionWitnesses(input.snapshot);
       const bodyRegions = regions.filter((region) => !isRegionInsideTable(region));
       const semanticParagraphs = projectSemanticRevisionParagraphs(input.snapshot);
       const bodyMarkdown = assembleBodyMarkdown(bodyRegions, tables, semanticParagraphs);
@@ -114,6 +118,7 @@ export function createOoxmlPackageCodec(): OoxmlPackageCodec {
         tokens: bodyRegions
           .filter((region) => !semanticParagraphs.has(region.containerPath))
           .flatMap((region) => region.tokens),
+        revisionWitnesses,
         packageLedger: buildPackageLedger(input.snapshot),
         diagnostics: [],
       };

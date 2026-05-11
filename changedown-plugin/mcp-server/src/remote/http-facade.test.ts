@@ -90,6 +90,26 @@ describe('remote HTTP facade', () => {
     expect(events).toEqual([{ op: 'callTool', name: 'propose_change', args: { file: 'word://sess-http', old_text: 'world', new_text: 'there', idempotency_key: 'idem-http' } }]);
   });
 
+  it('allows GET only for read_tracked_file using query arguments', async () => {
+    const events: Array<{ op: string; name?: string; args?: Record<string, unknown> }> = [];
+    const request = new Request('https://relay.test/tools/read_tracked_file?file=word%3A%2F%2Fsess-http&view=working&limit=25');
+    const response = await handleRemoteHttpFacade(request, ctx([]), sentinelMcp(events));
+    const body = await readJson(response);
+    expect(body.isError).toBe(false);
+    expect(events).toEqual([{
+      op: 'callTool',
+      name: 'read_tracked_file',
+      args: { file: 'word://sess-http', view: 'working', limit: 25 },
+    }]);
+  });
+
+  it('does not allow GET for mutating tool paths', async () => {
+    const events: Array<{ op: string; name?: string; args?: Record<string, unknown> }> = [];
+    const response = await handleRemoteHttpFacade(new Request('https://relay.test/tools/propose_change?file=word%3A%2F%2Fsess-http'), ctx([]), sentinelMcp(events));
+    expect(response).toBeNull();
+    expect(events).toEqual([]);
+  });
+
   it('uses the production MCP path to preserve remote Word schema and author synthesis', async () => {
     const calls: Array<{ name: string; args: Record<string, unknown>; idempotencyKey?: string }> = [];
     const response = await handleRemoteHttpFacade(new Request('https://relay.test/tools'), ctx(calls));
