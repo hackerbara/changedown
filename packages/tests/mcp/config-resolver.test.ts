@@ -49,6 +49,40 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function withEnv<T>(
+  updates: Record<string, string | undefined>,
+  fn: () => T | Promise<T>,
+): Promise<T> {
+  const previous = new Map<string, string | undefined>();
+  for (const [key, value] of Object.entries(updates)) {
+    previous.set(key, process.env[key]);
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+
+  try {
+    return await fn();
+  } finally {
+    for (const [key, value] of previous) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
+async function makeProject(prefix: string, mode: 'classic' | 'compact' = 'classic'): Promise<string> {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
+  await writeConfig(dir, mode);
+  await fs.writeFile(path.join(dir, 'doc.md'), 'Hello from project.\n', 'utf8');
+  return dir;
+}
+
 describe('ConfigResolver file watching', () => {
   let tmpDir: string;
 
@@ -169,5 +203,111 @@ describe('ConfigResolver file watching', () => {
     expect(config.protocol.mode).toBe('compact');
 
     resolver.dispose();
+  });
+});
+
+describe('ConfigResolver project-root inference', () => {
+  const cleanup: string[] = [];
+
+  afterEach(async () => {
+    for (const dir of cleanup.splice(0)) {
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('resolves an absolute file by walking up from the file when fallback cwd and PWD are unrelated', async () => {
+    const project = await makeProject('cn-absolute-project-');
+    const unrelated = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-plugin-cache-'));
+    cleanup.push(project, unrelated);
+
+    const filePath = path.join(project, 'doc.md');
+    const resolved = await withEnv({ PWD: unrelated, CHANGEDOWN_PROJECT_DIR: undefined, CODEX_WORKSPACE_ROOT: undefined }, () => {
+      const resolver = new ConfigResolver(unrelated);
+      try {
+        return resolver.resolveFilePath(filePath);
+      } finally {
+        resolver.dispose();
+      }
+    });
+
+    expect(resolved).toBe(await fs.realpath(filePath));
+  });
+
+  it('does not let lastProjectDir poison an absolute path in another project', async () => {
+    const projectA = await makeProject('cn-project-a-', 'classic');
+    const projectB = await makeProject('cn-project-b-', 'compact');
+    const unrelated = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-plugin-cache-'));
+    cleanup.push(projectA, projectB, unrelated);
+
+    await withEnv({ PWD: unrelated, CHANGEDOWN_PROJECT_DIR: undefined, CODEX_WORKSPACE_ROOT: undefined }, async () => {
+      const resolver = new ConfigResolver(unrelated);
+      try {
+        await resolver.forFile(path.join(projectA, 'doc.md'));
+        const resolvedB = resolver.resolveFilePath(path.join(projectB, 'doc.md'));
+        expect(resolvedB).toBe(await fs.realpath(path.join(projectB, 'doc.md')));
+        const { projectDir, config } = await resolver.forFile(resolvedB);
+        expect(projectDir).toBe(await fs.realpath(projectB));
+        expect(config.protocol.mode).toBe('compact');
+      } finally {
+        resolver.dispose();
+      }
+    });
+  });
+
+  it('uses the deepest containing session root for absolute path boundary checks', async () => {
+    const outer = await makeProject('cn-outer-project-', 'classic');
+    const inner = path.join(outer, 'nested');
+    await writeConfig(inner, 'compact');
+    await fs.mkdir(path.join(inner, 'links'), { recursive: true });
+    await fs.writeFile(path.join(outer, 'outer-only.md'), 'Outer project file.\n', 'utf8');
+    await fs.symlink(path.join(outer, 'outer-only.md'), path.join(inner, 'links', 'escape.md'));
+    const unrelated = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-plugin-cache-'));
+    cleanup.push(outer, unrelated);
+
+    const resolver = new ConfigResolver(unrelated);
+    resolver.setSessionRoots([outer, inner]);
+    try {
+      expect(() => resolver.resolveFilePath(path.join(inner, 'links', 'escape.md')))
+        .toThrow(/outside the project root/);
+    } finally {
+      resolver.dispose();
+    }
+  });
+
+  it('does not let a rejected absolute path seed relative path resolution', async () => {
+    const project = await makeProject('cn-boundary-project-', 'classic');
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-boundary-outside-'));
+    const unrelated = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-plugin-cache-'));
+    cleanup.push(project, outside, unrelated);
+
+    await fs.writeFile(path.join(outside, 'outside.md'), 'Outside project file.\n', 'utf8');
+    await fs.symlink(path.join(outside, 'outside.md'), path.join(project, 'escape.md'));
+
+    await withEnv({ PWD: unrelated, CHANGEDOWN_PROJECT_DIR: undefined, CODEX_WORKSPACE_ROOT: undefined }, () => {
+      const resolver = new ConfigResolver(unrelated);
+      try {
+        expect(() => resolver.resolveFilePath(path.join(project, 'escape.md')))
+          .toThrow(/outside the project root/);
+        expect(() => resolver.resolveFilePath('doc.md'))
+          .toThrow(/Cannot resolve relative path/);
+      } finally {
+        resolver.dispose();
+      }
+    });
+  });
+
+  it('fails relative paths clearly when no project root is known', async () => {
+    const unrelated = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-plugin-cache-'));
+    cleanup.push(unrelated);
+
+    await withEnv({ PWD: unrelated, CHANGEDOWN_PROJECT_DIR: undefined, CODEX_WORKSPACE_ROOT: undefined }, () => {
+      const resolver = new ConfigResolver(unrelated);
+      try {
+        expect(() => resolver.resolveFilePath('website-v2/public/content/02-editing-example.md'))
+          .toThrow(/Cannot resolve relative path/);
+      } finally {
+        resolver.dispose();
+      }
+    });
   });
 });

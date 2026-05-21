@@ -24,7 +24,7 @@ export interface ActiveGroup {
  *
  * --- Fork divergence from @changedown/mcp SessionState ---
  *
- * This is an intentional fork of `changedown-plugin/mcp-server/src/state.ts`.
+ * This is an intentional fork of `packages/mcp/src/state.ts`.
  * The MCP server's SessionState has additional capabilities that this version
  * does NOT need:
  *
@@ -48,7 +48,7 @@ export interface ActiveGroup {
  *
  * If you modify shared logic (getNextId, group lifecycle), check both files:
  *   - packages/opencode-plugin/src/state.ts        (this file)
- *   - changedown-plugin/mcp-server/src/state.ts   (MCP server)
+ *   - packages/mcp/src/state.ts   (MCP server)
  */
 export class SessionState {
   private counters: Map<string, number> = new Map();

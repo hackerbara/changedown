@@ -1,10 +1,48 @@
 import {
   initHashline,
-  parseForFormat, buildSessionHashes,
+  parseForFormat, buildSessionHashes, findFootnoteBlockStart,
   type CurrentViewResult, type DecidedViewResult,
 } from '@changedown/core';
 import type { SessionState } from './state.js';
 import type { ChangeDownConfig } from './config.js';
+
+/** Number of document-body lines, excluding trailing blank separator lines and
+ * the footnote block. Used for conservative read-generation write transforms. */
+export function bodyLineCount(text: string): number {
+  const lines = text.split('\n');
+  let bodyEnd = findFootnoteBlockStart(lines);
+  while (bodyEnd > 0 && lines[bodyEnd - 1]!.trim() === '') bodyEnd--;
+  return bodyEnd;
+}
+
+export function recordBasicWriteTransform(
+  state: SessionState | undefined,
+  filePath: string,
+  beforeContent: string,
+  afterContent: string,
+  details: {
+    settledBeforeApply?: boolean;
+    supersededIds?: string[];
+    affectedStartLine?: number;
+    affectedEndLine?: number;
+  } = {},
+): void {
+  if (!state) return;
+  const bodyBefore = bodyLineCount(beforeContent);
+  const bodyAfter = bodyLineCount(afterContent);
+  const totalDelta = afterContent.split('\n').length - beforeContent.split('\n').length;
+  const bodyLineDelta = bodyAfter - bodyBefore;
+  state.recordWriteTransform(filePath, {
+    fromGeneration: state.getReadGeneration(filePath)?.id ?? 'unknown',
+    toFingerprint: 'post-write',
+    bodyLineDelta,
+    footnoteLineDelta: totalDelta - bodyLineDelta,
+    settledBeforeApply: details.settledBeforeApply ?? false,
+    supersededIds: details.supersededIds ?? [],
+    affectedStartLine: details.affectedStartLine,
+    affectedEndLine: details.affectedEndLine,
+  });
+}
 
 /**
  * Recompute and record session hashes after a file write.
@@ -25,12 +63,14 @@ export async function rerecordState(
   state: SessionState | undefined,
   filePath: string,
   content: string,
-  config: ChangeDownConfig
+  config: ChangeDownConfig,
+  options: { preserveReadGeneration?: boolean } = {},
 ): Promise<{ currentView?: CurrentViewResult; decidedView?: DecidedViewResult } | undefined> {
   if (!state) return undefined;
 
   if (!config.hashline.enabled) {
     state.resetFile(filePath);
+    if (!options.preserveReadGeneration) state.invalidateReadGeneration(filePath);
     return undefined;
   }
 
@@ -77,6 +117,7 @@ export async function rerecordState(
   }
 
   state.rerecordAfterWrite(filePath, content, hashes);
+  if (!options.preserveReadGeneration) state.invalidateReadGeneration(filePath);
 
   // Return real view results (not stubs) so callers that iterate .lines get
   // actual line data (rawLineNum, hash, text, etc.). propose-change.ts:1264

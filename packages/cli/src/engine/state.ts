@@ -14,6 +14,33 @@ export interface FileRecord {
   recordedAt: number;
 }
 
+export interface SessionHashEntry {
+  line: number;
+  raw: string;
+  committed?: string;
+  currentView?: string;
+  rawLineNum?: number;
+}
+
+export interface ReadGeneration {
+  id: string;
+  view: BuiltinView;
+  contentFingerprintAtRead: string;
+  hashes: SessionHashEntry[];
+  createdAt: number;
+}
+
+export interface WriteTransform {
+  fromGeneration: string;
+  toFingerprint: string;
+  bodyLineDelta: number;
+  footnoteLineDelta: number;
+  settledBeforeApply: boolean;
+  supersededIds: string[];
+  affectedStartLine?: number;
+  affectedEndLine?: number;
+}
+
 export interface ActiveGroup {
   id: string;
   numericId: number;
@@ -74,8 +101,11 @@ export class SessionState {
   private counters: Map<string, number> = new Map();
   private globalMaxId: number = 0;
   private activeGroup: ActiveGroup | null = null;
-  private fileHashesByView: Map<string, Map<BuiltinView, Array<{ line: number; raw: string; committed?: string; currentView?: string; rawLineNum?: number }>>> = new Map();
+  private fileHashesByView: Map<string, Map<BuiltinView, SessionHashEntry[]>> = new Map();
   private fileRecords: Map<string, FileRecord> = new Map();
+  private readGenerations: Map<string, ReadGeneration> = new Map();
+  private writeTransforms: Map<string, WriteTransform[]> = new Map();
+  private generationSeq = 0;
   private guideShownForMode: 'classic' | 'compact' | null = null;
   private guideSuppressed = true;
 
@@ -206,7 +236,7 @@ export class SessionState {
    * Called by `read_tracked_file` after computing hashline output.
    * Overwrites the recorded hashes for the last-read view of the file.
    */
-  recordFileHashes(filePath: string, hashes: Array<{ line: number; raw: string; committed?: string; currentView?: string; rawLineNum?: number }>): void {
+  recordFileHashes(filePath: string, hashes: SessionHashEntry[]): void {
     filePath = this.normalizePath(filePath);
     const view = this.getLastReadView(filePath) ?? 'working';
     if (!this.fileHashesByView.has(filePath)) {
@@ -223,7 +253,7 @@ export class SessionState {
    * (i.e. whatever view was most recently passed to `recordAfterRead`). Falls
    * back to `'raw'` if no view has been recorded for the file yet.
    */
-  getRecordedHashes(filePath: string, view?: BuiltinView): Array<{ line: number; raw: string; committed?: string; currentView?: string; rawLineNum?: number }> | undefined {
+  getRecordedHashes(filePath: string, view?: BuiltinView): SessionHashEntry[] | undefined {
     filePath = this.normalizePath(filePath);
     const viewTables = this.fileHashesByView.get(filePath);
     if (!viewTables) return undefined;
@@ -238,7 +268,7 @@ export class SessionState {
   recordAfterRead(
     filePath: string,
     view: BuiltinView,
-    hashes: Array<{ line: number; raw: string; committed?: string; currentView?: string; rawLineNum?: number }>,
+    hashes: SessionHashEntry[],
     rawContent: string,
   ): void {
     filePath = this.normalizePath(filePath);
@@ -261,6 +291,15 @@ export class SessionState {
       contentFingerprint: newFingerprint,
       recordedAt: Date.now(),
     });
+
+    this.readGenerations.set(filePath, {
+      id: `${Date.now()}:${++this.generationSeq}:${view}`,
+      view,
+      contentFingerprintAtRead: newFingerprint,
+      hashes: [...hashes],
+      createdAt: Date.now(),
+    });
+    this.writeTransforms.set(filePath, []);
   }
 
   /**
@@ -271,7 +310,7 @@ export class SessionState {
   rerecordAfterWrite(
     filePath: string,
     newContent: string,
-    hashes: Array<{ line: number; raw: string; committed?: string; currentView?: string; rawLineNum?: number }>,
+    hashes: SessionHashEntry[],
   ): void {
     filePath = this.normalizePath(filePath);
     const existingRecord = this.fileRecords.get(filePath);
@@ -288,6 +327,73 @@ export class SessionState {
       contentFingerprint: this.fingerprint(newContent),
       recordedAt: Date.now(),
     });
+  }
+
+  getReadGeneration(filePath: string): ReadGeneration | undefined {
+    filePath = this.normalizePath(filePath);
+    return this.readGenerations.get(filePath);
+  }
+
+  recordWriteTransform(filePath: string, transform: WriteTransform): void {
+    filePath = this.normalizePath(filePath);
+    const list = this.writeTransforms.get(filePath) ?? [];
+    list.push(transform);
+    this.writeTransforms.set(filePath, list.slice(-20));
+  }
+
+  getWriteTransforms(filePath: string): WriteTransform[] {
+    filePath = this.normalizePath(filePath);
+    return this.writeTransforms.get(filePath) ?? [];
+  }
+
+  invalidateReadGeneration(filePath: string): void {
+    filePath = this.normalizePath(filePath);
+    this.readGenerations.delete(filePath);
+    this.writeTransforms.delete(filePath);
+  }
+
+  /**
+   * Resolves a LINE:HASH against the last durable read generation, not the
+   * mutable post-write hash table. This is only a source of candidate raw lines:
+   * callers must verify semantic text/context before trusting shifted output.
+   */
+  resolveReadGenerationHash(
+    filePath: string,
+    line: number,
+    suppliedHash: string,
+  ): { rawLineNum: number; view: BuiltinView; generationId: string } | undefined {
+    filePath = this.normalizePath(filePath);
+    const generation = this.readGenerations.get(filePath);
+    if (!generation) return undefined;
+
+    const primary = primaryHashForView[generation.view];
+    const sameLine = generation.hashes.find((h) => h.line === line);
+    if (sameLine && sameLine[primary] === suppliedHash) {
+      return {
+        rawLineNum: sameLine.rawLineNum ?? sameLine.line,
+        view: generation.view,
+        generationId: generation.id,
+      };
+    }
+
+    let uniqueMatch: SessionHashEntry | undefined;
+    let ambiguous = false;
+    for (const entry of generation.hashes) {
+      if (entry[primary] === suppliedHash) {
+        if (uniqueMatch) {
+          ambiguous = true;
+          break;
+        }
+        uniqueMatch = entry;
+      }
+    }
+
+    if (!uniqueMatch || ambiguous) return undefined;
+    return {
+      rawLineNum: uniqueMatch.rawLineNum ?? uniqueMatch.line,
+      view: generation.view,
+      generationId: generation.id,
+    };
   }
 
   /**

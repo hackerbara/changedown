@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { ChangeStatus, CriticMarkupParser } from '@changedown/core';
 import { FootnoteNativeParser, injectGhostDelimiters } from '@changedown/core/internals';
 import type { OffsetDecoration, ParsedFootnote } from '@changedown/core/internals';
 
@@ -6,6 +7,41 @@ import type { OffsetDecoration, ParsedFootnote } from '@changedown/core/internal
 // Edit-op uses contextual embedding syntax: contextBefore{--deleted--}contextAfter.
 // This exercises the contextual-resolution branch (footnote-native-parser.ts:622-652).
 describe('parser bug fixes', () => {
+  describe('terminal footnote audit markup is metadata', () => {
+    it('does not parse CriticMarkup inside terminal audit footnotes as Level 0 changes', () => {
+      const input = [
+        'A [^cn-1] B {++pending++}[^cn-2]',
+        '',
+        '[^cn-1]: @a | 2026-05-16 | ins | rejected',
+        '    1:f9 A {++bad++} B',
+        '[^cn-2]: @a | 2026-05-16 | ins | proposed',
+      ].join('\n');
+
+      const doc = new CriticMarkupParser().parse(input, { skipCodeBlocks: false });
+      const changes = doc.getChanges();
+
+      expect(changes.map((c) => c.id)).toContain('cn-1');
+      expect(changes.map((c) => c.id)).toContain('cn-2');
+      expect(changes.filter((c) => c.status === ChangeStatus.Proposed).map((c) => c.id)).toEqual(['cn-2']);
+      expect(changes.some((c) => c.level === 0 && input.slice(c.range.start, c.range.end).includes('{++bad++}'))).toBe(false);
+    });
+
+    it('still parses indented body CriticMarkup immediately before terminal footnotes', () => {
+      const input = [
+        'Intro',
+        '',
+        '    indented {++body-code++}',
+        '',
+        '[^cn-1]: @a | 2026-05-16 | ins | accepted',
+      ].join('\n');
+
+      const doc = new CriticMarkupParser().parse(input, { skipCodeBlocks: false });
+      const changes = doc.getChanges();
+
+      expect(changes.some((c) => c.level === 0 && input.slice(c.range.start, c.range.end).includes('{++body-code++}'))).toBe(true);
+    });
+  });
+
   describe('bug 5: contextual deletion emits non-zero range', () => {
     it('emits range covering context span with deletionSeamOffset', () => {
       const l3Text = [

@@ -226,6 +226,7 @@ describe('pane registration → BackendRegistry wiring', () => {
     await expect(backend.read({ uri: 'word://missing' })).rejects.toThrow(/WordSessionNotFoundError/);
   });
 
+
   it('caches committed Word resource versions from read and notifications', async () => {
     const registry = new BackendRegistry();
     const listeners = new Map<string, (event: unknown) => void>();

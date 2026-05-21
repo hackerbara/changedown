@@ -1,8 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
-import { spawn, spawnSync } from 'node:child_process';
-import type { ChildProcess } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { AppType, startDebugging, stopDebugging } from 'office-addin-debugging';
 
 const require = createRequire(import.meta.url);
@@ -28,7 +27,7 @@ export function pathCandidates(bin: string, cwd: string, envPath = process.env.P
   const bases = [
     path.join(cwd, 'node_modules', '.bin'),
     path.join(cwd, 'packages', 'word-add-in', 'node_modules', '.bin'),
-    path.join(cwd, 'changedown-plugin', 'mcp-server', 'node_modules', '.bin'),
+    path.join(cwd, 'packages', 'mcp', 'node_modules', '.bin'),
     ...envPath.split(delimiter).filter(Boolean),
   ];
   const candidates: string[] = [];
@@ -85,19 +84,6 @@ export function runTool(bin: string, args: string[], options: RunToolOptions & {
   });
   if (result.error) throw result.error;
   return result.status ?? 1;
-}
-
-export function spawnDetachedTool(command: string, args: string[], options: RunToolOptions): ChildProcess {
-  if (options.dryRun) {
-    throw new Error('spawnDetachedTool cannot be used in dry-run mode');
-  }
-  return spawn(command, args, {
-    cwd: options.cwd,
-    env: { ...process.env, ...(options.env ?? {}) },
-    stdio: ['pipe', 'inherit', 'inherit'],
-    shell: commandNeedsShell(command),
-    windowsHide: true,
-  });
 }
 
 function errorMessage(err: unknown): string {

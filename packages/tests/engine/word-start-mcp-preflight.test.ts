@@ -21,7 +21,7 @@ vi.mock('../../../packages/cli/src/agents/setup.js', () => ({
   ]),
 }));
 
-vi.mock('../../../packages/cli/src/word/mcp.js', () => ({
+vi.mock('@changedown/mcp/launcher', () => ({
   MCP_HEALTH_URL: 'https://127.0.0.1:39990/health',
   MCP_PORT: 39990,
   probeMcpHealth: vi.fn(async () => ({ ok: false, error: 'connect ECONNREFUSED 127.0.0.1:39990' })),
@@ -37,7 +37,7 @@ import { setupAgentIntegrations } from '../../../packages/cli/src/agents/setup.j
 import { resolveManifest } from '../../../packages/cli/src/word/manifest.js';
 import { runTool } from '../../../packages/cli/src/word/office-tools.js';
 import { runWordStart } from '../../../packages/cli/src/word/start.js';
-import { probeMcpHealth, startMcpIfNeeded } from '../../../packages/cli/src/word/mcp.js';
+import { probeMcpHealth, startMcpIfNeeded } from '@changedown/mcp/launcher';
 import { clearWordSession, writeWordSession } from '../../../packages/cli/src/word/state.js';
 
 describe('word start MCP and agent setup', () => {

@@ -137,6 +137,38 @@ describe('handleReadTrackedFile', () => {
     expect(result.content[0].text).toContain('file');
   });
 
+  it('reads an absolute file from its project when resolver fallback cwd and PWD are unrelated', async () => {
+    const unrelated = await fs.mkdtemp(path.join(os.tmpdir(), 'cn-plugin-cache-'));
+    const previousPwd = process.env.PWD;
+    const previousProjectDir = process.env.CHANGEDOWN_PROJECT_DIR;
+    const previousCodexRoot = process.env.CODEX_WORKSPACE_ROOT;
+    const rootlessResolver = new ConfigResolver(unrelated);
+
+    try {
+      process.env.PWD = unrelated;
+      delete process.env.CHANGEDOWN_PROJECT_DIR;
+      delete process.env.CODEX_WORKSPACE_ROOT;
+
+      const filePath = path.join(tmpDir, 'doc.md');
+      await fs.writeFile(filePath, 'Hello from absolute read.\n', 'utf8');
+
+      const result = await handleReadTrackedFile(
+        { file: filePath, view: 'raw' },
+        rootlessResolver,
+        state,
+      );
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain('Hello from absolute read.');
+    } finally {
+      rootlessResolver.dispose();
+      await fs.rm(unrelated, { recursive: true, force: true });
+      if (previousPwd === undefined) delete process.env.PWD; else process.env.PWD = previousPwd;
+      if (previousProjectDir === undefined) delete process.env.CHANGEDOWN_PROJECT_DIR; else process.env.CHANGEDOWN_PROJECT_DIR = previousProjectDir;
+      if (previousCodexRoot === undefined) delete process.env.CODEX_WORKSPACE_ROOT; else process.env.CODEX_WORKSPACE_ROOT = previousCodexRoot;
+    }
+  });
+
   // ─── Compact by default, relative path ─────────────────────────────────
 
   it('default output uses relative path in header (no absolute path)', async () => {

@@ -14,8 +14,12 @@ export interface TrackingState {
 }
 
 export interface DocumentStateParams {
+  /** Host-native shape consumed by BaseController. */
+  uri: string;
   textDocument: { uri: string };
   tracking: TrackingState;
+  /** Host-native view key. Kept alongside viewMode for older LSP-shaped consumers. */
+  view: string;
   viewMode: string;
 }
 
@@ -52,8 +56,10 @@ export function sendDocumentState(
   viewMode: string
 ): void {
   const params: DocumentStateParams = {
+    uri,
     textDocument: { uri },
     tracking,
+    view: viewMode,
     viewMode,
   };
   connection.sendNotification(LSP_METHOD.DOCUMENT_STATE, params);

@@ -28,6 +28,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+# Switch to shipped MCP config (npx form) for the duration of this script.
+# Restore local mode on exit so dev workflow isn't broken if this script fails mid-run.
+changedown-plugin/scripts/use-mcp.sh shipped
+trap 'changedown-plugin/scripts/use-mcp.sh local' EXIT
+
 # ── Colors ──────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -48,7 +53,7 @@ PACKAGES=(
   "packages/lsp-server"
 )
 if $INCLUDE_MCP; then
-  PACKAGES+=("changedown-plugin/mcp-server")
+  PACKAGES+=("packages/mcp")
 fi
 
 # ── Preflight checks ───────────────────────────────────────────────────────
@@ -116,7 +121,10 @@ for pkg in "${PACKAGES[@]}"; do
   PACKAGE_JSON_PATHS+=("$pkg/package.json")
 done
 PACKAGE_JSON_BASELINE=$(mktemp -t changedown-publish-package-json.XXXXXX)
-trap 'rm -f "$PACKAGE_JSON_BASELINE"' EXIT
+# Replace the early MCP-restore trap (line 34) with a combined trap that ALSO
+# cleans up the package.json baseline tempfile. Bash trap overwrites, doesn't
+# stack, so both actions must be in this single trap to keep both behaviors.
+trap 'rm -f "$PACKAGE_JSON_BASELINE"; changedown-plugin/scripts/use-mcp.sh local' EXIT
 for file in "${PACKAGE_JSON_PATHS[@]}"; do
   shasum -a 256 "$file" >> "$PACKAGE_JSON_BASELINE"
 done

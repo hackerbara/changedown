@@ -35,6 +35,7 @@ echo ""
 # MCP config
 CURSOR_DIR="$TARGET_REPO/.cursor"
 mkdir -p "$CURSOR_DIR"
+# Bundle destination dir is mcp-server/ (preserved for backwards-compat); source moved to packages/mcp/.
 if [[ "$INSTALL_DIR" == "$TARGET_REPO"/* ]] || [[ "$INSTALL_DIR" == "$TARGET_REPO"* ]]; then
   REL_PATH="$([[ "$INSTALL_DIR" == "$TARGET_REPO"/* ]] && echo "${INSTALL_DIR#$TARGET_REPO/}" || echo "${INSTALL_DIR#$TARGET_REPO}")"
   REL_PATH="${REL_PATH#/}"

@@ -18,7 +18,7 @@ import {
   resolvePackagedTool,
   runOfficeDebugStart,
   runTool,
-} from '@changedown/cli/word/office-tools';
+} from '../../../packages/cli/src/word/office-tools.js';
 
 describe('Word office tool command resolution', () => {
   it('includes Windows npm .cmd shims for local bins and PATH bins', () => {

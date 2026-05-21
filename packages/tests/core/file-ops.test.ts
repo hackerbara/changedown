@@ -13,6 +13,7 @@ import {
   stripCriticMarkupWithMap,
   stripCriticMarkup,
   checkCriticMarkupOverlap,
+  contentZoneText,
   guardOverlap,
   stripRefsFromContent,
   defaultNormalizer,
@@ -323,6 +324,24 @@ describe('applyProposeChange', () => {
       expect(result.modifiedText.includes(
         `[^cn-3]: @ai:claude-opus-4.6 | ${TODAY} | ins | proposed`
       )).toBeTruthy();
+    });
+
+    it('does not resolve insertAfter inside terminal audit footnotes', async () => {
+      const text = [
+        'Body text.',
+        '',
+        '[^cn-1]: @ai:test | 2026-05-16 | ins | rejected',
+        '    1:f9 audit anchor only',
+      ].join('\n');
+
+      await expect(applyProposeChange({
+        text,
+        oldText: '',
+        newText: ' new body text',
+        changeId: 'cn-2',
+        author: 'ai:claude-opus-4.6',
+        insertAfter: 'audit anchor only',
+      })).rejects.toThrow(/insertAfter anchor not found/i);
     });
   });
 
@@ -687,6 +706,47 @@ describe('replaceUnique', () => {
   it('without normalizer throws on Unicode mismatch', () => {
     const text = 'Sublime\u2019s architecture';
     expect(() => replaceUnique(text, "Sublime's", 'REPLACED')).toThrow();
+  });
+});
+
+// ─── contentZoneText ────────────────────────────────────────────────────────
+
+describe('contentZoneText', () => {
+  it('excludes terminal footnote audit blocks', () => {
+    const input = [
+      'Body text stays searchable.',
+      '',
+      '[^cn-1]: @a | 2026-05-16 | ins | rejected',
+      '    1:aa Body {++audit only++} text',
+    ].join('\n');
+
+    expect(contentZoneText(input)).toBe('Body text stays searchable.\n\n');
+  });
+
+  it('ignores footnote-looking lines inside fenced code blocks', () => {
+    const input = [
+      '# Example',
+      '',
+      '```md',
+      '[^cn-1]: this is documentation, not a terminal footnote',
+      '```',
+      '',
+      'Body after fence remains searchable.',
+    ].join('\n');
+
+    expect(contentZoneText(input)).toBe(input);
+  });
+
+  it('ignores footnote-looking lines inside an unclosed terminal code fence', () => {
+    const input = [
+      '# Example',
+      '',
+      '```md',
+      '[^cn-1]: this is documentation, not a terminal footnote',
+      '    1:aa {++example++}',
+    ].join('\n');
+
+    expect(contentZoneText(input)).toBe(input);
   });
 });
 
@@ -1071,6 +1131,27 @@ describe('applyProposeChange kind=comment', () => {
     expect(result.modifiedText).toMatch(/\[\^cn-1\]:.*\| com \| proposed/);
   });
 
+  it('L2 — does not resolve insertAfter for comments inside terminal audit footnotes', async () => {
+    const text = [
+      'Body text.',
+      '',
+      '[^cn-1]: @ai:test | 2026-05-16 | ins | rejected',
+      '    1:f9 audit comment anchor',
+    ].join('\n');
+
+    await expect(applyProposeChange({
+      text,
+      oldText: '',
+      newText: '',
+      changeId: 'cn-2',
+      author: 'ai:test',
+      reasoning: 'hello world',
+      level: 2,
+      kind: 'comment',
+      insertAfter: 'audit comment anchor',
+    })).rejects.toThrow(/insertAfter anchor not found/i);
+  });
+
   it('L2 — throws when reasoning is empty', async () => {
     await expect(applyProposeChange({
       text: bodyDoc,
@@ -1104,6 +1185,27 @@ describe('applyProposeChange kind=comment', () => {
     // Footnote has com type and {>>comment edit-op
     expect(result.modifiedText).toMatch(/\[\^cn-1\]:.*\| com \| proposed/);
     expect(result.modifiedText).toMatch(/\{>>note this/);
+  });
+
+  it('L3 — does not silently fallback when explicit comment insertAfter is absent from body', async () => {
+    const text = [
+      'Body text.',
+      '',
+      '[^cn-1]: @ai:test | 2026-05-16 | com | rejected',
+      '    1:f9 audit comment anchor',
+    ].join('\n');
+
+    await expect(applyProposeChange({
+      text,
+      oldText: '',
+      newText: '',
+      changeId: 'cn-2',
+      author: 'ai:test',
+      reasoning: 'hello world',
+      level: 3,
+      kind: 'comment',
+      insertAfter: 'audit comment anchor',
+    })).rejects.toThrow(/insertAfter anchor not found/i);
   });
 
   it('L3 round-trip — parse back gives ChangeType.Comment with metadata.comment', async () => {

@@ -358,22 +358,22 @@ describe('partial batch semantics (Bug 10)', () => {
     });
   });
 
-  // ── handleProposeChange delegation tests (partial passes through) ──
+  // ── handleProposeChange delegation tests (atomic by default) ──
 
   describe('handleProposeChange batch delegation', () => {
-    it('propose_change(changes=[...]) uses partial semantics: good ops applied, bad ops reported', async () => {
-      const filePath = path.join(tmpDir, 'doc.md');
-      await fs.writeFile(
-        filePath,
-        '# Test\n\nHello world.\n\nGoodbye world.\n',
-      );
+    it('propose_change(changes=[...]) is atomic by default: one failing op writes nothing', async () => {
+      const filePath = path.join(tmpDir, 'propose-change-atomic.md');
+      const original = '# Test\n\nFirst line.\nSecond line.\nThird line.\n';
+      await fs.writeFile(filePath, original);
 
       const result = await handleProposeChange(
         {
           file: filePath,
+          reason: 'propose_change atomic default',
           changes: [
-            { old_text: 'Hello world.', new_text: 'Hi world.' },
-            { old_text: 'DOES NOT EXIST', new_text: 'Fail' },
+            { old_text: 'First line.', new_text: 'Line 1.' },
+            { old_text: 'NONEXISTENT TEXT', new_text: 'Replacement' },
+            { old_text: 'Third line.', new_text: 'Line 3.' },
           ],
           author: 'ai:test',
         },
@@ -381,17 +381,12 @@ describe('partial batch semantics (Bug 10)', () => {
         state,
       );
 
-      // Partial success — same semantics as propose_batch: not an error, reports applied+failed
-      expect(result.isError).toBeUndefined();
-      const data = JSON.parse(result.content[0].text);
-      expect(data.applied).toHaveLength(1);
-      expect(data.failed).toHaveLength(1);
-      expect(data.failed[0].index).toBe(1);
-      // Successful op IS written to file (partial mode, no rollback)
-      const written = await fs.readFile(filePath, 'utf-8');
-      // The substitution markup wraps old→new: {~~Hello world.~>Hi world.~~}
-      expect(written).toContain('Hi world.');
-      expect(written).toContain('{~~Hello world.~>Hi world.~~}');
+      expect(result.isError).toBe(true);
+      const content = await fs.readFile(filePath, 'utf-8');
+      expect(content).toBe(original);
+      const data = JSON.parse(result.content[1].text);
+      expect(data.error.operation_index).toBe(1);
+      expect(data.error.total_operations).toBe(3);
     });
 
     it('propose_change with all valid changes applies both', async () => {

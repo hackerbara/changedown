@@ -21,7 +21,7 @@ describe('Bug F — missing dev certs produce a clear startup error, not a hang'
     const server = spawnServer({
       port: PORT,
       env: {
-        CHANGEDOWN_MCP_REQUIRE_HTTPS: '1',
+        // HTTPS is the default; no env var needed to force it.
         // Steer the cert loader at an empty directory.
         // The implementation reads from ~/.office-addin-dev-certs by default;
         // tests use CHANGEDOWN_DEV_CERT_DIR override (added as part of the fix).

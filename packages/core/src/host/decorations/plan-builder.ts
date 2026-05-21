@@ -499,8 +499,11 @@ export function buildDecorationPlan(
 
     // Ghost refs: inject footnote ref as ghost text for sidecar changes without a real ref
     if (showGhostRefsPolicy && change.id && change.footnoteRefStart === undefined && !inlineDelimiters) {
+      const ghostRefOffset = change.type === ChangeType.Deletion
+        ? change.range.start + (change.deletionSeamOffset ?? 0)
+        : contentRange.end;
       plan.ghostRefs.push({
-        range: { start: contentRange.end, end: contentRange.end },
+        range: { start: ghostRefOffset, end: ghostRefOffset },
         renderAfter: { contentText: `[^${change.id}]`, fontStyle: 'italic' },
       });
     }

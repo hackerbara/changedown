@@ -7,7 +7,21 @@ function makeBackend(scheme: string, descriptors: DocumentResourceDescriptor[]):
   return {
     schemes: [scheme],
     list: vi.fn().mockReturnValue(descriptors),
-    read: vi.fn().mockResolvedValue({ text: '# Hello', format: 'L3', version: 'v1' }),
+    read: vi.fn().mockResolvedValue({
+      text: '# Hello',
+      format: 'L3',
+      version: 'v1',
+      publicationState: 'ready',
+      protocolSurface: {
+        protocolVersion: 'changedown-protocol-v1',
+        sourceDigest: 'digest-resource-hello',
+        source: '# Hello',
+        entries: [],
+        order: [],
+        actionabilityByChangeId: {},
+        certificationByChangeId: {},
+      },
+    }),
     applyChange: vi.fn(),
     listChanges: vi.fn(),
     subscribe: vi.fn().mockReturnValue(() => {}),

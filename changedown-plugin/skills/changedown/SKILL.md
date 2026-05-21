@@ -90,7 +90,7 @@ Your first `read_tracked_file` call includes an **editing guide** tailored to th
 
 **Check rejection history before proposing.** If you're modifying a section that others have reviewed, read it in `review` view first. Rejected proposals leave orphaned footnote refs (`[^sc-N]` with `rejected` status) visible in review mode — these tell you what was tried and why it was rejected, preventing wasted proposals. Read the rejection reason before proposing similar changes.
 
-**No re-reads needed between edits.** Each `propose_change` response includes `affected_lines` (neighboring lines with content and addressing) and per-change `preview` in the `applied` array. Use those for your next edit.[^sc-21.2] Re-read only after review (accept/reject) or when relocation is ambiguous.
+**Chaining:** No re-read is needed when follow-up edits use fresh response coordinates or semantically anchored text/context. If you are targeting blank/structural lines or coordinate-only range replacements after prior writes, re-read or use context-bearing range replacement. Each `propose_change` response includes `affected_lines` (neighboring lines with content and addressing) and per-change `preview` in the `applied` array. Use those for your next edit.[^sc-21.2] Re-read after review (accept/reject) or when relocation is ambiguous.
 
 **UX:** After applying changes, mention the modified file path in your reply so the user can click to open it.
 
@@ -329,4 +329,3 @@ comment threads, images (including floating/anchored positioning), formatting (b
 [^sc-21]: @ai:claude-opus-4.6 | 2026-02-27 | group | accepted
     @ai:claude-opus-4.6 2026-02-27: propose_batch
     approved: @ai:claude-opus-4.6 2026-02-27 "Update SKILL.md to reference affected_lines and per-change preview instead of deprecated updated_lines"
-

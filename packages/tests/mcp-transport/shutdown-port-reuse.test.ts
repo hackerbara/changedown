@@ -6,7 +6,7 @@ const PORT = 49991;
 
 describe('Bug A — host shutdown releases port within bind-retry budget', () => {
   it('second host can bind within 1s of SIGINT to first host', async () => {
-    const first = spawnServer({ port: PORT, env: { CHANGEDOWN_MCP_REQUIRE_HTTPS: '0' } });
+    const first = spawnServer({ port: PORT, env: { CHANGEDOWN_MCP_USE_HTTP: 'true' } });
     await first.ready;
     expect(await isPortListening(PORT)).toBe(true);
 
@@ -26,7 +26,7 @@ describe('Bug A — host shutdown releases port within bind-retry budget', () =>
     // Start the second server immediately — before the first has exited.
     // This is the real race: the first server's keep-alive socket holds the
     // port in use (or TIME_WAIT) while the second server tries to bind.
-    const second = spawnServer({ port: PORT, env: { CHANGEDOWN_MCP_REQUIRE_HTTPS: '0' } });
+    const second = spawnServer({ port: PORT, env: { CHANGEDOWN_MCP_USE_HTTP: 'true' } });
     await second.ready;
     const elapsed = Date.now() - t0;
     expect(elapsed).toBeLessThan(1000);

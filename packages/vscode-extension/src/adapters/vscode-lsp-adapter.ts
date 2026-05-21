@@ -191,7 +191,13 @@ export class VsCodeLspAdapter implements TypedLspConnection, Disposable {
     return this.onNotification(LSP_METHOD.PENDING_EDIT_FLUSHED, handler as (params: unknown) => void);
   }
 
-  onDocumentState(handler: (data: { uri: string; tracking: { enabled: boolean; source: string }; view: BuiltinView }) => void): Disposable {
+  onDocumentState(handler: (data: {
+    uri?: string;
+    textDocument?: { uri?: string };
+    tracking?: { enabled?: boolean; source?: string };
+    view?: BuiltinView;
+    viewMode?: BuiltinView | string;
+  }) => void): Disposable {
     return this.onNotification(LSP_METHOD.DOCUMENT_STATE, handler as (params: unknown) => void);
   }
 
@@ -200,7 +206,28 @@ export class VsCodeLspAdapter implements TypedLspConnection, Disposable {
   }
 
   onCoherenceUpdate(handler: (data: { uri: string; rate: number; unresolvedCount: number; threshold: number }) => void): Disposable {
-    return this.onNotification(LSP_METHOD.COHERENCE_STATUS, handler as (params: unknown) => void);
+    return this.onNotification(LSP_METHOD.COHERENCE_STATUS, (params: unknown) => {
+      if (!params || typeof params !== 'object') return;
+      const p = params as Record<string, unknown>;
+      const rate = typeof p.rate === 'number'
+        ? p.rate
+        : typeof p.coherenceRate === 'number'
+          ? p.coherenceRate
+          : undefined;
+      if (
+        typeof p.uri === 'string' &&
+        typeof rate === 'number' &&
+        typeof p.unresolvedCount === 'number' &&
+        typeof p.threshold === 'number'
+      ) {
+        handler({
+          uri: p.uri,
+          rate,
+          unresolvedCount: p.unresolvedCount,
+          threshold: p.threshold,
+        });
+      }
+    });
   }
 
   // ── Escape hatch ──────────────────────────────────────────

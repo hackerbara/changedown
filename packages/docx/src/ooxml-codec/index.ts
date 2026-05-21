@@ -9,6 +9,7 @@
 export const OOXML_CODEC_VERSION = "0.1.0-skeleton" as const;
 
 export type OoxmlPackageSource =
+  | "package-ooxml"
   | "full-package"
   | "body-ooxml"
   | "paragraph-ooxml"
@@ -69,6 +70,8 @@ export type OoxmlEvent =
       partName: string;
       path: string;
       type: "ins" | "del";
+      nativeRevisionTag?: string;
+      nativeRevisionId?: string;
       author?: string;
       date?: string;
       xml?: string;
@@ -327,11 +330,13 @@ export { ContentTypesEditor } from "./content-types.js";
 export { allocateMediaPartName, dataUriToMediaPart, stableBytesHash } from "./media.js";
 export type { ParsedDataUriMediaPart } from "./media.js";
 export { decodeOoxmlPackage, encodeOoxmlPackage } from "./package.js";
-export type { OoxmlPackageInput } from "./package.js";
+export type { DecodeOoxmlPackageOptions, OoxmlPackageInput } from "./package.js";
 export { streamOoxmlPartEvents } from "./events.js";
 export {
   collectOoxmlRevisionWitnesses,
+  collectOoxmlRevisionWitnessesAsync,
   type CapabilityAvailability,
+  type CollectOoxmlRevisionWitnessesAsyncOptions,
   type OoxmlRevisionContainerContext,
   type OoxmlRevisionContainerKind,
   type OoxmlRevisionSourceCapability,
@@ -388,15 +393,24 @@ export type {
 } from "./tables.js";
 export { applyOoxmlRegionPatch, applyOoxmlRegionPatchAsync } from "./patch.js";
 export type { ApplyOoxmlRegionPatchInput } from "./patch.js";
-export { createOoxmlPackageCodec } from "./codec.js";
+export {
+  createOoxmlPackageCodec,
+  projectOoxmlPackageAsync,
+  projectOoxmlPackageSync,
+} from "./codec.js";
 export type {
   ApplyPackageDeltaInput,
   CodecDiagnostic,
   CodecProjection,
   OoxmlPackageCodec,
+  OoxmlProjectionPhase,
   OoxmlProjection,
   PackageLedger,
+  ProjectPackageAsyncOptions,
   ProjectPackageInput,
+  SourceLedgerArtifact,
+  SourceLedgerArtifactFormattingRun,
+  SourceLedgerArtifactGroup,
   ValidatePackagePatchInput,
 } from "./codec.js";
 export {
@@ -421,3 +435,6 @@ export {
 export type { ParsedRelationshipTable } from "./relationships.js";
 
 export * from "./source-transition.js";
+export * from "./revision-groups.js";
+
+export * from "./protocol/index.js";

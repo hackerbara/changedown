@@ -47,7 +47,13 @@ export function sendCoherenceStatus(
   unresolvedCount: number,
   threshold: number,
 ): void {
-  const params: CoherenceStatusParams = { uri, coherenceRate, unresolvedCount, threshold };
+  const params: CoherenceStatusParams = {
+    uri,
+    rate: coherenceRate,
+    coherenceRate,
+    unresolvedCount,
+    threshold,
+  };
   connection.sendNotification(LSP_METHOD.COHERENCE_STATUS, params);
 }
 

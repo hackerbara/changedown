@@ -2,7 +2,7 @@ import { setupAgentIntegrations } from '../agents/setup.js';
 import type { WordCommandContext, WordCommandOptions } from './types.js';
 import { resolveManifest } from './manifest.js';
 import { runOfficeDebugStart, runOfficeDebugStop, runTool } from './office-tools.js';
-import { MCP_PORT, mcpStartGuidance, probeMcpHealth } from './mcp.js';
+import { MCP_PORT, mcpStartGuidance, probeMcpHealth } from '@changedown/mcp/launcher';
 import { clearWordSession, writeWordSession } from './state.js';
 import { startLocalPaneServer, type LocalPaneServerHandle } from './pane-server.js';
 

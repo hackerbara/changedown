@@ -38,7 +38,18 @@ export function projectOoxmlRegions(
   snapshot: OoxmlPackageSnapshot,
   partName = snapshot.documentPartName
 ): OoxmlRegionProjection[] {
-  const events = streamOoxmlPartEvents(snapshot, partName);
+  return projectOoxmlRegionsFromEvents(
+    snapshot,
+    streamOoxmlPartEvents(snapshot, partName),
+    partName
+  );
+}
+
+export function projectOoxmlRegionsFromEvents(
+  snapshot: OoxmlPackageSnapshot,
+  events: readonly OoxmlEvent[],
+  partName = snapshot.documentPartName
+): OoxmlRegionProjection[] {
   const relationshipTable = snapshot.relationships.byPart.get(partName);
   const relationshipTargets = new Map(
     [...(relationshipTable?.relationships ?? new Map()).entries()].map(

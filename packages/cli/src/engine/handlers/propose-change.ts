@@ -30,7 +30,7 @@ import { resolveTrackingStatus } from '../scope.js';
 import { SessionState, type BuiltinView } from '../state.js';
 import { parseOp, nowTimestamp } from '@changedown/core';
 import { resolveProtocolMode } from '../config.js';
-import { rerecordState } from '../state-utils.js';
+import { recordBasicWriteTransform, rerecordState } from '../state-utils.js';
 import { resolveAndApply, type NormalizedCompactOp } from './resolve-and-apply.js';
 import { settleOnDemandIfNeeded } from './settle-on-demand.js';
 export interface ProposeChangeResult {
@@ -170,6 +170,13 @@ function checkStaleness(
 function classifyHashlineValidationError(message: string): ProposeChangeErrorCode {
   if (message.includes('Line ') && message.includes(' is out of range')) {
     return 'HASHLINE_LINE_OUT_OF_RANGE';
+  }
+  return 'HASHLINE_REFERENCE_UNRESOLVED';
+}
+
+function classifyCompactResolveError(message: string): ProposeChangeErrorCode {
+  if (message.startsWith('Empty-left range replacement cannot be recovered from a blank/structural line.')) {
+    return 'VALIDATION_ERROR';
   }
   return 'HASHLINE_REFERENCE_UNRESOLVED';
 }
@@ -362,15 +369,14 @@ export async function handleProposeChange(
       }
 
       // Multiple changes: delegate to batch handler (reuses handleProposeBatch logic).
-      // propose_change(changes=[...]) uses partial semantics: good ops applied, failures reported.
-      // Explicitly pass partial:true so the atomic-default flip in handleProposeBatch (ADR-036 §4)
-      // does not change this tool's behavior.
+      // Default is atomic: all coordinates reference the same pre-change state and
+      // any validation failure aborts the whole write. Explicit partial mode belongs
+      // on propose_batch unless propose_change grows a documented partial option.
       const batchArgs: Record<string, unknown> = {
         file: args.file,
         reason: args.reason,
         author: args.author,
         changes: changesArray,
-        partial: true,
       };
       const batchResult = await handleProposeBatch(batchArgs, resolver, state);
       // Adapt ProposeBatchResult to ProposeChangeResult (same shape)
@@ -498,6 +504,7 @@ export async function handleProposeChange(
         });
       }
     }
+    const originalFileContentForTransform = fileContent;
 
     // Assert no unresolved changes before any mutation (zombie-elimination spec §3.4).
     if (!isNewFile) {
@@ -986,7 +993,12 @@ export async function handleProposeChange(
     await writeTrackedFile(filePath, modifiedText);
 
     // 8a. Re-record hashes and fingerprint so chained edits don't trigger false staleness warnings
-    await rerecordState(state, filePath, modifiedText, config);
+    recordBasicWriteTransform(state, filePath, originalFileContentForTransform, modifiedText, {
+      supersededIds,
+      affectedStartLine: affectedLines?.[0]?.line,
+      affectedEndLine: affectedLines?.[affectedLines.length - 1]?.line,
+    });
+    await rerecordState(state, filePath, modifiedText, config, { preserveReadGeneration: true });
 
     // 9. Build response
     const responseData: Record<string, unknown> = {
@@ -1152,6 +1164,7 @@ async function handleCompactProposeChange(
     );
   }
 
+  const originalFileContentForTransform = fileContent;
   let fileLines = fileContent.split('\n');
 
   // Initialize hashline WASM
@@ -1189,19 +1202,30 @@ async function handleCompactProposeChange(
       oldText: parsed.oldText,
       newText: parsed.newText,
       reasoning,
+      rangeContext: parsed.rangeContext,
     };
     applyResult = resolveAndApply(
       op, fileContent, fileLines, state, filePath, config, changeId, author!,
     );
   } catch (err) {
     const { staleLine, currentHash } = extractQuickFixFromError(err);
+    const message = err instanceof Error ? err.message : String(err);
+    const code = classifyCompactResolveError(message);
     return errorResult(
-      err instanceof Error ? err.message : String(err),
-      'HASHLINE_REFERENCE_UNRESOLVED',
-      {
-        file: relativePath,
-        quick_fix: buildQuickFix(filePath, staleLine, currentHash),
-      },
+      message,
+      code,
+      code === 'VALIDATION_ERROR'
+        ? {
+          file: relativePath,
+          quick_fix: {
+            action: 'use_insertion_or_context_range',
+            file: filePath,
+          },
+        }
+        : {
+          file: relativePath,
+          quick_fix: buildQuickFix(filePath, staleLine, currentHash),
+        },
     );
   }
 
@@ -1216,7 +1240,13 @@ async function handleCompactProposeChange(
   await writeTrackedFile(filePath, modifiedText);
 
   // Re-record hashes and fingerprint for staleness detection.
-  const viewResult = await rerecordState(state, filePath, modifiedText, config);
+  recordBasicWriteTransform(state, filePath, originalFileContentForTransform, modifiedText, {
+    settledBeforeApply: applyResult.settled,
+    supersededIds,
+    affectedStartLine: applyResult.affectedStartLine,
+    affectedEndLine: applyResult.affectedEndLine,
+  });
+  const viewResult = await rerecordState(state, filePath, modifiedText, config, { preserveReadGeneration: true });
 
   // Build viewProjection from returned view result (no double computation)
   let viewProjection: ViewProjection | undefined;

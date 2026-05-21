@@ -197,7 +197,7 @@ async function main(): Promise<void> {
 
   // Validate Surface D prerequisites before starting runs
   if (surfaces.includes("D")) {
-    const cliPath = path.join(process.cwd(), "changedown-plugin", "mcp-server", "dist", "cli.js");
+    const cliPath = path.join(process.cwd(), "packages", "mcp", "dist", "cli.js");
     try {
       await fs.access(cliPath);
     } catch {

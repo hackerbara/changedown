@@ -300,7 +300,7 @@ describe('batch error granularity — operation_index in error responses', () =>
     expect(data.failed[0].reason).toContain('Operation 1:');
   });
 
-  it('propose_change(changes=[...]) reports all validation failures, not just the first', async () => {
+  it('propose_change(changes=[...]) is atomic and reports the first validation failure with operation_index', async () => {
     const content = '<!-- changedown.com/v1: tracked -->\nLine one.\nLine two.\nLine three.\n';
     const filePath = path.join(tmpDir, 'multi-fail.md');
     await fs.writeFile(filePath, content);
@@ -314,12 +314,11 @@ describe('batch error granularity — operation_index in error responses', () =>
       ],
     }, resolver, state);
 
-    // Should report failures for BOTH operations, not just the first.
-    // The response is an all-failed partial batch: isError=true, with failed[].index for each op.
     expect(result.isError).toBe(true);
     const data = JSON.parse(result.content[1].text);
-    expect(data.error.failed).toHaveLength(2);
-    expect(data.error.failed[0].index).toBe(0);
-    expect(data.error.failed[1].index).toBe(1);
+    expect(data.error.operation_index).toBe(0);
+    expect(data.error.total_operations).toBe(2);
+    const written = await fs.readFile(filePath, 'utf-8');
+    expect(written).toBe(content);
   });
 });

@@ -17,6 +17,7 @@ import { type CrystallizedEdit } from './pending-edit-manager.js';
 import { type DocumentUri, UriMap, normalizeUri } from './uri.js';
 import { FormatService } from './format-service.js';
 import { parseL2, parseL3 } from '../operations/parse-document.js';
+import { scanMaxCnId } from '../operations/footnote-generator.js';
 import type { Format, Document, L2Document, L3Document } from '../model/document.js';
 import { LSP_METHOD } from './lsp-methods.js';
 
@@ -266,8 +267,11 @@ export class BaseController implements Disposable {
         }),
         this.lsp.onPendingEditFlushed((data) => this.handlePendingEditFlushed(data)),
         this.lsp.onDocumentState((data) => {
-          this.trackingService.setTrackingEnabled(data.uri, data.tracking.enabled);
-          this.hooks?.onDidChangeTrackingState?.(data.uri, data.tracking.enabled);
+          const uri = data.uri ?? data.textDocument?.uri;
+          const enabled = data.tracking?.enabled;
+          if (!uri || typeof enabled !== 'boolean') return;
+          this.trackingService.setTrackingEnabled(uri, enabled);
+          this.hooks?.onDidChangeTrackingState?.(uri, enabled);
         }),
       );
 
@@ -450,6 +454,13 @@ export class BaseController implements Disposable {
     }
   }
 
+  private syncTrackingDocumentMetadata(uri: string, text: string, format: Format): void {
+    this.trackingService.initializeDocument(uri, {
+      format,
+      maxChangeId: scanMaxCnId(text),
+    });
+  }
+
   private async handleOpenDocument(uri: string, text?: string): Promise<void> {
     const docText = text ?? this.host.getDocumentText(uri);
     this.hooks?.onWillOpenDocument?.(uri);
@@ -458,6 +469,7 @@ export class BaseController implements Disposable {
 
     // Detect format
     state.format = this.formatService.getDetectedFormat(uri, docText);
+    this.syncTrackingDocumentMetadata(uri, docText, state.format);
 
     // Pre-parse at detected format so decorations are ready if conversion is not needed
     this.localParseAndCache(uri, docText, state.version, state.format);
@@ -557,6 +569,7 @@ export class BaseController implements Disposable {
       const state = this.stateManager.getState(event.uri);
       if (state) {
         state.format = this.formatService.getDetectedFormat(event.uri, event.text);
+        this.syncTrackingDocumentMetadata(event.uri, event.text, state.format);
       }
     }
 
@@ -584,6 +597,7 @@ export class BaseController implements Disposable {
     if (!state) return result;
     state.text = result.text;
     state.version = result.version;
+    this.syncTrackingDocumentMetadata(uri, result.text, state.format);
 
     this.stateManager.invalidateCache(uri);
     this.localParseAndCache(uri, result.text, result.version, state.format);
@@ -758,6 +772,7 @@ export class BaseController implements Disposable {
       state.format = targetFormat;
       state.version = result.version;
       state.document = targetDoc;
+      this.syncTrackingDocumentMetadata(normalized, result.text, targetFormat);
 
       // 8. Push authoritative snapshot (unguarded) — use the conversion URI
       //    directly, not activeUri, because setFormatPreference may convert a

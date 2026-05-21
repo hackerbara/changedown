@@ -14,6 +14,7 @@ describe('coherence status notification', () => {
     expect(sent[0].method).toBe('changedown/coherenceStatus');
     expect(sent[0].params).toEqual({
       uri: 'file:///test.md',
+      rate: 85,
       coherenceRate: 85,
       unresolvedCount: 3,
       threshold: 98,

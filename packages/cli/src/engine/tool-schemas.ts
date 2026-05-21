@@ -27,7 +27,7 @@ export const compactProposeChangeSchema: ToolSchema = {
       file: { type: 'string', description: 'Path, file:// URI, or active Word session URI (word://sess-...). Use resources/list to discover Word sessions.' },
       author: { type: 'string', description: 'Author identity (e.g., ai:claude-opus-4.6, human:alice). Required when project has author enforcement.' },
       at: { type: 'string', description: 'Target coordinate from read_tracked_file. Single line: "LINE:HASH". Range: "LINE:HASH-LINE:HASH".' },
-      op: { type: 'string', description: 'Edit operation. Substitute: {~~old~>new~~}. Insert: {++text++}. Delete: {--text--}. Highlight: {==text==}. Comment: {>>reason. Append {>> to annotate any op.' },
+      op: { type: 'string', description: 'Edit operation. Substitute: {~~old~>new~~}. Insert: {++text++}. Delete: {--text--}. Range replace: {~~~>new~~}; recoverable range replace: {~~~\\nold opening\\n...\\nold closing\\n~>\\nnew\\n~~}. Highlight: {==text==}. Comment: {>>reason. Append {>> to annotate any op.' },
       old_text: { type: 'string', description: 'word:// classic fallback only: text to replace. File-backed compact targets reject old_text; use at/op for files in compact mode.' },
       new_text: { type: 'string', description: 'word:// classic fallback only: replacement text. File-backed compact targets reject new_text; use at/op for files in compact mode.' },
       insert_after: { type: 'string', description: 'word:// classic fallback only: insertion anchor text when old_text is empty.' },

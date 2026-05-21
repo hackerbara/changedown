@@ -9,7 +9,7 @@ describe('Bug E — SSE reconnect within grace window does not leak keepalive', 
     const server = spawnServer({
       port: PORT,
       env: {
-        CHANGEDOWN_MCP_REQUIRE_HTTPS: '0',
+        CHANGEDOWN_MCP_USE_HTTP: 'true',
         // Speed up the test by reducing keepalive interval. This env var is
         // added by Task 6.2 Step 1 below. The registration response also
         // returns the resolved value as `keepaliveMs` so the test can verify.
@@ -18,7 +18,7 @@ describe('Bug E — SSE reconnect within grace window does not leak keepalive', 
     });
     await server.ready;
 
-    // Routes per changedown-plugin/mcp-server/src/transport/pane-endpoint.ts:
+    // Routes per packages/mcp/src/transport/pane-endpoint.ts:
     //   POST /backend/register               — pane registers; response carries registrationId + keepaliveMs
     //   GET  /backend/stream/:registrationId — SSE stream (path segment, not query!)
     const baseUrl = `http://127.0.0.1:${PORT}`;

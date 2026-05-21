@@ -5,7 +5,7 @@ const PORT = 49990;
 
 describe('spawnServer helper', () => {
   it('spawns a host that binds the port and stops cleanly on SIGTERM', async () => {
-    const server = spawnServer({ port: PORT, env: { CHANGEDOWN_MCP_REQUIRE_HTTPS: '0' } });
+    const server = spawnServer({ port: PORT, env: { CHANGEDOWN_MCP_USE_HTTP: 'true' } });
     await server.ready;
     expect(await isPortListening(PORT)).toBe(true);
     const result = await server.stop('SIGTERM');

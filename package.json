@@ -1,7 +1,7 @@
 {
   "name": "changedown-monorepo",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.5.0",
   "description": "ChangeDown monorepo - CriticMarkup for editors",
   "workspaces": [
     "packages/core",
@@ -10,7 +10,7 @@
     "packages/lsp-server",
     "packages/vscode-extension",
     "packages/opencode-plugin",
-    "changedown-plugin/mcp-server",
+    "packages/mcp",
     "changedown-plugin/hooks-impl",
     "packages/tests",
     "packages/tests/vscode",
@@ -18,11 +18,11 @@
     "packages/cursor-preview"
   ],
   "scripts": {
-    "build": "npm run build:core && npm run build:preview && npm run build:docx && npm run build:word-add-in && npm run build:word-pane-assets && npm run build:cli && npm run build:lsp && npm run build:ext && npm run build:llm-jail && npm run build:plugin && npm run build:plugin-opencode && npm run build:website && npm run build:native",
+    "build": "npm run build:core && npm run build:preview && npm run build:docx && npm run build:word-add-in && npm run build:word-pane-assets && npm run build:cli && npm run build:lsp && npm run build:ext && npm run build:llm-jail && npm run build:plugin && npm run build:plugin-opencode && npm run build:website && npm run build:native && changedown-plugin/scripts/use-mcp.sh local",
     "build:core": "cd packages/core && npm run build",
     "build:lsp": "cd packages/lsp-server && npm run build",
     "build:ext": "cp packages/core/syntaxes/changedown.tmLanguage.json packages/vscode-extension/syntaxes/ && cd packages/vscode-extension && npm run compile && npm run esbuild",
-    "build:plugin": "cd changedown-plugin/mcp-server && node esbuild.mjs && cd ../hooks-impl && node esbuild.mjs",
+    "build:plugin": "cd packages/mcp && node esbuild.mjs && cd ../../changedown-plugin/hooks-impl && node esbuild.mjs",
     "build:plugin-opencode": "cd packages/opencode-plugin && npm run build",
     "test": "npm test -w @changedown/tests",
     "test:all": "npm test -w @changedown/tests && npm run test:cursor-preview",

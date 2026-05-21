@@ -7,6 +7,7 @@
  */
 
 import { FOOTNOTE_DEF_START, FOOTNOTE_CONTINUATION } from './footnote-patterns.js';
+import { findCodeZones } from './parser/code-zones.js';
 
 /**
  * Counts footnote definition lines that have the given status.
@@ -219,11 +220,25 @@ export function resolveChangeById(
  * FOOTNOTE_DEF_LENIENT for resilience against malformed trailing footnotes.
  */
 export function findFootnoteBlockStart(lines: string[]): number {
+  const text = lines.join('\n');
+  const zones = findCodeZones(text);
+  const lineOffsets: number[] = [];
+  let offset = 0;
+  for (const line of lines) {
+    lineOffsets.push(offset);
+    offset += line.length + 1;
+  }
+  const isInCodeZone = (lineIdx: number): boolean => {
+    const lineOffset = lineOffsets[lineIdx] ?? 0;
+    return zones.some(z => lineOffset >= z.start && lineOffset < z.end);
+  };
+  const isFootnoteDef = (lineIdx: number): boolean =>
+    !isInCodeZone(lineIdx) && FOOTNOTE_DEF_START.test(lines[lineIdx]);
 
   // Phase 1: Find the last footnote definition (scanning backward)
   let lastDefIdx = -1;
   for (let i = lines.length - 1; i >= 0; i--) {
-    if (FOOTNOTE_DEF_START.test(lines[i])) {
+    if (isFootnoteDef(i)) {
       lastDefIdx = i;
       break;
     }
@@ -244,7 +259,7 @@ export function findFootnoteBlockStart(lines: string[]): number {
     let isTerminal = true;
     while (j < lines.length) {
       const line = lines[j];
-      if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
+      if (isFootnoteDef(j) || FOOTNOTE_CONTINUATION.test(line)) {
         j++;
       } else if (line.trim() === '') {
         j++;
@@ -259,7 +274,7 @@ export function findFootnoteBlockStart(lines: string[]): number {
     }
     // Not terminal — scan backward for the next candidate
     candidate--;
-    while (candidate >= 0 && !FOOTNOTE_DEF_START.test(lines[candidate])) {
+    while (candidate >= 0 && !isFootnoteDef(candidate)) {
       candidate--;
     }
   }
@@ -268,31 +283,34 @@ export function findFootnoteBlockStart(lines: string[]): number {
     return lines.length; // No terminal footnote block
   }
 
-  // Phase 2: Scan backward from lastDefIdx through the contiguous block.
-  // Blank lines are included only if a footnote def or continuation appears before them.
+  // Phase 2: Scan backward from lastDefIdx through the contiguous footnote block.
+  // Continuation/blank runs before the first terminal def are body content unless
+  // they are preceded by another footnote definition. This avoids treating an
+  // indented Markdown body/code block immediately before footnotes as footnote
+  // continuation text.
   let blockStart = lastDefIdx;
-  for (let i = lastDefIdx - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
+  let i = lastDefIdx - 1;
+  while (i >= 0) {
+    if (isFootnoteDef(i)) {
       blockStart = i;
-    } else if (line.trim() === '') {
-      // Include this blank only if there is a footnote def or continuation before it
-      let hasFootnoteBefore = false;
-      for (let k = i - 1; k >= 0; k--) {
-        if (lines[k].trim() === '') continue;
-        if (FOOTNOTE_DEF_START.test(lines[k]) || FOOTNOTE_CONTINUATION.test(lines[k])) {
-          hasFootnoteBefore = true;
-        }
-        break;
-      }
-      if (hasFootnoteBefore) {
-        blockStart = i;
-      } else {
-        break;
-      }
-    } else {
-      break;
+      i--;
+      continue;
     }
+
+    if (FOOTNOTE_CONTINUATION.test(lines[i]) || lines[i].trim() === '') {
+      let k = i;
+      while (k >= 0 && (FOOTNOTE_CONTINUATION.test(lines[k]) || lines[k].trim() === '')) {
+        k--;
+      }
+
+      if (k >= 0 && isFootnoteDef(k)) {
+        blockStart = k;
+        i = k - 1;
+        continue;
+      }
+    }
+
+    break;
   }
 
   return blockStart;

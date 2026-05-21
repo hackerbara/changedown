@@ -110,4 +110,89 @@ describe('working view cross-batch coordinate stability', () => {
     expect(finalContent).toContain('Paragraph one.~>Paragraph ONE.');
     expect(finalContent).toContain('Paragraph two.~>Paragraph TWO.');
   });
+
+  it('uses original read coordinates for context-bearing range after an insertion above it', async () => {
+    const content = [
+      '<!-- changedown.com/v1: tracked -->',
+      '# Heading',
+      'Intro line.',
+      'old opening text',
+      'middle line',
+      'old closing text',
+      'Tail line.',
+    ].join('\n');
+    const filePath = path.join(tmpDir, 'range-after-insert.md');
+    await fs.writeFile(filePath, content);
+
+    const readResult = await handleReadTrackedFile({ file: filePath, view: 'working' }, resolver, state);
+    expect(readResult.isError).toBeFalsy();
+
+    const readText = readResult.content[0].text;
+    const findAt = (needle: string): string => {
+      for (const line of readText.split('\n')) {
+        const m = line.match(/^\s*(\d+):([0-9a-f]{2})\s+.?\|\s?(.*)$/);
+        if (m && m[3].includes(needle)) return `${m[1]}:${m[2]}`;
+      }
+      throw new Error(`missing coordinate for ${needle}`);
+    };
+
+    const introAt = findAt('Intro line.');
+    const openingAt = findAt('old opening text');
+    const closingAt = findAt('old closing text');
+
+    const first = await handleProposeBatch({
+      file: filePath,
+      author: 'ai:test',
+      changes: [{ at: introAt, op: '{++\nInserted body line.++}{>>insert before range' }],
+    }, resolver, state);
+    expect(first.isError).toBeFalsy();
+    expect(state.getReadGeneration(filePath)).toBeDefined();
+    expect(state.getWriteTransforms(filePath).some((transform) => transform.bodyLineDelta > 0)).toBe(true);
+
+    const second = await handleProposeBatch({
+      file: filePath,
+      author: 'ai:test',
+      changes: [{
+        at: `${openingAt}-${closingAt}`,
+        op: '{~~~\nold opening text\n...\nold closing text\n~>\nnew replacement block\n~~}{>>replace using original read coords',
+      }],
+    }, resolver, state);
+    expect(second.isError).toBeFalsy();
+
+    const finalContent = await fs.readFile(filePath, 'utf-8');
+    expect(finalContent).toContain('{~~old opening text\nmiddle line\nold closing text~>new replacement block~~}');
+  });
+
+  it('fresh reads reset read-generation transforms', async () => {
+    const content = [
+      '<!-- changedown.com/v1: tracked -->',
+      '# Heading',
+      'Intro line.',
+      'Target line.',
+    ].join('\n');
+    const filePath = path.join(tmpDir, 'fresh-read-generation.md');
+    await fs.writeFile(filePath, content);
+
+    const readResult = await handleReadTrackedFile({ file: filePath, view: 'working' }, resolver, state);
+    expect(readResult.isError).toBeFalsy();
+    const readText = readResult.content[0].text;
+    const introLine = readText.split('\n').find((line) => line.includes('Intro line.'));
+    expect(introLine).toBeDefined();
+    const introAtMatch = introLine!.match(/^\s*(\d+):([0-9a-f]{2})/);
+    expect(introAtMatch).toBeDefined();
+
+    const first = await handleProposeBatch({
+      file: filePath,
+      author: 'ai:test',
+      changes: [{ at: `${introAtMatch![1]}:${introAtMatch![2]}`, op: '{++\nInserted body line.++}{>>insert before range' }],
+    }, resolver, state);
+    expect(first.isError).toBeFalsy();
+    expect(state.getWriteTransforms(filePath).length).toBeGreaterThan(0);
+
+    const generationBefore = state.getReadGeneration(filePath)?.id;
+    const reread = await handleReadTrackedFile({ file: filePath, view: 'working' }, resolver, state);
+    expect(reread.isError).toBeFalsy();
+    expect(state.getWriteTransforms(filePath)).toHaveLength(0);
+    expect(state.getReadGeneration(filePath)?.id).not.toBe(generationBefore);
+  });
 });

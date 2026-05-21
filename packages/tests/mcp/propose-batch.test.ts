@@ -151,6 +151,33 @@ describe('propose_batch batch primitive', () => {
       expect(content).toContain('{~~Third.~>Three.~~}');
     });
 
+    it('does not validate no-coordinate old_text matches inside terminal audit footnotes', async () => {
+      const filePath = path.join(tmpDir, 'doc.md');
+      const original = [
+        'Body text stays.',
+        '',
+        '[^cn-1]: @ai:test | 2026-05-16 | sub | rejected',
+        '    1:f9 audit-only text',
+      ].join('\n');
+      await fs.writeFile(filePath, original);
+
+      const result = await handleProposeBatch(
+        {
+          file: filePath,
+          reason: 'should not match audit log',
+          changes: [{ old_text: 'audit-only text', new_text: 'replacement' }],
+        },
+        resolver,
+        state,
+      );
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toMatch(/audit-only text|not found/i);
+      const details = result.content[1] ? JSON.parse(result.content[1].text).error : {};
+      expect(details.phase).not.toBe('application');
+      await expect(fs.readFile(filePath, 'utf-8')).resolves.toBe(original);
+    });
+
     it('applies hashline-addressed edits with coordinate adjustment', async () => {
       const filePath = path.join(tmpDir, 'doc.md');
       const body = 'A\nB\nC\n';

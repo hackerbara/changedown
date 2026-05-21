@@ -1,6 +1,6 @@
 {
   "name": "@changedown/tests",
-  "version": "0.2.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,7 @@
     "@changedown/core": "file:../core",
     "@changedown/docx": "file:../docx",
     "@changedown/lsp-server": "file:../lsp-server",
-    "@changedown/mcp": "file:../../changedown-plugin/mcp-server",
+    "@changedown/mcp": "file:../mcp",
     "@changedown/opencode-plugin": "file:../opencode-plugin",
     "@changedown/cli": "file:../cli",
     "changedown-hooks": "file:../../changedown-plugin/hooks-impl",

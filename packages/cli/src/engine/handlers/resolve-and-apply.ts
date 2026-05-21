@@ -11,12 +11,14 @@ import {
   resolveAt,
   computeDecidedView,
   computeCurrentView,
+  type RangeContext,
 } from '@changedown/core';
 import { validateOrAutoRemap, HashlineMismatchError, type RelocationEntry, type AutoRemapResult } from './hashline-relocate.js';
 import type { SessionState, BuiltinView } from '../state.js';
 import type { ChangeDownConfig } from '../config.js';
 import {
   findUniqueMatch,
+  findUniqueEndpointPairWithCascade,
   contentZoneText,
   guardOverlap,
   resolveOverlapWithAuthor,
@@ -31,6 +33,7 @@ export interface NormalizedCompactOp {
   oldText: string;
   newText: string;
   reasoning?: string;
+  rangeContext?: RangeContext;
 }
 
 export interface ResolvedCoordinates {
@@ -55,6 +58,78 @@ export interface ApplyResult {
   remaps: AutoRemapResult[];
   viewResolved?: BuiltinView;
   settled: boolean;
+}
+
+function isEmptyCoordinateOnlyReplacement(op: NormalizedCompactOp): boolean {
+  return op.type === 'sub' && op.oldText === '' && !op.rangeContext;
+}
+
+function blankLineRangeGuidance(details: {
+  requestedLine: number;
+  requestedHash: string;
+  actualHash: string;
+  resolvedStartLine?: number;
+  resolvedEndLine?: number;
+}): string {
+  const resolved = details.resolvedStartLine !== undefined
+    ? `Resolved target: line ${details.resolvedStartLine}` +
+      (details.resolvedEndLine !== undefined && details.resolvedEndLine !== details.resolvedStartLine
+        ? `-${details.resolvedEndLine}`
+        : '') + '.'
+    : undefined;
+  return [
+    'Empty-left range replacement cannot be recovered from a blank/structural line.',
+    'To add content in blank space, use insertion after a stable nonblank line (`{++\\n...++}`), or use context-bearing range replacement with old opening and old closing anchors.',
+    '',
+    'Hashline evidence:',
+    `  requested: ${details.requestedLine}:${details.requestedHash}`,
+    `  current hash at requested line: ${details.actualHash}`,
+    ...(resolved ? [`  ${resolved}`] : []),
+  ].join('\n');
+}
+
+function cumulativeGenerationBodyDelta(state: SessionState, filePath: string, generationId: string, originalLine: number): number {
+  return state.getWriteTransforms(filePath)
+    .filter((transform) => transform.fromGeneration === generationId)
+    .filter((transform) => transform.affectedStartLine === undefined || transform.affectedStartLine <= originalLine)
+    .reduce((sum, transform) => sum + transform.bodyLineDelta, 0);
+}
+
+function candidateLineFromReadGeneration(
+  state: SessionState,
+  filePath: string,
+  line: number,
+  hash: string,
+): { line: number; view: BuiltinView } | undefined {
+  const generationMatch = state.resolveReadGenerationHash(filePath, line, hash);
+  if (!generationMatch) return undefined;
+  const delta = cumulativeGenerationBodyDelta(state, filePath, generationMatch.generationId, generationMatch.rawLineNum);
+  return {
+    line: generationMatch.rawLineNum + delta,
+    view: generationMatch.view,
+  };
+}
+
+function verifiesSemanticAnchor(fileLines: string[], startLine: number, endLine: number, op: NormalizedCompactOp): boolean {
+  if (startLine < 1 || endLine < startLine || endLine > fileLines.length) return false;
+  const rangeText = fileLines.slice(startLine - 1, endLine).join('\n');
+  if (op.rangeContext) {
+    try {
+      findUniqueEndpointPairWithCascade(rangeText, op.rangeContext, defaultNormalizer);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  if (op.oldText !== '') {
+    try {
+      findUniqueMatch(rangeText, op.oldText, defaultNormalizer);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
 }
 
 export function resolveCoordinates(
@@ -174,9 +249,19 @@ export function resolveCoordinates(
   }
 
   // Stage 3+: Content confirmation gate
-  // When hash validated (Stage 3 passed) but op has oldText, verify the text
-  // actually exists at the resolved line. Catches cases where quick-fix hashes
-  // or hash collisions point to a valid-but-wrong line.
+  // When hash validated (Stage 3 passed) but op has semantic anchor text, verify
+  // it actually exists at the resolved line/range. Catches cases where
+  // quick-fix hashes or hash collisions point to a valid-but-wrong line.
+  if (!stage3StartFailed && !stage3EndFailed && op.rangeContext) {
+    const rangeText = fileLines.slice(startLine - 1, endLine).join('\n');
+    try {
+      findUniqueEndpointPairWithCascade(rangeText, op.rangeContext, defaultNormalizer);
+    } catch {
+      stage3StartFailed = true;
+      stage3EndFailed = true;
+    }
+  }
+
   if (!stage3StartFailed && !stage3EndFailed && op.oldText !== '') {
     const rangeText = fileLines.slice(startLine - 1, endLine).join('\n');
     try {
@@ -186,6 +271,33 @@ export function resolveCoordinates(
       if (confirmErr instanceof Error && confirmErr.message.startsWith('Text not found')) {
         stage3StartFailed = true;
         stage3EndFailed = true;
+      }
+    }
+  }
+
+  // Stage 3.4: read-generation transform candidate.
+  // This keeps the original read surface available across ChangeDown-managed
+  // writes. The transformed line is never authority by itself: it is accepted
+  // only when the operation's semantic anchor verifies in the candidate range.
+  if ((stage3StartFailed || stage3EndFailed) && (op.rangeContext || op.oldText !== '')) {
+    const startCandidate = candidateLineFromReadGeneration(
+      state,
+      filePath,
+      parsed.startLine,
+      parsed.startHash,
+    );
+    const endCandidate = parsed.startLine === parsed.endLine
+      ? startCandidate
+      : candidateLineFromReadGeneration(state, filePath, parsed.endLine, parsed.endHash);
+    if (startCandidate && endCandidate) {
+      const candidateStartLine = startCandidate.line;
+      const candidateEndLine = endCandidate.line;
+      if (verifiesSemanticAnchor(fileLines, candidateStartLine, candidateEndLine, op)) {
+        if (stage3StartFailed) startLine = candidateStartLine;
+        if (stage3EndFailed) endLine = candidateEndLine;
+        viewResolved = viewResolved ?? startCandidate.view;
+        stage3StartFailed = false;
+        stage3EndFailed = false;
       }
     }
   }
@@ -206,8 +318,22 @@ export function resolveCoordinates(
     }
   }
 
-  // Stage 3.5b: View-hash resolution via committed/settled view
-  // Fires when 3.5a didn't resolve (insertion, comment, whole-line del/sub, or ambiguous oldText)
+  // Stage 3.5b: endpoint-pair fallback for context-bearing whole-range replacement.
+  if ((stage3StartFailed || stage3EndFailed) && op.rangeContext) {
+    try {
+      const contentZone = contentZoneText(fileContent);
+      const match = findUniqueEndpointPairWithCascade(contentZone, op.rangeContext, defaultNormalizer);
+      startLine = offsetToLineNumber(contentZone, match.start);
+      endLine = offsetToLineNumber(contentZone, match.end - 1);
+      stage3StartFailed = false;
+      stage3EndFailed = false;
+    } catch {
+      // Pair matching failed (ambiguous or not found) — fall through to view-hash fallback.
+    }
+  }
+
+  // Stage 3.5c: View-hash resolution via committed/settled view
+  // Fires when earlier fallbacks didn't resolve (insertion, comment, whole-line del/sub, or ambiguous oldText)
   if (stage3StartFailed || stage3EndFailed) {
     const lastView = state.getLastReadView(filePath) ?? 'working';
     const useSettled = lastView === 'decided';
@@ -280,6 +406,16 @@ export function resolveCoordinates(
     if (stage3StartFailed || stage3EndFailed) {
       const failedEndpoint = stage3StartFailed ? parsed.startLine : parsed.endLine;
       const failedHash = stage3StartFailed ? parsed.startHash : parsed.endHash;
+      const requestedLineText = failedEndpoint <= fileLines.length ? fileLines[failedEndpoint - 1] : '';
+      if (isEmptyCoordinateOnlyReplacement(op) && requestedLineText.trim() === '') {
+        throw new Error(blankLineRangeGuidance({
+          requestedLine: failedEndpoint,
+          requestedHash: failedHash,
+          actualHash: failedEndpoint <= fileLines.length
+            ? computeLineHash(failedEndpoint - 1, fileLines[failedEndpoint - 1], fileLines)
+            : 'out-of-range',
+        }));
+      }
       throw new HashlineMismatchError([{
         line: failedEndpoint,
         expected: failedHash,
@@ -300,6 +436,18 @@ export function resolveCoordinates(
     endOffset += fileLines[i].length + (i < endLine - 1 ? 1 : 0);
   }
   const content = fileLines.slice(startLine - 1, endLine).join('\n');
+
+  if (isEmptyCoordinateOnlyReplacement(op) && content.trim() === '') {
+    throw new Error(blankLineRangeGuidance({
+      requestedLine: parsed.startLine,
+      requestedHash: parsed.startHash,
+      actualHash: parsed.startLine <= fileLines.length
+        ? computeLineHash(parsed.startLine - 1, fileLines[parsed.startLine - 1], fileLines)
+        : 'out-of-range',
+      resolvedStartLine: startLine,
+      resolvedEndLine: endLine,
+    }));
+  }
 
   return {
     rawStartLine: startLine,

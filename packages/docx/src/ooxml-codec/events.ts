@@ -147,8 +147,12 @@ function walkChild(
       partName: state.partName,
       path,
       type: revisionType,
-      author: child.attrs["w:author"] ?? child.attrs.author,
-      date: child.attrs["w:date"] ?? child.attrs.date,
+      // Preserve the qualified OOXML tag here; the Word add-in normalizes to
+      // local names at the native-join boundary.
+      nativeRevisionTag: child.tag,
+      nativeRevisionId: attrByLocalName(child.attrs, "id"),
+      author: attrByLocalName(child.attrs, "author"),
+      date: attrByLocalName(child.attrs, "date"),
       xml: serializeOrderedChild(child),
     });
   }
@@ -412,6 +416,17 @@ function getProtectedReason(
   state: StreamState,
   fieldTransitions: readonly FieldTransition[]
 ): ProtectedOoxmlReason | undefined {
+  const expandedName = expandedElementName(child.tag, state.namespaces);
+  const isWordTextRevision =
+    expandedName?.namespaceUri === WORDPROCESSINGML_NS &&
+    (expandedName.localName === "ins" || expandedName.localName === "del");
+  if (
+    state.revisionsMode === "semantic" &&
+    isWordTextRevision
+  ) {
+    return undefined;
+  }
+
   if (state.activeFieldDepth > 0 || fieldTransitions.length > 0) {
     return "field";
   }
@@ -421,13 +436,18 @@ function getProtectedReason(
     explicitReason &&
     !(
       state.revisionsMode === "semantic" &&
-      (child.tag === "w:ins" || child.tag === "w:del")
+      isWordTextRevision
     )
   ) {
     return explicitReason;
   }
+  if (
+    isWordTextRevision &&
+    state.revisionsMode !== "semantic"
+  ) {
+    return "existing-revision";
+  }
 
-  const expandedName = expandedElementName(child.tag, state.namespaces);
   if (
     expandedName?.namespaceUri === WORDPROCESSINGML_NS &&
     (expandedName.localName === "drawing" || expandedName.localName === "pict")
@@ -457,10 +477,17 @@ function getSemanticRevisionType(
   if (state.revisionsMode !== "semantic") {
     return undefined;
   }
-  if (child.tag === "w:ins") {
+  const expandedName = expandedElementName(child.tag, state.namespaces);
+  if (
+    expandedName?.namespaceUri === WORDPROCESSINGML_NS &&
+    expandedName.localName === "ins"
+  ) {
     return "ins";
   }
-  if (child.tag === "w:del") {
+  if (
+    expandedName?.namespaceUri === WORDPROCESSINGML_NS &&
+    expandedName.localName === "del"
+  ) {
     return "del";
   }
   return undefined;
@@ -476,6 +503,15 @@ function expandedElementName(
   }
   const namespaceUri = namespaces.get(prefix);
   return namespaceUri ? { namespaceUri, localName } : undefined;
+}
+
+function attrByLocalName(
+  attrs: Readonly<Record<string, string>>,
+  localName: string
+): string | undefined {
+  return attrs[localName] ?? Object.entries(attrs).find(([key]) =>
+    key.endsWith(`:${localName}`)
+  )?.[1];
 }
 
 function parseRunStyle(children: readonly unknown[]): OoxmlRunStyle {

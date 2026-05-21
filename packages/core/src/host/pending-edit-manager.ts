@@ -22,7 +22,7 @@ import {
   DEFAULT_EDIT_BOUNDARY_CONFIG,
 } from '../edit-boundary/index.js';
 import { hasCriticMarkup } from '../critic-regex.js';
-import type { PendingOverlay } from './types.js';
+import type { PendingOverlay, Format } from './types.js';
 
 // ── Public types ───────────────────────────────────────────────────────
 
@@ -39,6 +39,7 @@ export type OnOverlayChangeCallback = (uri: string, overlay: PendingOverlay | nu
 interface UriState {
   boundary: EditBoundaryState;
   scIdCounter: number;
+  documentFormat: 'l2' | 'l3';
   /** Last-known document text — kept for safety-net flushes */
   lastDocumentText?: string;
 }
@@ -230,7 +231,17 @@ export class PendingEditManager {
    */
   public initScIdCounter(uri: string, maxId: number): void {
     const uriState = this.getUriState(uri);
-    uriState.scIdCounter = maxId;
+    uriState.scIdCounter = Math.max(uriState.scIdCounter, maxId);
+  }
+
+  /**
+   * Set the document format used when crystallizing pending edits.
+   * L3 documents must append footnote-native edit-op lines instead of inline L2
+   * CriticMarkup in the body.
+   */
+  public setDocumentFormat(uri: string, format: Format | 'l2' | 'l3'): void {
+    const uriState = this.getUriState(uri);
+    uriState.documentFormat = String(format).toLowerCase() === 'l3' ? 'l3' : 'l2';
   }
 
   /**
@@ -257,6 +268,7 @@ export class PendingEditManager {
           },
         },
         scIdCounter: 0,
+        documentFormat: 'l2',
       };
       this.states.set(uri, uriState);
     }
@@ -272,7 +284,7 @@ export class PendingEditManager {
       },
       author: this._author,
       documentText,
-      documentFormat: 'l2',
+      documentFormat: uriState.documentFormat,
     };
   }
 

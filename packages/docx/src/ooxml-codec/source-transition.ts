@@ -1,4 +1,8 @@
-import { computeCurrentText, splitBodyAndFootnotes } from "@changedown/core";
+import {
+  computeCurrentText,
+  computeOriginalText,
+  splitBodyAndFootnotes,
+} from "@changedown/core";
 import { createOoxmlPackageCodec } from "./codec.js";
 import { createEmptyOoxmlValidationResult, stableBytesHash } from "./index.js";
 import { markdownTableToOoxml, parseMarkdownTable } from "./tables.js";
@@ -251,7 +255,30 @@ export async function renderTransitionForCompare(
     oldCurrentBody = "";
   }
 
-  if (!wordWireSourcesEquivalent(oldCurrentBody, priorBody)) {
+  let allowOriginalWireSourceRebase = false;
+  if (oldCurrentBody !== priorBody) {
+    const oldOriginalBody = originalBodyFromWireSource(input.oldWireSource);
+    if (
+      wordWireSourcesEquivalent(oldOriginalBody, priorBody) &&
+      newCurrentBody.includes(oldCurrentBody)
+    ) {
+      // The old wire source can contain an earlier pending insertion that the
+      // preserved OOXML package still represents as a revision, not as current
+      // body text. In that case the package projection matches the ORIGINAL
+      // view of the wire source. Rebase the transition onto that projection so
+      // the new compare package can carry the new delta beside the earlier
+      // pending insertion, instead of rejecting a valid chained source
+      // transition as stale. Keep oldCurrentBody unchanged for topology math:
+      // the diff is still "append the new delta after the visible pending
+      // insertion"; only the validation base is the original view.
+      allowOriginalWireSourceRebase = true;
+    }
+  }
+
+  if (
+    !allowOriginalWireSourceRebase &&
+    !wordWireSourcesEquivalent(oldCurrentBody, priorBody)
+  ) {
     throw new Error(
       `stale oldWireSource for Word source-transition render:\nexpected prior body:\n${priorBody}\nactual old current body:\n${oldCurrentBody}`
     );
@@ -267,6 +294,51 @@ export async function renderTransitionForCompare(
     priorBody
   );
   const codec = createOoxmlPackageCodec();
+  if (allowOriginalWireSourceRebase && hasMarkdownBlockStructure(newCurrentBody)) {
+    // If the prior package still stores earlier pending insertions as protected
+    // native <w:ins> blocks, the codec projection is the original body while
+    // the wire current view includes those insertions.  A follow-on compare
+    // target must be a full current-view target; patching only the newly
+    // inserted tail would leave the protected insertions invisible to the
+    // target projection and Word would compare against the wrong visible body.
+    //
+    // This is intentionally a narrow source-transition fallback: it only fires
+    // after proving the old wire source's ORIGINAL view equals the package
+    // projection and the new current source still contains the old current
+    // source. Ordinary stale source mismatches still throw above.
+    if (!canSafelyReplaceBodyForCurrentViewRebase(input.ooxmlSnapshot)) {
+      throw new Error(
+        "source-transition current-view rebase would require whole-body OOXML regeneration for a rich document body; refusing to drop preserved package structure"
+      );
+    }
+    const revisedPackage = replaceEmptyBodyWithMarkdownBlocks(
+      input.ooxmlSnapshot,
+      markdownBodyForWordRender(newCurrentBody)
+    );
+    const expectedProjection = codec.project({ snapshot: revisedPackage });
+    const actualBody = normalizeBodyForProjectionComparison(
+      expectedProjection.bodyMarkdown
+    );
+    const mathDiagnostic = validateMathProjection(
+      newCurrentBody,
+      actualBody,
+      expectedProjection
+    );
+    if (mathDiagnostic) {
+      throw new Error(mathDiagnostic.message);
+    }
+    if (!projectionBodiesEquivalent(newCurrentBody, actualBody)) {
+      throw new Error(
+        `Whole-body projection validation failed after source transition render:\nexpected:\n${newCurrentBody}\nactual:\n${actualBody}`
+      );
+    }
+    return {
+      revisedPackage,
+      expectedProjection,
+      witnessHints: [{ kind: "paragraph", paragraphIndex: 0 }],
+      diagnostics: [],
+    };
+  }
   if (priorBody === "" && hasMarkdownBlockStructure(newCurrentBody)) {
     const revisedPackage = replaceEmptyBodyWithMarkdownBlocks(
       input.ooxmlSnapshot,
@@ -634,6 +706,11 @@ function currentBodyFromWireSource(wireSource: string): string {
   return normalizeWireCurrentBodyForOoxmlProjection(computeCurrentText(body));
 }
 
+function originalBodyFromWireSource(wireSource: string): string {
+  const body = splitBodyAndFootnotes(wireSource.split("\n")).bodyLines.join("\n");
+  return normalizeWireCurrentBodyForOoxmlProjection(computeOriginalText(body));
+}
+
 function normalizeWireCurrentBodyForOoxmlProjection(bodyMarkdown: string): string {
   if (bodyMarkdown === "") {
     return bodyMarkdown;
@@ -751,6 +828,34 @@ function replaceEmptyBodyWithMarkdownBlocks(
     parts,
     hashes,
   };
+}
+
+function canSafelyReplaceBodyForCurrentViewRebase(
+  snapshot: OoxmlPackageSnapshot
+): boolean {
+  const documentPart = snapshot.parts.get(snapshot.documentPartName);
+  if (!documentPart?.text) return false;
+  const bodyMatch = /<w:body\b[^>]*>[\s\S]*?<\/w:body>/u.exec(documentPart.text);
+  if (!bodyMatch) return false;
+  const bodyStartTag = /^<w:body\b[^>]*>/u.exec(bodyMatch[0])?.[0];
+  if (!bodyStartTag) return false;
+  const bodyInner = bodyMatch[0].slice(
+    bodyStartTag.length,
+    bodyMatch[0].length - "</w:body>".length
+  );
+  const allowed = new Set([
+    "w:p",
+    "w:r",
+    "w:t",
+    "w:ins",
+    "w:del",
+    "w:delText",
+    "w:sectPr",
+  ]);
+  for (const match of bodyInner.matchAll(/<\/?([A-Za-z_][\w.-]*:[A-Za-z_][\w.-]*)\b/gu)) {
+    if (!allowed.has(match[1]!)) return false;
+  }
+  return true;
 }
 
 function markdownBodyForWordRender(markdown: string): string {

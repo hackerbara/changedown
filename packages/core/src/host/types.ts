@@ -178,7 +178,13 @@ export interface TypedLspConnection extends LspConnection {
   // Inbound notifications
   onDecorationData(handler: (data: { uri: string; changes: ChangeNode[]; documentVersion: number; autoFoldLines?: number[] }) => void): Disposable;
   onPendingEditFlushed(handler: (data: { uri: string; edits: RangeEdit[] }) => void): Disposable;
-  onDocumentState(handler: (data: { uri: string; tracking: { enabled: boolean; source: string }; view: BuiltinView }) => void): Disposable;
+  onDocumentState(handler: (data: {
+    uri?: string;
+    textDocument?: { uri?: string };
+    tracking?: { enabled?: boolean; source?: string };
+    view?: BuiltinView;
+    viewMode?: BuiltinView | string;
+  }) => void): Disposable;
   onOverlayUpdate(handler: (data: { uri: string; overlay: PendingOverlay | null }) => void): Disposable;
 }
 

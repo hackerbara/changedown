@@ -5,6 +5,7 @@
  * - Insertion:     `{++text++}` or `{++text++}{>>reasoning`
  * - Deletion:      `{--text--}` or `{--text--}{>>reasoning`
  * - Substitution:  `{~~old~>new~~}` or `{~~old~>new~~}{>>reasoning`
+ * - Range context: `{~~~\nopening\n...\nclosing\n~>\nreplacement\n~~}`
  * - Highlight:     `{==text==}` or `{==text==}{>>reasoning`
  * - Comment:       `{>>reasoning` or `{>>reasoning<<}`
  *
@@ -13,11 +14,17 @@
  * is inert and not treated as a separator.
  */
 
+export interface RangeContext {
+  opening: string;
+  closing: string;
+}
+
 export interface ParsedOp {
   type: 'ins' | 'del' | 'sub' | 'highlight' | 'comment';
   oldText: string;
   newText: string;
   reasoning: string | undefined;
+  rangeContext?: RangeContext;
 }
 
 /**
@@ -75,6 +82,40 @@ function extractBetween(text: string, opener: string, closer: string): string | 
   return text.slice(opener.length, closerIdx);
 }
 
+function parseRangeContextReplacement(editPart: string): { rangeContext: RangeContext; newText: string } | null {
+  // Legacy coordinate-only range replacement is `{~~~>new~~}`. Only the
+  // context-bearing form starts with `{~~~` followed by a newline; all other
+  // `{~~~...` shapes fall through to the normal substitution parser.
+  if (!editPart.startsWith('{~~~\n')) return null;
+
+  const lines = editPart.split('\n');
+  if (lines[0] !== '{~~~' || lines[lines.length - 1] !== '~~}') {
+    throw new Error('Context-bearing range replacement must start with a line exactly "{~~~" and end with a line exactly "~~}".');
+  }
+
+  const ellipsisIndices = lines
+    .map((line, index) => line === '...' ? index : -1)
+    .filter(index => index !== -1);
+  if (ellipsisIndices.length !== 1) {
+    throw new Error('Context-bearing range replacement requires exactly one standalone ... endpoint separator line.');
+  }
+  const ellipsisIndex = ellipsisIndices[0]!;
+
+  const arrowIndex = lines.findIndex((line, index) => index > ellipsisIndex && line === '~>');
+  if (arrowIndex === -1) {
+    throw new Error('Context-bearing range replacement requires a standalone ~> separator line.');
+  }
+
+  const opening = lines.slice(1, ellipsisIndex).join('\n');
+  const closing = lines.slice(ellipsisIndex + 1, arrowIndex).join('\n');
+  const newText = lines.slice(arrowIndex + 1, -1).join('\n');
+  if (opening.trim() === '' || closing.trim() === '') {
+    throw new Error('Context-bearing range replacement requires non-empty opening and closing anchors.');
+  }
+
+  return { rangeContext: { opening, closing }, newText };
+}
+
 export function parseOp(op: string): ParsedOp {
   if (op === '') {
     throw new Error('Op string is empty — nothing to parse.');
@@ -99,6 +140,17 @@ export function parseOp(op: string): ParsedOp {
 
   // Split reasoning FIRST -- uniform for all op types.
   const [withoutReasoning, reasoning] = splitReasoning(op);
+
+  const rangeReplacement = parseRangeContextReplacement(withoutReasoning);
+  if (rangeReplacement) {
+    return {
+      type: 'sub',
+      oldText: '',
+      newText: rangeReplacement.newText,
+      reasoning,
+      rangeContext: rangeReplacement.rangeContext,
+    };
+  }
 
   // Insertion: {++text++}
   const insContent = extractBetween(withoutReasoning, '{++', '++}');

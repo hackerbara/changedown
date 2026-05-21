@@ -1,6 +1,6 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
-import { existsSync, realpathSync, watch, type FSWatcher } from 'node:fs';
+import { existsSync, realpathSync, statSync, watch, type FSWatcher } from 'node:fs';
 import { loadConfig, DEFAULT_UNCONFIGURED_CONFIG, type ChangeDownConfig } from './config.js';
 
 interface CachedProject {
@@ -106,10 +106,6 @@ export class ConfigResolver {
       resolved = path.resolve(projectRoot, file);
     }
 
-    if (!this.lastProjectDir) {
-      this.lastProjectDir = projectRoot;
-    }
-
     // Resolve symlinks to prevent symlink-based boundary escapes.
     // If the file doesn't exist yet (new file creation), resolve the
     // parent directory's realpath and append the basename.
@@ -127,29 +123,103 @@ export class ConfigResolver {
       );
     }
 
+    if (!this.lastProjectDir) {
+      this.lastProjectDir = projectRoot;
+    }
+
     return realResolved;
   }
 
   /**
    * Infer the project root directory using the standard fallback chain.
-   * Used by resolveFilePath for both absolute and relative path validation.
+   * Absolute paths can bootstrap discovery by walking up from the target path;
+   * relative paths require an already-known host/session/fallback root.
    */
   private inferProjectRoot(file: string): string {
-    const firstSessionRoot = this.sessionRoots[0];
+    if (path.isAbsolute(file)) {
+      return this.inferProjectRootForAbsolutePath(file);
+    }
+    return this.inferProjectRootForRelativePath(file);
+  }
+
+  private inferProjectRootForAbsolutePath(file: string): string {
+    const resolvedFile = path.resolve(file);
+    const projectRoot = this.absoluteRootCandidates(resolvedFile)[0];
+
+    if (!projectRoot) {
+      throw new Error(
+        `Cannot resolve absolute path "${file}" because no ChangeDown project root was found from the target path ` +
+        'and no host-provided root contains it. Use a file inside a ChangeDown project or set CHANGEDOWN_PROJECT_DIR.'
+      );
+    }
+
+    return projectRoot;
+  }
+
+  private inferProjectRootForRelativePath(file: string): string {
     const inferredProject =
-      firstSessionRoot ||
+      this.sessionRoots[0] ||
       this.lastProjectDir ||
       ConfigResolver.findProjectRootSync(this.fallbackDir) ||
-      ConfigResolver.findProjectRootSync(process.env['PWD'] ?? '');
+      ConfigResolver.findProjectRootSync(process.env['PWD'] ?? '') ||
+      this.findProjectRootFromOptionalEnv('CODEX_WORKSPACE_ROOT');
 
     if (!inferredProject) {
       throw new Error(
-        `Cannot resolve path "${file}" because project root is unknown. ` +
-        'Use an absolute path or set CHANGEDOWN_PROJECT_DIR to the workspace root.'
+        `Cannot resolve relative path "${file}" because no ChangeDown project root is known. ` +
+        'Use an absolute path, start Codex from the project, or set CHANGEDOWN_PROJECT_DIR.'
       );
     }
 
     return inferredProject;
+  }
+
+  private absoluteRootCandidates(resolvedFile: string): string[] {
+    const candidates: string[] = [];
+    const push = (candidate: string | undefined) => {
+      if (!candidate) return;
+      const normalized = path.resolve(candidate);
+      if (!this.isPathInsideRoot(resolvedFile, normalized)) return;
+      if (!candidates.includes(normalized)) candidates.push(normalized);
+    };
+
+    push(this.deepestContainingSessionRoot(resolvedFile));
+    push(ConfigResolver.findProjectRootSync(this.absoluteRootSearchStart(resolvedFile)));
+    push(this.lastProjectDir);
+    push(ConfigResolver.findProjectRootSync(this.fallbackDir));
+    push(ConfigResolver.findProjectRootSync(process.env['PWD'] ?? ''));
+    push(this.findProjectRootFromOptionalEnv('CODEX_WORKSPACE_ROOT'));
+
+    return candidates;
+  }
+
+  private deepestContainingSessionRoot(resolvedFile: string): string | undefined {
+    return this.sessionRoots
+      .map((root) => path.resolve(root))
+      .filter((root) => this.isPathInsideRoot(resolvedFile, root))
+      .sort((a, b) => b.length - a.length)[0];
+  }
+
+  private absoluteRootSearchStart(resolvedFile: string): string {
+    try {
+      return existsSync(resolvedFile) && statSync(resolvedFile).isDirectory()
+        ? resolvedFile
+        : path.dirname(resolvedFile);
+    } catch {
+      return path.dirname(resolvedFile);
+    }
+  }
+
+  private findProjectRootFromOptionalEnv(name: string): string | undefined {
+    const value = process.env[name];
+    return value ? ConfigResolver.findProjectRootSync(value) : undefined;
+  }
+
+  private isPathInsideRoot(filePath: string, rootPath: string): boolean {
+    const normalizedFile = path.resolve(filePath);
+    const normalizedRoot = path.resolve(rootPath);
+    const rootWithSep = normalizedRoot.endsWith(path.sep) ? normalizedRoot : normalizedRoot + path.sep;
+    return normalizedFile === normalizedRoot || normalizedFile.startsWith(rootWithSep);
   }
 
   /**

@@ -88,7 +88,7 @@ The test pyramid has 213 test files across 9 packages, using four frameworks cho
 | Package | Test Files | Framework | What is covered |
 |---------|-----------|-----------|-----------------|
 | `packages/core` | 35 | Mocha | Parser (two-pass delimiter scan + footnote merge), accept/reject/settle operations, three-zone renderer, hashline coordinates, view projections |
-| `changedown-plugin/mcp-server` | 76 | Vitest | All 7 MCP tools, both protocol modes (classic + compact), author enforcement, batch operations, session state, error handling |
+| `packages/mcp` (`packages/tests/mcp/`) | 95 | Vitest | All 7 MCP tools, both protocol modes (classic + compact), author enforcement, batch operations, session state, error handling |
 | `packages/vscode-extension` | 30 | @vscode/test-cli | Decorator (12 types), smart view, code actions, code lens, comment API, TreeView panel, SCM provider, walkthrough |
 | `packages/cli` | 22 | Vitest | CLI commands (status, diff, settle, publish) + engine layer shared with MCP server |
 | `changedown-plugin/hooks-impl` | 22 | Vitest | PreToolUse/PostToolUse/Stop hooks, policy modes (strict/safety-net/permissive), batch wrapping |

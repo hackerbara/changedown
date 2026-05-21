@@ -54,13 +54,24 @@ describe('LocalFormatAdapter (typed)', () => {
     expect(l2Text.length).toBeGreaterThan(0);  // demote produced some L2 text
   });
 
-  it('round-trips: L2 → L3 → L2 preserves change count', async () => {
+  it('round-trips: L2 → L3 → L2 preserves active proposed changes and decided audit records', async () => {
     const l2 = parseL2(L2_FIXTURE_TEXT);
     const l3 = await adapter.promote(l2);
     const roundTripped = await adapter.demote(l3);
     const { parseForFormat } = await import('@changedown/core');
     const originalChanges = parseForFormat(L2_FIXTURE_TEXT).getChanges();
-    const roundTrippedChanges = parseForFormat(serializeL2(roundTripped)).getChanges();
-    expect(roundTrippedChanges.length).toBe(originalChanges.length);
+    const roundTrippedText = serializeL2(roundTripped);
+    const roundTrippedChanges = parseForFormat(roundTrippedText).getChanges();
+    const originalProposedIds = originalChanges
+      .filter((change) => String(change.status) === 'Proposed')
+      .map((change) => change.id);
+    const roundTrippedProposedIds = roundTrippedChanges
+      .filter((change) => String(change.status) === 'Proposed')
+      .map((change) => change.id);
+
+    expect(roundTrippedProposedIds).toEqual(originalProposedIds);
+    expect(roundTrippedText).toContain('[^cn-3]: @bob | 2026-03-16 | sub | accepted');
+    expect(roundTrippedText).toContain('    8:f6 {~~provides~>delivers~~} excellent');
+    expect(roundTrippedChanges.some((change) => change.id === 'cn-3')).toBe(false);
   });
 });

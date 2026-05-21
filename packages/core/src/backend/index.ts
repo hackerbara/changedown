@@ -8,7 +8,18 @@ export {
   type DocumentSnapshotCapability,
   type DocumentSnapshotDiagnostic,
   type DocumentSnapshotReadiness,
+  type DocumentSnapshotSourceAccounting,
+  type DocumentSnapshotSourceAccountingRecord,
+  type DocumentSnapshotOperationFragment,
+  type DocumentSnapshotRevisionWitness,
   type DocumentSnapshot,
+  type DocumentSnapshotCollectorState,
+  type DocumentSnapshotDiagnosticPreview,
+  type DocumentSnapshotExplainedMismatch,
+  type DocumentSnapshotNotReadyBoundary,
+  type DocumentSnapshotNotReadyReasonFamily,
+  type DocumentSnapshotPublicationState,
+  type DocumentSnapshotPublicDiagnostic,
   type ChangeOp,
   type ChangeResult,
   type ChangeSummary,
@@ -26,3 +37,14 @@ export {
   type PaneBackendWireRequest,
   type BackendWireOperationClass,
 } from './backend-wire.js';
+
+
+export type {
+  DocumentSnapshotProtocolActionability,
+  DocumentSnapshotProtocolActionabilityState,
+  DocumentSnapshotProtocolCertification,
+  DocumentSnapshotProtocolCertificationState,
+  DocumentSnapshotProtocolEntry,
+  DocumentSnapshotProtocolSurface,
+} from './protocol-surface.js';
+export { parseDocumentSnapshotProtocolSurface } from './protocol-surface.js';

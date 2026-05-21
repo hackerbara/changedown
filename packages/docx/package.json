@@ -1,6 +1,6 @@
 {
   "name": "@changedown/docx",
-  "version": "0.4.6",
+  "version": "0.5.0",
   "description": "DOCX import/export with tracked changes for ChangeDown",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

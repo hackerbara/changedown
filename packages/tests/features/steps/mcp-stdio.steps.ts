@@ -165,7 +165,7 @@ auto_on_reject = true
     // Spawn the MCP server. Use the built dist file.
     const serverPath = path.resolve(
       __dirname,
-      '../../../../changedown-plugin/mcp-server/dist/index.js',
+      '../../../../packages/mcp/dist/index.js',
     );
 
     // Verify server exists
@@ -173,18 +173,25 @@ auto_on_reject = true
       await fs.access(serverPath);
     } catch {
       throw new Error(
-        `MCP server dist not found at ${serverPath} — run 'npm run build' in changedown-plugin/mcp-server first`,
+        `MCP server dist not found at ${serverPath} — run 'npm run build' in packages/mcp first`,
       );
     }
 
     const port = String(41000 + Math.floor(Math.random() * 10000));
+    // These tests exercise the MCP server in autospawn-OFF mode (CHANGEDOWN_BRIDGE_AUTOSPAWN=0).
+    // In autospawn-off mode, the MCP runs as a standalone host on the given port (no bridge).
+    // With autospawn-on (the production default), the bridge daemon is spawned separately
+    // and the MCP connects to it. P1 stdio smoke tests use the simpler autospawn-off path
+    // so they can run without a real bridge process.
+    const { CHANGEDOWN_BRIDGE_AUTOSPAWN: _stripBridgeAutospawn, ...inheritedEnv } = process.env;
     state.serverProcess = spawn('node', [serverPath], {
       cwd: state.tmpDir,
       env: {
-        ...process.env,
+        ...inheritedEnv,
         CHANGEDOWN_PROJECT_DIR: state.tmpDir,
         CHANGEDOWN_MCP_PORT: port,
         CHANGEDOWN_MCP_USE_HTTP: 'true',
+        CHANGEDOWN_BRIDGE_AUTOSPAWN: '0',
       },
       stdio: ['pipe', 'pipe', 'pipe'],
     });

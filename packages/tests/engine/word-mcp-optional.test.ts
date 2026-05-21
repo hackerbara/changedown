@@ -4,7 +4,15 @@ import * as http from 'node:http';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Server } from 'node:http';
-import { MCP_PORT, resolveMcpCommand, mcpStartGuidance, startMcpIfNeeded } from '@changedown/cli/word/mcp';
+
+// The launcher reads CHANGEDOWN_MCP_USE_HTTP at module load time to set MCP_SCHEME.
+// This test starts an HTTP fixture on MCP_PORT and expects probeMcpHealth to find
+// it — so we must opt the launcher down to HTTP via this env var BEFORE the
+// launcher module is imported. ESM static imports are hoisted, so a dynamic
+// `await import(...)` after the env assignment is the only reliable way.
+process.env.CHANGEDOWN_MCP_USE_HTTP = '1';
+const { MCP_PORT, resolveMcpCommand, mcpStartGuidance, startMcpIfNeeded } =
+  await import('@changedown/mcp/launcher');
 
 function withMcpBin<T>(value: string | undefined, fn: () => T): T {
   const previous = process.env.CHANGEDOWN_MCP_BIN;
@@ -65,7 +73,7 @@ describe('word MCP optional resolution', () => {
 
   it('uses repo-local MCP dist in development checkouts', () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'changedown-repo-mcp-'));
-    const dist = path.join(cwd, 'changedown-plugin', 'mcp-server', 'dist');
+    const dist = path.join(cwd, 'packages', 'mcp', 'dist');
     fs.mkdirSync(dist, { recursive: true });
     fs.writeFileSync(path.join(dist, 'index.js'), '');
     try {

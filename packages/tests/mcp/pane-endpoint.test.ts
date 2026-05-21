@@ -5,7 +5,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { attachPaneEndpoints, type PaneEndpointHandle, type PaneRegistrationInfo, type PaneEndpointOptions } from '@changedown/mcp/transport/pane-endpoint';
 import { createLabDiagnosticsStoreForTests } from '@changedown/mcp/lab-diagnostics';
 import { attachStreamableHttp } from '@changedown/mcp/transport/streamable-http';
-import { createLabDiagnosticsStoreForTest } from '../../../changedown-plugin/mcp-server/src/lab-diagnostics';
+import { createLabDiagnosticsStoreForTest } from '../../mcp/src/lab-diagnostics';
 
 function closeServer(s: http.Server): Promise<void> {
   return new Promise((resolve) => {
@@ -664,6 +664,39 @@ describe('pane-endpoint', () => {
       expect(JSON.parse(resp.body)).toMatchObject({ runId: 'RUN_1' });
     });
 
+    it('records pane registration lifecycle traces through the lab side-channel', async () => {
+      await listenWithLabDiagnostics();
+      const regResp = await httpPost(labPort, '/backend/register', {
+        scheme: 'word',
+        sessionId: 'word://sess-registration-trace',
+        capabilities: ['read', 'poll-rpc'],
+        lab: { runId: 'RUN_1', paneMode: 'local-lab', bundleMarker: 'test-bundle' },
+      });
+      expect(regResp.status).toBe(200);
+
+      const diag = await httpGet(labPort, '/backend/lab/diagnostics?runId=RUN_1', {
+        'x-changedown-lab-diagnostics-token': 'secret-1',
+      });
+      expect(diag.status).toBe(200);
+      const parsed = JSON.parse(diag.body) as {
+        traceRecords: Array<{ kind: string; phase: string; sessionUri?: string; detail?: Record<string, unknown> }>;
+      };
+      expect(parsed.traceRecords).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'pane-endpoint',
+          phase: 'pane-register-received',
+          sessionUri: 'word://sess-registration-trace',
+          detail: expect.objectContaining({ hasPollRpc: true, labPaneMode: 'local-lab' }),
+        }),
+        expect.objectContaining({
+          kind: 'pane-endpoint',
+          phase: 'pane-register-response-sent',
+          sessionUri: 'word://sess-registration-trace',
+          detail: expect.objectContaining({ keepaliveMs: expect.any(Number) }),
+        }),
+      ]));
+    });
+
     it('returns run-level apply diagnostics only through the lab side-channel', async () => {
       const labDiagnostics = await listenWithLabDiagnostics();
       const envelope = labDiagnostics.createApplyEnvelope({ sessionUri: 'word://sess-run-1' });
@@ -721,6 +754,77 @@ describe('pane-endpoint', () => {
           runId: 'RUN_1',
         }),
       ]));
+    });
+
+    it('accepts lab Office.js evidence stages through body token and exposes ordered snapshots by include', async () => {
+      await listenWithLabDiagnostics('officejs-secret');
+
+      const preflight = await httpOptions(labPort, '/backend/lab/officejs-evidence', {
+        Origin: 'https://127.0.0.1:3000',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'Content-Type',
+      });
+      expect(preflight.status).toBe(204);
+      expect(preflight.headers['access-control-allow-origin']).toBe('https://127.0.0.1:3000');
+      expect(preflight.headers['access-control-allow-headers']).toBe('Content-Type');
+
+      const missing = await httpPost(labPort, '/backend/lab/officejs-evidence', {
+        protocolVersion: 1,
+        kind: 'officejs-evidence-stage',
+        runId: 'RUN_1',
+        stage: 'stage-00-boot',
+      }, { Origin: 'https://127.0.0.1:3000' });
+      expect(missing.status).toBe(403);
+
+      const wrongRun = await httpPost(labPort, '/backend/lab/officejs-evidence', {
+        officejsEvidenceToken: 'officejs-secret',
+        protocolVersion: 1,
+        kind: 'officejs-evidence-stage',
+        runId: 'RUN_2',
+        stage: 'stage-00-boot',
+      }, { Origin: 'https://127.0.0.1:3000' });
+      expect(wrongRun.status).toBe(403);
+
+      const stage1 = await httpPost(labPort, '/backend/lab/officejs-evidence', {
+        officejsEvidenceToken: 'officejs-secret',
+        protocolVersion: 1,
+        kind: 'officejs-evidence-stage',
+        runId: 'RUN_1',
+        stage: 'stage-00-boot',
+        sequence: 0,
+        status: 'ok',
+        summary: { boot: true },
+        snapshot: {
+          taskpaneUrl: 'https://127.0.0.1:3000/officejs-evidence-pane.html?cdLiveLabOfficeJsEvidenceToken=officejs-secret&cdLiveLabRunId=RUN_1',
+        },
+      }, { Origin: 'https://127.0.0.1:3000' });
+      expect(stage1.status).toBe(204);
+      expect(stage1.headers['access-control-allow-origin']).toBe('https://127.0.0.1:3000');
+
+      const stage2 = await httpPost(labPort, '/backend/lab/officejs-evidence', {
+        officejsEvidenceToken: 'officejs-secret',
+        protocolVersion: 1,
+        kind: 'officejs-evidence-stage',
+        runId: 'RUN_1',
+        stage: 'stage-01-document-identity',
+        sequence: 1,
+        status: 'ok',
+        summary: { document: { paragraphCount: 2 } },
+      }, { Origin: 'https://127.0.0.1:3000' });
+      expect(stage2.status).toBe(204);
+
+      const diag = await httpGet(labPort, '/backend/lab/diagnostics?runId=RUN_1&include=officejs-evidence', {
+        'x-changedown-lab-diagnostics-token': 'officejs-secret',
+      });
+      expect(diag.status).toBe(200);
+      const parsed = JSON.parse(diag.body) as { officejsEvidenceStages?: Array<Record<string, unknown>>; traceRecords?: unknown[] };
+      expect(parsed.traceRecords).toBeUndefined();
+      expect(parsed.officejsEvidenceStages?.map((stage) => stage.stage)).toEqual([
+        'stage-00-boot',
+        'stage-01-document-identity',
+      ]);
+      expect(JSON.stringify(parsed)).not.toContain('officejs-secret');
+      expect(JSON.stringify(parsed)).not.toContain('officejsEvidenceToken');
     });
 
     it('rejects trace posts from registrations outside the active lab run', async () => {

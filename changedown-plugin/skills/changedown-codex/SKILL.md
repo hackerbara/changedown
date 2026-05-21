@@ -47,6 +47,8 @@ Use explicit `author` values. Prefer `ai:codex` unless a more specific agent ide
 
 For multiple related edits, use the tool's `changes` array so the server can apply them atomically against the same pre-change state.
 
+**Chaining:** No re-read is needed when follow-up edits use fresh response coordinates or semantically anchored text/context. If you are targeting blank/structural lines or coordinate-only range replacements after prior writes, re-read or use context-bearing range replacement.
+
 ## Reviewing
 
 Use:

@@ -934,18 +934,15 @@ describe('batch atomicity regression (spec regression 1)', () => {
       resolver, state,
     );
 
-    // With partial-success batch semantics, the batch succeeds overall
-    // but reports the failed op. The first op (valid hash) applies, the second fails.
-    expect(batchResult.isError).toBeUndefined();
-    const parsed = JSON.parse(batchResult.content[0].text);
-    expect(parsed.applied.length).toBe(1);
-    expect(parsed.failed.length).toBe(1);
+    // propose_change batch arrays are atomic by default: a validation failure
+    // aborts the whole write. Explicit partial-success belongs to propose_batch
+    // with partial:true.
+    expect(batchResult.isError).toBe(true);
+    expect(batchResult.content[0].text).toMatch(/Operation 1|hash mismatch|could not resolve/i);
 
-    // First op was applied — file contains the substitution
+    // No partial write: the valid first op must not have been applied.
     const afterContent = await fs.readFile(filePath, 'utf-8');
-    expect(afterContent).toContain('{~~First line~>Line 1~~}');
-    // Second op failed — original text is still present
-    expect(afterContent).toContain('Second line');
+    expect(afterContent).toBe(fileContent);
   });
 });
 

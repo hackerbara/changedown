@@ -1,6 +1,6 @@
 {
   "name": "changedown",
-  "version": "0.4.6",
+  "version": "0.5.0",
   "description": "Durable change tracking with reasoning for AI agents.",
   "author": {
     "name": "hackerbara"

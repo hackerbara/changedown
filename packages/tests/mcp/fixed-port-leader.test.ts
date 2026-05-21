@@ -1,6 +1,7 @@
 // packages/tests/mcp/fixed-port-leader.test.ts
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as http from 'node:http';
+import * as net from 'node:net';
 import { AddressInfo } from 'node:net';
 import { bindOrForward, HttpsRequiredError, PortConflictError } from '@changedown/mcp/transport/fixed-port-leader';
 import { installSignalHandlers } from '@changedown/mcp/transport/signals';
@@ -47,20 +48,39 @@ function closeServer(server: http.Server): Promise<void> {
   return new Promise((resolve) => server.close(() => resolve()));
 }
 
-const TEST_PORT = 39991; // use a different port so real 39990 is untouched in CI
+async function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.unref();
+    server.on('error', reject);
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address() as AddressInfo;
+      const port = address.port;
+      server.close((err) => err ? reject(err) : resolve(port));
+    });
+  });
+}
 
 describe('bindOrForward', () => {
   const servers: http.Server[] = [];
+  let testPort: number;
+
+  beforeEach(async () => {
+    testPort = await getFreePort();
+  });
   afterEach(async () => {
     await Promise.all(servers.map(closeServer));
     servers.length = 0;
   });
 
-  it('hosted pane mode allows the default HTTP loopback path', async () => {
+  it('hosted pane mode allows the HTTP loopback path when caller opts out of HTTPS', async () => {
+    // HTTPS is the default after the 2026-05-16 scheme refactor. Callers that
+    // want HTTP must explicitly pass requireHttps:false (the production path
+    // does this via the --http CLI flag → prefersHttps() returns false).
     const originalPaneMode = process.env.CHANGEDOWN_PANE_MODE;
     try {
       process.env.CHANGEDOWN_PANE_MODE = 'hosted';
-      const result = await bindOrForward(TEST_PORT, { useHttps: false });
+      const result = await bindOrForward(testPort, { useHttps: false, requireHttps: false });
       expect(result.mode).toBe('host');
       if (result.mode === 'host') servers.push(result.server);
     } finally {
@@ -70,36 +90,32 @@ describe('bindOrForward', () => {
   });
 
   it('explicit HTTPS-required fallback refuses HTTP', async () => {
-    await expect(bindOrForward(TEST_PORT, { useHttps: false, requireHttps: true })).rejects.toBeInstanceOf(HttpsRequiredError);
+    await expect(bindOrForward(testPort, { useHttps: false, requireHttps: true })).rejects.toBeInstanceOf(HttpsRequiredError);
   });
 
   it('returns {mode: "host"} and a bound server when port is free', async () => {
-    const result = await bindOrForward(TEST_PORT, { useHttps: false, requireHttps: false });
+    const result = await bindOrForward(testPort, { useHttps: false, requireHttps: false });
     expect(result.mode).toBe('host');
     if (result.mode === 'host') {
       servers.push(result.server);
       const addr = result.server.address() as AddressInfo;
-      expect(addr.port).toBe(TEST_PORT);
+      expect(addr.port).toBe(testPort);
       expect(addr.address).toBe('127.0.0.1');
     }
   });
 
-  it('returns {mode: "client", hostUrl} when a changedown-mcp already holds the port', async () => {
-    const fake = await fakeChangedownHost(TEST_PORT);
+  it('throws PortConflictError when a changedown-mcp already holds the port', async () => {
+    const fake = await fakeChangedownHost(testPort);
     servers.push(fake);
 
-    const result = await bindOrForward(TEST_PORT, { useHttps: false, requireHttps: false });
-    expect(result.mode).toBe('client');
-    if (result.mode === 'client') {
-      expect(result.hostUrl).toBe(`http://127.0.0.1:${TEST_PORT}`);
-    }
+    await expect(bindOrForward(testPort, { useHttps: false, requireHttps: false })).rejects.toBeInstanceOf(PortConflictError);
   });
 
   it('throws PortConflictError when the port holder is NOT a changedown-mcp', async () => {
-    const fake = await fakeOtherHost(TEST_PORT);
+    const fake = await fakeOtherHost(testPort);
     servers.push(fake);
 
-    await expect(bindOrForward(TEST_PORT, { useHttps: false, requireHttps: false })).rejects.toThrow('PortConflictError');
+    await expect(bindOrForward(testPort, { useHttps: false, requireHttps: false })).rejects.toThrow('PortConflictError');
   });
 
   // Helper: fake foreign service that exposes pid in /health
@@ -135,11 +151,11 @@ describe('bindOrForward', () => {
 
   it('PortConflictError message includes the foreign service PID when /health exposes it', async () => {
     const fakePid = 99999;
-    const fake = await fakeForeignWithPid(TEST_PORT, fakePid);
+    const fake = await fakeForeignWithPid(testPort, fakePid);
     servers.push(fake);
 
     try {
-      await bindOrForward(TEST_PORT, { useHttps: false, requireHttps: false });
+      await bindOrForward(testPort, { useHttps: false, requireHttps: false });
       throw new Error('should have thrown PortConflictError');
     } catch (err) {
       expect((err as Error).name).toBe('PortConflictError');
@@ -152,7 +168,7 @@ describe('bindOrForward', () => {
   it('PortConflictError reports scheme mismatch when same-service leader is on the wrong scheme', async () => {
     // HTTP-only changedown-mcp leader; new spawn requires HTTPS.
     const fakePid = 88888;
-    const fake = await fakeChangedownHttpWithPid(TEST_PORT, fakePid);
+    const fake = await fakeChangedownHttpWithPid(testPort, fakePid);
     servers.push(fake);
 
     try {
@@ -160,7 +176,7 @@ describe('bindOrForward', () => {
       // No devCerts in test env → goes through that path. Probe HTTPS first → fails
       // (server is HTTP). New code falls back to HTTP probe → identifies our service
       // on wrong scheme → throws PortConflictError with pid + scheme info.
-      await bindOrForward(TEST_PORT, { useHttps: true, requireHttps: true });
+      await bindOrForward(testPort, { useHttps: true, requireHttps: true });
       throw new Error('should have thrown PortConflictError');
     } catch (err) {
       // Allow either PortConflictError (new behavior) or HttpsRequiredError (if dev
@@ -187,28 +203,6 @@ describe('bindOrForward', () => {
     expect(err.message).toContain('https');
     expect(err.message).toMatch(/kill\s+12345/i);
   });
-
-  it('client heartbeat: two consecutive health failures trigger re-bind attempt', async () => {
-    // Start as client pointing at a fake host
-    const fake = await fakeChangedownHost(TEST_PORT);
-    servers.push(fake);
-
-    const clientResult = await bindOrForward(TEST_PORT, { useHttps: false, requireHttps: false });
-    expect(clientResult.mode).toBe('client');
-    if (clientResult.mode !== 'client') return;
-
-    // Kill the fake host
-    await closeServer(fake);
-    servers.splice(servers.indexOf(fake), 1);
-
-    // startHeartbeat returns a promise that resolves with a new LeaderResult
-    // when two consecutive failures are detected and re-bind succeeds
-    const promoted = await clientResult.startHeartbeat({ intervalMs: 50, failThreshold: 2 });
-    expect(promoted.mode).toBe('host');
-    if (promoted.mode === 'host') {
-      servers.push(promoted.server);
-    }
-  }, 5000);
 
   it('installSignalHandlers: stdin-end triggers stack.disposeAsync() and process.exit(0)', async () => {
     // stdin / signal handling was extracted from bindOrForward into signals.ts

@@ -20,7 +20,7 @@ The `cdown` entry routes at startup:
 
 ## Engine Layer (`src/engine/`)
 
-Exported as `@changedown/cli/engine`. Consumed by: MCP server (`changedown-plugin/mcp-server/`), LSP server (config only via `@changedown/cli/config`).
+Exported as `@changedown/cli/engine`. Consumed by: MCP server (`packages/mcp/`), LSP server (config only via `@changedown/cli/config`).
 
 ### Key components
 
@@ -59,7 +59,7 @@ Additional handlers exist for backward compatibility but are not in the listed s
 1. Write handler in `src/engine/handlers/my-operation.ts` with the signature above
 2. Export from `src/engine/index.ts`
 3. Add entry in `src/agent-command-registry.ts` to expose via `cdown my-operation`
-4. Add to `CallToolRequestSchema` handler in `changedown-plugin/mcp-server/src/index.ts`
+4. Add to `CallToolRequestSchema` handler in `packages/mcp/src/index.ts`
 
 The `schema-executor.ts` layer builds Commander commands at runtime from declarative `CommandDef` objects — use it rather than writing Commander boilerplate directly.
 

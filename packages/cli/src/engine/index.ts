@@ -149,7 +149,7 @@ export { BackendRegistry, type BackendEntry } from '@changedown/core/backend';
  * Registers FileBackend for local file:// URIs.
  *
  * Word support is handled by RemoteBackend (registered by the pane wiring
- * in changedown-plugin/mcp-server after the pane endpoint attaches).
+ * in packages/mcp after the pane endpoint attaches).
  */
 export function makeDefaultRegistry(projectDir: string): BackendRegistry {
   const registry = new BackendRegistry();

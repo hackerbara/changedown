@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
 import { handleReviewChanges } from '@changedown/mcp/internals';
+import { handleListChanges } from '@changedown/mcp/internals';
 import { handleProposeChange } from '@changedown/mcp/internals';
 import { SessionState } from '@changedown/mcp/internals';
 import { type ChangeDownConfig } from '@changedown/mcp/internals';
@@ -162,6 +163,46 @@ describe('handleReviewChanges', () => {
     expect(modified).toContain('    rejected:');
     expect(modified).toContain('slow red');
     expect(modified).toContain('cn-3 replacement');
+  });
+
+  it('rejecting one L2 proposal while another remains does not create footnote zombies', async () => {
+    const filePath = path.join(tmpDir, 'reject-with-pending.md');
+    await fs.writeFile(filePath, [
+      'A {++bad++}[^cn-1] B {++pending++}[^cn-2]',
+      '',
+      '[^cn-1]: @a | 2026-05-16 | ins | proposed',
+      '[^cn-2]: @a | 2026-05-16 | ins | proposed',
+    ].join('\n'));
+
+    const result = await handleReviewChanges(
+      {
+        file: filePath,
+        reviews: [
+          { change_id: 'cn-1', decision: 'reject', reason: 'not wanted' },
+        ],
+        author: 'ai:claude-opus-4.6',
+      },
+      resolver,
+      state,
+    );
+
+    expect(result.isError).toBeUndefined();
+    const data = JSON.parse(result.content[0].text);
+    expect(data.document_state.remaining_proposed).toBe(1);
+
+    const modified = await fs.readFile(filePath, 'utf-8');
+    expect(modified).toContain('[^cn-1]:');
+    expect(modified).toContain('| rejected');
+    expect(modified).toContain('{++bad++}');
+
+    const listResult = await handleListChanges(
+      { file: filePath, status: 'proposed' },
+      resolver,
+      state,
+    );
+    expect(listResult.isError).toBeUndefined();
+    const listed = JSON.parse(listResult.content[0].text);
+    expect(listed.changes.map((c: { change_id: string }) => c.change_id)).toEqual(['cn-2']);
   });
 
   it('invalid change_id in array: partial success, other reviews still apply', async () => {

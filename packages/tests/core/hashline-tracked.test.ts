@@ -294,6 +294,22 @@ describe('hashline-tracked', () => {
       expect(header.includes('2 proposed')).toBeTruthy();
     });
 
+    it('does not count CriticMarkup inside audit footnotes as proposed Level 0 changes', () => {
+      const content = [
+        'A [^cn-1] B {++pending++}[^cn-2]',
+        '',
+        '[^cn-1]: @a | 2026-05-16 | ins | rejected',
+        '    1:f9 A {++bad++} B',
+        '[^cn-2]: @a | 2026-05-16 | ins | proposed',
+      ].join('\n');
+
+      const header = formatTrackedHeader('test.md', content, 'tracked');
+
+      expect(header).toContain('1 proposed');
+      expect(header).toContain('1 rejected');
+      expect(header).not.toContain('2 proposed');
+    });
+
     it('includes line count', () => {
       const content = 'Line 1\nLine 2\nLine 3';
       const header = formatTrackedHeader('test.md', content);

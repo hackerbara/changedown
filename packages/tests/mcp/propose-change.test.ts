@@ -134,6 +134,33 @@ describe('handleProposeChange', () => {
     expect(modified).toContain('quick{++ brown++}[^cn-1]');
   });
 
+  it('does not resolve insertion anchors inside terminal audit footnotes', async () => {
+    const filePath = path.join(tmpDir, 'doc.md');
+    const original = [
+      'Body text.',
+      '',
+      '[^cn-1]: @ai:test | 2026-05-16 | ins | rejected',
+      '    1:f9 audit anchor only',
+    ].join('\n');
+    await fs.writeFile(filePath, original);
+
+    const result = await handleProposeChange(
+      {
+        file: filePath,
+        old_text: '',
+        new_text: ' new body text',
+        insert_after: 'audit anchor only',
+        reason: 'test',
+      },
+      resolver,
+      state
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toMatch(/insertAfter anchor not found/i);
+    await expect(fs.readFile(filePath, 'utf-8')).resolves.toBe(original);
+  });
+
   it('with reason: footnote includes reason line', async () => {
     const filePath = path.join(tmpDir, 'doc.md');
     await fs.writeFile(filePath, 'Hello world.');

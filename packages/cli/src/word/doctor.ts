@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import type { WordCommandContext, WordCommandOptions } from './types.js';
 import { resolveManifestForDoctor, validateLocalManifestText } from './manifest.js';
 import { resolveBin, resolvePackagedTool, runTool } from './office-tools.js';
-import { MCP_PORT, mcpStartGuidance, preflightMcp, preflightMcpFromOrigin, probeMcpHealth } from './mcp.js';
+import { MCP_PORT, mcpStartGuidance, preflightMcp, preflightMcpFromOrigin, probeMcpHealth } from '@changedown/mcp/launcher';
 import { detectAgents } from '../agents/setup.js';
 import { PACKAGED_WORD_PANE_DIR, PACKAGED_LOCAL_MANIFEST_PATH } from './pane-server.js';
 

@@ -54,7 +54,7 @@ export async function createTempWorkspace(
   // Uses absolute path to MCP server binary so it works from any workspace location.
   if (options.injectChangeDown) {
     const repoRoot = path.resolve(process.cwd());
-    const mcpServerPath = path.join(repoRoot, "changedown-plugin", "mcp-server", "dist", "index.js");
+    const mcpServerPath = path.join(repoRoot, "packages", "mcp", "dist", "index.js");
 
     // .opencode/opencode.json — MCP server config + plugin registration
     // Skip for Surface D (disableChangeDownPlugin = true) to avoid MCP schema overhead

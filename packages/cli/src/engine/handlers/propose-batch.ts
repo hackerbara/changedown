@@ -8,7 +8,6 @@ import {
   generateFootnoteDefinition,
   scanMaxCnId,
   nowTimestamp,
-  findFootnoteBlockStart,
   parseForFormat,
   assertResolved,
   UnresolvedChangesError,
@@ -18,14 +17,14 @@ import { resolveCoordinates, applyCompactOp, type NormalizedCompactOp, type Reso
 import { resolveAuthor } from '../author.js';
 import { ConfigResolver } from '../config-resolver.js';
 import { strArg, optionalStrArg } from '../args.js';
-import { applySingleOperation, extractLineRange, findUniqueMatch, appendFootnote } from '../file-ops.js';
+import { applySingleOperation, contentZoneText, extractLineRange, findUniqueMatch, appendFootnote } from '../file-ops.js';
 import { computeAffectedLines, type AffectedLineEntry } from './propose-utils.js';
 import { toRelativePath } from '../path-utils.js';
 import { resolveTrackingStatus } from '../scope.js';
 import { SessionState } from '../state.js';
 import { parseOp, parseAt } from '@changedown/core';
 import { resolveProtocolMode } from '../config.js';
-import { rerecordState } from '../state-utils.js';
+import { bodyLineCount, recordBasicWriteTransform, rerecordState } from '../state-utils.js';
 
 /**
  * Tool definition for the propose_batch MCP tool.
@@ -120,19 +119,6 @@ function hasHashlineParams(op: Record<string, unknown>): boolean {
     op.after_line !== undefined ||
     op.after_hash !== undefined
   );
-}
-
-/** Number of content lines in the document body (excluding trailing blank
- *  separator lines and the footnote block at the end). This is critical for
- *  accurate delta calculation: appending a footnote adds a blank separator +
- *  footnote definition, but those must NOT inflate the body line count or
- *  subsequent ops will target wrong lines. */
-function bodyLineCount(text: string): number {
-  const lines = text.split('\n');
-  let bodyEnd = findFootnoteBlockStart(lines);
-  // Skip trailing blank lines between body and footnote block
-  while (bodyEnd > 0 && lines[bodyEnd - 1]!.trim() === '') bodyEnd--;
-  return bodyEnd;
 }
 
 /**
@@ -405,6 +391,7 @@ export async function handleProposeBatch(
           oldText: parsedOp.oldText,
           newText: parsedOp.newText,
           reasoning: opReasoning,
+          rangeContext: parsedOp.rangeContext,
         };
 
         // Validate via the unified pipeline (stages 1-3: parse → view-aware
@@ -547,7 +534,7 @@ export async function handleProposeBatch(
         }
       } else if (oldText !== '') {
         try {
-          const match = findUniqueMatch(fileContent, oldText, defaultNormalizer);
+          const match = findUniqueMatch(contentZoneText(fileContent), oldText, defaultNormalizer);
           // Record position for overlap detection
           batchPositions.push({
             index: i,
@@ -762,7 +749,17 @@ export async function handleProposeBatch(
     const groupFootnoteBlock = footnoteHeader + reasonLine;
     currentText = appendFootnote(currentText, groupFootnoteBlock);
     await writeTrackedFile(filePath, currentText);
-    await rerecordState(state, filePath, currentText, config);
+    const affectedStartLine = Math.min(
+      ...results.map((r) => r.startLine).filter((line): line is number => line !== undefined),
+    );
+    const affectedEndLine = Math.max(
+      ...results.map((r) => r.endLine).filter((line): line is number => line !== undefined),
+    );
+    recordBasicWriteTransform(state, filePath, fileContent, currentText, {
+      affectedStartLine: Number.isFinite(affectedStartLine) ? affectedStartLine : undefined,
+      affectedEndLine: Number.isFinite(affectedEndLine) ? affectedEndLine : undefined,
+    });
+    await rerecordState(state, filePath, currentText, config, { preserveReadGeneration: true });
 
     // Compute affected_lines for the final file state so agents have fresh
     // hashline coordinates without needing to re-read the entire file.

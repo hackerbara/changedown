@@ -7,5 +7,7 @@ cd "$SCRIPT_DIR"
 echo "Building hooks-impl..."
 (cd hooks-impl && node esbuild.mjs)
 echo "Building mcp-server..."
-(cd mcp-server && node esbuild.mjs)
+(cd ../packages/mcp && node esbuild.mjs)
 echo "Done. Restart Claude Code (or reinstall changedown@local) to use latest."
+echo "Restoring local MCP config..."
+"$SCRIPT_DIR/scripts/use-mcp.sh" local

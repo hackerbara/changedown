@@ -4,7 +4,12 @@
  * Release orchestrator for changedown monorepo.
  * Bumps versions, builds, tests, packages, and publishes with confirmation at each step.
  *
- * Usage: node scripts/release.mjs --version=1.0.0
+ * Usage: node scripts/release.mjs --version=1.0.0 [--bump-only] [--include-internal]
+ *
+ *   --bump-only         Perform Step 1 (versions + lockfile regen) then exit. No build,
+ *                       no tests, no publish prompts. Prints the list of written files.
+ *   --include-internal  Also bump internal/non-shipping packages (Group B) and the root
+ *                       package.json. Default: only the shipping PACKAGES set is bumped.
  */
 
 import { execSync } from 'child_process';
@@ -15,9 +20,11 @@ import { createInterface } from 'readline';
 
 const args = process.argv.slice(2);
 const versionArg = args.find(a => a.startsWith('--version='));
+const bumpOnly = args.includes('--bump-only');
+const includeInternal = args.includes('--include-internal');
 
 if (!versionArg) {
-  console.log('Usage: node scripts/release.mjs --version=X.Y.Z');
+  console.log('Usage: node scripts/release.mjs --version=X.Y.Z [--bump-only] [--include-internal]');
   process.exit(1);
 }
 
@@ -55,8 +62,24 @@ const PACKAGES = [
   'packages/lsp-server',
   'packages/vscode-extension',
   'packages/opencode-plugin',
-  'changedown-plugin/mcp-server',
+  'packages/mcp',
   'changedown-plugin/hooks-impl',
+];
+
+const INTERNAL_PACKAGES = [
+  'packages/preview',
+  'packages/cursor-preview',
+  'packages/benchmarks',
+  'packages/tests',
+  'packages/tests/vscode',
+  'packages/tests/word-addin',
+  'packages/vienna-plugin',
+  'packages/word-add-in',
+  'changedown-plugin/llm-jail',
+  'changedown-plugin/remote-worker',
+  'viewer',
+  'website-v2',
+  'word-marketing',
 ];
 
 /** Map of package name to version for updating cross-package dependency refs */
@@ -107,7 +130,7 @@ async function main() {
     bumpedFiles.push(pkgJsonPath);
     console.log(`  ${pkgJson.name} → ${version}`);
 
-    if (pkg === 'changedown-plugin/mcp-server') {
+    if (pkg === 'packages/mcp') {
       const versionTsPath = path.join(repoRoot, pkg, 'src/version.ts');
       if (fs.existsSync(versionTsPath)) {
         const original = fs.readFileSync(versionTsPath, 'utf8');
@@ -130,6 +153,44 @@ async function main() {
       }
     }
   }
+
+  if (includeInternal) {
+    console.log('  Bumping internal packages...');
+    for (const pkg of INTERNAL_PACKAGES) {
+      const pkgJsonPath = path.join(repoRoot, pkg, 'package.json');
+      if (!fs.existsSync(pkgJsonPath)) continue;
+      const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+
+      if (pkg === 'changedown-plugin/remote-worker') {
+        // remote-worker has no `version` field today. Reconstruct the object
+        // so `version` lands right after `name` in the diff (matching every
+        // other package.json) rather than appended at the end.
+        const out = { name: pkgJson.name, version };
+        for (const [k, v] of Object.entries(pkgJson)) {
+          if (k !== 'name' && k !== 'version') out[k] = v;
+        }
+        updateCrossPackageDeps(out, nameVersionMap);
+        fs.writeFileSync(pkgJsonPath, JSON.stringify(out, null, 2) + '\n');
+        bumpedFiles.push(pkgJsonPath);
+        console.log(`  ${out.name || pkg} → ${version}`);
+      } else {
+        pkgJson.version = version;
+        updateCrossPackageDeps(pkgJson, nameVersionMap);
+        fs.writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
+        bumpedFiles.push(pkgJsonPath);
+        console.log(`  ${pkgJson.name || pkg} → ${version}`);
+      }
+    }
+
+    // Also bump the root package.json (changedown-monorepo).
+    const rootPkgJsonPath = repoRoot + '/package.json';
+    const rootPkgJson = JSON.parse(fs.readFileSync(rootPkgJsonPath, 'utf8'));
+    rootPkgJson.version = version;
+    fs.writeFileSync(rootPkgJsonPath, JSON.stringify(rootPkgJson, null, 2) + '\n');
+    bumpedFiles.push(rootPkgJsonPath);
+    console.log(`  ${rootPkgJson.name || 'root'} → ${version}`);
+  }
+
   // Bump agent plugin manifests too — plugin runtimes use `version` as an
   // install/update cache key. Without bumping, end-user installs of the new
   // release can keep running the previous build.
@@ -147,9 +208,39 @@ async function main() {
     console.log(`  changedown-plugin (${label}) → ${version}`);
   }
 
+  // Bump the @changedown/mcp@ version pin in the shipped MCP config files.
+  // Three guards (setup.sh, package-for-install.sh, smoke-codex-mcp.mjs) enforce
+  // that the pin equals @changedown/mcp@${plugin.version}. Without this fix any
+  // release.mjs run at version > 0.4.6 would trip those guards.
+  const mcpShippedPaths = [
+    'changedown-plugin/.mcp.shipped.json',
+    'changedown-plugin/codex.mcp.shipped.json',
+  ];
+  for (const relPath of mcpShippedPaths) {
+    const fullPath = path.join(repoRoot, relPath);
+    if (!fs.existsSync(fullPath)) continue;
+    const raw = fs.readFileSync(fullPath, 'utf8');
+    const pinRe = /@changedown\/mcp@[\w.\-]+/;
+    if (!pinRe.test(raw)) {
+      console.error(`  ERROR: failed to find @changedown/mcp@ pin in ${relPath}`);
+      process.exit(1);
+    }
+    const updated = raw.replace(pinRe, `@changedown/mcp@${version}`);
+    fs.writeFileSync(fullPath, updated);
+    bumpedFiles.push(fullPath);
+    console.log(`  ${relPath} pin → @changedown/mcp@${version}`);
+  }
+
   console.log('  Updating package-lock.json...');
   run('npm install --package-lock-only --ignore-scripts');
   bumpedFiles.push(path.join(repoRoot, 'package-lock.json'));
+
+  if (bumpOnly) {
+    console.log('\n--bump-only: stopping after version bumps + lockfile regen.');
+    console.log('Files written (stage these):');
+    for (const f of bumpedFiles) console.log(`  ${f}`);
+    return;
+  }
 
   // 2. Build
   console.log('\nStep 2: Building all packages...');

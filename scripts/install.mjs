@@ -14,7 +14,7 @@
 //   9. CD Viewer (ChangeDown.app → cdviewer)
 //   10. OpenCode guidance
 
-import { existsSync, mkdirSync, writeFileSync, readFileSync, copyFileSync, cpSync, lstatSync, rmSync, symlinkSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, readFileSync, copyFileSync, cpSync, lstatSync, rmSync, symlinkSync, readdirSync } from 'fs';
 import { join, resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
@@ -151,6 +151,11 @@ function syncDir(src, dest) {
   }
 }
 
+const SRC_DIRS = {
+  'mcp-server': 'packages/mcp',
+  'hooks-impl': 'changedown-plugin/hooks-impl',
+};
+
 function syncPluginPackageArtifacts(pluginCache, manifestKind) {
   const manifestDir = manifestKind === 'codex' ? '.codex-plugin' : '.claude-plugin';
   const manifestSrc = join(SC_ROOT, 'changedown-plugin', manifestDir);
@@ -161,17 +166,21 @@ function syncPluginPackageArtifacts(pluginCache, manifestKind) {
   }
 
   const mcpConfigName = manifestKind === 'codex' ? 'codex.mcp.json' : '.mcp.json';
-  const mcpJsonSrc = join(SC_ROOT, 'changedown-plugin', mcpConfigName);
   process.stdout.write(`    ${mcpConfigName}... `);
-  if (existsSync(mcpJsonSrc) && !dryRun) {
-    copyFileSync(mcpJsonSrc, join(pluginCache, mcpConfigName));
+  if (manifestKind === 'codex') {
+    writeCodexDevMcpConfig(pluginCache);
+  } else {
+    const mcpJsonSrc = join(SC_ROOT, 'changedown-plugin', mcpConfigName);
+    if (existsSync(mcpJsonSrc) && !dryRun) {
+      copyFileSync(mcpJsonSrc, join(pluginCache, mcpConfigName));
+    }
   }
   console.log(`${green('ok')}`);
 
   for (const sub of ['mcp-server', 'hooks-impl']) {
     process.stdout.write(`    ${sub}/dist... `);
     syncDir(
-      join(SC_ROOT, 'changedown-plugin', sub, 'dist'),
+      join(SC_ROOT, SRC_DIRS[sub], 'dist'),
       join(pluginCache, sub, 'dist')
     );
     console.log(`${green('ok')}`);
@@ -222,6 +231,90 @@ function removeKnownDeletedPluginArtifacts(pluginCache) {
       console.log(`${green('ok')}`);
     }
   }
+}
+
+function readJsonIfExists(filePath) {
+  try {
+    if (!existsSync(filePath)) return null;
+    return JSON.parse(readFileSync(filePath, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function readdirSafe(dir) {
+  try {
+    return existsSync(dir) ? readdirSync(dir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name) : [];
+  } catch {
+    return [];
+  }
+}
+
+function discoverCodexPluginCaches() {
+  const cacheRoot = join(home, '.codex', 'plugins', 'cache');
+  const manifest = readJsonIfExists(join(SC_ROOT, 'changedown-plugin', '.codex-plugin', 'plugin.json'));
+  const expectedVersion = manifest?.version;
+  if (!existsSync(cacheRoot)) return [];
+
+  const candidates = [];
+  for (const marketplace of readdirSafe(cacheRoot)) {
+    const pluginRoot = join(cacheRoot, marketplace, 'changedown');
+    if (!existsSync(pluginRoot)) continue;
+    for (const version of readdirSafe(pluginRoot)) {
+      const candidate = join(pluginRoot, version);
+      const candidateManifest = readJsonIfExists(join(candidate, '.codex-plugin', 'plugin.json'));
+      if (candidateManifest?.name !== 'changedown') continue;
+      candidates.push({ marketplace, version, path: candidate, matchesVersion: expectedVersion === version });
+    }
+  }
+
+  const versionMatches = candidates.filter((candidate) => candidate.matchesVersion);
+  if (versionMatches.length > 0) return versionMatches;
+  if (candidates.length > 0) {
+    const found = candidates.map((candidate) => `${candidate.marketplace}/changedown/${candidate.version}`).join(', ');
+    throw new Error(`Found Codex changedown plugin cache(s), but none match source version ${expectedVersion}: ${found}`);
+  }
+  return [];
+}
+
+function writeCodexDevMcpConfig(pluginCache) {
+  const entrypoint = join(SC_ROOT, 'packages', 'mcp', 'dist', 'index.js');
+  if (!existsSync(entrypoint) && !dryRun) {
+    throw new Error(`Cannot write Codex dev MCP config; missing built entrypoint: ${entrypoint}`);
+  }
+  if (!existsSync(entrypoint) && dryRun) {
+    console.log(`    ${dim('[dry-run]')} would require built MCP entrypoint at ${entrypoint}`);
+  }
+
+  const config = {
+    mcpServers: {
+      cd: {
+        type: 'stdio',
+        command: 'node',
+        args: [entrypoint],
+      },
+    },
+  };
+
+  const configPath = join(pluginCache, 'codex.mcp.json');
+  if (!dryRun) {
+    writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
+  }
+
+  verifyCodexDevMcpConfig(configPath, entrypoint);
+}
+
+function verifyCodexDevMcpConfig(configPath, expectedEntrypoint) {
+  if (dryRun) return;
+  const config = JSON.parse(readFileSync(configPath, 'utf8'));
+  const server = config.mcpServers?.cd;
+  if (!server) throw new Error(`Generated Codex config missing mcpServers.cd: ${configPath}`);
+  if ('cwd' in server) throw new Error(`Generated Codex config must not contain cwd: ${configPath}`);
+  if (server.command !== 'node') throw new Error(`Generated Codex config expected command=node: ${configPath}`);
+  if (server.args?.[0] !== expectedEntrypoint) throw new Error(`Generated Codex config expected args[0]=${expectedEntrypoint}: ${configPath}`);
+  if (!existsSync(server.args[0])) throw new Error(`Generated Codex config points at missing entrypoint: ${server.args[0]}`);
 }
 
 // --- Start ---
@@ -348,7 +441,7 @@ if (hasCursor) {
   console.log('\n  Setting up Cursor MCP + hooks + skill...');
 
   // 6a. MCP config
-  const mcpServerPath = join(SC_ROOT, 'changedown-plugin', 'mcp-server', 'dist', 'index.js');
+  const mcpServerPath = join(SC_ROOT, 'packages', 'mcp', 'dist', 'index.js');
   const cursorMcpPath = join(home, '.cursor', 'mcp.json');
 
   if (existsSync(mcpServerPath)) {
@@ -430,15 +523,22 @@ if (claudePath) {
 
 // --- 8. Codex plugin cache sync (dev rebuild) ---
 if (codexPath) {
-  const codexPluginCache = join(home, '.codex', 'plugins', 'cache', 'hackerbara', 'changedown', '0.1.0');
-  if (existsSync(codexPluginCache)) {
+  const codexPluginCaches = discoverCodexPluginCaches();
+  if (codexPluginCaches.length === 1) {
+    const codexPluginCache = codexPluginCaches[0].path;
     console.log('\n  Syncing build artifacts to Codex plugin cache...');
     console.log(`    ${dim(codexPluginCache)}`);
     removeKnownDeletedPluginArtifacts(codexPluginCache);
     syncPluginPackageArtifacts(codexPluginCache, 'codex');
     console.log(`    ${dim('Restart Codex CLI/Desktop to pick up changes.')}`);
+  } else if (codexPluginCaches.length > 1) {
+    console.log(`\n  ${yellow('!')} Multiple Codex changedown plugin caches found; not syncing automatically.`);
+    for (const candidate of codexPluginCaches) {
+      console.log(`    ${dim(candidate.path)}`);
+    }
+    console.log(`    ${dim('Remove stale caches or install one matching the source plugin version, then rerun this installer.')}`);
   } else {
-    console.log(`\n  ${dim('No Codex plugin cache found at ~/.codex/plugins/cache/hackerbara/changedown/0.1.0.')}`);
+    console.log(`\n  ${dim('No Codex changedown plugin cache found under ~/.codex/plugins/cache/*/changedown/*.')}`);
     console.log(`    ${dim('Install changedown@hackerbara in Codex first, then rerun this installer to sync build artifacts.')}`);
   }
 }

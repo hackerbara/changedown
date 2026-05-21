@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CriticMarkupParser } from '@changedown/core';
+import { ChangeStatus, ChangeType, CriticMarkupParser, type ChangeNode } from '@changedown/core';
 import { buildDecorationPlan } from '@changedown/core/host';
 import { makeView } from '../helpers/view-test-utils.js';
 
@@ -213,5 +213,37 @@ describe('L3 ghost text delimiters', () => {
         const text = 'Hello {++world++}!';
         const plan = planFor(text, 'raw', 0, false);
         expect(plan.ghostRefs.length).toBe(0);
+    });
+
+    it('places L3 deletion ghost refs at the deletion seam, not the end of contextual span', () => {
+        const text = 'alpha omega';
+        const change: ChangeNode = {
+            id: 'cn-1',
+            type: ChangeType.Deletion,
+            status: ChangeStatus.Proposed,
+            range: { start: 0, end: text.length },
+            contentRange: { start: 0, end: text.length },
+            level: 2,
+            anchored: true,
+            resolved: true,
+            originalText: ' middle',
+            deletionSeamOffset: 'alpha '.length,
+        };
+
+        const plan = buildDecorationPlan(
+            [change],
+            text,
+            makeView('working', { display: { delimiters: 'hide' } }),
+            0,
+        );
+
+        expect(plan.ghostDeletions[0].range).toEqual({
+            start: 'alpha '.length,
+            end: 'alpha '.length,
+        });
+        expect(plan.ghostRefs[0].range).toEqual({
+            start: 'alpha '.length,
+            end: 'alpha '.length,
+        });
     });
 });

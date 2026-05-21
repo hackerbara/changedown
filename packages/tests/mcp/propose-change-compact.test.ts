@@ -301,6 +301,100 @@ describe('propose_change compact mode', () => {
       expect(modified).toContain('{~~Replace this entire line.~>Brand new line.~~}');
     });
 
+    it('context-bearing range replacement resolves an exact fresh range', async () => {
+      const content = ['Intro', 'old opening text', 'middle line', 'old closing text', 'Outro'].join('\n');
+      const filePath = path.join(tmpDir, 'range-context-exact.md');
+      await fs.writeFile(filePath, content);
+
+      const startHash = hashForLine(content, 2);
+      const endHash = hashForLine(content, 4);
+      const result = await handleProposeChange(
+        {
+          file: filePath,
+          at: `2:${startHash}-4:${endHash}`,
+          op: `{~~~
+old opening text
+...
+old closing text
+~>
+new replacement block
+~~}{>>replace old block`,
+          author: 'ai:test-agent',
+        },
+        resolver,
+        state,
+      );
+
+      expect(result.isError).toBeUndefined();
+      const modified = await fs.readFile(filePath, 'utf-8');
+      expect(modified).toContain('{~~old opening text\nmiddle line\nold closing text~>new replacement block~~}');
+      expect(modified).toContain('replace old block');
+    });
+
+    it('context-bearing range replacement recovers a shifted range using endpoint anchors', async () => {
+      const original = ['Intro', 'old opening text', 'middle line', 'old closing text', 'Outro'].join('\n');
+      const filePath = path.join(tmpDir, 'range-context-shifted.md');
+      await fs.writeFile(filePath, original);
+
+      await handleReadTrackedFile({ file: filePath, view: 'working' }, resolver, state);
+      // Simulate another compact proposal adding a body line above the target.
+      const introHash = hashForLine(original, 1);
+      const first = await handleProposeChange(
+        { file: filePath, at: `1:${introHash}`, op: '{++\nInserted before target++}', author: 'ai:test-agent' },
+        resolver,
+        state,
+      );
+      expect(first.isError).toBeUndefined();
+
+      const second = await handleProposeChange(
+        {
+          file: filePath,
+          at: '2:ff-4:ff',
+          op: `{~~~
+old opening text
+...
+old closing text
+~>
+new replacement block
+~~}{>>replace shifted old block`,
+          author: 'ai:test-agent',
+        },
+        resolver,
+        state,
+      );
+
+      expect(second.isError).toBeUndefined();
+      const modified = await fs.readFile(filePath, 'utf-8');
+      expect(modified).toContain('{~~old opening text\nmiddle line\nold closing text~>new replacement block~~}');
+    });
+
+    it('empty-left replacement on stale blank line suggests insertion or context-bearing range', async () => {
+      const content = ['Heading', '', 'Target paragraph', '', 'Tail'].join('\n');
+      const filePath = path.join(tmpDir, 'blank-replacement-guidance.md');
+      await fs.writeFile(filePath, content);
+
+      const blankHash = hashForLine(content, 2);
+      const result = await handleProposeChange(
+        {
+          file: filePath,
+          at: `3:${blankHash}`,
+          op: '{~~~>Inserted section~~}',
+          author: 'ai:test-agent',
+        },
+        resolver,
+        state,
+      );
+
+      expect(result.isError).toBe(true);
+      const text = result.content.map((c) => c.text).join('\n');
+      expect(text).toMatch(/blank|structural/i);
+      expect(text).toMatch(/insert/i);
+      expect(text).toMatch(/context-bearing/i);
+      const data = JSON.parse(result.content[0].text);
+      expect(data.error.code).toBe('VALIDATION_ERROR');
+      expect(data.quick_fix.action).toBe('use_insertion_or_context_range');
+    });
+
     it('whole-range deletion with empty op text', async () => {
       const content = [
         'Keep this.',

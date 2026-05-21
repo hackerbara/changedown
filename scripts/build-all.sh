@@ -18,7 +18,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 if [[ "${1:-}" != "--old" ]]; then
   node "$ROOT/scripts/build.mjs" "$@" && node "$ROOT/scripts/install.mjs"
-  exit $?
+  BUILD_EXIT=$?
+  echo "Restoring local MCP config..."
+  changedown-plugin/scripts/use-mcp.sh local
+  exit $BUILD_EXIT
 fi
 
 # --- Legacy build pipeline (--old) ---
@@ -62,7 +65,7 @@ printf "${BOLD}Cleaning build artifacts...${RESET} "
 find "$ROOT" -name '*.tsbuildinfo' -not -path '*/node_modules/*' -delete 2>/dev/null || true
 for clean_dir in packages/core/dist packages/core/dist-esm packages/docx/dist packages/cli/dist \
                  packages/lsp-server/dist packages/vscode-extension/out \
-                 changedown-plugin/mcp-server/dist changedown-plugin/hooks-impl/dist; do
+                 packages/mcp/dist changedown-plugin/hooks-impl/dist; do
   rm -rf "$ROOT/$clean_dir" 2>/dev/null || true
 done
 rm -f "$ROOT"/packages/vscode-extension/*.vsix 2>/dev/null || true
@@ -73,7 +76,7 @@ build_pkg "@changedown/docx"        "packages/docx"                    "npx tsc"
 build_pkg "changedown"              "packages/cli"                     "npx tsc"
 build_pkg "@changedown/lsp-server"  "packages/lsp-server"              "npm run build"
 build_pkg "changedown-vscode"       "packages/vscode-extension"        "npm run compile && npm run esbuild"
-build_pkg "@changedown/mcp"          "changedown-plugin/mcp-server"   "node esbuild.mjs"
+build_pkg "@changedown/mcp"          "packages/mcp"                   "node esbuild.mjs"
 build_pkg "hooks-impl (plugin)"       "changedown-plugin/hooks-impl"   "node esbuild.mjs"
 build_pkg "@changedown/website-v2"    "website-v2"                     "npm run build"
 build_pkg "native SPA bundle"         "website-v2"                     "npx vite build --config vite.config.native.ts"
@@ -229,7 +232,7 @@ if [ $failed -eq 0 ]; then
     while IFS= read -r PLUGIN_CACHE; do
       [ -z "$PLUGIN_CACHE" ] && continue
       printf "${BOLD}Syncing to plugin cache${RESET} ${DIM}($PLUGIN_CACHE)...${RESET} "
-      rsync -a --delete "$ROOT/changedown-plugin/mcp-server/dist/" "$PLUGIN_CACHE/mcp-server/dist/"
+      rsync -a --delete "$ROOT/packages/mcp/dist/" "$PLUGIN_CACHE/mcp-server/dist/"
       rsync -a --delete "$ROOT/changedown-plugin/hooks-impl/dist/" "$PLUGIN_CACHE/hooks-impl/dist/"
       rsync -a "$ROOT/changedown-plugin/hooks/"                    "$PLUGIN_CACHE/hooks/"
       rsync -a "$ROOT/changedown-plugin/skills/"                   "$PLUGIN_CACHE/skills/"
@@ -260,6 +263,9 @@ if [ $failed -eq 0 ]; then
     echo "${DIM}No installed changedown plugin found in installed_plugins.json — skipping cache sync.${RESET}"
     echo "${DIM}If you intended to test cached install, run \`claude plugin install changedown@<marketplace>\` first.${RESET}"
   fi
+
+  echo "Restoring local MCP config..."
+  changedown-plugin/scripts/use-mcp.sh local
 else
   echo "${RED}${BOLD}$failed package(s) failed to build.${RESET}"
   exit 1

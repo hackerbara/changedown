@@ -1,6 +1,7 @@
 import { scanMaxCnId } from '@changedown/core';
 import type { SessionHashes } from '@changedown/core';
 import type { BuiltinView } from '@changedown/core/host';
+import type { ReadGeneration, WriteTransform } from './state.js';
 
 export type { BuiltinView };
 /** @deprecated Use BuiltinView directly */
@@ -286,6 +287,31 @@ export class SessionState {
       contentFingerprint: this.fingerprint(newContent),
       recordedAt: Date.now(),
     });
+  }
+
+  // No-op for browser context: read-generation tracking is not maintained.
+  invalidateReadGeneration(_filePath: string): void {}
+
+  // No-op for browser context: no read generation is tracked; always returns undefined.
+  getReadGeneration(_filePath: string): ReadGeneration | undefined {
+    return undefined;
+  }
+
+  // No-op for browser context: write transforms are not accumulated.
+  recordWriteTransform(_filePath: string, _transform: WriteTransform): void {}
+
+  // No-op for browser context: no write transforms are stored; always returns empty array.
+  getWriteTransforms(_filePath: string): WriteTransform[] {
+    return [];
+  }
+
+  // No-op for browser context: no read generation hash resolution is available; always returns undefined.
+  resolveReadGenerationHash(
+    _filePath: string,
+    _line: number,
+    _suppliedHash: string,
+  ): { rawLineNum: number; view: BuiltinView; generationId: string } | undefined {
+    return undefined;
   }
 
   /**

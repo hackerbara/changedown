@@ -718,6 +718,271 @@ export function stripCriticMarkupToCommittedWithMap(text: string): CommittedMapR
   return { committed: committed.join(''), toRaw, markupRanges };
 }
 
+export interface EndpointPairContext {
+  opening: string;
+  closing: string;
+}
+
+export interface UniqueEndpointPairMatch {
+  start: number;
+  end: number;
+  opening: UniqueMatch;
+  closing: UniqueMatch;
+  wasNormalized: boolean;
+}
+
+interface EndpointSpan {
+  index: number;
+  length: number;
+  originalText: string;
+  wasNormalized: boolean;
+}
+
+interface CollapsedTextMap {
+  text: string;
+  startMap: number[];
+  endMap: number[];
+}
+
+function allOccurrences(haystack: string, needle: string): Array<{ index: number; length: number }> {
+  if (needle === '') return [];
+  const matches: Array<{ index: number; length: number }> = [];
+  let from = 0;
+  while (from <= haystack.length) {
+    const index = haystack.indexOf(needle, from);
+    if (index === -1) break;
+    matches.push({ index, length: needle.length });
+    // Advance by one so overlapping matches contribute to ambiguity, matching
+    // findUniqueMatch's uniqueness contract.
+    from = index + 1;
+  }
+  return matches;
+}
+
+function expandRawRangeOverMarkup(text: string, rawStart: number, rawEnd: number, markupRanges: MarkupRange[]): { start: number; end: number } {
+  let start = rawStart;
+  let end = rawEnd;
+  let expanded = true;
+  while (expanded) {
+    expanded = false;
+    for (const range of markupRanges) {
+      if (range.rawStart < end && range.rawEnd > start) {
+        if (range.rawStart < start) {
+          start = range.rawStart;
+          expanded = true;
+        }
+        if (range.rawEnd > end) {
+          end = range.rawEnd;
+          expanded = true;
+        }
+      }
+    }
+  }
+
+  // Preserve the existing projection-match convention from findUniqueMatch:
+  // adjacent footnote refs belong to the raw span for the change.
+  for (const range of markupRanges) {
+    if (range.rawStart === end && /^\[\^cn-/.test(text.slice(range.rawStart))) {
+      end = range.rawEnd;
+    }
+  }
+
+  return { start, end };
+}
+
+function projectionEndpointSpan(
+  text: string,
+  toRaw: number[],
+  markupRanges: MarkupRange[],
+  match: { index: number; length: number },
+): EndpointSpan {
+  const projectionEnd = match.index + match.length - 1;
+  let rawStart = toRaw[match.index]!;
+  let rawEnd = toRaw[projectionEnd]! + 1;
+  const expanded = expandRawRangeOverMarkup(text, rawStart, rawEnd, markupRanges);
+  rawStart = expanded.start;
+  rawEnd = expanded.end;
+  return {
+    index: rawStart,
+    length: rawEnd - rawStart,
+    originalText: text.slice(rawStart, rawEnd),
+    wasNormalized: true,
+  };
+}
+
+function rawEndpointSpan(
+  text: string,
+  match: { index: number; length: number },
+  wasNormalized: boolean,
+  markupRanges?: MarkupRange[],
+): EndpointSpan {
+  const expanded = markupRanges
+    ? expandRawRangeOverMarkup(text, match.index, match.index + match.length, markupRanges)
+    : { start: match.index, end: match.index + match.length };
+  return {
+    index: expanded.start,
+    length: expanded.end - expanded.start,
+    originalText: text.slice(expanded.start, expanded.end),
+    wasNormalized,
+  };
+}
+
+function collapseWhitespaceWithMap(text: string): CollapsedTextMap {
+  const out: string[] = [];
+  const startMap: number[] = [];
+  const endMap: number[] = [];
+  let i = 0;
+  while (i < text.length) {
+    if (/\s/.test(text[i]!)) {
+      const start = i;
+      while (i < text.length && /\s/.test(text[i]!)) i++;
+      out.push(' ');
+      startMap.push(start);
+      endMap.push(i);
+    } else {
+      out.push(text[i]!);
+      startMap.push(i);
+      endMap.push(i + 1);
+      i++;
+    }
+  }
+  return { text: out.join(''), startMap, endMap };
+}
+
+function collectEndpointPairs(
+  text: string,
+  openingMatches: EndpointSpan[],
+  closingMatches: EndpointSpan[],
+): UniqueEndpointPairMatch[] {
+  const pairs: UniqueEndpointPairMatch[] = [];
+  for (const opening of openingMatches) {
+    for (const closing of closingMatches) {
+      if (closing.index < opening.index) continue;
+      pairs.push({
+        start: opening.index,
+        end: closing.index + closing.length,
+        opening: {
+          index: opening.index,
+          length: opening.length,
+          originalText: opening.originalText,
+          wasNormalized: opening.wasNormalized,
+        },
+        closing: {
+          index: closing.index,
+          length: closing.length,
+          originalText: closing.originalText,
+          wasNormalized: closing.wasNormalized,
+        },
+        wasNormalized: opening.wasNormalized || closing.wasNormalized,
+      });
+    }
+  }
+  return pairs;
+}
+
+function decideEndpointPairs(pairs: UniqueEndpointPairMatch[], level: string): UniqueEndpointPairMatch | null {
+  if (pairs.length === 0) return null;
+  if (pairs.length > 1) {
+    throw new Error(`Endpoint pair found multiple times after ${level} matching (ambiguous). Provide more context to uniquely identify the range.`);
+  }
+  return pairs[0]!;
+}
+
+/**
+ * Finds one ordered opening/closing endpoint pair using the same cascade family
+ * as findUniqueMatch. Ambiguity is evaluated over ordered pairs, not over the
+ * individual endpoint strings independently.
+ */
+export function findUniqueEndpointPairWithCascade(
+  text: string,
+  context: EndpointPairContext,
+  normalizer?: TextNormalizer,
+): UniqueEndpointPairMatch {
+  const { opening, closing } = context;
+  if (opening.trim() === '' || closing.trim() === '') {
+    throw new Error('Endpoint pair matching requires non-empty opening and closing anchors.');
+  }
+
+  // Level 1: exact ordered pair matching.
+  {
+    const markupRanges = containsCriticMarkup(text)
+      ? stripCriticMarkupWithMap(text).markupRanges
+      : undefined;
+    const openingMatches = allOccurrences(text, opening)
+      .map(m => rawEndpointSpan(text, m, false, markupRanges));
+    const closingMatches = allOccurrences(text, closing)
+      .map(m => rawEndpointSpan(text, m, false, markupRanges));
+    const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), 'exact');
+    if (decided) return decided;
+  }
+
+  // Level 2: normalized ordered pair matching. This mirrors findUniqueMatch's
+  // existing normalized-position behavior; normalizers used here are expected to
+  // be mostly position-preserving for practical ChangeDown text.
+  if (normalizer) {
+    const normalizedText = normalizer(text);
+    const normalizedOpening = normalizer(opening);
+    const normalizedClosing = normalizer(closing);
+    const markupRanges = containsCriticMarkup(text)
+      ? stripCriticMarkupWithMap(text).markupRanges
+      : undefined;
+    const openingMatches = allOccurrences(normalizedText, normalizedOpening)
+      .map(m => rawEndpointSpan(text, { index: m.index, length: opening.length }, true, markupRanges));
+    const closingMatches = allOccurrences(normalizedText, normalizedClosing)
+      .map(m => rawEndpointSpan(text, { index: m.index, length: closing.length }, true, markupRanges));
+    const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), 'normalization');
+    if (decided) return decided;
+  }
+
+  // Level 3: whitespace-collapsed ordered pair matching with raw position map.
+  {
+    const collapsed = collapseWhitespaceWithMap(text);
+    const collapsedOpening = opening.replace(/\s+/g, ' ');
+    const collapsedClosing = closing.replace(/\s+/g, ' ');
+    const toSpan = (m: { index: number; length: number }): EndpointSpan => {
+      const start = collapsed.startMap[m.index]!;
+      const end = collapsed.endMap[m.index + m.length - 1]!;
+      return {
+        index: start,
+        length: end - start,
+        originalText: text.slice(start, end),
+        wasNormalized: true,
+      };
+    };
+    const openingMatches = allOccurrences(collapsed.text, collapsedOpening).map(toSpan);
+    const closingMatches = allOccurrences(collapsed.text, collapsedClosing).map(toSpan);
+    const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), 'whitespace collapsing');
+    if (decided) return decided;
+  }
+
+  // Level 4: committed text projection.
+  if (containsCriticMarkup(text)) {
+    const { committed, toRaw, markupRanges } = stripCriticMarkupToCommittedWithMap(text);
+    const openingMatches = allOccurrences(committed, opening)
+      .map(m => projectionEndpointSpan(text, toRaw, markupRanges, m));
+    const closingMatches = allOccurrences(committed, closing)
+      .map(m => projectionEndpointSpan(text, toRaw, markupRanges, m));
+    const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), 'committed text');
+    if (decided) return decided;
+  }
+
+  // Level 5: current text projection.
+  if (containsCriticMarkup(text)) {
+    const { current, toRaw, markupRanges } = stripCriticMarkupWithMap(text);
+    const openingMatches = allOccurrences(current, opening)
+      .map(m => projectionEndpointSpan(text, toRaw, markupRanges, m));
+    const closingMatches = allOccurrences(current, closing)
+      .map(m => projectionEndpointSpan(text, toRaw, markupRanges, m));
+    const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), 'current text');
+    if (decided) return decided;
+  }
+
+  throw new Error(
+    `Endpoint pair not found. Opening (first 80 chars): ${JSON.stringify(opening.slice(0, 80))}; ` +
+    `closing (first 80 chars): ${JSON.stringify(closing.slice(0, 80))}.`
+  );
+}
+
 // ─── Unique matching ────────────────────────────────────────────────────────
 
 /**
@@ -1020,7 +1285,7 @@ export function contentZoneText(fullText: string): string {
   const blockStart = findFootnoteBlockStart(lines);
   if (blockStart >= lines.length) return fullText;
 
-  // Compute character offset of blockStart without allocating a full array
+  // Compute character offset of blockStart without allocating a full array.
   let offset = 0;
   for (let i = 0; i < blockStart; i++) {
     offset += lines[i].length + 1;
@@ -1168,7 +1433,10 @@ export async function applyProposeChange(params: ProposeChangeParams): Promise<P
       let targetOffset = mutatedBodyText.length > 0 ? mutatedBodyText.length - 1 : 0;
       if (insertAfter) {
         const anchorIdx = mutatedBodyText.lastIndexOf(insertAfter);
-        if (anchorIdx !== -1) targetOffset = anchorIdx + insertAfter.length - 1;
+        if (anchorIdx === -1) {
+          throw new Error(`insertAfter anchor not found in text: "${insertAfter}"`);
+        }
+        targetOffset = anchorIdx + insertAfter.length - 1;
       }
       const lineStarts = buildLineStarts(mutatedBodyText);
       const lineNumber = offsetToLineNumber(lineStarts, Math.max(0, targetOffset));
@@ -1189,13 +1457,16 @@ export async function applyProposeChange(params: ProposeChangeParams): Promise<P
     // L2 / L1: insert {>>reasoning<<}[^id] at end of insertAfter line or end of body.
     const insertPos = (() => {
       if (insertAfter) {
-        const anchorIdx = text.lastIndexOf(insertAfter);
-        if (anchorIdx !== -1) {
-          // Insert at end of the line containing insertAfter
-          const afterAnchor = anchorIdx + insertAfter.length;
-          const nlIdx = text.indexOf('\n', afterAnchor);
-          return nlIdx !== -1 ? nlIdx : text.length;
+        const contentZone = contentZoneText(text);
+        const anchorIdx = contentZone.lastIndexOf(insertAfter);
+        if (anchorIdx === -1) {
+          throw new Error(`insertAfter anchor not found in text: "${insertAfter}"`);
         }
+        // Insert at end of the line containing insertAfter. contentZoneText() is a
+        // prefix of the original L2/L1 text, so offsets remain valid in text.
+        const afterAnchor = anchorIdx + insertAfter.length;
+        const nlIdx = text.indexOf('\n', afterAnchor);
+        return nlIdx !== -1 ? nlIdx : contentZone.length;
       }
       // Default: end of body (before any existing footnote block)
       const lines = text.split('\n');
@@ -1243,7 +1514,7 @@ export async function applyProposeChange(params: ProposeChangeParams): Promise<P
       throw new Error('Insertion requires an insertAfter anchor to locate where to insert.');
     }
     // Anchor matching: exact first, then normalized fallback, then whitespace-collapsed
-    const searchTarget = isL3 ? bodyText : text;
+    const searchTarget = isL3 ? bodyText : contentZoneText(text);
     let anchorIndex = searchTarget.indexOf(insertAfter);
     let anchorLength = insertAfter.length;
     if (anchorIndex === -1) {

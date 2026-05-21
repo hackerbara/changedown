@@ -90,6 +90,18 @@ export function registerTestCommands(
                 view: controller.getView().name,
                 changeCount: changes.length,
                 changeTypes: changes.map(c => c.type),
+                unresolvedCount: changes.filter(c => c.resolved === false).length,
+                changes: changes.map(c => ({
+                    id: c.id,
+                    type: c.type,
+                    status: nodeStatus(c),
+                    resolved: c.resolved,
+                    anchored: c.anchored,
+                    range: c.range,
+                    contentRange: c.contentRange,
+                    resolutionPath: c.resolutionPath,
+                    deletionSeamOffset: c.deletionSeamOffset,
+                })),
                 hasActiveMarkdownEditor: !!doc,
                 timestamp: Date.now(),
             };

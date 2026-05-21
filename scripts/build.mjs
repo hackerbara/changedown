@@ -73,7 +73,7 @@ const steps = [
   { name: 'changedown', dir: 'packages/cli', cmd: 'npx tsc' },
   { name: '@changedown/lsp-server', dir: 'packages/lsp-server', cmd: 'npm run build' },
   { name: 'changedown-vscode', dir: 'packages/vscode-extension', cmd: 'npm run compile && npm run esbuild' },
-  { name: '@changedown/mcp', dir: 'changedown-plugin/mcp-server', cmd: 'node esbuild.mjs' },
+  { name: '@changedown/mcp', dir: 'packages/mcp', cmd: 'node esbuild.mjs' },
   { name: 'hooks-impl (plugin)', dir: 'changedown-plugin/hooks-impl', cmd: 'node esbuild.mjs' },
   { name: '@changedown/opencode-plugin', dir: 'packages/opencode-plugin', cmd: 'npm run build' },
   { name: '@changedown/website-v2', dir: 'website-v2', cmd: 'npm run build' },
@@ -96,7 +96,7 @@ if (!values['package-only']) {
     'packages/core/dist', 'packages/core/dist-esm', 'packages/docx/dist',
     'packages/cli/dist', 'packages/lsp-server/dist', 'packages/vscode-extension/out',
     'packages/word-add-in/dist',
-    'changedown-plugin/mcp-server/dist', 'changedown-plugin/hooks-impl/dist',
+    'packages/mcp/dist', 'changedown-plugin/hooks-impl/dist',
   ];
   for (const d of distDirs) {
     const full = join(ROOT, d);

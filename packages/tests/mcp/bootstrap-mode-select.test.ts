@@ -6,9 +6,24 @@ import * as path from 'node:path';
 
 const MCP_BIN = path.resolve(
   process.cwd(),
-  '../../changedown-plugin/mcp-server/dist/index.js',
+  '../../packages/mcp/dist/index.js',
 );
 const TEST_PORT = 39997;
+
+function waitForStdoutLine(proc: ChildProcess, pattern: RegExp, timeoutMs = 5000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timeout waiting for stdout pattern: ${pattern}`)), timeoutMs);
+    const check = (chunk: Buffer) => {
+      const line = chunk.toString();
+      if (pattern.test(line)) {
+        clearTimeout(timer);
+        proc.stdout!.removeListener('data', check);
+        resolve(line.trim());
+      }
+    };
+    proc.stdout!.on('data', check);
+  });
+}
 
 function waitForLine(proc: ChildProcess, pattern: RegExp, timeoutMs = 5000): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -70,6 +85,9 @@ describe('bootstrap mode-select', () => {
       CHANGEDOWN_PROJECT_DIR: '/tmp',
       CHANGEDOWN_MCP_PORT: String(TEST_PORT),
       CHANGEDOWN_MCP_USE_HTTP: '1',
+      // Bridge autospawn is default-ON. These tests exercise the
+      // standalone autospawn-off host path, so opt out explicitly.
+      CHANGEDOWN_BRIDGE_AUTOSPAWN: '0',
     };
   }
 
@@ -87,7 +105,8 @@ describe('bootstrap mode-select', () => {
     expect(health.service).toBe('changedown-mcp');
   }, 10000);
 
-  it('second process detects host and logs client mode', async () => {
+
+  it('autospawn-off with a port conflict exits with non-zero code and clear stderr', async () => {
     const host = spawn(process.execPath, [MCP_BIN], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: childEnv(),
@@ -95,65 +114,66 @@ describe('bootstrap mode-select', () => {
     procs.push(host);
     await waitForLine(host, new RegExp(`host mode.*${TEST_PORT}|running.*${TEST_PORT}`, 'i'));
 
-    const client = spawn(process.execPath, [MCP_BIN], {
+    const second = spawn(process.execPath, [MCP_BIN], {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: childEnv(),
     });
-    procs.push(client);
-    await waitForLine(client, new RegExp(`client mode.*${TEST_PORT}`, 'i'));
-    expect(true).toBe(true);
-  }, 15000);
+    procs.push(second);
 
-  it('client process can respond to a tools/list call on stdio while host holds the port', async () => {
-    const host = spawn(process.execPath, [MCP_BIN], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: childEnv(),
+    const result = await new Promise<{ code: number | null; stderr: string }>((resolve) => {
+      let stderr = '';
+      second.stderr!.on('data', (c: Buffer) => { stderr += c.toString(); });
+      second.once('exit', (code) => resolve({ code, stderr }));
     });
-    procs.push(host);
-    await waitForLine(host, new RegExp(`host mode.*${TEST_PORT}|running.*${TEST_PORT}`, 'i'));
 
-    const client = spawn(process.execPath, [MCP_BIN], {
+    expect(result.code).not.toBe(0);
+    expect(result.stderr).toMatch(/port.*held.*another process|bridge autospawn is disabled/i);
+  }, 10000);
+
+
+  it('default autospawn-on responds to tools/list on local stdio while bridge owns the port', async () => {
+    const port = TEST_PORT + 1;
+    const proc = spawn(process.execPath, [MCP_BIN, '--http'], {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: childEnv(),
+      env: {
+        ...process.env,
+        CHANGEDOWN_PROJECT_DIR: '/tmp',
+        CHANGEDOWN_MCP_PORT: String(port),
+        CHANGEDOWN_MCP_USE_HTTP: '1',
+      },
     });
-    procs.push(client);
-    await waitForLine(client, new RegExp(`client mode.*${TEST_PORT}`, 'i'));
+    procs.push(proc);
 
-    // Send initialize then tools/list on the client's stdin
+    await waitForLine(proc, /stdio active, bridge on/i, 10000);
+
     const init = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-03-26', capabilities: {}, clientInfo: { name: 'test', version: '0' } } });
-    client.stdin!.write(init + '\n');
-
-    // Read the initialize response
-    const initLine = await new Promise<string>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('timeout waiting for initialize response')), 5000);
-      const onData = (chunk: Buffer) => {
-        const text = chunk.toString();
-        if (text.includes('"id":1')) {
-          clearTimeout(timer);
-          client.stdout!.removeListener('data', onData);
-          resolve(text.trim());
-        }
-      };
-      client.stdout!.on('data', onData);
-    });
-    expect(initLine).toContain('"result"');
+    proc.stdin!.write(init + '\n');
+    await waitForStdoutLine(proc, /"id":1/, 5000);
 
     const listMsg = JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
-    client.stdin!.write(listMsg + '\n');
+    proc.stdin!.write(listMsg + '\n');
+    const listLine = await waitForStdoutLine(proc, /"id":2/, 5000);
+    const parsed = JSON.parse(listLine) as { result?: { tools?: Array<{ name: string }> } };
+    expect(parsed.result?.tools?.map((t) => t.name)).toContain('propose_change');
 
-    const listLine = await new Promise<string>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('timeout waiting for tools/list response')), 5000);
-      const onData = (chunk: Buffer) => {
-        const text = chunk.toString();
-        if (text.includes('"id":2')) {
-          clearTimeout(timer);
-          client.stdout!.removeListener('data', onData);
-          resolve(text.trim());
-        }
-      };
-      client.stdout!.on('data', onData);
+    await new Promise<void>((resolve, reject) => {
+      const req = http.get({ hostname: '127.0.0.1', port, path: '/health', timeout: 2000 }, (res) => {
+        let raw = '';
+        res.on('data', (c: string) => { raw += c; });
+        res.on('end', () => {
+          const health = JSON.parse(raw) as { bridgeProtocol?: string; pid?: number };
+          try {
+            expect(health.bridgeProtocol).toBe('1');
+            expect(health.pid).not.toBe(proc.pid);
+            resolve();
+          } catch (err) {
+            reject(err);
+          }
+        });
+      });
+      req.on('error', reject);
+      req.on('timeout', () => { req.destroy(); reject(new Error('health timeout')); });
     });
-    const parsed = JSON.parse(listLine) as { result?: { tools: Array<{ name: string }> } };
-    expect(parsed.result?.tools.map((t) => t.name)).toContain('propose_change');
-  }, 20000);
+  }, 15000);
+
 });

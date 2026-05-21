@@ -707,6 +707,219 @@ var init_footnote_patterns = __esm({
   }
 });
 
+// ../../packages/core/dist-esm/footnote-utils.js
+function countFootnoteHeadersWithStatus(content, status) {
+  let count = 0;
+  for (const s of extractFootnoteStatuses(content).values()) {
+    if (s === status)
+      count++;
+  }
+  return count;
+}
+function findFootnoteBlock(lines, changeId) {
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith(`[^${changeId}]:`)) {
+      let end = i;
+      let j = i + 1;
+      while (j < lines.length) {
+        if (lines[j].startsWith("[^cn-"))
+          break;
+        if (lines[j].startsWith("    ")) {
+          end = j;
+          j++;
+          continue;
+        }
+        if (lines[j].trim() === "") {
+          let k = j + 1;
+          let hasMore = false;
+          while (k < lines.length && !lines[k].startsWith("[^cn-")) {
+            if (lines[k].startsWith("    ")) {
+              hasMore = true;
+              break;
+            }
+            if (lines[k].trim() !== "")
+              break;
+            k++;
+          }
+          if (hasMore) {
+            j++;
+            continue;
+          }
+          break;
+        }
+        break;
+      }
+      return { headerLine: i, blockEnd: end, headerContent: lines[i] };
+    }
+  }
+  return null;
+}
+function parseFootnoteHeader(headerLine) {
+  const colonIdx = headerLine.indexOf(":");
+  if (colonIdx === -1)
+    return null;
+  const content = headerLine.slice(colonIdx + 1).trim();
+  const parts = content.split("|").map((p) => p.trim());
+  if (parts.length < 4)
+    return null;
+  return {
+    author: parts[0].replace(/^@/, ""),
+    date: parts[1],
+    type: parts[2],
+    status: parts[3]
+  };
+}
+function findDiscussionInsertionIndex(lines, headerLine, blockEnd) {
+  let insertAfter = headerLine;
+  for (let i = headerLine + 1; i <= blockEnd; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed === "")
+      continue;
+    if (isApprovalOrResolutionLine(trimmed)) {
+      return i - 1;
+    }
+    insertAfter = i;
+  }
+  return insertAfter;
+}
+function findReviewInsertionIndex(lines, headerLine, blockEnd) {
+  let insertAfter = headerLine;
+  for (let i = headerLine + 1; i <= blockEnd; i++) {
+    const trimmed = lines[i].trim();
+    if (trimmed === "")
+      continue;
+    if (isResolutionLine(trimmed)) {
+      return i - 1;
+    }
+    insertAfter = i;
+  }
+  return insertAfter;
+}
+function findChildFootnoteIds(lines, parentId) {
+  const prefix = `[^${parentId}.`;
+  const children = [];
+  for (const line of lines) {
+    if (line.startsWith(prefix)) {
+      const closeBracket = line.indexOf("]:");
+      if (closeBracket !== -1) {
+        children.push(line.slice(2, closeBracket));
+      }
+    }
+  }
+  return children;
+}
+function resolveChangeById(fileContent, changeId) {
+  const lines = fileContent.split("\n");
+  const footnoteBlock = findFootnoteBlock(lines, changeId);
+  const refPattern = `[^${changeId}]`;
+  const refIndex = fileContent.indexOf(refPattern);
+  const inlineRefOffset = refIndex !== -1 && fileContent[refIndex + refPattern.length] !== ":" ? refIndex : null;
+  if (!footnoteBlock && inlineRefOffset === null) {
+    return null;
+  }
+  return { footnoteBlock, inlineRefOffset };
+}
+function findFootnoteBlockStart(lines) {
+  const text = lines.join("\n");
+  const zones = findCodeZones(text);
+  const lineOffsets = [];
+  let offset = 0;
+  for (const line of lines) {
+    lineOffsets.push(offset);
+    offset += line.length + 1;
+  }
+  const isInCodeZone = (lineIdx) => {
+    const lineOffset2 = lineOffsets[lineIdx] ?? 0;
+    return zones.some((z) => lineOffset2 >= z.start && lineOffset2 < z.end);
+  };
+  const isFootnoteDef = (lineIdx) => !isInCodeZone(lineIdx) && FOOTNOTE_DEF_START.test(lines[lineIdx]);
+  let lastDefIdx = -1;
+  for (let i2 = lines.length - 1; i2 >= 0; i2--) {
+    if (isFootnoteDef(i2)) {
+      lastDefIdx = i2;
+      break;
+    }
+  }
+  if (lastDefIdx === -1) {
+    return lines.length;
+  }
+  let candidate = lastDefIdx;
+  while (candidate >= 0) {
+    let j = candidate + 1;
+    let isTerminal = true;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (isFootnoteDef(j) || FOOTNOTE_CONTINUATION.test(line)) {
+        j++;
+      } else if (line.trim() === "") {
+        j++;
+      } else {
+        isTerminal = false;
+        break;
+      }
+    }
+    if (isTerminal) {
+      lastDefIdx = candidate;
+      break;
+    }
+    candidate--;
+    while (candidate >= 0 && !isFootnoteDef(candidate)) {
+      candidate--;
+    }
+  }
+  if (candidate < 0) {
+    return lines.length;
+  }
+  let blockStart = lastDefIdx;
+  let i = lastDefIdx - 1;
+  while (i >= 0) {
+    if (isFootnoteDef(i)) {
+      blockStart = i;
+      i--;
+      continue;
+    }
+    if (FOOTNOTE_CONTINUATION.test(lines[i]) || lines[i].trim() === "") {
+      let k = i;
+      while (k >= 0 && (FOOTNOTE_CONTINUATION.test(lines[k]) || lines[k].trim() === "")) {
+        k--;
+      }
+      if (k >= 0 && isFootnoteDef(k)) {
+        blockStart = k;
+        i = k - 1;
+        continue;
+      }
+    }
+    break;
+  }
+  return blockStart;
+}
+function isApprovalOrResolutionLine(trimmed) {
+  return trimmed.startsWith("approved:") || trimmed.startsWith("rejected:") || trimmed.startsWith("request-changes:") || trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
+}
+function isResolutionLine(trimmed) {
+  return trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
+}
+function extractFootnoteStatuses(text) {
+  const statuses = /* @__PURE__ */ new Map();
+  const lines = text.split("\n");
+  for (const line of lines) {
+    const m = FOOTNOTE_ID_AND_STATUS_RE.exec(line);
+    if (m) {
+      statuses.set(m[1], m[2].toLowerCase());
+    }
+  }
+  return statuses;
+}
+var FOOTNOTE_ID_AND_STATUS_RE;
+var init_footnote_utils = __esm({
+  "../../packages/core/dist-esm/footnote-utils.js"() {
+    "use strict";
+    init_footnote_patterns();
+    init_code_zones();
+    FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(cn-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
+  }
+});
+
 // ../../packages/core/dist-esm/operations/footnote-generator.js
 function generateFootnoteDefinition(id, type, author, date) {
   const d = date ?? nowTimestamp().date;
@@ -894,6 +1107,7 @@ var init_parser = __esm({
     init_document();
     init_tokens();
     init_footnote_patterns();
+    init_footnote_utils();
     init_code_zones();
     init_timestamp();
     init_footnote_generator();
@@ -908,15 +1122,25 @@ var init_parser = __esm({
         let changeCounter = 0;
         const skipCodeBlocks = options?.skipCodeBlocks !== false;
         const settledRefs = /* @__PURE__ */ new Map();
+        const lines = text.split("\n");
+        const bodyEndIndex = findFootnoteBlockStart(lines);
+        let scanEnd = text.length;
+        if (bodyEndIndex < lines.length) {
+          scanEnd = 0;
+          for (let i = 0; i < bodyEndIndex; i++) {
+            scanEnd += lines[i].length + 1;
+          }
+        }
+        const scanText = text.slice(0, scanEnd);
         let atLineStart = true;
         let inFence = false;
         let fenceMarkerCode = 0;
         let fenceLength = 0;
-        while (position < text.length) {
-          const ch = text.charCodeAt(position);
+        while (position < scanText.length) {
+          const ch = scanText.charCodeAt(position);
           if (skipCodeBlocks && inFence) {
             if (atLineStart) {
-              const closeResult = tryMatchFenceClose(text, position, fenceMarkerCode, fenceLength);
+              const closeResult = tryMatchFenceClose(scanText, position, fenceMarkerCode, fenceLength);
               if (closeResult >= 0) {
                 inFence = false;
                 position = closeResult;
@@ -924,9 +1148,9 @@ var init_parser = __esm({
                 continue;
               }
             }
-            const nextNewline = text.indexOf("\n", position);
+            const nextNewline = scanText.indexOf("\n", position);
             if (nextNewline === -1) {
-              position = text.length;
+              position = scanText.length;
             } else {
               position = nextNewline + 1;
               atLineStart = true;
@@ -934,7 +1158,7 @@ var init_parser = __esm({
             continue;
           }
           if (skipCodeBlocks && atLineStart) {
-            const fenceResult = tryMatchFenceOpen(text, position);
+            const fenceResult = tryMatchFenceOpen(scanText, position);
             if (fenceResult) {
               inFence = true;
               fenceMarkerCode = fenceResult.markerCode;
@@ -945,35 +1169,35 @@ var init_parser = __esm({
             }
           }
           if (skipCodeBlocks && ch === 96) {
-            const skipTo = skipInlineCode(text, position);
+            const skipTo = skipInlineCode(scanText, position);
             if (skipTo > position) {
-              atLineStart = text.charCodeAt(skipTo - 1) === 10;
+              atLineStart = scanText.charCodeAt(skipTo - 1) === 10;
               position = skipTo;
               continue;
             }
             let runEnd = position + 1;
-            while (runEnd < text.length && text.charCodeAt(runEnd) === 96) {
+            while (runEnd < scanText.length && scanText.charCodeAt(runEnd) === 96) {
               runEnd++;
             }
             atLineStart = false;
             position = runEnd;
             continue;
           }
-          const node = this.tryParseNode(text, position, changeCounter);
+          const node = this.tryParseNode(scanText, position, changeCounter);
           if (node) {
-            this.tryAttachAdjacentComment(text, node);
-            this.tryAttachFootnoteRef(text, node);
+            this.tryAttachAdjacentComment(scanText, node);
+            this.tryAttachFootnoteRef(scanText, node);
             changeCounter++;
             changes.push(node);
             position = node.range.end;
-            atLineStart = position > 0 && text.charCodeAt(position - 1) === 10;
+            atLineStart = position > 0 && scanText.charCodeAt(position - 1) === 10;
           } else {
-            if (ch === 91 && text.charCodeAt(position + 1) === 94) {
-              const remaining = text.substring(position, position + 30);
+            if (ch === 91 && scanText.charCodeAt(position + 1) === 94) {
+              const remaining = scanText.substring(position, position + 30);
               const refMatch = remaining.match(_CriticMarkupParser.FOOTNOTE_REF);
               if (refMatch) {
                 const afterRef = position + refMatch[0].length;
-                if (text.charCodeAt(afterRef) !== 58) {
+                if (scanText.charCodeAt(afterRef) !== 58) {
                   const refId = refMatch[1];
                   if (!changes.some((c) => c.id === refId)) {
                     settledRefs.set(refId, position);
@@ -1552,208 +1776,6 @@ var init_parser = __esm({
     CriticMarkupParser.REVISION_RE = /^(r\d+)\s+(@\S+)\s+(\S+):\s+"([^"]*)"$/;
     CriticMarkupParser.CONTEXT_RE = /^context:\s+"([^"]*)"$/;
     CriticMarkupParser.REASON_RE = /^reason:\s+(.+)$/;
-  }
-});
-
-// ../../packages/core/dist-esm/footnote-utils.js
-function countFootnoteHeadersWithStatus(content, status) {
-  let count = 0;
-  for (const s of extractFootnoteStatuses(content).values()) {
-    if (s === status)
-      count++;
-  }
-  return count;
-}
-function findFootnoteBlock(lines, changeId) {
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].startsWith(`[^${changeId}]:`)) {
-      let end = i;
-      let j = i + 1;
-      while (j < lines.length) {
-        if (lines[j].startsWith("[^cn-"))
-          break;
-        if (lines[j].startsWith("    ")) {
-          end = j;
-          j++;
-          continue;
-        }
-        if (lines[j].trim() === "") {
-          let k = j + 1;
-          let hasMore = false;
-          while (k < lines.length && !lines[k].startsWith("[^cn-")) {
-            if (lines[k].startsWith("    ")) {
-              hasMore = true;
-              break;
-            }
-            if (lines[k].trim() !== "")
-              break;
-            k++;
-          }
-          if (hasMore) {
-            j++;
-            continue;
-          }
-          break;
-        }
-        break;
-      }
-      return { headerLine: i, blockEnd: end, headerContent: lines[i] };
-    }
-  }
-  return null;
-}
-function parseFootnoteHeader(headerLine) {
-  const colonIdx = headerLine.indexOf(":");
-  if (colonIdx === -1)
-    return null;
-  const content = headerLine.slice(colonIdx + 1).trim();
-  const parts = content.split("|").map((p) => p.trim());
-  if (parts.length < 4)
-    return null;
-  return {
-    author: parts[0].replace(/^@/, ""),
-    date: parts[1],
-    type: parts[2],
-    status: parts[3]
-  };
-}
-function findDiscussionInsertionIndex(lines, headerLine, blockEnd) {
-  let insertAfter = headerLine;
-  for (let i = headerLine + 1; i <= blockEnd; i++) {
-    const trimmed = lines[i].trim();
-    if (trimmed === "")
-      continue;
-    if (isApprovalOrResolutionLine(trimmed)) {
-      return i - 1;
-    }
-    insertAfter = i;
-  }
-  return insertAfter;
-}
-function findReviewInsertionIndex(lines, headerLine, blockEnd) {
-  let insertAfter = headerLine;
-  for (let i = headerLine + 1; i <= blockEnd; i++) {
-    const trimmed = lines[i].trim();
-    if (trimmed === "")
-      continue;
-    if (isResolutionLine(trimmed)) {
-      return i - 1;
-    }
-    insertAfter = i;
-  }
-  return insertAfter;
-}
-function findChildFootnoteIds(lines, parentId) {
-  const prefix = `[^${parentId}.`;
-  const children = [];
-  for (const line of lines) {
-    if (line.startsWith(prefix)) {
-      const closeBracket = line.indexOf("]:");
-      if (closeBracket !== -1) {
-        children.push(line.slice(2, closeBracket));
-      }
-    }
-  }
-  return children;
-}
-function resolveChangeById(fileContent, changeId) {
-  const lines = fileContent.split("\n");
-  const footnoteBlock = findFootnoteBlock(lines, changeId);
-  const refPattern = `[^${changeId}]`;
-  const refIndex = fileContent.indexOf(refPattern);
-  const inlineRefOffset = refIndex !== -1 && fileContent[refIndex + refPattern.length] !== ":" ? refIndex : null;
-  if (!footnoteBlock && inlineRefOffset === null) {
-    return null;
-  }
-  return { footnoteBlock, inlineRefOffset };
-}
-function findFootnoteBlockStart(lines) {
-  let lastDefIdx = -1;
-  for (let i = lines.length - 1; i >= 0; i--) {
-    if (FOOTNOTE_DEF_START.test(lines[i])) {
-      lastDefIdx = i;
-      break;
-    }
-  }
-  if (lastDefIdx === -1) {
-    return lines.length;
-  }
-  let candidate = lastDefIdx;
-  while (candidate >= 0) {
-    let j = candidate + 1;
-    let isTerminal = true;
-    while (j < lines.length) {
-      const line = lines[j];
-      if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
-        j++;
-      } else if (line.trim() === "") {
-        j++;
-      } else {
-        isTerminal = false;
-        break;
-      }
-    }
-    if (isTerminal) {
-      lastDefIdx = candidate;
-      break;
-    }
-    candidate--;
-    while (candidate >= 0 && !FOOTNOTE_DEF_START.test(lines[candidate])) {
-      candidate--;
-    }
-  }
-  if (candidate < 0) {
-    return lines.length;
-  }
-  let blockStart = lastDefIdx;
-  for (let i = lastDefIdx - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (FOOTNOTE_DEF_START.test(line) || FOOTNOTE_CONTINUATION.test(line)) {
-      blockStart = i;
-    } else if (line.trim() === "") {
-      let hasFootnoteBefore = false;
-      for (let k = i - 1; k >= 0; k--) {
-        if (lines[k].trim() === "")
-          continue;
-        if (FOOTNOTE_DEF_START.test(lines[k]) || FOOTNOTE_CONTINUATION.test(lines[k])) {
-          hasFootnoteBefore = true;
-        }
-        break;
-      }
-      if (hasFootnoteBefore) {
-        blockStart = i;
-      } else {
-        break;
-      }
-    } else {
-      break;
-    }
-  }
-  return blockStart;
-}
-function isApprovalOrResolutionLine(trimmed) {
-  return trimmed.startsWith("approved:") || trimmed.startsWith("rejected:") || trimmed.startsWith("request-changes:") || trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
-}
-function isResolutionLine(trimmed) {
-  return trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
-}
-function extractFootnoteStatuses(text) {
-  const statuses = /* @__PURE__ */ new Map();
-  const lines = text.split("\n");
-  for (const line of lines) {
-    const m = FOOTNOTE_ID_AND_STATUS_RE.exec(line);
-    if (m) {
-      statuses.set(m[1], m[2].toLowerCase());
-    }
-  }
-  return statuses;
-}
-var FOOTNOTE_ID_AND_STATUS_RE;
-var init_footnote_utils = __esm({
-  "../../packages/core/dist-esm/footnote-utils.js"() {
-    "use strict";
-    init_footnote_patterns();
-    FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(cn-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
   }
 });
 
@@ -2803,6 +2825,30 @@ function extractBetween(text, opener, closer) {
     return null;
   return text.slice(opener.length, closerIdx);
 }
+function parseRangeContextReplacement(editPart) {
+  if (!editPart.startsWith("{~~~\n"))
+    return null;
+  const lines = editPart.split("\n");
+  if (lines[0] !== "{~~~" || lines[lines.length - 1] !== "~~}") {
+    throw new Error('Context-bearing range replacement must start with a line exactly "{~~~" and end with a line exactly "~~}".');
+  }
+  const ellipsisIndices = lines.map((line, index) => line === "..." ? index : -1).filter((index) => index !== -1);
+  if (ellipsisIndices.length !== 1) {
+    throw new Error("Context-bearing range replacement requires exactly one standalone ... endpoint separator line.");
+  }
+  const ellipsisIndex = ellipsisIndices[0];
+  const arrowIndex = lines.findIndex((line, index) => index > ellipsisIndex && line === "~>");
+  if (arrowIndex === -1) {
+    throw new Error("Context-bearing range replacement requires a standalone ~> separator line.");
+  }
+  const opening = lines.slice(1, ellipsisIndex).join("\n");
+  const closing = lines.slice(ellipsisIndex + 1, arrowIndex).join("\n");
+  const newText = lines.slice(arrowIndex + 1, -1).join("\n");
+  if (opening.trim() === "" || closing.trim() === "") {
+    throw new Error("Context-bearing range replacement requires non-empty opening and closing anchors.");
+  }
+  return { rangeContext: { opening, closing }, newText };
+}
 function parseOp(op) {
   if (op === "") {
     throw new Error("Op string is empty \u2014 nothing to parse.");
@@ -2820,6 +2866,16 @@ function parseOp(op) {
     };
   }
   const [withoutReasoning, reasoning] = splitReasoning(op);
+  const rangeReplacement = parseRangeContextReplacement(withoutReasoning);
+  if (rangeReplacement) {
+    return {
+      type: "sub",
+      oldText: "",
+      newText: rangeReplacement.newText,
+      reasoning,
+      rangeContext: rangeReplacement.rangeContext
+    };
+  }
   const insContent = extractBetween(withoutReasoning, "{++", "++}");
   if (insContent !== null) {
     return {
@@ -5694,6 +5750,188 @@ function stripCriticMarkupToCommittedWithMap(text) {
   }
   return { committed: committed.join(""), toRaw, markupRanges };
 }
+function allOccurrences(haystack, needle) {
+  if (needle === "")
+    return [];
+  const matches = [];
+  let from = 0;
+  while (from <= haystack.length) {
+    const index = haystack.indexOf(needle, from);
+    if (index === -1)
+      break;
+    matches.push({ index, length: needle.length });
+    from = index + 1;
+  }
+  return matches;
+}
+function expandRawRangeOverMarkup(text, rawStart, rawEnd, markupRanges) {
+  let start = rawStart;
+  let end = rawEnd;
+  let expanded = true;
+  while (expanded) {
+    expanded = false;
+    for (const range of markupRanges) {
+      if (range.rawStart < end && range.rawEnd > start) {
+        if (range.rawStart < start) {
+          start = range.rawStart;
+          expanded = true;
+        }
+        if (range.rawEnd > end) {
+          end = range.rawEnd;
+          expanded = true;
+        }
+      }
+    }
+  }
+  for (const range of markupRanges) {
+    if (range.rawStart === end && /^\[\^cn-/.test(text.slice(range.rawStart))) {
+      end = range.rawEnd;
+    }
+  }
+  return { start, end };
+}
+function projectionEndpointSpan(text, toRaw, markupRanges, match) {
+  const projectionEnd = match.index + match.length - 1;
+  let rawStart = toRaw[match.index];
+  let rawEnd = toRaw[projectionEnd] + 1;
+  const expanded = expandRawRangeOverMarkup(text, rawStart, rawEnd, markupRanges);
+  rawStart = expanded.start;
+  rawEnd = expanded.end;
+  return {
+    index: rawStart,
+    length: rawEnd - rawStart,
+    originalText: text.slice(rawStart, rawEnd),
+    wasNormalized: true
+  };
+}
+function rawEndpointSpan(text, match, wasNormalized, markupRanges) {
+  const expanded = markupRanges ? expandRawRangeOverMarkup(text, match.index, match.index + match.length, markupRanges) : { start: match.index, end: match.index + match.length };
+  return {
+    index: expanded.start,
+    length: expanded.end - expanded.start,
+    originalText: text.slice(expanded.start, expanded.end),
+    wasNormalized
+  };
+}
+function collapseWhitespaceWithMap(text) {
+  const out = [];
+  const startMap = [];
+  const endMap = [];
+  let i = 0;
+  while (i < text.length) {
+    if (/\s/.test(text[i])) {
+      const start = i;
+      while (i < text.length && /\s/.test(text[i]))
+        i++;
+      out.push(" ");
+      startMap.push(start);
+      endMap.push(i);
+    } else {
+      out.push(text[i]);
+      startMap.push(i);
+      endMap.push(i + 1);
+      i++;
+    }
+  }
+  return { text: out.join(""), startMap, endMap };
+}
+function collectEndpointPairs(text, openingMatches, closingMatches) {
+  const pairs = [];
+  for (const opening of openingMatches) {
+    for (const closing of closingMatches) {
+      if (closing.index < opening.index)
+        continue;
+      pairs.push({
+        start: opening.index,
+        end: closing.index + closing.length,
+        opening: {
+          index: opening.index,
+          length: opening.length,
+          originalText: opening.originalText,
+          wasNormalized: opening.wasNormalized
+        },
+        closing: {
+          index: closing.index,
+          length: closing.length,
+          originalText: closing.originalText,
+          wasNormalized: closing.wasNormalized
+        },
+        wasNormalized: opening.wasNormalized || closing.wasNormalized
+      });
+    }
+  }
+  return pairs;
+}
+function decideEndpointPairs(pairs, level) {
+  if (pairs.length === 0)
+    return null;
+  if (pairs.length > 1) {
+    throw new Error(`Endpoint pair found multiple times after ${level} matching (ambiguous). Provide more context to uniquely identify the range.`);
+  }
+  return pairs[0];
+}
+function findUniqueEndpointPairWithCascade(text, context, normalizer) {
+  const { opening, closing } = context;
+  if (opening.trim() === "" || closing.trim() === "") {
+    throw new Error("Endpoint pair matching requires non-empty opening and closing anchors.");
+  }
+  {
+    const markupRanges = containsCriticMarkup(text) ? stripCriticMarkupWithMap(text).markupRanges : void 0;
+    const openingMatches = allOccurrences(text, opening).map((m) => rawEndpointSpan(text, m, false, markupRanges));
+    const closingMatches = allOccurrences(text, closing).map((m) => rawEndpointSpan(text, m, false, markupRanges));
+    const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), "exact");
+    if (decided)
+      return decided;
+  }
+  if (normalizer) {
+    const normalizedText = normalizer(text);
+    const normalizedOpening = normalizer(opening);
+    const normalizedClosing = normalizer(closing);
+    const markupRanges = containsCriticMarkup(text) ? stripCriticMarkupWithMap(text).markupRanges : void 0;
+    const openingMatches = allOccurrences(normalizedText, normalizedOpening).map((m) => rawEndpointSpan(text, { index: m.index, length: opening.length }, true, markupRanges));
+    const closingMatches = allOccurrences(normalizedText, normalizedClosing).map((m) => rawEndpointSpan(text, { index: m.index, length: closing.length }, true, markupRanges));
+    const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), "normalization");
+    if (decided)
+      return decided;
+  }
+  {
+    const collapsed = collapseWhitespaceWithMap(text);
+    const collapsedOpening = opening.replace(/\s+/g, " ");
+    const collapsedClosing = closing.replace(/\s+/g, " ");
+    const toSpan = (m) => {
+      const start = collapsed.startMap[m.index];
+      const end = collapsed.endMap[m.index + m.length - 1];
+      return {
+        index: start,
+        length: end - start,
+        originalText: text.slice(start, end),
+        wasNormalized: true
+      };
+    };
+    const openingMatches = allOccurrences(collapsed.text, collapsedOpening).map(toSpan);
+    const closingMatches = allOccurrences(collapsed.text, collapsedClosing).map(toSpan);
+    const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), "whitespace collapsing");
+    if (decided)
+      return decided;
+  }
+  if (containsCriticMarkup(text)) {
+    const { committed, toRaw, markupRanges } = stripCriticMarkupToCommittedWithMap(text);
+    const openingMatches = allOccurrences(committed, opening).map((m) => projectionEndpointSpan(text, toRaw, markupRanges, m));
+    const closingMatches = allOccurrences(committed, closing).map((m) => projectionEndpointSpan(text, toRaw, markupRanges, m));
+    const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), "committed text");
+    if (decided)
+      return decided;
+  }
+  if (containsCriticMarkup(text)) {
+    const { current, toRaw, markupRanges } = stripCriticMarkupWithMap(text);
+    const openingMatches = allOccurrences(current, opening).map((m) => projectionEndpointSpan(text, toRaw, markupRanges, m));
+    const closingMatches = allOccurrences(current, closing).map((m) => projectionEndpointSpan(text, toRaw, markupRanges, m));
+    const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), "current text");
+    if (decided)
+      return decided;
+  }
+  throw new Error(`Endpoint pair not found. Opening (first 80 chars): ${JSON.stringify(opening.slice(0, 80))}; closing (first 80 chars): ${JSON.stringify(closing.slice(0, 80))}.`);
+}
 function findUniqueMatch(text, target, normalizer) {
   const firstIdx = text.indexOf(target);
   if (firstIdx !== -1) {
@@ -5969,8 +6207,10 @@ async function applyProposeChange(params) {
       let targetOffset = mutatedBodyText.length > 0 ? mutatedBodyText.length - 1 : 0;
       if (insertAfter) {
         const anchorIdx = mutatedBodyText.lastIndexOf(insertAfter);
-        if (anchorIdx !== -1)
-          targetOffset = anchorIdx + insertAfter.length - 1;
+        if (anchorIdx === -1) {
+          throw new Error(`insertAfter anchor not found in text: "${insertAfter}"`);
+        }
+        targetOffset = anchorIdx + insertAfter.length - 1;
       }
       const lineStarts = buildLineStarts(mutatedBodyText);
       const lineNumber = offsetToLineNumber(lineStarts, Math.max(0, targetOffset));
@@ -5986,12 +6226,14 @@ async function applyProposeChange(params) {
     }
     const insertPos = (() => {
       if (insertAfter) {
-        const anchorIdx = text.lastIndexOf(insertAfter);
-        if (anchorIdx !== -1) {
-          const afterAnchor = anchorIdx + insertAfter.length;
-          const nlIdx = text.indexOf("\n", afterAnchor);
-          return nlIdx !== -1 ? nlIdx : text.length;
+        const contentZone = contentZoneText(text);
+        const anchorIdx = contentZone.lastIndexOf(insertAfter);
+        if (anchorIdx === -1) {
+          throw new Error(`insertAfter anchor not found in text: "${insertAfter}"`);
         }
+        const afterAnchor = anchorIdx + insertAfter.length;
+        const nlIdx = text.indexOf("\n", afterAnchor);
+        return nlIdx !== -1 ? nlIdx : contentZone.length;
       }
       const lines = text.split("\n");
       const blockStart = findFootnoteBlockStart(lines);
@@ -6026,7 +6268,7 @@ async function applyProposeChange(params) {
     if (!insertAfter) {
       throw new Error("Insertion requires an insertAfter anchor to locate where to insert.");
     }
-    const searchTarget = isL3 ? bodyText : text;
+    const searchTarget = isL3 ? bodyText : contentZoneText(text);
     let anchorIndex = searchTarget.indexOf(insertAfter);
     let anchorLength = insertAfter.length;
     if (anchorIndex === -1) {
@@ -8168,8 +8410,17 @@ function countChanges(content) {
       counts[status]++;
     }
   }
-  const allMarkup = content.match(inlineMarkupAll()) || [];
-  const markupWithRefs = content.match(markupWithRef()) || [];
+  const blockStart = findFootnoteBlockStart(lines);
+  let bodyEndOffset = content.length;
+  if (blockStart < lines.length) {
+    bodyEndOffset = 0;
+    for (let i = 0; i < blockStart; i++) {
+      bodyEndOffset += lines[i].length + 1;
+    }
+  }
+  const bodyText = content.slice(0, bodyEndOffset);
+  const allMarkup = bodyText.match(inlineMarkupAll()) || [];
+  const markupWithRefs = bodyText.match(markupWithRef()) || [];
   const level0Count = allMarkup.length - markupWithRefs.length;
   if (level0Count > 0) {
     counts.proposed += level0Count;
@@ -8202,6 +8453,7 @@ var init_hashline_tracked = __esm({
     init_hashline();
     init_critic_regex();
     init_footnote_patterns();
+    init_footnote_utils();
   }
 });
 
@@ -10525,6 +10777,423 @@ var init_registry = __esm({
   }
 });
 
+// ../../packages/core/dist-esm/protocol/types.js
+var init_types4 = __esm({
+  "../../packages/core/dist-esm/protocol/types.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/protocol/row-identity-registry.js
+function ordinalFromChangeId(changeId) {
+  return Number(changeId.slice(3));
+}
+function changeIdForOrdinal(ordinal) {
+  return `cn-${ordinal}`;
+}
+function createRowIdentityRegistry(snapshot) {
+  let nextOrdinal = snapshot?.nextOrdinal ?? 2;
+  const entries = new Map(snapshot?.entries ?? []);
+  const tombstones = new Map(snapshot?.tombstones ?? []);
+  function isUsed(changeId) {
+    if (tombstones.has(changeId))
+      return true;
+    for (const assigned of entries.values()) {
+      if (assigned === changeId)
+        return true;
+    }
+    return false;
+  }
+  function nextAvailableChangeId() {
+    let candidate = changeIdForOrdinal(nextOrdinal);
+    while (isUsed(candidate)) {
+      nextOrdinal += 1;
+      candidate = changeIdForOrdinal(nextOrdinal);
+    }
+    nextOrdinal += 1;
+    return candidate;
+  }
+  function advancePast(changeId) {
+    nextOrdinal = Math.max(nextOrdinal, ordinalFromChangeId(changeId) + 1);
+    while (isUsed(changeIdForOrdinal(nextOrdinal)))
+      nextOrdinal += 1;
+  }
+  return {
+    getOrAssign(signature) {
+      const existing = entries.get(signature);
+      if (existing)
+        return existing;
+      const id = nextAvailableChangeId();
+      entries.set(signature, id);
+      return id;
+    },
+    claim(signature, changeId) {
+      const existing = entries.get(signature);
+      if (existing && existing !== changeId) {
+        throw new Error(`signature already assigned to ${existing}, cannot claim ${changeId}`);
+      }
+      if (tombstones.has(changeId)) {
+        throw new Error(`change id ${changeId} is tombstoned and cannot be claimed`);
+      }
+      for (const [otherSignature, assigned] of entries.entries()) {
+        if (otherSignature !== signature && assigned === changeId) {
+          throw new Error(`change id ${changeId} is already assigned to another signature`);
+        }
+      }
+      entries.set(signature, changeId);
+      advancePast(changeId);
+      return changeId;
+    },
+    get(signature) {
+      return entries.get(signature);
+    },
+    tombstone(changeId, tombstone) {
+      tombstones.set(changeId, tombstone);
+    },
+    getTombstone(changeId) {
+      return tombstones.get(changeId);
+    },
+    snapshot() {
+      return { nextOrdinal, entries: [...entries.entries()], tombstones: [...tombstones.entries()] };
+    }
+  };
+}
+function signatureForSourceGroup(input) {
+  return [
+    "source",
+    input.id,
+    input.partName ?? "",
+    input.path ?? "",
+    input.kind ?? "",
+    input.author ?? "",
+    input.date ?? "",
+    input.textHash ?? "",
+    ...input.atomIds ?? []
+  ].join("|");
+}
+function signatureForNativeRevisionGap(input) {
+  return [
+    "native-gap",
+    input.kind,
+    input.wordType,
+    input.author ?? "",
+    String(input.dateSec),
+    input.rangeTextHash ?? "",
+    input.paragraphTextHash ?? "",
+    input.formatDescriptionHash ?? "",
+    input.rangeTextHash || input.paragraphTextHash || input.formatDescriptionHash ? "" : String(input.revisionIndex ?? ""),
+    input.rangeTextHash || input.paragraphTextHash || input.formatDescriptionHash ? "" : input.fingerprint ?? ""
+  ].join("|");
+}
+var init_row_identity_registry = __esm({
+  "../../packages/core/dist-esm/protocol/row-identity-registry.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/protocol/protocol-document.js
+function buildChangeDownProtocolDocument(input) {
+  const footnotes = input.entries.map(renderPublicEntryFootnote).join("\n\n");
+  const source = footnotes.length > 0 ? `${input.body}
+
+${footnotes}
+` : `${input.body}
+`;
+  const protocol = {
+    backendKind: input.backendKind ?? "word-ooxml",
+    source,
+    body: input.body,
+    entries: input.entries.slice(),
+    digest: digestProtocolSource(source)
+  };
+  if (input.validate !== false) {
+    const invariant = assertProtocolDocumentInvariants(protocol);
+    if (!invariant.ok)
+      throw new Error(`ProtocolInvariantViolation: ${invariant.errors.join("; ")}`);
+  }
+  return protocol;
+}
+function renderPublicEntryFootnote(entry) {
+  const headerParts = [entry.author ?? "@word"];
+  if (entry.date)
+    headerParts.push(entry.date.slice(0, 10));
+  headerParts.push(entry.kind, entry.status);
+  const lines = [`[^${entry.id}]: ${headerParts.join(" | ")}`];
+  lines.push(`    representation: ${entry.representation}`);
+  lines.push(`    actionability: ${entry.actionability.state}`);
+  if (entry.actionability.reason)
+    lines.push(`    reason: ${entry.actionability.reason}`);
+  for (const anchor of entry.anchors) {
+    lines.push(`    anchor: ${anchor.kind}:${anchor.marker}${anchor.childRole ? `:${anchor.childRole}` : ""}`);
+  }
+  if (entry.parentId)
+    lines.push(`    parent: ${entry.parentId}`);
+  if (entry.children?.length)
+    lines.push(`    children: ${entry.children.join(" ")}`);
+  for (const [key, value] of Object.entries(entry.protocolMetadata)) {
+    lines.push(`    ${key}: ${value}`);
+  }
+  return lines.join("\n");
+}
+function assertProtocolDocumentInvariants(protocol) {
+  const errors = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const entry of protocol.entries) {
+    if (seen.has(entry.id))
+      errors.push(`duplicate-entry:${entry.id}`);
+    seen.add(entry.id);
+    if (entry.anchors.length === 0)
+      errors.push(`no-anchors:${entry.id}`);
+    for (const anchor of entry.anchors) {
+      if (!protocol.body.includes(anchor.marker)) {
+        errors.push(`missing-anchor:${entry.id}:${anchor.marker}`);
+      }
+    }
+    if (entry.parentId && !protocol.entries.some((candidate) => candidate.id === entry.parentId)) {
+      errors.push(`missing-parent:${entry.id}:${entry.parentId}`);
+    }
+    for (const child of entry.children ?? []) {
+      if (!protocol.entries.some((candidate) => candidate.id === child))
+        errors.push(`missing-child:${entry.id}:${child}`);
+    }
+  }
+  return { ok: errors.length === 0, errors };
+}
+function digestProtocolSource(source) {
+  return `fnv1a64:${fnv1a64Hex(source)}`;
+}
+function fnv1a64Hex(value) {
+  let hash = 0xcbf29ce484222325n;
+  const prime = 0x100000001b3n;
+  const mask = 0xffffffffffffffffn;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= BigInt(value.charCodeAt(index));
+    hash = hash * prime & mask;
+  }
+  return hash.toString(16).padStart(16, "0");
+}
+var init_protocol_document = __esm({
+  "../../packages/core/dist-esm/protocol/protocol-document.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/protocol/public-change-index.js
+function buildPublicChangeIndex(protocol) {
+  const byId = new Map(protocol.entries.map((entry) => [entry.id, entry]));
+  return {
+    entries: protocol.entries.slice(),
+    order: protocol.entries.map((entry) => entry.id),
+    byId
+  };
+}
+var init_public_change_index = __esm({
+  "../../packages/core/dist-esm/protocol/public-change-index.js"() {
+    "use strict";
+  }
+});
+
+// ../../packages/core/dist-esm/protocol/from-markdown.js
+function buildProtocolDocumentFromMarkdown(source) {
+  const doc = parseForFormat(source);
+  const parsedFootnotes = parseProtocolFootnotes(source);
+  const changesById = new Map(doc.getChanges().map((change) => [change.id, change]));
+  const ids = orderedProtocolIds(source, parsedFootnotes, changesById);
+  const body = splitBodyAndFootnotes(source.split("\n")).bodyLines.join("\n");
+  const entries = ids.map((id) => {
+    const change = changesById.get(id);
+    const parsed = parsedFootnotes.get(id);
+    const anchors = parsed?.anchors?.length ? parsed.anchors : [defaultAnchorForChange(id, change, body)];
+    const metadata = { ...parsed?.protocolMetadata ?? {} };
+    return {
+      id,
+      kind: parsed?.kind ?? (change ? publicKindFromChangeType(change.type) : "metadata"),
+      status: parsed?.status ?? publicStatusForChange(change),
+      representation: parsed?.representation ?? (change ? "inline-markup" : "metadata-anchor"),
+      anchors,
+      actionability: parsed?.actionability ?? { state: "protocol-ready" },
+      ...parsed?.author ?? change?.metadata?.author ?? change?.inlineMetadata?.author ? { author: String(parsed?.author ?? change?.metadata?.author ?? change?.inlineMetadata?.author) } : {},
+      ...parsed?.date ?? change?.metadata?.date ?? change?.inlineMetadata?.date ? { date: String(parsed?.date ?? change?.metadata?.date ?? change?.inlineMetadata?.date) } : {},
+      ...parsed?.parentId ? { parentId: parsed.parentId } : {},
+      ...parsed?.children?.length ? { children: parsed.children } : {},
+      protocolMetadata: metadata
+    };
+  });
+  return buildChangeDownProtocolDocument({ backendKind: "file-markdown", body, entries });
+}
+function orderedProtocolIds(source, parsedFootnotes, changesById) {
+  const ids = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const match of source.matchAll(/\[\^(cn-\d+)\]/gu)) {
+    const id = match[1];
+    if ((parsedFootnotes.has(id) || changesById.has(id)) && !seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  for (const id of parsedFootnotes.keys()) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  for (const id of changesById.keys()) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      ids.push(id);
+    }
+  }
+  return ids;
+}
+function parseProtocolFootnotes(source) {
+  const lines = source.split("\n");
+  const result = /* @__PURE__ */ new Map();
+  let currentId;
+  for (const line of lines) {
+    const header = line.match(/^\[\^(cn-\d+)\]:\s*(.*)$/u);
+    if (header) {
+      currentId = header[1];
+      const parts = header[2].split("|").map((part) => part.trim()).filter(Boolean);
+      const current2 = { protocolMetadata: {} };
+      if (parts[0])
+        current2.author = parts[0];
+      if (parts[1] && /^\d{4}-\d{2}-\d{2}/u.test(parts[1]))
+        current2.date = parts[1];
+      const kindPart = parts.find((part) => isPublicKind(part));
+      const statusPart = parts.find((part) => isPublicStatus(part));
+      if (kindPart)
+        current2.kind = kindPart;
+      if (statusPart)
+        current2.status = statusPart;
+      result.set(currentId, current2);
+      continue;
+    }
+    if (!currentId)
+      continue;
+    const field = line.match(/^\s{4}([^:]+):\s*(.*)$/u);
+    if (!field)
+      continue;
+    const [, rawKey, value] = field;
+    const key = rawKey.trim();
+    const current = result.get(currentId);
+    current.protocolMetadata ?? (current.protocolMetadata = {});
+    switch (key) {
+      case "representation":
+        if (isRepresentation(value))
+          current.representation = value;
+        break;
+      case "actionability":
+        if (isActionabilityState(value))
+          current.actionability = { ...current.actionability ?? {}, state: value };
+        break;
+      case "reason":
+        current.actionability = { state: current.actionability?.state ?? "blocked", reason: value };
+        break;
+      case "anchor": {
+        const [kind, ...markerParts] = value.split(":");
+        const maybeRole = markerParts[markerParts.length - 1];
+        const childRole = isAnchorChildRole(maybeRole) ? maybeRole : void 0;
+        const marker = (childRole ? markerParts.slice(0, -1) : markerParts).join(":");
+        if (isAnchorKind(kind) && marker) {
+          current.anchors ?? (current.anchors = []);
+          current.anchors.push({
+            kind,
+            marker,
+            ...childRole ? { childRole } : {}
+          });
+        }
+        break;
+      }
+      case "parent":
+        current.parentId = value;
+        break;
+      case "children":
+        current.children = value.split(/\s+/u).filter(Boolean);
+        break;
+      default:
+        current.protocolMetadata[key] = value;
+        break;
+    }
+  }
+  return result;
+}
+function defaultAnchorForChange(id, change, body) {
+  const footnoteMarker = `[^${id}]`;
+  if (body.includes(footnoteMarker))
+    return { kind: "inline-range", marker: footnoteMarker };
+  if (change && change.range.start >= 0 && change.range.end > change.range.start) {
+    const marker = body.slice(change.range.start, change.range.end);
+    if (marker.length > 0)
+      return { kind: "inline-range", marker };
+  }
+  return { kind: "inline-range", marker: footnoteMarker };
+}
+function publicKindFromChangeType(type) {
+  switch (type) {
+    case ChangeType.Insertion:
+      return "ins";
+    case ChangeType.Deletion:
+      return "del";
+    case ChangeType.Substitution:
+      return "sub";
+    case ChangeType.Move:
+      return "move";
+    case ChangeType.Comment:
+      return "comment";
+    default:
+      return "metadata";
+  }
+}
+function publicStatusForChange(change) {
+  const status = change?.metadata?.status ?? change?.inlineMetadata?.status ?? change?.status;
+  return publicStatusFromChangeStatus(status);
+}
+function publicStatusFromChangeStatus(status) {
+  const normalized = String(status ?? "proposed").toLowerCase();
+  if (isPublicStatus(normalized))
+    return normalized;
+  return "proposed";
+}
+function isPublicKind(value) {
+  return ["ins", "del", "sub", "format", "move", "comment", "metadata"].includes(value);
+}
+function isPublicStatus(value) {
+  return ["proposed", "accepted", "rejected", "resolved", "unresolved", "diagnostic", "conflict"].includes(value);
+}
+function isRepresentation(value) {
+  return ["inline-markup", "rendered-substitution", "metadata-anchor", "compound-parent", "compound-child", "comment-thread"].includes(value);
+}
+function isActionabilityState(value) {
+  return ["protocol-ready", "action-plan-ready", "native-ready", "thread-ready", "blocked", "diagnostic-only", "conflict"].includes(value);
+}
+function isAnchorKind(value) {
+  return ["inline-range", "paragraph", "block", "metadata", "compound-child"].includes(value);
+}
+function isAnchorChildRole(value) {
+  return value !== void 0 && ["move-from", "move-to", "comment-range", "metadata-target"].includes(value);
+}
+var init_from_markdown = __esm({
+  "../../packages/core/dist-esm/protocol/from-markdown.js"() {
+    "use strict";
+    init_types();
+    init_format_aware_parse();
+    init_footnote_patterns();
+    init_protocol_document();
+  }
+});
+
+// ../../packages/core/dist-esm/protocol/index.js
+var init_protocol = __esm({
+  "../../packages/core/dist-esm/protocol/index.js"() {
+    "use strict";
+    init_types4();
+    init_row_identity_registry();
+    init_protocol_document();
+    init_public_change_index();
+    init_from_markdown();
+  }
+});
+
 // ../../packages/core/dist-esm/index.js
 var dist_esm_exports = {};
 __export(dist_esm_exports, {
@@ -10567,10 +11236,12 @@ __export(dist_esm_exports, {
   applyRejectedChanges: () => applyRejectedChanges,
   applyReview: () => applyReview,
   applySingleOperation: () => applySingleOperation,
+  assertProtocolDocumentInvariants: () => assertProtocolDocumentInvariants,
   assertResolved: () => assertResolved,
   bodyReplacement: () => bodyReplacement,
   bufferContainsOffset: () => containsOffset,
   bufferEnd: () => bufferEnd,
+  buildChangeDownProtocolDocument: () => buildChangeDownProtocolDocument,
   buildCodeZoneMask: () => buildCodeZoneMask,
   buildContextualL3EditOp: () => buildContextualL3EditOp,
   buildDecidedDocument: () => buildDecidedDocument,
@@ -10578,6 +11249,8 @@ __export(dist_esm_exports, {
   buildEditOpFromParts: () => buildEditOpFromParts,
   buildLineRefMap: () => buildLineRefMap,
   buildLineStarts: () => buildLineStarts,
+  buildProtocolDocumentFromMarkdown: () => buildProtocolDocumentFromMarkdown,
+  buildPublicChangeIndex: () => buildPublicChangeIndex,
   buildRawDocument: () => buildRawDocument,
   buildReviewDocument: () => buildReviewDocument,
   buildSessionHashes: () => buildSessionHashes,
@@ -10629,10 +11302,12 @@ __export(dist_esm_exports, {
   convertL3ToL2: () => convertL3ToL2,
   countFootnoteHeadersWithStatus: () => countFootnoteHeadersWithStatus,
   createBuffer: () => createBuffer,
+  createRowIdentityRegistry: () => createRowIdentityRegistry,
   currentLine: () => currentLine,
   defaultNormalizer: () => defaultNormalizer,
   detectNoOp: () => detectNoOp,
   diagnosticConfusableNormalize: () => diagnosticConfusableNormalize,
+  digestProtocolSource: () => digestProtocolSource,
   ensureHashlineReady: () => ensureHashlineReady,
   ensureL2: () => ensureL2,
   escapeRegex: () => escapeRegex,
@@ -10649,6 +11324,7 @@ __export(dist_esm_exports, {
   findMarkupRangeById: () => findMarkupRangeById,
   findReviewInsertionIndex: () => findReviewInsertionIndex,
   findSidecarBlockStart: () => findSidecarBlockStart,
+  findUniqueEndpointPairWithCascade: () => findUniqueEndpointPairWithCascade,
   findUniqueMatch: () => findUniqueMatch,
   footnoteRefGlobal: () => footnoteRefGlobal,
   footnoteRefNumericGlobal: () => footnoteRefNumericGlobal,
@@ -10709,6 +11385,7 @@ __export(dist_esm_exports, {
   relocateHashRef: () => relocateHashRef,
   relocateHashRefMulti: () => relocateHashRefMulti,
   removeMarkupById: () => removeMarkupById,
+  renderPublicEntryFootnote: () => renderPublicEntryFootnote,
   replaceUnique: () => replaceUnique,
   resolve: () => resolve3,
   resolveAt: () => resolveAt,
@@ -10721,6 +11398,8 @@ __export(dist_esm_exports, {
   scrubForward: () => scrubForward,
   serializeL2: () => serializeL2,
   serializeL3: () => serializeL3,
+  signatureForNativeRevisionGap: () => signatureForNativeRevisionGap,
+  signatureForSourceGroup: () => signatureForSourceGroup,
   singleLineComment: () => singleLineComment,
   singleLineDeletion: () => singleLineDeletion,
   singleLineHighlight: () => singleLineHighlight,
@@ -10822,6 +11501,7 @@ var init_dist_esm = __esm({
     init_diagnostic();
     init_types3();
     init_registry();
+    init_protocol();
   }
 });
 
@@ -13881,6 +14561,7 @@ init_parse_document();
 
 // ../../packages/core/dist-esm/host/base-controller.js
 init_parse_document();
+init_footnote_generator();
 
 // ../../packages/core/dist-esm/host/view-helpers.js
 init_types();

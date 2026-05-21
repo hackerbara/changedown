@@ -4,10 +4,10 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
-// dist path relative to packages/tests/mcp-transport → monorepo root → changedown-plugin
+// dist path relative to packages/tests/mcp-transport → monorepo root → packages/mcp
 const MCP_DIST = join(
   __dirname,
-  '../../../changedown-plugin/mcp-server/dist/index.js',
+  '../../../packages/mcp/dist/index.js',
 );
 
 export interface ServerHandle {
@@ -23,7 +23,7 @@ export interface ServerHandle {
 export interface SpawnOptions {
   /** Override the fixed port. Use a unique high port per test (e.g. 49990 + index). */
   port: number;
-  /** Pass-through env vars (CHANGEDOWN_MCP_REQUIRE_HTTPS, etc). */
+  /** Pass-through env vars (CHANGEDOWN_MCP_USE_HTTP, etc). */
   env?: NodeJS.ProcessEnv;
   /** Banner regex to match in stderr to consider the server ready. */
   readyPattern?: RegExp;
@@ -38,6 +38,10 @@ export function spawnServer(opts: SpawnOptions): ServerHandle {
   const stderr: string[] = [];
   const env: NodeJS.ProcessEnv = {
     ...process.env,
+    // Bridge autospawn is default-ON (Task 6). mcp-transport tests exercise
+    // the standalone autospawn-off host path; opt out explicitly.
+    // Callers that want the bridge path can pass env: { CHANGEDOWN_BRIDGE_AUTOSPAWN: '1' }.
+    CHANGEDOWN_BRIDGE_AUTOSPAWN: '0',
     CHANGEDOWN_MCP_PORT: String(opts.port),
     ...opts.env,
   };

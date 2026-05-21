@@ -2,7 +2,10 @@
 import { describe, it, expect, vi } from 'vitest';
 import { RemoteBackend } from '@changedown/mcp/remote-backend';
 import type { PaneEndpointHandle } from '@changedown/mcp/transport/pane-endpoint';
-import type { DocumentRef, ChangeOp } from '@changedown/core/backend';
+import type {
+  DocumentRef,
+  ChangeOp,
+} from '@changedown/core/backend';
 
 const REG_ID = 'reg-test-abc';
 const SESSION_URI = 'word://sess-test-123';
@@ -36,6 +39,8 @@ describe('RemoteBackend', () => {
     expect(result).toEqual(snapshot);
   });
 
+
+
   it('listChanges() sends method="listChanges" with empty params', async () => {
     const changes = [{ changeId: 'cn-1', type: 'insertion', status: 'proposed', author: 'alice', line: 1, preview: 'Hello' }];
     const handle = makeHandle(changes);
@@ -44,6 +49,7 @@ describe('RemoteBackend', () => {
     expect(handle.sendRequest).toHaveBeenCalledWith(REG_ID, 'listChanges', {});
     expect(result).toEqual(changes);
   });
+
 
   it('applyChange() sends method="applyChange" with op in params', async () => {
     const changeResult = { applied: true, changeId: 'cn-2' };

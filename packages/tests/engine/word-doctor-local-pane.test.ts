@@ -33,7 +33,7 @@ vi.mock('../../../packages/cli/src/word/office-tools.js', () => ({
   runTool: mocks.runTool,
 }));
 
-vi.mock('../../../packages/cli/src/word/mcp.js', () => ({
+vi.mock('@changedown/mcp/launcher', () => ({
   MCP_PORT: 39990,
   mcpStartGuidance: () => 'start mcp',
   preflightMcp: vi.fn(),

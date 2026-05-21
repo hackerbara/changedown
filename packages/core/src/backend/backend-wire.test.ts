@@ -17,6 +17,7 @@ describe("Pane backend wire envelope", () => {
       operation: { kind: "applyChange", ref: { uri: "word://sess-1" }, op: { kind: "propose", args: { at: "1:abc", op: "{++hi++}" } } },
     };
 
+
     expect(backendWireOperationClass(read)).toBe("read");
     expect(backendWireOperationClass(write)).toBe("write");
     expect(JSON.stringify(write)).not.toContain("propose_change");

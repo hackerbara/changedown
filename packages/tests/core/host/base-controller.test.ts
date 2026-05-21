@@ -117,6 +117,18 @@ describe('BaseController', () => {
       expect(controller.getState('file:///test.md')).toBeDefined();
     });
 
+    it('normalizes LSP documentState notifications that use textDocument.uri/viewMode', () => {
+      const handler = (lsp.onDocumentState as any).mock.calls[0][0];
+
+      handler({
+        textDocument: { uri: 'file:///test.md' },
+        tracking: { enabled: true, source: 'file' },
+        viewMode: 'working',
+      });
+
+      expect(controller.isTrackingEnabled('file:///test.md')).toBe(true);
+    });
+
     it('closes document on onDidCloseDocument', () => {
       host.fireOpen('file:///test.md', '# Hello');
       host.fireClose('file:///test.md');

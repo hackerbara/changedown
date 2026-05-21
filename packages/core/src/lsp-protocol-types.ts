@@ -3,6 +3,8 @@ import type { ChangeNode, ChangeType } from './model/types.js';
 /** Payload for changedown/coherenceStatus notification */
 export interface CoherenceStatusParams {
   uri: string;
+  /** Host adapter alias for coherenceRate. */
+  rate?: number;
   coherenceRate: number;
   unresolvedCount: number;
   threshold: number;

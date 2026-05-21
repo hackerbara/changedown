@@ -38,8 +38,10 @@ export function composeGuide(config: ChangeDownConfig, options: ComposeGuideOpti
   sections.push(
     '**Chaining edits**: Each `propose_change` response shows your changes applied. ' +
       'The `applied` array includes `preview` (the line with your edit) and coordinates for follow-up edits. ' +
-      '`affected_lines` shows neighboring lines with fresh coordinates. No re-read needed between edits. ' +
-      'Re-read only after review (accept/reject).',
+      '`affected_lines` shows neighboring lines with fresh coordinates. ' +
+      'No re-read is needed when follow-up edits use fresh response coordinates or semantically anchored text/context. ' +
+      'If you are targeting blank/structural lines or coordinate-only range replacements after prior writes, re-read or use context-bearing range replacement. ' +
+      'Also re-read after review (accept/reject), or when relocation is ambiguous.',
   );
 
   // --- Self-revision section (always included) ---
@@ -84,7 +86,13 @@ function composeProtocolSection(
     'Include enough context in your `op` to disambiguate repeated text on the same line.',
   );
   lines.push(
-    'Range replace: `at:"5:a1-20:b3"` + `op:"{~~~>new content~~}"` replaces the entire range.',
+    'Blank lines are poor anchors: to add content in blank space, insert after the nearest stable nonblank line with `{++\\ntext++}` instead of replacing a blank line.',
+  );
+  lines.push(
+    'Coordinate-only range replace: `at:"5:a1-20:b3"` + `op:"{~~~>new content~~}"` replaces the exact resolved range; use context range replace if coordinates may be stale.',
+  );
+  lines.push(
+    'Context range replace: `at:"5:a1-20:b3"` + `op:"{~~~\\nold opening\\n...\\nold closing\\n~>\\nnew content\\n~~}"` lets ChangeDown recover shifted ranges.',
   );
   lines.push(
     'Multi-line ops: use real newlines in your op string — the MCP transport handles encoding.',

@@ -21,7 +21,7 @@ echo "=== Building ChangeDown for install bundle ==="
 echo "Building @changedown/core..."
 (cd packages/core && npm run build)
 echo "Building MCP server..."
-(cd changedown-plugin/mcp-server && npm ci && npm run build)
+(cd packages/mcp && npm ci && npm run build)
 echo "Building hooks-impl (Claude Code)..."
 (cd changedown-plugin/hooks-impl && npm ci && npm run build)
 
@@ -50,8 +50,8 @@ mkdir -p "$BUNDLE_DIR/cli"
 cp packages/cli/package.json "$BUNDLE_DIR/cli/"
 cp -R packages/cli/dist "$BUNDLE_DIR/cli/" 2>/dev/null || true
 mkdir -p "$BUNDLE_DIR/mcp-server"
-cp changedown-plugin/mcp-server/package.json "$BUNDLE_DIR/mcp-server/"
-cp -R changedown-plugin/mcp-server/dist "$BUNDLE_DIR/mcp-server/"
+cp packages/mcp/package.json "$BUNDLE_DIR/mcp-server/"
+cp -R packages/mcp/dist "$BUNDLE_DIR/mcp-server/"
 # Point to local core + cli in bundle
 PKG_JSON="$BUNDLE_DIR/mcp-server/package.json" node -e "
 const fs = require('fs');
@@ -101,6 +101,32 @@ cp changedown-plugin/.claude-plugin/plugin.json "$PLUGIN_DIR/.claude-plugin/"
 cp changedown-plugin/.mcp.json "$PLUGIN_DIR/"
 mkdir -p "$PLUGIN_DIR/.codex-plugin"
 cp changedown-plugin/.codex-plugin/plugin.json "$PLUGIN_DIR/.codex-plugin/"
+# Codex public plugin config intentionally uses pinned npx without cwd.
+# Local development cache sync rewrites codex.mcp.json to an absolute node entrypoint.
+if ! CODEX_MCP_VERSION_CHECK=$(node - <<'NODE' 2>&1
+const fs = require('fs');
+const plugin = JSON.parse(fs.readFileSync('changedown-plugin/.codex-plugin/plugin.json', 'utf8'));
+const mcp = JSON.parse(fs.readFileSync('packages/mcp/package.json', 'utf8'));
+const cfg = JSON.parse(fs.readFileSync('changedown-plugin/codex.mcp.json', 'utf8'));
+const arg = cfg.mcpServers?.cd?.args?.find((value) => String(value).startsWith('@changedown/mcp@'));
+if (plugin.version !== mcp.version) {
+  console.error(`Codex plugin version ${plugin.version} does not match @changedown/mcp version ${mcp.version}`);
+  process.exit(1);
+}
+if (arg !== `@changedown/mcp@${plugin.version}`) {
+  console.error(`codex.mcp.json pins ${arg || '<missing>'}; expected @changedown/mcp@${plugin.version}`);
+  process.exit(1);
+}
+console.log('ok');
+NODE
+); then
+  echo "$CODEX_MCP_VERSION_CHECK"
+  exit 1
+fi
+if [ "$CODEX_MCP_VERSION_CHECK" != "ok" ]; then
+  echo "$CODEX_MCP_VERSION_CHECK"
+  exit 1
+fi
 cp changedown-plugin/codex.mcp.json "$PLUGIN_DIR/"
 cp changedown-plugin/hooks/hooks.json "$PLUGIN_DIR/hooks/"
 cp -R changedown-plugin/skills "$PLUGIN_DIR/"
@@ -109,8 +135,8 @@ cp -R "$BUNDLE_DIR/core" "$PLUGIN_DIR/"
 cp -R "$BUNDLE_DIR/cli" "$PLUGIN_DIR/"
 # MCP server inside plugin
 mkdir -p "$PLUGIN_DIR/mcp-server"
-cp changedown-plugin/mcp-server/package.json "$PLUGIN_DIR/mcp-server/"
-cp -R changedown-plugin/mcp-server/dist "$PLUGIN_DIR/mcp-server/"
+cp packages/mcp/package.json "$PLUGIN_DIR/mcp-server/"
+cp -R packages/mcp/dist "$PLUGIN_DIR/mcp-server/"
 PKG_JSON="$PLUGIN_DIR/mcp-server/package.json" node -e "
 const fs = require('fs');
 const pPath = process.env.PKG_JSON;

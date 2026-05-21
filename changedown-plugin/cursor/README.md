@@ -15,7 +15,7 @@ This builds hooks-impl and MCP server (if needed), installs hooks and skill in o
 Build the server once:
 
 ```bash
-cd changedown-plugin/mcp-server && npm ci && npm run build
+cd changedown-plugin/mcp-server && npm ci && npm run build[^cn-1]
 ```
 
 In Cursor: **Settings > Features > MCP** and ensure **changedown** is enabled.

@@ -2,6 +2,7 @@ import { ChangeNode, ChangeType, ChangeStatus, InlineMetadata, Approval, Revisio
 import { VirtualDocument } from '../model/document.js';
 import { TokenType } from './tokens.js';
 import { FOOTNOTE_REF_ANCHORED, FOOTNOTE_DEF_STRICT, IMAGE_DIMENSIONS_RE } from '../footnote-patterns.js';
+import { findFootnoteBlockStart } from '../footnote-utils.js';
 import { tryMatchFenceOpen, tryMatchFenceClose, skipInlineCode } from './code-zones.js';
 import { parseTimestamp } from '../timestamp.js';
 import { scanMaxCnId } from '../operations/footnote-generator.js';
@@ -122,6 +123,16 @@ export class CriticMarkupParser {
     let changeCounter = 0;
     const skipCodeBlocks = options?.skipCodeBlocks !== false; // default true
     const settledRefs = new Map<string, number>(); // id → offset position
+    const lines = text.split('\n');
+    const bodyEndIndex = findFootnoteBlockStart(lines);
+    let scanEnd = text.length;
+    if (bodyEndIndex < lines.length) {
+      scanEnd = 0;
+      for (let i = 0; i < bodyEndIndex; i++) {
+        scanEnd += lines[i]!.length + 1;
+      }
+    }
+    const scanText = text.slice(0, scanEnd);
 
     // Code block awareness state (local to this parse call)
     let atLineStart = true;
@@ -129,13 +140,13 @@ export class CriticMarkupParser {
     let fenceMarkerCode = 0; // charCode of '`' (96) or '~' (126)
     let fenceLength = 0;
 
-    while (position < text.length) {
-      const ch = text.charCodeAt(position);
+    while (position < scanText.length) {
+      const ch = scanText.charCodeAt(position);
 
       // ── Fenced code block handling ──────────────────────────────
       if (skipCodeBlocks && inFence) {
         if (atLineStart) {
-          const closeResult = tryMatchFenceClose(text, position, fenceMarkerCode, fenceLength);
+          const closeResult = tryMatchFenceClose(scanText, position, fenceMarkerCode, fenceLength);
           if (closeResult >= 0) {
             // Fence closed — advance past the closing fence line
             inFence = false;
@@ -145,9 +156,9 @@ export class CriticMarkupParser {
           }
         }
         // Inside fence: skip to end of line (or end of text)
-        const nextNewline = text.indexOf('\n', position);
+        const nextNewline = scanText.indexOf('\n', position);
         if (nextNewline === -1) {
-          position = text.length;
+          position = scanText.length;
         } else {
           position = nextNewline + 1;
           atLineStart = true;
@@ -157,7 +168,7 @@ export class CriticMarkupParser {
 
       // ── Fence opening detection (only at line start) ───────────
       if (skipCodeBlocks && atLineStart) {
-        const fenceResult = tryMatchFenceOpen(text, position);
+        const fenceResult = tryMatchFenceOpen(scanText, position);
         if (fenceResult) {
           inFence = true;
           fenceMarkerCode = fenceResult.markerCode;
@@ -171,16 +182,16 @@ export class CriticMarkupParser {
       // ── Inline code span detection ─────────────────────────────
       // Backtick (96) starts an inline code span
       if (skipCodeBlocks && ch === 96) { // '`'
-        const skipTo = skipInlineCode(text, position);
+        const skipTo = skipInlineCode(scanText, position);
         if (skipTo > position) {
           // Check if we crossed a newline boundary within the skipped range
-          atLineStart = text.charCodeAt(skipTo - 1) === 10; // '\n'
+          atLineStart = scanText.charCodeAt(skipTo - 1) === 10; // '\n'
           position = skipTo;
           continue;
         }
         // Unmatched backtick run — advance past it but don't skip content
         let runEnd = position + 1;
-        while (runEnd < text.length && text.charCodeAt(runEnd) === 96) {
+        while (runEnd < scanText.length && scanText.charCodeAt(runEnd) === 96) {
           runEnd++;
         }
         atLineStart = false;
@@ -189,24 +200,24 @@ export class CriticMarkupParser {
       }
 
       // ── Normal CriticMarkup parsing ────────────────────────────
-      const node = this.tryParseNode(text, position, changeCounter);
+      const node = this.tryParseNode(scanText, position, changeCounter);
       if (node) {
-        this.tryAttachAdjacentComment(text, node);
-        this.tryAttachFootnoteRef(text, node);
+        this.tryAttachAdjacentComment(scanText, node);
+        this.tryAttachFootnoteRef(scanText, node);
         changeCounter++;
         changes.push(node);
         position = node.range.end;
         // Update atLineStart based on the character before the new position
-        atLineStart = position > 0 && text.charCodeAt(position - 1) === 10;
+        atLineStart = position > 0 && scanText.charCodeAt(position - 1) === 10;
       } else {
         // Check for standalone footnote ref [^cn-N] not attached to CriticMarkup
-        if (ch === 91 && text.charCodeAt(position + 1) === 94) { // '[^'
-          const remaining = text.substring(position, position + 30);
+        if (ch === 91 && scanText.charCodeAt(position + 1) === 94) { // '[^'
+          const remaining = scanText.substring(position, position + 30);
           const refMatch = remaining.match(CriticMarkupParser.FOOTNOTE_REF);
           if (refMatch) {
             const afterRef = position + refMatch[0].length;
             // Skip footnote definitions — [^cn-N]: is a definition, not a standalone ref
-            if (text.charCodeAt(afterRef) !== 58) { // not ':'
+            if (scanText.charCodeAt(afterRef) !== 58) { // not ':'
               const refId = refMatch[1];
               // Only track if not already claimed by a CriticMarkup change
               if (!changes.some(c => c.id === refId)) {

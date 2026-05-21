@@ -415,7 +415,111 @@ function splitBodyAndFootnotes(lines) {
     bodyEndIndex: bodyEnd
   };
 }
+var FOOTNOTE_CONTINUATION = /^\s+\S/;
 var FOOTNOTE_THREAD_REPLY = /^\s+@\S+\s+\d{4}-\d{2}-\d{2}(?:[T ]\d{1,2}:\d{2}(?::\d{2})?(?:\s?[AaPp][Mm])?Z?)?(?:\s+\[[^\]]+\])?:/;
+
+// ../../packages/core/dist-esm/footnote-utils.js
+function parseFootnoteHeader(headerLine) {
+  const colonIdx = headerLine.indexOf(":");
+  if (colonIdx === -1)
+    return null;
+  const content = headerLine.slice(colonIdx + 1).trim();
+  const parts = content.split("|").map((p) => p.trim());
+  if (parts.length < 4)
+    return null;
+  return {
+    author: parts[0].replace(/^@/, ""),
+    date: parts[1],
+    type: parts[2],
+    status: parts[3]
+  };
+}
+function findFootnoteBlockStart(lines) {
+  const text = lines.join("\n");
+  const zones = findCodeZones(text);
+  const lineOffsets = [];
+  let offset = 0;
+  for (const line of lines) {
+    lineOffsets.push(offset);
+    offset += line.length + 1;
+  }
+  const isInCodeZone = (lineIdx) => {
+    const lineOffset2 = lineOffsets[lineIdx] ?? 0;
+    return zones.some((z) => lineOffset2 >= z.start && lineOffset2 < z.end);
+  };
+  const isFootnoteDef = (lineIdx) => !isInCodeZone(lineIdx) && FOOTNOTE_DEF_START.test(lines[lineIdx]);
+  let lastDefIdx = -1;
+  for (let i2 = lines.length - 1; i2 >= 0; i2--) {
+    if (isFootnoteDef(i2)) {
+      lastDefIdx = i2;
+      break;
+    }
+  }
+  if (lastDefIdx === -1) {
+    return lines.length;
+  }
+  let candidate = lastDefIdx;
+  while (candidate >= 0) {
+    let j = candidate + 1;
+    let isTerminal = true;
+    while (j < lines.length) {
+      const line = lines[j];
+      if (isFootnoteDef(j) || FOOTNOTE_CONTINUATION.test(line)) {
+        j++;
+      } else if (line.trim() === "") {
+        j++;
+      } else {
+        isTerminal = false;
+        break;
+      }
+    }
+    if (isTerminal) {
+      lastDefIdx = candidate;
+      break;
+    }
+    candidate--;
+    while (candidate >= 0 && !isFootnoteDef(candidate)) {
+      candidate--;
+    }
+  }
+  if (candidate < 0) {
+    return lines.length;
+  }
+  let blockStart = lastDefIdx;
+  let i = lastDefIdx - 1;
+  while (i >= 0) {
+    if (isFootnoteDef(i)) {
+      blockStart = i;
+      i--;
+      continue;
+    }
+    if (FOOTNOTE_CONTINUATION.test(lines[i]) || lines[i].trim() === "") {
+      let k = i;
+      while (k >= 0 && (FOOTNOTE_CONTINUATION.test(lines[k]) || lines[k].trim() === "")) {
+        k--;
+      }
+      if (k >= 0 && isFootnoteDef(k)) {
+        blockStart = k;
+        i = k - 1;
+        continue;
+      }
+    }
+    break;
+  }
+  return blockStart;
+}
+var FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(cn-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
+function extractFootnoteStatuses(text) {
+  const statuses = /* @__PURE__ */ new Map();
+  const lines = text.split("\n");
+  for (const line of lines) {
+    const m = FOOTNOTE_ID_AND_STATUS_RE.exec(line);
+    if (m) {
+      statuses.set(m[1], m[2].toLowerCase());
+    }
+  }
+  return statuses;
+}
 
 // ../../packages/core/dist-esm/operations/footnote-generator.js
 function generateFootnoteDefinition(id, type, author, date) {
@@ -598,15 +702,25 @@ var CriticMarkupParser = class _CriticMarkupParser {
     let changeCounter = 0;
     const skipCodeBlocks = options?.skipCodeBlocks !== false;
     const settledRefs = /* @__PURE__ */ new Map();
+    const lines = text.split("\n");
+    const bodyEndIndex = findFootnoteBlockStart(lines);
+    let scanEnd = text.length;
+    if (bodyEndIndex < lines.length) {
+      scanEnd = 0;
+      for (let i = 0; i < bodyEndIndex; i++) {
+        scanEnd += lines[i].length + 1;
+      }
+    }
+    const scanText = text.slice(0, scanEnd);
     let atLineStart = true;
     let inFence = false;
     let fenceMarkerCode = 0;
     let fenceLength = 0;
-    while (position < text.length) {
-      const ch = text.charCodeAt(position);
+    while (position < scanText.length) {
+      const ch = scanText.charCodeAt(position);
       if (skipCodeBlocks && inFence) {
         if (atLineStart) {
-          const closeResult = tryMatchFenceClose(text, position, fenceMarkerCode, fenceLength);
+          const closeResult = tryMatchFenceClose(scanText, position, fenceMarkerCode, fenceLength);
           if (closeResult >= 0) {
             inFence = false;
             position = closeResult;
@@ -614,9 +728,9 @@ var CriticMarkupParser = class _CriticMarkupParser {
             continue;
           }
         }
-        const nextNewline = text.indexOf("\n", position);
+        const nextNewline = scanText.indexOf("\n", position);
         if (nextNewline === -1) {
-          position = text.length;
+          position = scanText.length;
         } else {
           position = nextNewline + 1;
           atLineStart = true;
@@ -624,7 +738,7 @@ var CriticMarkupParser = class _CriticMarkupParser {
         continue;
       }
       if (skipCodeBlocks && atLineStart) {
-        const fenceResult = tryMatchFenceOpen(text, position);
+        const fenceResult = tryMatchFenceOpen(scanText, position);
         if (fenceResult) {
           inFence = true;
           fenceMarkerCode = fenceResult.markerCode;
@@ -635,35 +749,35 @@ var CriticMarkupParser = class _CriticMarkupParser {
         }
       }
       if (skipCodeBlocks && ch === 96) {
-        const skipTo = skipInlineCode(text, position);
+        const skipTo = skipInlineCode(scanText, position);
         if (skipTo > position) {
-          atLineStart = text.charCodeAt(skipTo - 1) === 10;
+          atLineStart = scanText.charCodeAt(skipTo - 1) === 10;
           position = skipTo;
           continue;
         }
         let runEnd = position + 1;
-        while (runEnd < text.length && text.charCodeAt(runEnd) === 96) {
+        while (runEnd < scanText.length && scanText.charCodeAt(runEnd) === 96) {
           runEnd++;
         }
         atLineStart = false;
         position = runEnd;
         continue;
       }
-      const node = this.tryParseNode(text, position, changeCounter);
+      const node = this.tryParseNode(scanText, position, changeCounter);
       if (node) {
-        this.tryAttachAdjacentComment(text, node);
-        this.tryAttachFootnoteRef(text, node);
+        this.tryAttachAdjacentComment(scanText, node);
+        this.tryAttachFootnoteRef(scanText, node);
         changeCounter++;
         changes.push(node);
         position = node.range.end;
-        atLineStart = position > 0 && text.charCodeAt(position - 1) === 10;
+        atLineStart = position > 0 && scanText.charCodeAt(position - 1) === 10;
       } else {
-        if (ch === 91 && text.charCodeAt(position + 1) === 94) {
-          const remaining = text.substring(position, position + 30);
+        if (ch === 91 && scanText.charCodeAt(position + 1) === 94) {
+          const remaining = scanText.substring(position, position + 30);
           const refMatch = remaining.match(_CriticMarkupParser.FOOTNOTE_REF);
           if (refMatch) {
             const afterRef = position + refMatch[0].length;
-            if (text.charCodeAt(afterRef) !== 58) {
+            if (scanText.charCodeAt(afterRef) !== 58) {
               const refId = refMatch[1];
               if (!changes.some((c) => c.id === refId)) {
                 settledRefs.set(refId, position);
@@ -1243,35 +1357,6 @@ CriticMarkupParser.REVISION_RE = /^(r\d+)\s+(@\S+)\s+(\S+):\s+"([^"]*)"$/;
 CriticMarkupParser.CONTEXT_RE = /^context:\s+"([^"]*)"$/;
 CriticMarkupParser.REASON_RE = /^reason:\s+(.+)$/;
 
-// ../../packages/core/dist-esm/footnote-utils.js
-function parseFootnoteHeader(headerLine) {
-  const colonIdx = headerLine.indexOf(":");
-  if (colonIdx === -1)
-    return null;
-  const content = headerLine.slice(colonIdx + 1).trim();
-  const parts = content.split("|").map((p) => p.trim());
-  if (parts.length < 4)
-    return null;
-  return {
-    author: parts[0].replace(/^@/, ""),
-    date: parts[1],
-    type: parts[2],
-    status: parts[3]
-  };
-}
-var FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(cn-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
-function extractFootnoteStatuses(text) {
-  const statuses = /* @__PURE__ */ new Map();
-  const lines = text.split("\n");
-  for (const line of lines) {
-    const m = FOOTNOTE_ID_AND_STATUS_RE.exec(line);
-    if (m) {
-      statuses.set(m[1], m[2].toLowerCase());
-    }
-  }
-  return statuses;
-}
-
 // ../../node_modules/xxhash-wasm/esm/xxhash-wasm.js
 var t = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 48, 8, 96, 3, 127, 127, 127, 1, 127, 96, 3, 127, 127, 127, 0, 96, 2, 127, 127, 0, 96, 1, 127, 1, 127, 96, 3, 127, 127, 126, 1, 126, 96, 3, 126, 127, 127, 1, 126, 96, 2, 127, 126, 0, 96, 1, 127, 1, 126, 3, 11, 10, 0, 0, 2, 1, 3, 4, 5, 6, 1, 7, 5, 3, 1, 0, 1, 7, 85, 9, 3, 109, 101, 109, 2, 0, 5, 120, 120, 104, 51, 50, 0, 0, 6, 105, 110, 105, 116, 51, 50, 0, 2, 8, 117, 112, 100, 97, 116, 101, 51, 50, 0, 3, 8, 100, 105, 103, 101, 115, 116, 51, 50, 0, 4, 5, 120, 120, 104, 54, 52, 0, 5, 6, 105, 110, 105, 116, 54, 52, 0, 7, 8, 117, 112, 100, 97, 116, 101, 54, 52, 0, 8, 8, 100, 105, 103, 101, 115, 116, 54, 52, 0, 9, 10, 251, 22, 10, 242, 1, 1, 4, 127, 32, 0, 32, 1, 106, 33, 3, 32, 1, 65, 16, 79, 4, 127, 32, 3, 65, 16, 107, 33, 6, 32, 2, 65, 168, 136, 141, 161, 2, 106, 33, 3, 32, 2, 65, 137, 235, 208, 208, 7, 107, 33, 4, 32, 2, 65, 207, 140, 162, 142, 6, 106, 33, 5, 3, 64, 32, 3, 32, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 3, 32, 4, 32, 0, 65, 4, 106, 34, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 4, 32, 2, 32, 0, 65, 4, 106, 34, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 2, 32, 5, 32, 0, 65, 4, 106, 34, 0, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 5, 32, 6, 32, 0, 65, 4, 106, 34, 0, 79, 13, 0, 11, 32, 2, 65, 12, 119, 32, 5, 65, 18, 119, 106, 32, 4, 65, 7, 119, 106, 32, 3, 65, 1, 119, 106, 5, 32, 2, 65, 177, 207, 217, 178, 1, 106, 11, 32, 1, 106, 32, 0, 32, 1, 65, 15, 113, 16, 1, 11, 146, 1, 0, 32, 1, 32, 2, 106, 33, 2, 3, 64, 32, 1, 65, 4, 106, 32, 2, 75, 69, 4, 64, 32, 0, 32, 1, 40, 2, 0, 65, 189, 220, 202, 149, 124, 108, 106, 65, 17, 119, 65, 175, 214, 211, 190, 2, 108, 33, 0, 32, 1, 65, 4, 106, 33, 1, 12, 1, 11, 11, 3, 64, 32, 1, 32, 2, 79, 69, 4, 64, 32, 0, 32, 1, 45, 0, 0, 65, 177, 207, 217, 178, 1, 108, 106, 65, 11, 119, 65, 177, 243, 221, 241, 121, 108, 33, 0, 32, 1, 65, 1, 106, 33, 1, 12, 1, 11, 11, 32, 0, 32, 0, 65, 15, 118, 115, 65, 247, 148, 175, 175, 120, 108, 34, 0, 65, 13, 118, 32, 0, 115, 65, 189, 220, 202, 149, 124, 108, 34, 0, 65, 16, 118, 32, 0, 115, 11, 63, 0, 32, 0, 65, 8, 106, 32, 1, 65, 168, 136, 141, 161, 2, 106, 54, 2, 0, 32, 0, 65, 12, 106, 32, 1, 65, 137, 235, 208, 208, 7, 107, 54, 2, 0, 32, 0, 65, 16, 106, 32, 1, 54, 2, 0, 32, 0, 65, 20, 106, 32, 1, 65, 207, 140, 162, 142, 6, 106, 54, 2, 0, 11, 195, 4, 1, 6, 127, 32, 1, 32, 2, 106, 33, 6, 32, 0, 65, 24, 106, 33, 4, 32, 0, 65, 40, 106, 40, 2, 0, 33, 3, 32, 0, 32, 0, 40, 2, 0, 32, 2, 106, 54, 2, 0, 32, 0, 65, 4, 106, 34, 5, 32, 5, 40, 2, 0, 32, 2, 65, 16, 79, 32, 0, 40, 2, 0, 65, 16, 79, 114, 114, 54, 2, 0, 32, 2, 32, 3, 106, 65, 16, 73, 4, 64, 32, 3, 32, 4, 106, 32, 1, 32, 2, 252, 10, 0, 0, 32, 0, 65, 40, 106, 32, 2, 32, 3, 106, 54, 2, 0, 15, 11, 32, 3, 4, 64, 32, 3, 32, 4, 106, 32, 1, 65, 16, 32, 3, 107, 34, 2, 252, 10, 0, 0, 32, 0, 65, 8, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 12, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 65, 4, 106, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 16, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 65, 8, 106, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 20, 106, 34, 3, 32, 3, 40, 2, 0, 32, 4, 65, 12, 106, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 54, 2, 0, 32, 0, 65, 40, 106, 65, 0, 54, 2, 0, 32, 1, 32, 2, 106, 33, 1, 11, 32, 1, 32, 6, 65, 16, 107, 77, 4, 64, 32, 6, 65, 16, 107, 33, 8, 32, 0, 65, 8, 106, 40, 2, 0, 33, 2, 32, 0, 65, 12, 106, 40, 2, 0, 33, 3, 32, 0, 65, 16, 106, 40, 2, 0, 33, 5, 32, 0, 65, 20, 106, 40, 2, 0, 33, 7, 3, 64, 32, 2, 32, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 2, 32, 3, 32, 1, 65, 4, 106, 34, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 3, 32, 5, 32, 1, 65, 4, 106, 34, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 5, 32, 7, 32, 1, 65, 4, 106, 34, 1, 40, 2, 0, 65, 247, 148, 175, 175, 120, 108, 106, 65, 13, 119, 65, 177, 243, 221, 241, 121, 108, 33, 7, 32, 8, 32, 1, 65, 4, 106, 34, 1, 79, 13, 0, 11, 32, 0, 65, 8, 106, 32, 2, 54, 2, 0, 32, 0, 65, 12, 106, 32, 3, 54, 2, 0, 32, 0, 65, 16, 106, 32, 5, 54, 2, 0, 32, 0, 65, 20, 106, 32, 7, 54, 2, 0, 11, 32, 1, 32, 6, 73, 4, 64, 32, 4, 32, 1, 32, 6, 32, 1, 107, 34, 1, 252, 10, 0, 0, 32, 0, 65, 40, 106, 32, 1, 54, 2, 0, 11, 11, 97, 1, 1, 127, 32, 0, 65, 16, 106, 40, 2, 0, 33, 1, 32, 0, 65, 4, 106, 40, 2, 0, 4, 127, 32, 1, 65, 12, 119, 32, 0, 65, 20, 106, 40, 2, 0, 65, 18, 119, 106, 32, 0, 65, 12, 106, 40, 2, 0, 65, 7, 119, 106, 32, 0, 65, 8, 106, 40, 2, 0, 65, 1, 119, 106, 5, 32, 1, 65, 177, 207, 217, 178, 1, 106, 11, 32, 0, 40, 2, 0, 106, 32, 0, 65, 24, 106, 32, 0, 65, 40, 106, 40, 2, 0, 16, 1, 11, 255, 3, 2, 3, 126, 1, 127, 32, 0, 32, 1, 106, 33, 6, 32, 1, 65, 32, 79, 4, 126, 32, 6, 65, 32, 107, 33, 6, 32, 2, 66, 214, 235, 130, 238, 234, 253, 137, 245, 224, 0, 124, 33, 3, 32, 2, 66, 177, 169, 172, 193, 173, 184, 212, 166, 61, 125, 33, 4, 32, 2, 66, 249, 234, 208, 208, 231, 201, 161, 228, 225, 0, 124, 33, 5, 3, 64, 32, 3, 32, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 3, 32, 4, 32, 0, 65, 8, 106, 34, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 4, 32, 2, 32, 0, 65, 8, 106, 34, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 2, 32, 5, 32, 0, 65, 8, 106, 34, 0, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 5, 32, 6, 32, 0, 65, 8, 106, 34, 0, 79, 13, 0, 11, 32, 2, 66, 12, 137, 32, 5, 66, 18, 137, 124, 32, 4, 66, 7, 137, 124, 32, 3, 66, 1, 137, 124, 32, 3, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 4, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 2, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 5, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 5, 32, 2, 66, 197, 207, 217, 178, 241, 229, 186, 234, 39, 124, 11, 32, 1, 173, 124, 32, 0, 32, 1, 65, 31, 113, 16, 6, 11, 134, 2, 0, 32, 1, 32, 2, 106, 33, 2, 3, 64, 32, 2, 32, 1, 65, 8, 106, 79, 4, 64, 32, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 32, 0, 133, 66, 27, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 33, 0, 32, 1, 65, 8, 106, 33, 1, 12, 1, 11, 11, 32, 1, 65, 4, 106, 32, 2, 77, 4, 64, 32, 0, 32, 1, 53, 2, 0, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 23, 137, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 249, 243, 221, 241, 153, 246, 153, 171, 22, 124, 33, 0, 32, 1, 65, 4, 106, 33, 1, 11, 3, 64, 32, 1, 32, 2, 73, 4, 64, 32, 0, 32, 1, 49, 0, 0, 66, 197, 207, 217, 178, 241, 229, 186, 234, 39, 126, 133, 66, 11, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 0, 32, 1, 65, 1, 106, 33, 1, 12, 1, 11, 11, 32, 0, 32, 0, 66, 33, 136, 133, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 34, 0, 32, 0, 66, 29, 136, 133, 66, 249, 243, 221, 241, 153, 246, 153, 171, 22, 126, 34, 0, 32, 0, 66, 32, 136, 133, 11, 77, 0, 32, 0, 65, 8, 106, 32, 1, 66, 214, 235, 130, 238, 234, 253, 137, 245, 224, 0, 124, 55, 3, 0, 32, 0, 65, 16, 106, 32, 1, 66, 177, 169, 172, 193, 173, 184, 212, 166, 61, 125, 55, 3, 0, 32, 0, 65, 24, 106, 32, 1, 55, 3, 0, 32, 0, 65, 32, 106, 32, 1, 66, 249, 234, 208, 208, 231, 201, 161, 228, 225, 0, 124, 55, 3, 0, 11, 244, 4, 2, 3, 127, 4, 126, 32, 1, 32, 2, 106, 33, 5, 32, 0, 65, 40, 106, 33, 4, 32, 0, 65, 200, 0, 106, 40, 2, 0, 33, 3, 32, 0, 32, 0, 41, 3, 0, 32, 2, 173, 124, 55, 3, 0, 32, 2, 32, 3, 106, 65, 32, 73, 4, 64, 32, 3, 32, 4, 106, 32, 1, 32, 2, 252, 10, 0, 0, 32, 0, 65, 200, 0, 106, 32, 2, 32, 3, 106, 54, 2, 0, 15, 11, 32, 3, 4, 64, 32, 3, 32, 4, 106, 32, 1, 65, 32, 32, 3, 107, 34, 2, 252, 10, 0, 0, 32, 0, 65, 8, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 16, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 65, 8, 106, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 24, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 65, 16, 106, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 32, 106, 34, 3, 32, 3, 41, 3, 0, 32, 4, 65, 24, 106, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 55, 3, 0, 32, 0, 65, 200, 0, 106, 65, 0, 54, 2, 0, 32, 1, 32, 2, 106, 33, 1, 11, 32, 1, 65, 32, 106, 32, 5, 77, 4, 64, 32, 5, 65, 32, 107, 33, 2, 32, 0, 65, 8, 106, 41, 3, 0, 33, 6, 32, 0, 65, 16, 106, 41, 3, 0, 33, 7, 32, 0, 65, 24, 106, 41, 3, 0, 33, 8, 32, 0, 65, 32, 106, 41, 3, 0, 33, 9, 3, 64, 32, 6, 32, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 6, 32, 7, 32, 1, 65, 8, 106, 34, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 7, 32, 8, 32, 1, 65, 8, 106, 34, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 8, 32, 9, 32, 1, 65, 8, 106, 34, 1, 41, 3, 0, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 124, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 33, 9, 32, 2, 32, 1, 65, 8, 106, 34, 1, 79, 13, 0, 11, 32, 0, 65, 8, 106, 32, 6, 55, 3, 0, 32, 0, 65, 16, 106, 32, 7, 55, 3, 0, 32, 0, 65, 24, 106, 32, 8, 55, 3, 0, 32, 0, 65, 32, 106, 32, 9, 55, 3, 0, 11, 32, 1, 32, 5, 73, 4, 64, 32, 4, 32, 1, 32, 5, 32, 1, 107, 34, 1, 252, 10, 0, 0, 32, 0, 65, 200, 0, 106, 32, 1, 54, 2, 0, 11, 11, 188, 2, 1, 5, 126, 32, 0, 65, 24, 106, 41, 3, 0, 33, 1, 32, 0, 41, 3, 0, 34, 2, 66, 32, 90, 4, 126, 32, 0, 65, 8, 106, 41, 3, 0, 34, 3, 66, 1, 137, 32, 0, 65, 16, 106, 41, 3, 0, 34, 4, 66, 7, 137, 124, 32, 1, 66, 12, 137, 32, 0, 65, 32, 106, 41, 3, 0, 34, 5, 66, 18, 137, 124, 124, 32, 3, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 4, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 1, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 32, 5, 66, 207, 214, 211, 190, 210, 199, 171, 217, 66, 126, 66, 31, 137, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 133, 66, 135, 149, 175, 175, 152, 182, 222, 155, 158, 127, 126, 66, 157, 163, 181, 234, 131, 177, 141, 138, 250, 0, 125, 5, 32, 1, 66, 197, 207, 217, 178, 241, 229, 186, 234, 39, 124, 11, 32, 2, 124, 32, 0, 65, 40, 106, 32, 2, 66, 31, 131, 167, 16, 6, 11]);
 
@@ -1353,6 +1438,30 @@ function extractBetween(text, opener, closer) {
     return null;
   return text.slice(opener.length, closerIdx);
 }
+function parseRangeContextReplacement(editPart) {
+  if (!editPart.startsWith("{~~~\n"))
+    return null;
+  const lines = editPart.split("\n");
+  if (lines[0] !== "{~~~" || lines[lines.length - 1] !== "~~}") {
+    throw new Error('Context-bearing range replacement must start with a line exactly "{~~~" and end with a line exactly "~~}".');
+  }
+  const ellipsisIndices = lines.map((line, index) => line === "..." ? index : -1).filter((index) => index !== -1);
+  if (ellipsisIndices.length !== 1) {
+    throw new Error("Context-bearing range replacement requires exactly one standalone ... endpoint separator line.");
+  }
+  const ellipsisIndex = ellipsisIndices[0];
+  const arrowIndex = lines.findIndex((line, index) => index > ellipsisIndex && line === "~>");
+  if (arrowIndex === -1) {
+    throw new Error("Context-bearing range replacement requires a standalone ~> separator line.");
+  }
+  const opening = lines.slice(1, ellipsisIndex).join("\n");
+  const closing = lines.slice(ellipsisIndex + 1, arrowIndex).join("\n");
+  const newText = lines.slice(arrowIndex + 1, -1).join("\n");
+  if (opening.trim() === "" || closing.trim() === "") {
+    throw new Error("Context-bearing range replacement requires non-empty opening and closing anchors.");
+  }
+  return { rangeContext: { opening, closing }, newText };
+}
 function parseOp(op) {
   if (op === "") {
     throw new Error("Op string is empty \u2014 nothing to parse.");
@@ -1370,6 +1479,16 @@ function parseOp(op) {
     };
   }
   const [withoutReasoning, reasoning] = splitReasoning(op);
+  const rangeReplacement = parseRangeContextReplacement(withoutReasoning);
+  if (rangeReplacement) {
+    return {
+      type: "sub",
+      oldText: "",
+      newText: rangeReplacement.newText,
+      reasoning,
+      rangeContext: rangeReplacement.rangeContext
+    };
+  }
   const insContent = extractBetween(withoutReasoning, "{++", "++}");
   if (insContent !== null) {
     return {

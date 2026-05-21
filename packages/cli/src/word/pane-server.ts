@@ -58,7 +58,7 @@ async function readDevCerts(): Promise<{ key: Buffer; cert: Buffer }> {
     // macOS rejects leaf-only chains with a silent TLS handshake failure
     // (openssl: "unable to verify the first certificate"). The Node `ca`
     // option controls client-cert trust, not server chain — it must NOT be
-    // used here. See changedown-plugin/mcp-server/src/transport/fixed-port-leader.ts.
+    // used here. See packages/mcp/src/transport/fixed-port-leader.ts.
     const cert = ca ? Buffer.concat([leaf, Buffer.from('\n'), ca]) : leaf;
     return { key, cert };
   } catch (err) {

@@ -2,7 +2,7 @@
   "name": "changedown-vscode",
   "displayName": "Changedown",
   "description": "Track changes in Markdown, for humans and AI",
-  "version": "0.4.6",
+  "version": "0.5.0",
   "publisher": "changedown",
   "license": "MIT",
   "repository": {

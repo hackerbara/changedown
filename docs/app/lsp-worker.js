@@ -9165,6 +9165,228 @@ ${JSON.stringify(message, null, 4)}`);
     }
   });
 
+  // ../core/dist/footnote-utils.js
+  var require_footnote_utils = __commonJS({
+    "../core/dist/footnote-utils.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.countFootnoteHeadersWithStatus = countFootnoteHeadersWithStatus;
+      exports.findFootnoteBlock = findFootnoteBlock;
+      exports.parseFootnoteHeader = parseFootnoteHeader;
+      exports.findDiscussionInsertionIndex = findDiscussionInsertionIndex;
+      exports.findReviewInsertionIndex = findReviewInsertionIndex;
+      exports.findChildFootnoteIds = findChildFootnoteIds;
+      exports.resolveChangeById = resolveChangeById;
+      exports.findFootnoteBlockStart = findFootnoteBlockStart;
+      exports.extractFootnoteStatuses = extractFootnoteStatuses;
+      var footnote_patterns_js_1 = require_footnote_patterns();
+      var code_zones_js_1 = require_code_zones();
+      function countFootnoteHeadersWithStatus(content, status) {
+        let count = 0;
+        for (const s of extractFootnoteStatuses(content).values()) {
+          if (s === status)
+            count++;
+        }
+        return count;
+      }
+      function findFootnoteBlock(lines, changeId) {
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].startsWith(`[^${changeId}]:`)) {
+            let end = i;
+            let j = i + 1;
+            while (j < lines.length) {
+              if (lines[j].startsWith("[^cn-"))
+                break;
+              if (lines[j].startsWith("    ")) {
+                end = j;
+                j++;
+                continue;
+              }
+              if (lines[j].trim() === "") {
+                let k = j + 1;
+                let hasMore = false;
+                while (k < lines.length && !lines[k].startsWith("[^cn-")) {
+                  if (lines[k].startsWith("    ")) {
+                    hasMore = true;
+                    break;
+                  }
+                  if (lines[k].trim() !== "")
+                    break;
+                  k++;
+                }
+                if (hasMore) {
+                  j++;
+                  continue;
+                }
+                break;
+              }
+              break;
+            }
+            return { headerLine: i, blockEnd: end, headerContent: lines[i] };
+          }
+        }
+        return null;
+      }
+      function parseFootnoteHeader(headerLine) {
+        const colonIdx = headerLine.indexOf(":");
+        if (colonIdx === -1)
+          return null;
+        const content = headerLine.slice(colonIdx + 1).trim();
+        const parts = content.split("|").map((p) => p.trim());
+        if (parts.length < 4)
+          return null;
+        return {
+          author: parts[0].replace(/^@/, ""),
+          date: parts[1],
+          type: parts[2],
+          status: parts[3]
+        };
+      }
+      function findDiscussionInsertionIndex(lines, headerLine, blockEnd) {
+        let insertAfter = headerLine;
+        for (let i = headerLine + 1; i <= blockEnd; i++) {
+          const trimmed = lines[i].trim();
+          if (trimmed === "")
+            continue;
+          if (isApprovalOrResolutionLine(trimmed)) {
+            return i - 1;
+          }
+          insertAfter = i;
+        }
+        return insertAfter;
+      }
+      function findReviewInsertionIndex(lines, headerLine, blockEnd) {
+        let insertAfter = headerLine;
+        for (let i = headerLine + 1; i <= blockEnd; i++) {
+          const trimmed = lines[i].trim();
+          if (trimmed === "")
+            continue;
+          if (isResolutionLine(trimmed)) {
+            return i - 1;
+          }
+          insertAfter = i;
+        }
+        return insertAfter;
+      }
+      function findChildFootnoteIds(lines, parentId) {
+        const prefix = `[^${parentId}.`;
+        const children = [];
+        for (const line of lines) {
+          if (line.startsWith(prefix)) {
+            const closeBracket = line.indexOf("]:");
+            if (closeBracket !== -1) {
+              children.push(line.slice(2, closeBracket));
+            }
+          }
+        }
+        return children;
+      }
+      function resolveChangeById(fileContent, changeId) {
+        const lines = fileContent.split("\n");
+        const footnoteBlock = findFootnoteBlock(lines, changeId);
+        const refPattern = `[^${changeId}]`;
+        const refIndex = fileContent.indexOf(refPattern);
+        const inlineRefOffset = refIndex !== -1 && fileContent[refIndex + refPattern.length] !== ":" ? refIndex : null;
+        if (!footnoteBlock && inlineRefOffset === null) {
+          return null;
+        }
+        return { footnoteBlock, inlineRefOffset };
+      }
+      function findFootnoteBlockStart(lines) {
+        const text = lines.join("\n");
+        const zones = (0, code_zones_js_1.findCodeZones)(text);
+        const lineOffsets = [];
+        let offset = 0;
+        for (const line of lines) {
+          lineOffsets.push(offset);
+          offset += line.length + 1;
+        }
+        const isInCodeZone = (lineIdx) => {
+          const lineOffset = lineOffsets[lineIdx] ?? 0;
+          return zones.some((z) => lineOffset >= z.start && lineOffset < z.end);
+        };
+        const isFootnoteDef = (lineIdx) => !isInCodeZone(lineIdx) && footnote_patterns_js_1.FOOTNOTE_DEF_START.test(lines[lineIdx]);
+        let lastDefIdx = -1;
+        for (let i2 = lines.length - 1; i2 >= 0; i2--) {
+          if (isFootnoteDef(i2)) {
+            lastDefIdx = i2;
+            break;
+          }
+        }
+        if (lastDefIdx === -1) {
+          return lines.length;
+        }
+        let candidate = lastDefIdx;
+        while (candidate >= 0) {
+          let j = candidate + 1;
+          let isTerminal = true;
+          while (j < lines.length) {
+            const line = lines[j];
+            if (isFootnoteDef(j) || footnote_patterns_js_1.FOOTNOTE_CONTINUATION.test(line)) {
+              j++;
+            } else if (line.trim() === "") {
+              j++;
+            } else {
+              isTerminal = false;
+              break;
+            }
+          }
+          if (isTerminal) {
+            lastDefIdx = candidate;
+            break;
+          }
+          candidate--;
+          while (candidate >= 0 && !isFootnoteDef(candidate)) {
+            candidate--;
+          }
+        }
+        if (candidate < 0) {
+          return lines.length;
+        }
+        let blockStart = lastDefIdx;
+        let i = lastDefIdx - 1;
+        while (i >= 0) {
+          if (isFootnoteDef(i)) {
+            blockStart = i;
+            i--;
+            continue;
+          }
+          if (footnote_patterns_js_1.FOOTNOTE_CONTINUATION.test(lines[i]) || lines[i].trim() === "") {
+            let k = i;
+            while (k >= 0 && (footnote_patterns_js_1.FOOTNOTE_CONTINUATION.test(lines[k]) || lines[k].trim() === "")) {
+              k--;
+            }
+            if (k >= 0 && isFootnoteDef(k)) {
+              blockStart = k;
+              i = k - 1;
+              continue;
+            }
+          }
+          break;
+        }
+        return blockStart;
+      }
+      function isApprovalOrResolutionLine(trimmed) {
+        return trimmed.startsWith("approved:") || trimmed.startsWith("rejected:") || trimmed.startsWith("request-changes:") || trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
+      }
+      function isResolutionLine(trimmed) {
+        return trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
+      }
+      var FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(cn-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
+      function extractFootnoteStatuses(text) {
+        const statuses = /* @__PURE__ */ new Map();
+        const lines = text.split("\n");
+        for (const line of lines) {
+          const m = FOOTNOTE_ID_AND_STATUS_RE.exec(line);
+          if (m) {
+            statuses.set(m[1], m[2].toLowerCase());
+          }
+        }
+        return statuses;
+      }
+    }
+  });
+
   // ../core/dist/operations/footnote-generator.js
   var require_footnote_generator = __commonJS({
     "../core/dist/operations/footnote-generator.js"(exports) {
@@ -9302,6 +9524,7 @@ ${JSON.stringify(message, null, 4)}`);
       var document_js_1 = require_document();
       var tokens_js_1 = require_tokens();
       var footnote_patterns_js_1 = require_footnote_patterns();
+      var footnote_utils_js_1 = require_footnote_utils();
       var code_zones_js_1 = require_code_zones();
       var timestamp_js_1 = require_timestamp();
       var footnote_generator_js_1 = require_footnote_generator();
@@ -9372,15 +9595,25 @@ ${JSON.stringify(message, null, 4)}`);
           let changeCounter = 0;
           const skipCodeBlocks = options?.skipCodeBlocks !== false;
           const settledRefs = /* @__PURE__ */ new Map();
+          const lines = text.split("\n");
+          const bodyEndIndex = (0, footnote_utils_js_1.findFootnoteBlockStart)(lines);
+          let scanEnd = text.length;
+          if (bodyEndIndex < lines.length) {
+            scanEnd = 0;
+            for (let i = 0; i < bodyEndIndex; i++) {
+              scanEnd += lines[i].length + 1;
+            }
+          }
+          const scanText = text.slice(0, scanEnd);
           let atLineStart = true;
           let inFence = false;
           let fenceMarkerCode = 0;
           let fenceLength = 0;
-          while (position < text.length) {
-            const ch = text.charCodeAt(position);
+          while (position < scanText.length) {
+            const ch = scanText.charCodeAt(position);
             if (skipCodeBlocks && inFence) {
               if (atLineStart) {
-                const closeResult = (0, code_zones_js_1.tryMatchFenceClose)(text, position, fenceMarkerCode, fenceLength);
+                const closeResult = (0, code_zones_js_1.tryMatchFenceClose)(scanText, position, fenceMarkerCode, fenceLength);
                 if (closeResult >= 0) {
                   inFence = false;
                   position = closeResult;
@@ -9388,9 +9621,9 @@ ${JSON.stringify(message, null, 4)}`);
                   continue;
                 }
               }
-              const nextNewline = text.indexOf("\n", position);
+              const nextNewline = scanText.indexOf("\n", position);
               if (nextNewline === -1) {
-                position = text.length;
+                position = scanText.length;
               } else {
                 position = nextNewline + 1;
                 atLineStart = true;
@@ -9398,7 +9631,7 @@ ${JSON.stringify(message, null, 4)}`);
               continue;
             }
             if (skipCodeBlocks && atLineStart) {
-              const fenceResult = (0, code_zones_js_1.tryMatchFenceOpen)(text, position);
+              const fenceResult = (0, code_zones_js_1.tryMatchFenceOpen)(scanText, position);
               if (fenceResult) {
                 inFence = true;
                 fenceMarkerCode = fenceResult.markerCode;
@@ -9409,35 +9642,35 @@ ${JSON.stringify(message, null, 4)}`);
               }
             }
             if (skipCodeBlocks && ch === 96) {
-              const skipTo = (0, code_zones_js_1.skipInlineCode)(text, position);
+              const skipTo = (0, code_zones_js_1.skipInlineCode)(scanText, position);
               if (skipTo > position) {
-                atLineStart = text.charCodeAt(skipTo - 1) === 10;
+                atLineStart = scanText.charCodeAt(skipTo - 1) === 10;
                 position = skipTo;
                 continue;
               }
               let runEnd = position + 1;
-              while (runEnd < text.length && text.charCodeAt(runEnd) === 96) {
+              while (runEnd < scanText.length && scanText.charCodeAt(runEnd) === 96) {
                 runEnd++;
               }
               atLineStart = false;
               position = runEnd;
               continue;
             }
-            const node = this.tryParseNode(text, position, changeCounter);
+            const node = this.tryParseNode(scanText, position, changeCounter);
             if (node) {
-              this.tryAttachAdjacentComment(text, node);
-              this.tryAttachFootnoteRef(text, node);
+              this.tryAttachAdjacentComment(scanText, node);
+              this.tryAttachFootnoteRef(scanText, node);
               changeCounter++;
               changes.push(node);
               position = node.range.end;
-              atLineStart = position > 0 && text.charCodeAt(position - 1) === 10;
+              atLineStart = position > 0 && scanText.charCodeAt(position - 1) === 10;
             } else {
-              if (ch === 91 && text.charCodeAt(position + 1) === 94) {
-                const remaining = text.substring(position, position + 30);
+              if (ch === 91 && scanText.charCodeAt(position + 1) === 94) {
+                const remaining = scanText.substring(position, position + 30);
                 const refMatch = remaining.match(_CriticMarkupParser.FOOTNOTE_REF);
                 if (refMatch) {
                   const afterRef = position + refMatch[0].length;
-                  if (text.charCodeAt(afterRef) !== 58) {
+                  if (scanText.charCodeAt(afterRef) !== 58) {
                     const refId = refMatch[1];
                     if (!changes.some((c) => c.id === refId)) {
                       settledRefs.set(refId, position);
@@ -10017,217 +10250,6 @@ ${JSON.stringify(message, null, 4)}`);
       CriticMarkupParser.REVISION_RE = /^(r\d+)\s+(@\S+)\s+(\S+):\s+"([^"]*)"$/;
       CriticMarkupParser.CONTEXT_RE = /^context:\s+"([^"]*)"$/;
       CriticMarkupParser.REASON_RE = /^reason:\s+(.+)$/;
-    }
-  });
-
-  // ../core/dist/footnote-utils.js
-  var require_footnote_utils = __commonJS({
-    "../core/dist/footnote-utils.js"(exports) {
-      "use strict";
-      Object.defineProperty(exports, "__esModule", { value: true });
-      exports.countFootnoteHeadersWithStatus = countFootnoteHeadersWithStatus;
-      exports.findFootnoteBlock = findFootnoteBlock;
-      exports.parseFootnoteHeader = parseFootnoteHeader;
-      exports.findDiscussionInsertionIndex = findDiscussionInsertionIndex;
-      exports.findReviewInsertionIndex = findReviewInsertionIndex;
-      exports.findChildFootnoteIds = findChildFootnoteIds;
-      exports.resolveChangeById = resolveChangeById;
-      exports.findFootnoteBlockStart = findFootnoteBlockStart;
-      exports.extractFootnoteStatuses = extractFootnoteStatuses;
-      var footnote_patterns_js_1 = require_footnote_patterns();
-      function countFootnoteHeadersWithStatus(content, status) {
-        let count = 0;
-        for (const s of extractFootnoteStatuses(content).values()) {
-          if (s === status)
-            count++;
-        }
-        return count;
-      }
-      function findFootnoteBlock(lines, changeId) {
-        for (let i = 0; i < lines.length; i++) {
-          if (lines[i].startsWith(`[^${changeId}]:`)) {
-            let end = i;
-            let j = i + 1;
-            while (j < lines.length) {
-              if (lines[j].startsWith("[^cn-"))
-                break;
-              if (lines[j].startsWith("    ")) {
-                end = j;
-                j++;
-                continue;
-              }
-              if (lines[j].trim() === "") {
-                let k = j + 1;
-                let hasMore = false;
-                while (k < lines.length && !lines[k].startsWith("[^cn-")) {
-                  if (lines[k].startsWith("    ")) {
-                    hasMore = true;
-                    break;
-                  }
-                  if (lines[k].trim() !== "")
-                    break;
-                  k++;
-                }
-                if (hasMore) {
-                  j++;
-                  continue;
-                }
-                break;
-              }
-              break;
-            }
-            return { headerLine: i, blockEnd: end, headerContent: lines[i] };
-          }
-        }
-        return null;
-      }
-      function parseFootnoteHeader(headerLine) {
-        const colonIdx = headerLine.indexOf(":");
-        if (colonIdx === -1)
-          return null;
-        const content = headerLine.slice(colonIdx + 1).trim();
-        const parts = content.split("|").map((p) => p.trim());
-        if (parts.length < 4)
-          return null;
-        return {
-          author: parts[0].replace(/^@/, ""),
-          date: parts[1],
-          type: parts[2],
-          status: parts[3]
-        };
-      }
-      function findDiscussionInsertionIndex(lines, headerLine, blockEnd) {
-        let insertAfter = headerLine;
-        for (let i = headerLine + 1; i <= blockEnd; i++) {
-          const trimmed = lines[i].trim();
-          if (trimmed === "")
-            continue;
-          if (isApprovalOrResolutionLine(trimmed)) {
-            return i - 1;
-          }
-          insertAfter = i;
-        }
-        return insertAfter;
-      }
-      function findReviewInsertionIndex(lines, headerLine, blockEnd) {
-        let insertAfter = headerLine;
-        for (let i = headerLine + 1; i <= blockEnd; i++) {
-          const trimmed = lines[i].trim();
-          if (trimmed === "")
-            continue;
-          if (isResolutionLine(trimmed)) {
-            return i - 1;
-          }
-          insertAfter = i;
-        }
-        return insertAfter;
-      }
-      function findChildFootnoteIds(lines, parentId) {
-        const prefix = `[^${parentId}.`;
-        const children = [];
-        for (const line of lines) {
-          if (line.startsWith(prefix)) {
-            const closeBracket = line.indexOf("]:");
-            if (closeBracket !== -1) {
-              children.push(line.slice(2, closeBracket));
-            }
-          }
-        }
-        return children;
-      }
-      function resolveChangeById(fileContent, changeId) {
-        const lines = fileContent.split("\n");
-        const footnoteBlock = findFootnoteBlock(lines, changeId);
-        const refPattern = `[^${changeId}]`;
-        const refIndex = fileContent.indexOf(refPattern);
-        const inlineRefOffset = refIndex !== -1 && fileContent[refIndex + refPattern.length] !== ":" ? refIndex : null;
-        if (!footnoteBlock && inlineRefOffset === null) {
-          return null;
-        }
-        return { footnoteBlock, inlineRefOffset };
-      }
-      function findFootnoteBlockStart(lines) {
-        let lastDefIdx = -1;
-        for (let i = lines.length - 1; i >= 0; i--) {
-          if (footnote_patterns_js_1.FOOTNOTE_DEF_START.test(lines[i])) {
-            lastDefIdx = i;
-            break;
-          }
-        }
-        if (lastDefIdx === -1) {
-          return lines.length;
-        }
-        let candidate = lastDefIdx;
-        while (candidate >= 0) {
-          let j = candidate + 1;
-          let isTerminal = true;
-          while (j < lines.length) {
-            const line = lines[j];
-            if (footnote_patterns_js_1.FOOTNOTE_DEF_START.test(line) || footnote_patterns_js_1.FOOTNOTE_CONTINUATION.test(line)) {
-              j++;
-            } else if (line.trim() === "") {
-              j++;
-            } else {
-              isTerminal = false;
-              break;
-            }
-          }
-          if (isTerminal) {
-            lastDefIdx = candidate;
-            break;
-          }
-          candidate--;
-          while (candidate >= 0 && !footnote_patterns_js_1.FOOTNOTE_DEF_START.test(lines[candidate])) {
-            candidate--;
-          }
-        }
-        if (candidate < 0) {
-          return lines.length;
-        }
-        let blockStart = lastDefIdx;
-        for (let i = lastDefIdx - 1; i >= 0; i--) {
-          const line = lines[i];
-          if (footnote_patterns_js_1.FOOTNOTE_DEF_START.test(line) || footnote_patterns_js_1.FOOTNOTE_CONTINUATION.test(line)) {
-            blockStart = i;
-          } else if (line.trim() === "") {
-            let hasFootnoteBefore = false;
-            for (let k = i - 1; k >= 0; k--) {
-              if (lines[k].trim() === "")
-                continue;
-              if (footnote_patterns_js_1.FOOTNOTE_DEF_START.test(lines[k]) || footnote_patterns_js_1.FOOTNOTE_CONTINUATION.test(lines[k])) {
-                hasFootnoteBefore = true;
-              }
-              break;
-            }
-            if (hasFootnoteBefore) {
-              blockStart = i;
-            } else {
-              break;
-            }
-          } else {
-            break;
-          }
-        }
-        return blockStart;
-      }
-      function isApprovalOrResolutionLine(trimmed) {
-        return trimmed.startsWith("approved:") || trimmed.startsWith("rejected:") || trimmed.startsWith("request-changes:") || trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
-      }
-      function isResolutionLine(trimmed) {
-        return trimmed.startsWith("resolved") || trimmed.startsWith("open --") || trimmed.startsWith("open ") || trimmed === "open";
-      }
-      var FOOTNOTE_ID_AND_STATUS_RE = /^\[\^(cn-\d+(?:\.\d+)?)\]:.*\|\s*(\S+)\s*$/;
-      function extractFootnoteStatuses(text) {
-        const statuses = /* @__PURE__ */ new Map();
-        const lines = text.split("\n");
-        for (const line of lines) {
-          const m = FOOTNOTE_ID_AND_STATUS_RE.exec(line);
-          if (m) {
-            statuses.set(m[1], m[2].toLowerCase());
-          }
-        }
-        return statuses;
-      }
     }
   });
 
@@ -13026,6 +13048,30 @@ ${JSON.stringify(message, null, 4)}`);
           return null;
         return text.slice(opener.length, closerIdx);
       }
+      function parseRangeContextReplacement(editPart) {
+        if (!editPart.startsWith("{~~~\n"))
+          return null;
+        const lines = editPart.split("\n");
+        if (lines[0] !== "{~~~" || lines[lines.length - 1] !== "~~}") {
+          throw new Error('Context-bearing range replacement must start with a line exactly "{~~~" and end with a line exactly "~~}".');
+        }
+        const ellipsisIndices = lines.map((line, index) => line === "..." ? index : -1).filter((index) => index !== -1);
+        if (ellipsisIndices.length !== 1) {
+          throw new Error("Context-bearing range replacement requires exactly one standalone ... endpoint separator line.");
+        }
+        const ellipsisIndex = ellipsisIndices[0];
+        const arrowIndex = lines.findIndex((line, index) => index > ellipsisIndex && line === "~>");
+        if (arrowIndex === -1) {
+          throw new Error("Context-bearing range replacement requires a standalone ~> separator line.");
+        }
+        const opening = lines.slice(1, ellipsisIndex).join("\n");
+        const closing = lines.slice(ellipsisIndex + 1, arrowIndex).join("\n");
+        const newText = lines.slice(arrowIndex + 1, -1).join("\n");
+        if (opening.trim() === "" || closing.trim() === "") {
+          throw new Error("Context-bearing range replacement requires non-empty opening and closing anchors.");
+        }
+        return { rangeContext: { opening, closing }, newText };
+      }
       function parseOp(op) {
         if (op === "") {
           throw new Error("Op string is empty \u2014 nothing to parse.");
@@ -13043,6 +13089,16 @@ ${JSON.stringify(message, null, 4)}`);
           };
         }
         const [withoutReasoning, reasoning] = splitReasoning(op);
+        const rangeReplacement = parseRangeContextReplacement(withoutReasoning);
+        if (rangeReplacement) {
+          return {
+            type: "sub",
+            oldText: "",
+            newText: rangeReplacement.newText,
+            reasoning,
+            rangeContext: rangeReplacement.rangeContext
+          };
+        }
         const insContent = extractBetween(withoutReasoning, "{++", "++}");
         if (insContent !== null) {
           return {
@@ -15644,6 +15700,7 @@ ${JSON.stringify(message, null, 4)}`);
       exports.stripCriticMarkupWithMap = stripCriticMarkupWithMap;
       exports.stripCriticMarkup = stripCriticMarkup;
       exports.stripCriticMarkupToCommittedWithMap = stripCriticMarkupToCommittedWithMap;
+      exports.findUniqueEndpointPairWithCascade = findUniqueEndpointPairWithCascade;
       exports.findUniqueMatch = findUniqueMatch;
       exports.tryFindUniqueMatch = tryFindUniqueMatch;
       exports.replaceUnique = replaceUnique;
@@ -16032,6 +16089,188 @@ ${JSON.stringify(message, null, 4)}`);
         }
         return { committed: committed.join(""), toRaw, markupRanges };
       }
+      function allOccurrences(haystack, needle) {
+        if (needle === "")
+          return [];
+        const matches = [];
+        let from = 0;
+        while (from <= haystack.length) {
+          const index = haystack.indexOf(needle, from);
+          if (index === -1)
+            break;
+          matches.push({ index, length: needle.length });
+          from = index + 1;
+        }
+        return matches;
+      }
+      function expandRawRangeOverMarkup(text, rawStart, rawEnd, markupRanges) {
+        let start = rawStart;
+        let end = rawEnd;
+        let expanded = true;
+        while (expanded) {
+          expanded = false;
+          for (const range of markupRanges) {
+            if (range.rawStart < end && range.rawEnd > start) {
+              if (range.rawStart < start) {
+                start = range.rawStart;
+                expanded = true;
+              }
+              if (range.rawEnd > end) {
+                end = range.rawEnd;
+                expanded = true;
+              }
+            }
+          }
+        }
+        for (const range of markupRanges) {
+          if (range.rawStart === end && /^\[\^cn-/.test(text.slice(range.rawStart))) {
+            end = range.rawEnd;
+          }
+        }
+        return { start, end };
+      }
+      function projectionEndpointSpan(text, toRaw, markupRanges, match) {
+        const projectionEnd = match.index + match.length - 1;
+        let rawStart = toRaw[match.index];
+        let rawEnd = toRaw[projectionEnd] + 1;
+        const expanded = expandRawRangeOverMarkup(text, rawStart, rawEnd, markupRanges);
+        rawStart = expanded.start;
+        rawEnd = expanded.end;
+        return {
+          index: rawStart,
+          length: rawEnd - rawStart,
+          originalText: text.slice(rawStart, rawEnd),
+          wasNormalized: true
+        };
+      }
+      function rawEndpointSpan(text, match, wasNormalized, markupRanges) {
+        const expanded = markupRanges ? expandRawRangeOverMarkup(text, match.index, match.index + match.length, markupRanges) : { start: match.index, end: match.index + match.length };
+        return {
+          index: expanded.start,
+          length: expanded.end - expanded.start,
+          originalText: text.slice(expanded.start, expanded.end),
+          wasNormalized
+        };
+      }
+      function collapseWhitespaceWithMap(text) {
+        const out = [];
+        const startMap = [];
+        const endMap = [];
+        let i = 0;
+        while (i < text.length) {
+          if (/\s/.test(text[i])) {
+            const start = i;
+            while (i < text.length && /\s/.test(text[i]))
+              i++;
+            out.push(" ");
+            startMap.push(start);
+            endMap.push(i);
+          } else {
+            out.push(text[i]);
+            startMap.push(i);
+            endMap.push(i + 1);
+            i++;
+          }
+        }
+        return { text: out.join(""), startMap, endMap };
+      }
+      function collectEndpointPairs(text, openingMatches, closingMatches) {
+        const pairs = [];
+        for (const opening of openingMatches) {
+          for (const closing of closingMatches) {
+            if (closing.index < opening.index)
+              continue;
+            pairs.push({
+              start: opening.index,
+              end: closing.index + closing.length,
+              opening: {
+                index: opening.index,
+                length: opening.length,
+                originalText: opening.originalText,
+                wasNormalized: opening.wasNormalized
+              },
+              closing: {
+                index: closing.index,
+                length: closing.length,
+                originalText: closing.originalText,
+                wasNormalized: closing.wasNormalized
+              },
+              wasNormalized: opening.wasNormalized || closing.wasNormalized
+            });
+          }
+        }
+        return pairs;
+      }
+      function decideEndpointPairs(pairs, level) {
+        if (pairs.length === 0)
+          return null;
+        if (pairs.length > 1) {
+          throw new Error(`Endpoint pair found multiple times after ${level} matching (ambiguous). Provide more context to uniquely identify the range.`);
+        }
+        return pairs[0];
+      }
+      function findUniqueEndpointPairWithCascade(text, context, normalizer) {
+        const { opening, closing } = context;
+        if (opening.trim() === "" || closing.trim() === "") {
+          throw new Error("Endpoint pair matching requires non-empty opening and closing anchors.");
+        }
+        {
+          const markupRanges = containsCriticMarkup(text) ? stripCriticMarkupWithMap(text).markupRanges : void 0;
+          const openingMatches = allOccurrences(text, opening).map((m) => rawEndpointSpan(text, m, false, markupRanges));
+          const closingMatches = allOccurrences(text, closing).map((m) => rawEndpointSpan(text, m, false, markupRanges));
+          const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), "exact");
+          if (decided)
+            return decided;
+        }
+        if (normalizer) {
+          const normalizedText = normalizer(text);
+          const normalizedOpening = normalizer(opening);
+          const normalizedClosing = normalizer(closing);
+          const markupRanges = containsCriticMarkup(text) ? stripCriticMarkupWithMap(text).markupRanges : void 0;
+          const openingMatches = allOccurrences(normalizedText, normalizedOpening).map((m) => rawEndpointSpan(text, { index: m.index, length: opening.length }, true, markupRanges));
+          const closingMatches = allOccurrences(normalizedText, normalizedClosing).map((m) => rawEndpointSpan(text, { index: m.index, length: closing.length }, true, markupRanges));
+          const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), "normalization");
+          if (decided)
+            return decided;
+        }
+        {
+          const collapsed = collapseWhitespaceWithMap(text);
+          const collapsedOpening = opening.replace(/\s+/g, " ");
+          const collapsedClosing = closing.replace(/\s+/g, " ");
+          const toSpan = (m) => {
+            const start = collapsed.startMap[m.index];
+            const end = collapsed.endMap[m.index + m.length - 1];
+            return {
+              index: start,
+              length: end - start,
+              originalText: text.slice(start, end),
+              wasNormalized: true
+            };
+          };
+          const openingMatches = allOccurrences(collapsed.text, collapsedOpening).map(toSpan);
+          const closingMatches = allOccurrences(collapsed.text, collapsedClosing).map(toSpan);
+          const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), "whitespace collapsing");
+          if (decided)
+            return decided;
+        }
+        if (containsCriticMarkup(text)) {
+          const { committed, toRaw, markupRanges } = stripCriticMarkupToCommittedWithMap(text);
+          const openingMatches = allOccurrences(committed, opening).map((m) => projectionEndpointSpan(text, toRaw, markupRanges, m));
+          const closingMatches = allOccurrences(committed, closing).map((m) => projectionEndpointSpan(text, toRaw, markupRanges, m));
+          const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), "committed text");
+          if (decided)
+            return decided;
+        }
+        if (containsCriticMarkup(text)) {
+          const { current, toRaw, markupRanges } = stripCriticMarkupWithMap(text);
+          const openingMatches = allOccurrences(current, opening).map((m) => projectionEndpointSpan(text, toRaw, markupRanges, m));
+          const closingMatches = allOccurrences(current, closing).map((m) => projectionEndpointSpan(text, toRaw, markupRanges, m));
+          const decided = decideEndpointPairs(collectEndpointPairs(text, openingMatches, closingMatches), "current text");
+          if (decided)
+            return decided;
+        }
+        throw new Error(`Endpoint pair not found. Opening (first 80 chars): ${JSON.stringify(opening.slice(0, 80))}; closing (first 80 chars): ${JSON.stringify(closing.slice(0, 80))}.`);
+      }
       function findUniqueMatch(text, target, normalizer) {
         const firstIdx = text.indexOf(target);
         if (firstIdx !== -1) {
@@ -16307,8 +16546,10 @@ Hint: Re-read the file for current content, or use LINE:HASH addressing.`);
             let targetOffset = mutatedBodyText.length > 0 ? mutatedBodyText.length - 1 : 0;
             if (insertAfter) {
               const anchorIdx = mutatedBodyText.lastIndexOf(insertAfter);
-              if (anchorIdx !== -1)
-                targetOffset = anchorIdx + insertAfter.length - 1;
+              if (anchorIdx === -1) {
+                throw new Error(`insertAfter anchor not found in text: "${insertAfter}"`);
+              }
+              targetOffset = anchorIdx + insertAfter.length - 1;
             }
             const lineStarts = (0, l2_to_l3_js_1.buildLineStarts)(mutatedBodyText);
             const lineNumber = (0, l2_to_l3_js_1.offsetToLineNumber)(lineStarts, Math.max(0, targetOffset));
@@ -16324,12 +16565,14 @@ Hint: Re-read the file for current content, or use LINE:HASH addressing.`);
           }
           const insertPos = (() => {
             if (insertAfter) {
-              const anchorIdx = text.lastIndexOf(insertAfter);
-              if (anchorIdx !== -1) {
-                const afterAnchor = anchorIdx + insertAfter.length;
-                const nlIdx = text.indexOf("\n", afterAnchor);
-                return nlIdx !== -1 ? nlIdx : text.length;
+              const contentZone = contentZoneText(text);
+              const anchorIdx = contentZone.lastIndexOf(insertAfter);
+              if (anchorIdx === -1) {
+                throw new Error(`insertAfter anchor not found in text: "${insertAfter}"`);
               }
+              const afterAnchor = anchorIdx + insertAfter.length;
+              const nlIdx = text.indexOf("\n", afterAnchor);
+              return nlIdx !== -1 ? nlIdx : contentZone.length;
             }
             const lines = text.split("\n");
             const blockStart = (0, footnote_utils_js_1.findFootnoteBlockStart)(lines);
@@ -16364,7 +16607,7 @@ Hint: Re-read the file for current content, or use LINE:HASH addressing.`);
           if (!insertAfter) {
             throw new Error("Insertion requires an insertAfter anchor to locate where to insert.");
           }
-          const searchTarget = isL3 ? bodyText : text;
+          const searchTarget = isL3 ? bodyText : contentZoneText(text);
           let anchorIndex = searchTarget.indexOf(insertAfter);
           let anchorLength = insertAfter.length;
           if (anchorIndex === -1) {
@@ -18514,6 +18757,7 @@ ${sidecarSection}
       var hashline_js_1 = require_hashline();
       var critic_regex_js_1 = require_critic_regex();
       var footnote_patterns_js_1 = require_footnote_patterns();
+      var footnote_utils_js_1 = require_footnote_utils();
       function currentLine(line) {
         let result = line;
         result = result.replace((0, critic_regex_js_1.singleLineSubstitution)(), "$1");
@@ -18550,8 +18794,17 @@ ${sidecarSection}
             counts[status]++;
           }
         }
-        const allMarkup = content.match((0, critic_regex_js_1.inlineMarkupAll)()) || [];
-        const markupWithRefs = content.match((0, critic_regex_js_1.markupWithRef)()) || [];
+        const blockStart = (0, footnote_utils_js_1.findFootnoteBlockStart)(lines);
+        let bodyEndOffset = content.length;
+        if (blockStart < lines.length) {
+          bodyEndOffset = 0;
+          for (let i = 0; i < blockStart; i++) {
+            bodyEndOffset += lines[i].length + 1;
+          }
+        }
+        const bodyText = content.slice(0, bodyEndOffset);
+        const allMarkup = bodyText.match((0, critic_regex_js_1.inlineMarkupAll)()) || [];
+        const markupWithRefs = bodyText.match((0, critic_regex_js_1.markupWithRef)()) || [];
         const level0Count = allMarkup.length - markupWithRefs.length;
         if (level0Count > 0) {
           counts.proposed += level0Count;
@@ -21029,16 +21282,480 @@ ${sidecarSection}
     }
   });
 
+  // ../core/dist/protocol/types.js
+  var require_types4 = __commonJS({
+    "../core/dist/protocol/types.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+    }
+  });
+
+  // ../core/dist/protocol/row-identity-registry.js
+  var require_row_identity_registry = __commonJS({
+    "../core/dist/protocol/row-identity-registry.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.createRowIdentityRegistry = createRowIdentityRegistry;
+      exports.signatureForSourceGroup = signatureForSourceGroup;
+      exports.signatureForNativeRevisionGap = signatureForNativeRevisionGap;
+      function ordinalFromChangeId(changeId) {
+        return Number(changeId.slice(3));
+      }
+      function changeIdForOrdinal(ordinal) {
+        return `cn-${ordinal}`;
+      }
+      function createRowIdentityRegistry(snapshot) {
+        let nextOrdinal = snapshot?.nextOrdinal ?? 2;
+        const entries = new Map(snapshot?.entries ?? []);
+        const tombstones = new Map(snapshot?.tombstones ?? []);
+        function isUsed(changeId) {
+          if (tombstones.has(changeId))
+            return true;
+          for (const assigned of entries.values()) {
+            if (assigned === changeId)
+              return true;
+          }
+          return false;
+        }
+        function nextAvailableChangeId() {
+          let candidate = changeIdForOrdinal(nextOrdinal);
+          while (isUsed(candidate)) {
+            nextOrdinal += 1;
+            candidate = changeIdForOrdinal(nextOrdinal);
+          }
+          nextOrdinal += 1;
+          return candidate;
+        }
+        function advancePast(changeId) {
+          nextOrdinal = Math.max(nextOrdinal, ordinalFromChangeId(changeId) + 1);
+          while (isUsed(changeIdForOrdinal(nextOrdinal)))
+            nextOrdinal += 1;
+        }
+        return {
+          getOrAssign(signature) {
+            const existing = entries.get(signature);
+            if (existing)
+              return existing;
+            const id = nextAvailableChangeId();
+            entries.set(signature, id);
+            return id;
+          },
+          claim(signature, changeId) {
+            const existing = entries.get(signature);
+            if (existing && existing !== changeId) {
+              throw new Error(`signature already assigned to ${existing}, cannot claim ${changeId}`);
+            }
+            if (tombstones.has(changeId)) {
+              throw new Error(`change id ${changeId} is tombstoned and cannot be claimed`);
+            }
+            for (const [otherSignature, assigned] of entries.entries()) {
+              if (otherSignature !== signature && assigned === changeId) {
+                throw new Error(`change id ${changeId} is already assigned to another signature`);
+              }
+            }
+            entries.set(signature, changeId);
+            advancePast(changeId);
+            return changeId;
+          },
+          get(signature) {
+            return entries.get(signature);
+          },
+          tombstone(changeId, tombstone) {
+            tombstones.set(changeId, tombstone);
+          },
+          getTombstone(changeId) {
+            return tombstones.get(changeId);
+          },
+          snapshot() {
+            return { nextOrdinal, entries: [...entries.entries()], tombstones: [...tombstones.entries()] };
+          }
+        };
+      }
+      function signatureForSourceGroup(input) {
+        return [
+          "source",
+          input.id,
+          input.partName ?? "",
+          input.path ?? "",
+          input.kind ?? "",
+          input.author ?? "",
+          input.date ?? "",
+          input.textHash ?? "",
+          ...input.atomIds ?? []
+        ].join("|");
+      }
+      function signatureForNativeRevisionGap(input) {
+        return [
+          "native-gap",
+          input.kind,
+          input.wordType,
+          input.author ?? "",
+          String(input.dateSec),
+          input.rangeTextHash ?? "",
+          input.paragraphTextHash ?? "",
+          input.formatDescriptionHash ?? "",
+          input.rangeTextHash || input.paragraphTextHash || input.formatDescriptionHash ? "" : String(input.revisionIndex ?? ""),
+          input.rangeTextHash || input.paragraphTextHash || input.formatDescriptionHash ? "" : input.fingerprint ?? ""
+        ].join("|");
+      }
+    }
+  });
+
+  // ../core/dist/protocol/protocol-document.js
+  var require_protocol_document = __commonJS({
+    "../core/dist/protocol/protocol-document.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.buildChangeDownProtocolDocument = buildChangeDownProtocolDocument;
+      exports.renderPublicEntryFootnote = renderPublicEntryFootnote;
+      exports.assertProtocolDocumentInvariants = assertProtocolDocumentInvariants;
+      exports.digestProtocolSource = digestProtocolSource;
+      function buildChangeDownProtocolDocument(input) {
+        const footnotes = input.entries.map(renderPublicEntryFootnote).join("\n\n");
+        const source = footnotes.length > 0 ? `${input.body}
+
+${footnotes}
+` : `${input.body}
+`;
+        const protocol = {
+          backendKind: input.backendKind ?? "word-ooxml",
+          source,
+          body: input.body,
+          entries: input.entries.slice(),
+          digest: digestProtocolSource(source)
+        };
+        if (input.validate !== false) {
+          const invariant = assertProtocolDocumentInvariants(protocol);
+          if (!invariant.ok)
+            throw new Error(`ProtocolInvariantViolation: ${invariant.errors.join("; ")}`);
+        }
+        return protocol;
+      }
+      function renderPublicEntryFootnote(entry) {
+        const headerParts = [entry.author ?? "@word"];
+        if (entry.date)
+          headerParts.push(entry.date.slice(0, 10));
+        headerParts.push(entry.kind, entry.status);
+        const lines = [`[^${entry.id}]: ${headerParts.join(" | ")}`];
+        lines.push(`    representation: ${entry.representation}`);
+        lines.push(`    actionability: ${entry.actionability.state}`);
+        if (entry.actionability.reason)
+          lines.push(`    reason: ${entry.actionability.reason}`);
+        for (const anchor of entry.anchors) {
+          lines.push(`    anchor: ${anchor.kind}:${anchor.marker}${anchor.childRole ? `:${anchor.childRole}` : ""}`);
+        }
+        if (entry.parentId)
+          lines.push(`    parent: ${entry.parentId}`);
+        if (entry.children?.length)
+          lines.push(`    children: ${entry.children.join(" ")}`);
+        for (const [key, value] of Object.entries(entry.protocolMetadata)) {
+          lines.push(`    ${key}: ${value}`);
+        }
+        return lines.join("\n");
+      }
+      function assertProtocolDocumentInvariants(protocol) {
+        const errors = [];
+        const seen = /* @__PURE__ */ new Set();
+        for (const entry of protocol.entries) {
+          if (seen.has(entry.id))
+            errors.push(`duplicate-entry:${entry.id}`);
+          seen.add(entry.id);
+          if (entry.anchors.length === 0)
+            errors.push(`no-anchors:${entry.id}`);
+          for (const anchor of entry.anchors) {
+            if (!protocol.body.includes(anchor.marker)) {
+              errors.push(`missing-anchor:${entry.id}:${anchor.marker}`);
+            }
+          }
+          if (entry.parentId && !protocol.entries.some((candidate) => candidate.id === entry.parentId)) {
+            errors.push(`missing-parent:${entry.id}:${entry.parentId}`);
+          }
+          for (const child of entry.children ?? []) {
+            if (!protocol.entries.some((candidate) => candidate.id === child))
+              errors.push(`missing-child:${entry.id}:${child}`);
+          }
+        }
+        return { ok: errors.length === 0, errors };
+      }
+      function digestProtocolSource(source) {
+        return `fnv1a64:${fnv1a64Hex(source)}`;
+      }
+      function fnv1a64Hex(value) {
+        let hash = 0xcbf29ce484222325n;
+        const prime = 0x100000001b3n;
+        const mask = 0xffffffffffffffffn;
+        for (let index = 0; index < value.length; index += 1) {
+          hash ^= BigInt(value.charCodeAt(index));
+          hash = hash * prime & mask;
+        }
+        return hash.toString(16).padStart(16, "0");
+      }
+    }
+  });
+
+  // ../core/dist/protocol/public-change-index.js
+  var require_public_change_index = __commonJS({
+    "../core/dist/protocol/public-change-index.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.buildPublicChangeIndex = buildPublicChangeIndex;
+      function buildPublicChangeIndex(protocol) {
+        const byId = new Map(protocol.entries.map((entry) => [entry.id, entry]));
+        return {
+          entries: protocol.entries.slice(),
+          order: protocol.entries.map((entry) => entry.id),
+          byId
+        };
+      }
+    }
+  });
+
+  // ../core/dist/protocol/from-markdown.js
+  var require_from_markdown = __commonJS({
+    "../core/dist/protocol/from-markdown.js"(exports) {
+      "use strict";
+      Object.defineProperty(exports, "__esModule", { value: true });
+      exports.buildProtocolDocumentFromMarkdown = buildProtocolDocumentFromMarkdown;
+      var types_js_1 = require_types();
+      var format_aware_parse_js_1 = require_format_aware_parse();
+      var footnote_patterns_js_1 = require_footnote_patterns();
+      var protocol_document_js_1 = require_protocol_document();
+      function buildProtocolDocumentFromMarkdown(source) {
+        const doc = (0, format_aware_parse_js_1.parseForFormat)(source);
+        const parsedFootnotes = parseProtocolFootnotes(source);
+        const changesById = new Map(doc.getChanges().map((change) => [change.id, change]));
+        const ids = orderedProtocolIds(source, parsedFootnotes, changesById);
+        const body = (0, footnote_patterns_js_1.splitBodyAndFootnotes)(source.split("\n")).bodyLines.join("\n");
+        const entries = ids.map((id) => {
+          const change = changesById.get(id);
+          const parsed = parsedFootnotes.get(id);
+          const anchors = parsed?.anchors?.length ? parsed.anchors : [defaultAnchorForChange(id, change, body)];
+          const metadata = { ...parsed?.protocolMetadata ?? {} };
+          return {
+            id,
+            kind: parsed?.kind ?? (change ? publicKindFromChangeType(change.type) : "metadata"),
+            status: parsed?.status ?? publicStatusForChange(change),
+            representation: parsed?.representation ?? (change ? "inline-markup" : "metadata-anchor"),
+            anchors,
+            actionability: parsed?.actionability ?? { state: "protocol-ready" },
+            ...parsed?.author ?? change?.metadata?.author ?? change?.inlineMetadata?.author ? { author: String(parsed?.author ?? change?.metadata?.author ?? change?.inlineMetadata?.author) } : {},
+            ...parsed?.date ?? change?.metadata?.date ?? change?.inlineMetadata?.date ? { date: String(parsed?.date ?? change?.metadata?.date ?? change?.inlineMetadata?.date) } : {},
+            ...parsed?.parentId ? { parentId: parsed.parentId } : {},
+            ...parsed?.children?.length ? { children: parsed.children } : {},
+            protocolMetadata: metadata
+          };
+        });
+        return (0, protocol_document_js_1.buildChangeDownProtocolDocument)({ backendKind: "file-markdown", body, entries });
+      }
+      function orderedProtocolIds(source, parsedFootnotes, changesById) {
+        const ids = [];
+        const seen = /* @__PURE__ */ new Set();
+        for (const match of source.matchAll(/\[\^(cn-\d+)\]/gu)) {
+          const id = match[1];
+          if ((parsedFootnotes.has(id) || changesById.has(id)) && !seen.has(id)) {
+            seen.add(id);
+            ids.push(id);
+          }
+        }
+        for (const id of parsedFootnotes.keys()) {
+          if (!seen.has(id)) {
+            seen.add(id);
+            ids.push(id);
+          }
+        }
+        for (const id of changesById.keys()) {
+          if (!seen.has(id)) {
+            seen.add(id);
+            ids.push(id);
+          }
+        }
+        return ids;
+      }
+      function parseProtocolFootnotes(source) {
+        const lines = source.split("\n");
+        const result = /* @__PURE__ */ new Map();
+        let currentId;
+        for (const line of lines) {
+          const header = line.match(/^\[\^(cn-\d+)\]:\s*(.*)$/u);
+          if (header) {
+            currentId = header[1];
+            const parts = header[2].split("|").map((part) => part.trim()).filter(Boolean);
+            const current2 = { protocolMetadata: {} };
+            if (parts[0])
+              current2.author = parts[0];
+            if (parts[1] && /^\d{4}-\d{2}-\d{2}/u.test(parts[1]))
+              current2.date = parts[1];
+            const kindPart = parts.find((part) => isPublicKind(part));
+            const statusPart = parts.find((part) => isPublicStatus(part));
+            if (kindPart)
+              current2.kind = kindPart;
+            if (statusPart)
+              current2.status = statusPart;
+            result.set(currentId, current2);
+            continue;
+          }
+          if (!currentId)
+            continue;
+          const field = line.match(/^\s{4}([^:]+):\s*(.*)$/u);
+          if (!field)
+            continue;
+          const [, rawKey, value] = field;
+          const key = rawKey.trim();
+          const current = result.get(currentId);
+          current.protocolMetadata ?? (current.protocolMetadata = {});
+          switch (key) {
+            case "representation":
+              if (isRepresentation(value))
+                current.representation = value;
+              break;
+            case "actionability":
+              if (isActionabilityState(value))
+                current.actionability = { ...current.actionability ?? {}, state: value };
+              break;
+            case "reason":
+              current.actionability = { state: current.actionability?.state ?? "blocked", reason: value };
+              break;
+            case "anchor": {
+              const [kind, ...markerParts] = value.split(":");
+              const maybeRole = markerParts[markerParts.length - 1];
+              const childRole = isAnchorChildRole(maybeRole) ? maybeRole : void 0;
+              const marker = (childRole ? markerParts.slice(0, -1) : markerParts).join(":");
+              if (isAnchorKind(kind) && marker) {
+                current.anchors ?? (current.anchors = []);
+                current.anchors.push({
+                  kind,
+                  marker,
+                  ...childRole ? { childRole } : {}
+                });
+              }
+              break;
+            }
+            case "parent":
+              current.parentId = value;
+              break;
+            case "children":
+              current.children = value.split(/\s+/u).filter(Boolean);
+              break;
+            default:
+              current.protocolMetadata[key] = value;
+              break;
+          }
+        }
+        return result;
+      }
+      function defaultAnchorForChange(id, change, body) {
+        const footnoteMarker = `[^${id}]`;
+        if (body.includes(footnoteMarker))
+          return { kind: "inline-range", marker: footnoteMarker };
+        if (change && change.range.start >= 0 && change.range.end > change.range.start) {
+          const marker = body.slice(change.range.start, change.range.end);
+          if (marker.length > 0)
+            return { kind: "inline-range", marker };
+        }
+        return { kind: "inline-range", marker: footnoteMarker };
+      }
+      function publicKindFromChangeType(type) {
+        switch (type) {
+          case types_js_1.ChangeType.Insertion:
+            return "ins";
+          case types_js_1.ChangeType.Deletion:
+            return "del";
+          case types_js_1.ChangeType.Substitution:
+            return "sub";
+          case types_js_1.ChangeType.Move:
+            return "move";
+          case types_js_1.ChangeType.Comment:
+            return "comment";
+          default:
+            return "metadata";
+        }
+      }
+      function publicStatusForChange(change) {
+        const status = change?.metadata?.status ?? change?.inlineMetadata?.status ?? change?.status;
+        return publicStatusFromChangeStatus(status);
+      }
+      function publicStatusFromChangeStatus(status) {
+        const normalized = String(status ?? "proposed").toLowerCase();
+        if (isPublicStatus(normalized))
+          return normalized;
+        return "proposed";
+      }
+      function isPublicKind(value) {
+        return ["ins", "del", "sub", "format", "move", "comment", "metadata"].includes(value);
+      }
+      function isPublicStatus(value) {
+        return ["proposed", "accepted", "rejected", "resolved", "unresolved", "diagnostic", "conflict"].includes(value);
+      }
+      function isRepresentation(value) {
+        return ["inline-markup", "rendered-substitution", "metadata-anchor", "compound-parent", "compound-child", "comment-thread"].includes(value);
+      }
+      function isActionabilityState(value) {
+        return ["protocol-ready", "action-plan-ready", "native-ready", "thread-ready", "blocked", "diagnostic-only", "conflict"].includes(value);
+      }
+      function isAnchorKind(value) {
+        return ["inline-range", "paragraph", "block", "metadata", "compound-child"].includes(value);
+      }
+      function isAnchorChildRole(value) {
+        return value !== void 0 && ["move-from", "move-to", "comment-range", "metadata-target"].includes(value);
+      }
+    }
+  });
+
+  // ../core/dist/protocol/index.js
+  var require_protocol2 = __commonJS({
+    "../core/dist/protocol/index.js"(exports) {
+      "use strict";
+      var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
+        if (k2 === void 0) k2 = k;
+        var desc = Object.getOwnPropertyDescriptor(m, k);
+        if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+          desc = { enumerable: true, get: function() {
+            return m[k];
+          } };
+        }
+        Object.defineProperty(o, k2, desc);
+      }) : (function(o, m, k, k2) {
+        if (k2 === void 0) k2 = k;
+        o[k2] = m[k];
+      }));
+      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
+        for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
+      };
+      Object.defineProperty(exports, "__esModule", { value: true });
+      __exportStar(require_types4(), exports);
+      __exportStar(require_row_identity_registry(), exports);
+      __exportStar(require_protocol_document(), exports);
+      __exportStar(require_public_change_index(), exports);
+      __exportStar(require_from_markdown(), exports);
+    }
+  });
+
   // ../core/dist/index.js
   var require_dist = __commonJS({
     "../core/dist/index.js"(exports) {
       "use strict";
+      var __createBinding = exports && exports.__createBinding || (Object.create ? (function(o, m, k, k2) {
+        if (k2 === void 0) k2 = k;
+        var desc = Object.getOwnPropertyDescriptor(m, k);
+        if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+          desc = { enumerable: true, get: function() {
+            return m[k];
+          } };
+        }
+        Object.defineProperty(o, k2, desc);
+      }) : (function(o, m, k, k2) {
+        if (k2 === void 0) k2 = k;
+        o[k2] = m[k];
+      }));
+      var __exportStar = exports && exports.__exportStar || function(m, exports2) {
+        for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports2, p)) __createBinding(exports2, m, p);
+      };
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.VALID_DECISIONS = exports.applyReview = exports.ensureL2 = exports.buildContextualL3EditOp = exports.formatL3EditOpLine = exports.buildEditOpFromParts = exports.scanMaxCnId = exports.generateFootnoteDefinition = exports.insertComment = exports.wrapSubstitution = exports.wrapDeletion = exports.wrapInsertion = exports.previousChange = exports.nextChange = exports.computeReplyEdit = exports.computeUnresolveEdit = exports.computeResolutionEdit = exports.computeFootnoteArchiveLineEdit = exports.computeApprovalLineEdit = exports.computeFootnoteStatusEdits = exports.computeRejectParts = exports.computeAcceptParts = exports.computeReject = exports.computeAccept = exports.isFenceCloserLine = exports.skipInlineCode = exports.tryMatchFenceClose = exports.tryMatchFenceOpen = exports.buildCodeZoneMask = exports.findCodeZones = exports.CriticMarkupParser = exports.TokenType = exports.assertResolved = exports.VirtualDocument = exports.nodeStatus = exports.consumptionLabel = exports.isGhostNode = exports.changeTypeToShortCode = exports.changeTypeToAbbrev = exports.ChangeStatus = exports.ChangeType = exports.formatTimestamp = exports.compareTimestamps = exports.nowTimestamp = exports.parseTimestamp = exports.canWithdraw = exports.canAccept = exports.reviewerType = exports.DEFAULT_CONFIG = exports.parseProjectConfig = void 0;
       exports.applyAcceptedChanges = exports.computeOriginalText = exports.computeCurrentText = exports.computeCurrentReplace = exports.tryDiagnosticConfusableMatch = exports.unicodeName = exports.diagnosticConfusableNormalize = exports.whitespaceCollapsedIsAmbiguous = exports.whitespaceCollapsedFind = exports.buildWhitespaceCollapseMap = exports.collapseWhitespace = exports.normalizedIndexOf = exports.defaultNormalizer = exports.insertTrackingHeader = exports.generateTrackingHeader = exports.parseTrackingHeader = exports.computeSidecarResolveAll = exports.computeSidecarReject = exports.computeSidecarAccept = exports.parseContextualEditOp = exports.FootnoteNativeParser = exports.SidecarParser = exports.annotateSidecar = exports.annotateMarkdown = exports.lineOffset = exports.escapeRegex = exports.stripLineComment = exports.wrapLineComment = exports.getCommentSyntax = exports.Workspace = exports.resolveReplayFromParsedFootnotes = exports.traceDependencies = exports.resolve = exports.scrubForward = exports.scrubBackward = exports.convertL3ToL2 = exports.offsetToLineNumber = exports.buildLineStarts = exports.bodyReplacement = exports.convertL2ToL3 = exports.checkSupersedesIntegrity = exports.compactL2 = exports.compact = exports.analyzeCompactionCandidates = exports.compactToLevel0 = exports.compactToLevel1 = exports.promoteToLevel2 = exports.promoteToLevel1 = exports.computeSupersedeResult = exports.computeAmendEdits = void 0;
       exports.FOOTNOTE_DEF_STATUS_VALUE = exports.FOOTNOTE_DEF_STATUS = exports.FOOTNOTE_DEF_STRICT = exports.FOOTNOTE_DEF_LENIENT = exports.FOOTNOTE_DEF_START_QUICK = exports.FOOTNOTE_DEF_START = exports.footnoteRefNumericGlobal = exports.footnoteRefGlobal = exports.FOOTNOTE_REF_ANCHORED = exports.FOOTNOTE_ID_NUMERIC_PATTERN = exports.FOOTNOTE_ID_PATTERN = exports.markupWithRef = exports.inlineMarkupAll = exports.hasCriticMarkup = exports.HAS_CRITIC_MARKUP = exports.multiLineComment = exports.multiLineHighlight = exports.multiLineDeletion = exports.multiLineInsertion = exports.multiLineSubstitution = exports.singleLineComment = exports.singleLineHighlight = exports.singleLineInsertion = exports.singleLineDeletion = exports.singleLineSubstitution = exports.findSidecarBlockStart = exports.SIDECAR_BLOCK_MARKER = exports.formatDecidedOutput = exports.computeDecidedView = exports.computeDecidedLine = exports.parseFootnotes = exports.findFootnoteBlockStart = exports.stripBoundaryEcho = exports.relocateHashRefMulti = exports.relocateHashRef = exports.detectNoOp = exports.stripHashlinePrefixes = exports.formatTrackedHeader = exports.formatTrackedHashLines = exports.computeCurrentLineHash = exports.currentLine = exports.HashlineMismatchError = exports.validateLineRef = exports.parseLineRef = exports.formatHashLines = exports.computeLineHash = exports.ensureHashlineReady = exports.initHashline = exports.computeCurrentView = exports.applyRejectedChanges = void 0;
-      exports.bufferEnd = exports.isBufferEmpty = exports.DEFAULT_EDIT_BOUNDARY_CONFIG = exports.computeContinuationLines = exports.findFootnoteSectionRange = exports.buildLineRefMap = exports.buildDeliberationHeader = exports.buildRawDocument = exports.buildDecidedDocument = exports.buildSimpleDocument = exports.buildReviewDocument = exports.buildViewDocument = exports.formatHtml = exports.formatAnsi = exports.formatPlainText = exports.formatDocument = exports.parseOp = exports.resolveAt = exports.parseAt = exports.extractFootnoteStatuses = exports.resolveChangeById = exports.findChildFootnoteIds = exports.findReviewInsertionIndex = exports.findDiscussionInsertionIndex = exports.parseFootnoteHeader = exports.findFootnoteBlock = exports.countFootnoteHeadersWithStatus = exports.contentZoneText = exports.resolveOverlapWithAuthor = exports.findAllProposedOverlaps = exports.stripRefsFromContent = exports.guardOverlap = exports.checkCriticMarkupOverlap = exports.stripCriticMarkupToCommittedWithMap = exports.stripCriticMarkup = exports.stripCriticMarkupWithMap = exports.replaceUnique = exports.extractLineRange = exports.appendFootnote = exports.applySingleOperation = exports.applyProposeChange = exports.tryFindUniqueMatch = exports.findUniqueMatch = exports.viewAwareFind = exports.buildViewSurfaceMap = exports.splitBodyAndFootnotes = exports.isL3Format = exports.FOOTNOTE_L3_EDIT_OP = exports.FOOTNOTE_THREAD_REPLY = exports.FOOTNOTE_CONTINUATION = void 0;
-      exports.BackendRegistry = exports.parseUri = exports.StructuralIntegrityError = exports.UnresolvedChangesError = exports.changeNodesToL3Document = exports.serializeL3 = exports.serializeL2 = exports.parseL3 = exports.parseL2 = exports.buildSessionHashes = exports.stripFootnoteBlocks = exports.parseForFormat = exports.removeMarkupById = exports.findMarkupRangeById = exports.materializeResolvedChangesForExport = exports.validateStructuralIntegrity = exports.processEvent = exports.classifySignal = exports.createBuffer = exports.spliceDelete = exports.spliceInsert = exports.appendOriginal = exports.prependOriginal = exports.extendBuffer = exports.bufferContainsOffset = void 0;
+      exports.isBufferEmpty = exports.DEFAULT_EDIT_BOUNDARY_CONFIG = exports.computeContinuationLines = exports.findFootnoteSectionRange = exports.buildLineRefMap = exports.buildDeliberationHeader = exports.buildRawDocument = exports.buildDecidedDocument = exports.buildSimpleDocument = exports.buildReviewDocument = exports.buildViewDocument = exports.formatHtml = exports.formatAnsi = exports.formatPlainText = exports.formatDocument = exports.parseOp = exports.resolveAt = exports.parseAt = exports.extractFootnoteStatuses = exports.resolveChangeById = exports.findChildFootnoteIds = exports.findReviewInsertionIndex = exports.findDiscussionInsertionIndex = exports.parseFootnoteHeader = exports.findFootnoteBlock = exports.countFootnoteHeadersWithStatus = exports.contentZoneText = exports.resolveOverlapWithAuthor = exports.findAllProposedOverlaps = exports.stripRefsFromContent = exports.guardOverlap = exports.checkCriticMarkupOverlap = exports.stripCriticMarkupToCommittedWithMap = exports.stripCriticMarkup = exports.stripCriticMarkupWithMap = exports.replaceUnique = exports.extractLineRange = exports.appendFootnote = exports.applySingleOperation = exports.applyProposeChange = exports.tryFindUniqueMatch = exports.findUniqueEndpointPairWithCascade = exports.findUniqueMatch = exports.viewAwareFind = exports.buildViewSurfaceMap = exports.splitBodyAndFootnotes = exports.isL3Format = exports.FOOTNOTE_L3_EDIT_OP = exports.FOOTNOTE_THREAD_REPLY = exports.FOOTNOTE_CONTINUATION = void 0;
+      exports.BackendRegistry = exports.parseUri = exports.StructuralIntegrityError = exports.UnresolvedChangesError = exports.changeNodesToL3Document = exports.serializeL3 = exports.serializeL2 = exports.parseL3 = exports.parseL2 = exports.buildSessionHashes = exports.stripFootnoteBlocks = exports.parseForFormat = exports.removeMarkupById = exports.findMarkupRangeById = exports.materializeResolvedChangesForExport = exports.validateStructuralIntegrity = exports.processEvent = exports.classifySignal = exports.createBuffer = exports.spliceDelete = exports.spliceInsert = exports.appendOriginal = exports.prependOriginal = exports.extendBuffer = exports.bufferContainsOffset = exports.bufferEnd = void 0;
       var index_js_1 = require_config();
       Object.defineProperty(exports, "parseProjectConfig", { enumerable: true, get: function() {
         return index_js_1.parseProjectConfig;
@@ -21559,6 +22276,9 @@ ${sidecarSection}
       Object.defineProperty(exports, "findUniqueMatch", { enumerable: true, get: function() {
         return file_ops_js_1.findUniqueMatch;
       } });
+      Object.defineProperty(exports, "findUniqueEndpointPairWithCascade", { enumerable: true, get: function() {
+        return file_ops_js_1.findUniqueEndpointPairWithCascade;
+      } });
       Object.defineProperty(exports, "tryFindUniqueMatch", { enumerable: true, get: function() {
         return file_ops_js_1.tryFindUniqueMatch;
       } });
@@ -21779,11 +22499,12 @@ ${sidecarSection}
       Object.defineProperty(exports, "BackendRegistry", { enumerable: true, get: function() {
         return registry_js_1.BackendRegistry;
       } });
+      __exportStar(require_protocol2(), exports);
     }
   });
 
   // ../core/dist/host/types.js
-  var require_types4 = __commonJS({
+  var require_types5 = __commonJS({
     "../core/dist/host/types.js"(exports) {
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
@@ -22053,7 +22774,7 @@ ${sidecarSection}
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.DocumentStateManager = void 0;
-      var types_js_1 = require_types4();
+      var types_js_1 = require_types5();
       var range_transform_js_1 = require_range_transform();
       var uri_js_1 = require_uri();
       var NOTIFY_CHANGES_DEBOUNCE_MS = 120;
@@ -22424,7 +23145,16 @@ ${sidecarSection}
          */
         initScIdCounter(uri, maxId) {
           const uriState = this.getUriState(uri);
-          uriState.scIdCounter = maxId;
+          uriState.scIdCounter = Math.max(uriState.scIdCounter, maxId);
+        }
+        /**
+         * Set the document format used when crystallizing pending edits.
+         * L3 documents must append footnote-native edit-op lines instead of inline L2
+         * CriticMarkup in the body.
+         */
+        setDocumentFormat(uri, format) {
+          const uriState = this.getUriState(uri);
+          uriState.documentFormat = String(format).toLowerCase() === "l3" ? "l3" : "l2";
         }
         /**
          * Clean up all state and stop timers.
@@ -22447,7 +23177,8 @@ ${sidecarSection}
                   pauseThresholdMs: this._pauseThresholdMs
                 }
               },
-              scIdCounter: 0
+              scIdCounter: 0,
+              documentFormat: "l2"
             };
             this.states.set(uri, uriState);
           }
@@ -22462,7 +23193,7 @@ ${sidecarSection}
             },
             author: this._author,
             documentText,
-            documentFormat: "l2"
+            documentFormat: uriState.documentFormat
           };
         }
         /**
@@ -22548,7 +23279,7 @@ ${sidecarSection}
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.TrackingService = void 0;
       var pending_edit_manager_js_1 = require_pending_edit_manager();
-      var types_js_1 = require_types4();
+      var types_js_1 = require_types5();
       var TrackingService = class {
         constructor(config) {
           this.trackingState = /* @__PURE__ */ new Map();
@@ -22558,10 +23289,28 @@ ${sidecarSection}
           this.onDidCrystallize = this._onDidCrystallize.event;
           this._onDidChangeOverlay = new types_js_1.EventEmitter();
           this.onDidChangeOverlay = this._onDidChangeOverlay.event;
+          this.defaultFormat = config?.defaultFormat ?? "L2";
           this.pem = new pending_edit_manager_js_1.PendingEditManager((edit) => this._onDidCrystallize.fire(edit), (uri, overlay) => this._onDidChangeOverlay.fire({ uri, overlay }));
           if (config?.pauseThresholdMs !== void 0) {
             this.pem.setPauseThresholdMs(config.pauseThresholdMs);
           }
+        }
+        /**
+         * Synchronize per-document tracking metadata from the owning controller.
+         * This keeps locally-crystallized edits aligned with the current format and
+         * prevents new `cn-N` IDs from colliding with existing footnotes.
+         */
+        initializeDocument(uri, options) {
+          this.pem.setDocumentFormat(uri, options.format ?? this.defaultFormat);
+          if (options.maxChangeId !== void 0) {
+            this.pem.initScIdCounter(uri, options.maxChangeId);
+          }
+        }
+        setDocumentFormat(uri, format) {
+          this.pem.setDocumentFormat(uri, format);
+        }
+        initScIdCounter(uri, maxId) {
+          this.pem.initScIdCounter(uri, maxId);
         }
         // ── Tracking state ─────────────────────────────────────────
         isTrackingEnabled(uri) {
@@ -22630,7 +23379,7 @@ ${sidecarSection}
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.NavigationService = void 0;
-      var types_js_1 = require_types4();
+      var types_js_1 = require_types5();
       var NavigationService = class {
         constructor(stateManager) {
           this.stateManager = stateManager;
@@ -22708,7 +23457,7 @@ ${sidecarSection}
       var document_js_1 = require_document();
       var diagnostic_js_1 = require_diagnostic2();
       var types_js_1 = require_types();
-      var types_js_2 = require_types4();
+      var types_js_2 = require_types5();
       var ReviewService = class {
         constructor(config) {
           this.config = config;
@@ -22956,7 +23705,7 @@ ${sidecarSection}
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.CoherenceService = void 0;
-      var types_js_1 = require_types4();
+      var types_js_1 = require_types5();
       var uri_keyed_store_js_1 = require_uri_keyed_store();
       var CoherenceService = class extends uri_keyed_store_js_1.UriKeyedStore {
         constructor() {
@@ -23551,8 +24300,9 @@ ${sidecarSection}
             });
           }
           if (showGhostRefsPolicy && change.id && change.footnoteRefStart === void 0 && !inlineDelimiters) {
+            const ghostRefOffset = change.type === types_js_1.ChangeType.Deletion ? change.range.start + (change.deletionSeamOffset ?? 0) : contentRange.end;
             plan.ghostRefs.push({
-              range: { start: contentRange.end, end: contentRange.end },
+              range: { start: ghostRefOffset, end: ghostRefOffset },
               renderAfter: { contentText: `[^${change.id}]`, fontStyle: "italic" }
             });
           }
@@ -23938,7 +24688,7 @@ ${sidecarSection}
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.FormatService = void 0;
-      var types_js_1 = require_types4();
+      var types_js_1 = require_types5();
       var uri_keyed_store_js_1 = require_uri_keyed_store();
       var footnote_patterns_js_1 = require_footnote_patterns();
       var uri_js_1 = require_uri();
@@ -24176,7 +24926,7 @@ ${sidecarSection}
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.BaseController = void 0;
-      var types_js_1 = require_types4();
+      var types_js_1 = require_types5();
       var document_state_manager_js_1 = require_document_state_manager();
       var decoration_scheduler_js_1 = require_decoration_scheduler();
       var tracking_service_js_1 = require_tracking_service();
@@ -24187,6 +24937,7 @@ ${sidecarSection}
       var uri_js_1 = require_uri();
       var format_service_js_1 = require_format_service();
       var parse_document_js_1 = require_parse_document();
+      var footnote_generator_js_1 = require_footnote_generator();
       var lsp_methods_js_1 = require_lsp_methods();
       var BaseController = class {
         get defaultView() {
@@ -24312,8 +25063,12 @@ ${sidecarSection}
               }
               this.hooks?.onDecorationData?.(data);
             }), this.lsp.onPendingEditFlushed((data) => this.handlePendingEditFlushed(data)), this.lsp.onDocumentState((data) => {
-              this.trackingService.setTrackingEnabled(data.uri, data.tracking.enabled);
-              this.hooks?.onDidChangeTrackingState?.(data.uri, data.tracking.enabled);
+              const uri = data.uri ?? data.textDocument?.uri;
+              const enabled = data.tracking?.enabled;
+              if (!uri || typeof enabled !== "boolean")
+                return;
+              this.trackingService.setTrackingEnabled(uri, enabled);
+              this.hooks?.onDidChangeTrackingState?.(uri, enabled);
             }));
             if (this.host.showOverlay) {
               this.disposables.push(this.lsp.onOverlayUpdate((data) => {
@@ -24467,12 +25222,19 @@ ${sidecarSection}
             state.document = fmt === "L2" ? (0, parse_document_js_1.parseL2)(text) : (0, parse_document_js_1.parseL3)(text);
           }
         }
+        syncTrackingDocumentMetadata(uri, text, format) {
+          this.trackingService.initializeDocument(uri, {
+            format,
+            maxChangeId: (0, footnote_generator_js_1.scanMaxCnId)(text)
+          });
+        }
         async handleOpenDocument(uri, text) {
           const docText = text ?? this.host.getDocumentText(uri);
           this.hooks?.onWillOpenDocument?.(uri);
           const isNew = !this.stateManager.getState(uri);
           const state = this.stateManager.ensureState(uri, docText, 1);
           state.format = this.formatService.getDetectedFormat(uri, docText);
+          this.syncTrackingDocumentMetadata(uri, docText, state.format);
           this.localParseAndCache(uri, docText, state.version, state.format);
           const preferred = this.defaultFormat ?? this.formatService.getPreferredFormat(uri);
           const willConvert = !!(preferred && state.format !== preferred);
@@ -24531,6 +25293,7 @@ ${sidecarSection}
             const state = this.stateManager.getState(event.uri);
             if (state) {
               state.format = this.formatService.getDetectedFormat(event.uri, event.text);
+              this.syncTrackingDocumentMetadata(event.uri, event.text, state.format);
             }
           }
           this.localParseAndCache(event.uri, event.text, event.version);
@@ -24556,6 +25319,7 @@ ${sidecarSection}
             return result;
           state.text = result.text;
           state.version = result.version;
+          this.syncTrackingDocumentMetadata(uri, result.text, state.format);
           this.stateManager.invalidateCache(uri);
           this.localParseAndCache(uri, result.text, result.version, state.format);
           this.lsp?.sendDidChangeFullDoc(uri, result.text);
@@ -24693,6 +25457,7 @@ ${sidecarSection}
             state.format = targetFormat;
             state.version = result.version;
             state.document = targetDoc;
+            this.syncTrackingDocumentMetadata(normalized, result.text, targetFormat);
             this.pushSnapshotUnguarded(normalized);
             this._onDidConvertFormat.fire({
               uri: normalized,
@@ -24872,7 +25637,7 @@ ${sidecarSection}
       "use strict";
       Object.defineProperty(exports, "__esModule", { value: true });
       exports.PendingEditManager = exports.LocalFormatAdapter = exports.LocalParseAdapter = exports.LspFormatAdapter = exports.isTypeVisibleInView = exports.isChangeVisibleInView = exports.resolveView = exports.VIEW_LABELS = exports.VIEW_PRESETS = exports.NULL_LSP_CONNECTION = exports.FormatService = exports.LSP_METHOD = exports.UriKeyedStore = exports.BaseController = exports.UriSet = exports.UriMap = exports.normalizeUri = exports.transformRange = exports.NO_CURSOR = exports.TOKEN_MODIFIERS = exports.TOKEN_TYPES = exports.planToSemanticTokens = exports.applyPlan = exports.buildOverviewRulerPlan = exports.buildDecorationPlan = exports.hasInlineDelimiters = exports.hideOrGhostDelimiters = exports.getCharLevelRanges = exports.createEmptyPlan = exports.revealDelimiters = exports.hideDelimiters = exports.isOffsetInRange = exports.offsetToLine = exports.computeLineStarts = exports.AuthorColorMap = exports.AUTHOR_PALETTE = exports.OVERVIEW_RULER_COLORS = exports.DECORATION_STYLES = exports.CoherenceService = exports.ReviewService = exports.NavigationService = exports.TrackingService = exports.DecorationScheduler = exports.DocumentStateManager = exports.rangeToOffsetBatch = exports.rangeToOffset = exports.offsetToRange = exports.EventEmitter = void 0;
-      var types_js_1 = require_types4();
+      var types_js_1 = require_types5();
       Object.defineProperty(exports, "EventEmitter", { enumerable: true, get: function() {
         return types_js_1.EventEmitter;
       } });
@@ -25003,11 +25768,11 @@ ${sidecarSection}
       Object.defineProperty(exports, "FormatService", { enumerable: true, get: function() {
         return format_service_js_1.FormatService;
       } });
-      var types_js_2 = require_types4();
+      var types_js_2 = require_types5();
       Object.defineProperty(exports, "NULL_LSP_CONNECTION", { enumerable: true, get: function() {
         return types_js_2.NULL_LSP_CONNECTION;
       } });
-      var types_js_3 = require_types4();
+      var types_js_3 = require_types5();
       Object.defineProperty(exports, "VIEW_PRESETS", { enumerable: true, get: function() {
         return types_js_3.VIEW_PRESETS;
       } });
@@ -25362,7 +26127,13 @@ This change's visible effect was absorbed by a later edit. The change is preserv
         connection.sendNotification(host_1.LSP_METHOD.DECORATION_DATA, params);
       }
       function sendCoherenceStatus(connection, uri, coherenceRate, unresolvedCount, threshold) {
-        const params = { uri, coherenceRate, unresolvedCount, threshold };
+        const params = {
+          uri,
+          rate: coherenceRate,
+          coherenceRate,
+          unresolvedCount,
+          threshold
+        };
         connection.sendNotification(host_1.LSP_METHOD.COHERENCE_STATUS, params);
       }
       function sendChangeCount(connection, uri, changes) {
@@ -25463,8 +26234,10 @@ This change's visible effect was absorbed by a later edit. The change is preserv
       }
       function sendDocumentState(connection, uri, tracking, viewMode) {
         const params = {
+          uri,
           textDocument: { uri },
           tracking,
+          view: viewMode,
           viewMode
         };
         connection.sendNotification(host_1.LSP_METHOD.DOCUMENT_STATE, params);

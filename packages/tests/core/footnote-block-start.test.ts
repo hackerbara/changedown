@@ -76,6 +76,17 @@ describe('findFootnoteBlockStart', () => {
     expect(findFootnoteBlockStart(lines)).toBe(6);
   });
 
+  it('ignores footnote-looking lines inside an unclosed terminal code fence', () => {
+    const lines = [
+      '# Title',
+      '',
+      '```markdown',
+      '[^cn-5]: @alice | 2026-02-17 | ins | proposed',
+      '    1:aa {++example++}',
+    ];
+    expect(findFootnoteBlockStart(lines)).toBe(lines.length);
+  });
+
   it('handles file that is entirely footnotes', () => {
     const lines = [
       '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
@@ -145,5 +156,18 @@ describe('findFootnoteBlockStart', () => {
     ];
     // All indented lines (/^\s+\S/) are continuations
     expect(findFootnoteBlockStart(lines)).toBe(2);
+  });
+
+  it('does not include indented body content before terminal footnotes', () => {
+    const lines = [
+      'Intro',
+      '',
+      '    indented {++body-code++}',
+      '',
+      '[^cn-1]: @alice | 2026-02-17 | ins | proposed',
+      '    reason: terminal footnote',
+    ];
+
+    expect(findFootnoteBlockStart(lines)).toBe(4);
   });
 });

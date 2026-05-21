@@ -4,7 +4,7 @@
 #   ./changedown-plugin/cursor/install-mcp.sh
 #
 # Prerequisite: build the MCP server first:
-#   cd changedown-plugin/mcp-server && npm ci && npm run build
+#   cd packages/mcp && npm ci && npm run build
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -15,6 +15,6 @@ mkdir -p "$CURSOR_DIR"
 cp "$SRC" "$DEST"
 echo "Installed MCP config to $DEST"
 echo "Enable the server in Cursor: Settings → Features → MCP (ensure \"changedown\" is on)."
-if [[ ! -f "$PROJECT_ROOT/changedown-plugin/mcp-server/dist/index.js" ]]; then
-  echo "Note: MCP server not built yet. Run: cd changedown-plugin/mcp-server && npm ci && npm run build"
+if [[ ! -f "$PROJECT_ROOT/packages/mcp/dist/index.js" ]]; then
+  echo "Note: MCP server not built yet. Run: cd packages/mcp && npm ci && npm run build"
 fi

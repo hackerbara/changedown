@@ -71,14 +71,15 @@ export {
   type ViewSurfaceMap, type ViewAwareMatch,
 } from './view-surface.js';
 export {
-  findUniqueMatch, tryFindUniqueMatch, applyProposeChange, applySingleOperation,
+  findUniqueMatch, findUniqueEndpointPairWithCascade, tryFindUniqueMatch, applyProposeChange, applySingleOperation,
   appendFootnote, extractLineRange, replaceUnique,
   stripCriticMarkupWithMap, stripCriticMarkup,
   stripCriticMarkupToCommittedWithMap,
   checkCriticMarkupOverlap, guardOverlap, stripRefsFromContent,
   findAllProposedOverlaps, resolveOverlapWithAuthor,
   contentZoneText,
-  type UniqueMatch, type ProposeChangeParams, type ProposeChangeKind, type ProposeChangeResult,
+  type UniqueMatch, type EndpointPairContext, type UniqueEndpointPairMatch,
+  type ProposeChangeParams, type ProposeChangeKind, type ProposeChangeResult,
   type CriticMarkupOverlap, type LineRangeResult,
   type ApplySingleOperationParams, type ApplySingleOperationResult,
   type CommittedMapResult, type MarkupRange,
@@ -96,7 +97,7 @@ export {
 } from './at-resolver.js';
 export {
   parseOp,
-  type ParsedOp,
+  type ParsedOp, type RangeContext,
 } from './op-parser.js';
 export {
   type ThreeZoneDocument, type ThreeZoneLine, type ContentSpan,
@@ -172,3 +173,5 @@ export {
   type DocumentResourceDescriptor,
 } from './backend/types.js';
 export { BackendRegistry, type BackendEntry } from './backend/registry.js';
+
+export * from './protocol/index.js';

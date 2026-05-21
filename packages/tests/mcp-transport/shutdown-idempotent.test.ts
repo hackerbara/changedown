@@ -6,7 +6,7 @@ const PORT = 49993;
 
 describe('Bug C — shutdown is idempotent under racing signals', () => {
   it('stdin close + SIGINT in same tick exits cleanly with no uncaught exceptions', async () => {
-    const server = spawnServer({ port: PORT, env: { CHANGEDOWN_MCP_REQUIRE_HTTPS: '0' } });
+    const server = spawnServer({ port: PORT, env: { CHANGEDOWN_MCP_USE_HTTP: 'true' } });
     await server.ready;
 
     // Trigger both teardown paths in the same tick.

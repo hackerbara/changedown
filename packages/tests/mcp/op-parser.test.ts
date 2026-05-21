@@ -153,6 +153,92 @@ describe('parseOp', () => {
     });
   });
 
+  describe('context-bearing range replacement ({~~~ opening ... closing ~> replacement ~~})', () => {
+    it('leaves legacy coordinate-only range replacement as normal empty-old substitution', () => {
+      const result = parseOp('{~~~>replacement text~~}');
+      expect(result.type).toBe('sub');
+      expect(result.oldText).toBe('');
+      expect(result.newText).toBe('replacement text');
+      expect(result.rangeContext).toBeUndefined();
+    });
+
+    it('parses a single-line opening and closing anchor', () => {
+      const result = parseOp(`{~~~
+old opening
+...
+old closing
+~>
+new block
+~~}`);
+      expect(result).toEqual({
+        type: 'sub',
+        oldText: '',
+        newText: 'new block',
+        reasoning: undefined,
+        rangeContext: {
+          opening: 'old opening',
+          closing: 'old closing',
+        },
+      });
+    });
+
+    it('parses multiline anchors and reasoning', () => {
+      const result = parseOp(`{~~~
+open one
+open two
+...
+close one
+close two
+~>
+replacement
+~~}{>>refresh block`);
+      expect(result.type).toBe('sub');
+      expect(result.oldText).toBe('');
+      expect(result.newText).toBe('replacement');
+      expect(result.reasoning).toBe('refresh block');
+      expect(result.rangeContext).toEqual({
+        opening: 'open one\nopen two',
+        closing: 'close one\nclose two',
+      });
+    });
+
+    it('throws when the endpoint separator is not an exact standalone ellipsis line', () => {
+      expect(() => parseOp(`{~~~
+old opening
+ ... 
+old closing
+~>
+new block
+~~}`))
+        .toThrow(/standalone .*\.\.\./i);
+    });
+
+    it('parses an empty replacement using adjacent ~> and closing lines', () => {
+      const result = parseOp(`{~~~
+old opening
+...
+old closing
+~>
+~~}`);
+      expect(result.type).toBe('sub');
+      expect(result.newText).toBe('');
+      expect(result.rangeContext).toEqual({
+        opening: 'old opening',
+        closing: 'old closing',
+      });
+    });
+
+    it('throws when the replacement separator is missing', () => {
+      expect(() => parseOp(`{~~~
+old opening
+...
+old closing
+new block
+~~}`))
+        .toThrow(/requires .*~>/i);
+    });
+  });
+
   describe('error cases', () => {
     it('throws on empty op', () => {
       expect(() => parseOp('')).toThrow();

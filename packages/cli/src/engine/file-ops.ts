@@ -8,6 +8,7 @@
 
 export {
   findUniqueMatch,
+  findUniqueEndpointPairWithCascade,
   applyProposeChange,
   applySingleOperation,
   appendFootnote,
@@ -21,6 +22,8 @@ export {
   stripRefsFromContent,
   contentZoneText,
   type UniqueMatch,
+  type EndpointPairContext,
+  type UniqueEndpointPairMatch,
   type ProposeChangeParams,
   type ProposeChangeResult,
   type CriticMarkupOverlap,

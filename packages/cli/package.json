@@ -1,6 +1,6 @@
 {
   "name": "@changedown/cli",
-  "version": "0.4.6",
+  "version": "0.5.0",
   "description": "Durable change tracking for editors and AI agents",
   "type": "module",
   "main": "dist/index.js",
@@ -26,9 +26,7 @@
     "./init/runner": "./dist/init/runner.js",
     "./internals": "./dist/internals.js",
     "./commands/repair": "./dist/commands/repair.js",
-    "./agents": "./dist/agents/index.js",
-    "./word/office-tools": "./dist/word/office-tools.js",
-    "./word/mcp": "./dist/word/mcp.js"
+    "./agents": "./dist/agents/index.js"
   },
   "bin": {
     "cli": "./dist/cli-init.js",

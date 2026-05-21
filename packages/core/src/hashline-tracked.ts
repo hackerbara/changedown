@@ -19,6 +19,7 @@ import {
   footnoteRefGlobal,
   FOOTNOTE_DEF_STATUS_VALUE,
 } from './footnote-patterns.js';
+import { findFootnoteBlockStart } from './footnote-utils.js';
 
 // ─── currentLine ────────────────────────────────────────────────────────────
 
@@ -128,8 +129,17 @@ function countChanges(content: string): { proposed: number; accepted: number; re
 
   // Count Level 0 changes (inline markup NOT followed by a footnote ref)
   // Strategy: count all inline markup instances, subtract those with refs
-  const allMarkup = content.match(inlineMarkupAll()) || [];
-  const markupWithRefs = content.match(markupWithRef()) || [];
+  const blockStart = findFootnoteBlockStart(lines);
+  let bodyEndOffset = content.length;
+  if (blockStart < lines.length) {
+    bodyEndOffset = 0;
+    for (let i = 0; i < blockStart; i++) {
+      bodyEndOffset += lines[i]!.length + 1;
+    }
+  }
+  const bodyText = content.slice(0, bodyEndOffset);
+  const allMarkup = bodyText.match(inlineMarkupAll()) || [];
+  const markupWithRefs = bodyText.match(markupWithRef()) || [];
   const level0Count = allMarkup.length - markupWithRefs.length;
 
   if (level0Count > 0) {

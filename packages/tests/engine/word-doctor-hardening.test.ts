@@ -20,7 +20,7 @@ vi.mock('../../../packages/cli/src/word/office-tools.js', () => ({
   runTool: vi.fn(() => 0),
 }));
 
-vi.mock('../../../packages/cli/src/word/mcp.js', () => ({
+vi.mock('@changedown/mcp/launcher', () => ({
   MCP_PORT: 39990,
   mcpStartGuidance: () => 'Start your configured agent to launch ChangeDown MCP.',
   preflightMcp: mocks.preflightMcp,

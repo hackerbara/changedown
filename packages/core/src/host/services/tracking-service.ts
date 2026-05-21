@@ -9,6 +9,7 @@ export interface TrackingServiceConfig {
 export class TrackingService implements Disposable {
   private readonly trackingState = new Map<string, boolean>();
   private readonly pem: PendingEditManager;
+  private readonly defaultFormat: Format;
 
   private readonly _onDidChangeTrackingState = new EventEmitter<{ uri: string; enabled: boolean }>();
   readonly onDidChangeTrackingState: Event<{ uri: string; enabled: boolean }> = this._onDidChangeTrackingState.event;
@@ -20,6 +21,7 @@ export class TrackingService implements Disposable {
   readonly onDidChangeOverlay: Event<{ uri: string; overlay: PendingOverlay | null }> = this._onDidChangeOverlay.event;
 
   constructor(config?: TrackingServiceConfig) {
+    this.defaultFormat = config?.defaultFormat ?? 'L2';
     this.pem = new PendingEditManager(
       (edit: CrystallizedEdit) => this._onDidCrystallize.fire(edit),
       (uri: string, overlay: PendingOverlay | null) => this._onDidChangeOverlay.fire({ uri, overlay }),
@@ -27,6 +29,26 @@ export class TrackingService implements Disposable {
     if (config?.pauseThresholdMs !== undefined) {
       this.pem.setPauseThresholdMs(config.pauseThresholdMs);
     }
+  }
+
+  /**
+   * Synchronize per-document tracking metadata from the owning controller.
+   * This keeps locally-crystallized edits aligned with the current format and
+   * prevents new `cn-N` IDs from colliding with existing footnotes.
+   */
+  initializeDocument(uri: string, options: { format?: Format; maxChangeId?: number }): void {
+    this.pem.setDocumentFormat(uri, options.format ?? this.defaultFormat);
+    if (options.maxChangeId !== undefined) {
+      this.pem.initScIdCounter(uri, options.maxChangeId);
+    }
+  }
+
+  setDocumentFormat(uri: string, format: Format): void {
+    this.pem.setDocumentFormat(uri, format);
+  }
+
+  initScIdCounter(uri: string, maxId: number): void {
+    this.pem.initScIdCounter(uri, maxId);
   }
 
   // ── Tracking state ─────────────────────────────────────────

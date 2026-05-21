@@ -2,11 +2,8 @@
   "mcpServers": {
     "cd": {
       "type": "stdio",
-      "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js"],
-      "env": {
-        "CHANGEDOWN_MCP_REQUIRE_HTTPS": "1"
-      }
+      "command": "npx",
+      "args": ["-y", "--package", "@changedown/mcp@0.5.0", "changedown-mcp"]
     }
   }
 }

@@ -33,7 +33,7 @@ npm run build -w packages/benchmarks
 npm run build:plugin
 
 # 2. Verify MCP server works
-node changedown-plugin/mcp-server/dist/index.js --help
+{~~node changedown-plugin/mcp-server/dist/index.js --help~>node packages/mcp/dist/index.js --help~~}[^cn-25]
 
 # 3. Verify harness works
 node packages/benchmarks/dist/harness/run-full-benchmark.js --help
@@ -467,3 +467,6 @@ After each run:
 [^cn-24]: @ai:claude-opus-4.6 | 2026-03-01 | ins | accepted
     @ai:claude-opus-4.6 2026-03-01T17:54:57Z: @ai:claude-opus-4.6: Insert post-matching-transparency benchmark validation section with results, verify bug discovery, corrected historical scores, and quality gap analysis 
     approved: @ai:claude-opus-4.6 2026-03-01T17:55:12Z "Insert post-matching-transparency benchmark section with verify bug discovery, corrected scores, and quality gap analysis"
+
+[^cn-25]: @ai:claude-sonnet-4-6 | 2026-05-19 | sub | proposed
+    @ai:claude-sonnet-4-6 2026-05-19T22:41:38Z: MCP source moved to packages/mcp/ in the @changedown/mcp extraction (plan: 2026-05-16-mcp-package-extraction-v2.md)
